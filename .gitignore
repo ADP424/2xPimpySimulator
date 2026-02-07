@@ -1,0 +1,12 @@
+# security
+.env
+
+# caching
+__pycache__/
+
+# testing
+.pytest_cache/
+.coverage
+
+# other
+.vscode

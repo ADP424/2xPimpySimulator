@@ -1,0 +1,179 @@
+{
+    "Blindness": {
+        "Cataracts": {
+            "alt_name": "Lenticular Sclerosis",
+            "description": "This pooch has some annoying eye floaters, limiting its vision.",
+            "heritability": 15.0,
+            "health_impact": "NEUTRAL",
+            "rarity": "UNCOMMON",
+            "advanced_options": {
+                "incompatible_mutations": [
+                    "Schizophrenia"
+                ]
+            }
+        },
+        "Partial Blindness": {
+            "alt_name": "Visual Impairment",
+            "description": "This pooch's eyesight is severely limited.",
+            "heritability": 20.0,
+            "health_impact": "NEUTRAL",
+            "rarity": "NOVEL",
+            "advanced_options": {
+                "dollar_value_add": -25,
+                "incompatible_mutations": [
+                    "Schizophrenia"
+                ]
+            }
+        },
+        "Total Blindness": {
+            "alt_name": "Congenital Blindness",
+            "description": "This pooch has never known what it's like to see.",
+            "heritability": 25.0,
+            "health_impact": "NEUTRAL",
+            "rarity": "RARE",
+            "advanced_options": {
+                "dollar_value_add": -50,
+                "incompatible_mutations": [
+                    "Schizophrenia"
+                ]
+            }
+        }
+    },
+    "Blood Disorders": {
+        "Bleeder's Disease": {
+            "alt_name": "Hemophilia",
+            "description": "This pooch should be extra careful around sharp objects.",
+            "heritability": 20.0,
+            "health_impact": "SEVERE",
+            "rarity": "NOVEL"
+        }
+    },
+    "Bone Disorders": {
+        "Brittle Bone Disease": {
+            "alt_name": "Osteogenesis Imperfecta",
+            "description": "This pooch's body is ready to snap at any second.",
+            "heritability": 20.0,
+            "health_impact": "SEVERE",
+            "rarity": "NOVEL"
+        }
+    },
+    "Hormonal Disorders": {
+        "Polycystic Ovary Syndrome": {
+            "alt_name": "Stein-Leventhal Syndrome",
+            "description": "This pooch is relatively infertile.",
+            "heritability": 25.0,
+            "health_impact": "NEUTRAL",
+            "rarity": "COMMON",
+            "male": false,
+            "advanced_options": {
+                "breeding_cooldown": 3,
+                "dollar_value_mult": 0.5
+            }
+        },
+        "Severe Polycystic Ovary Syndrome": {
+            "alt_name": "Stein-Leventhal Syndrome",
+            "description": "This pooch is extremely infertile.",
+            "heritability": 25.0,
+            "health_impact": "NEUTRAL",
+            "rarity": "COMMON",
+            "male": false,
+            "advanced_options": {
+                "breeding_cooldown": 98,
+                "dollar_value_mult": 0.1
+            }
+        }
+    },
+    "Neurodevelopmental Conditions": {
+        "Autism": {
+            "alt_name": "Autism Spectrum Disorder",
+            "description": "This pooch enjoys trains a little too much.",
+            "heritability": 35.0,
+            "health_impact": "NEUTRAL",
+            "rarity": "COMMON"
+        },
+        "Schizophrenia": {
+            "alt_name": "Schizo",
+            "description": "This pooch barks when the mailman isn't there.",
+            "heritability": 45.0,
+            "health_impact": "HARMFUL",
+            "rarity": "RARE",
+            "advanced_options": {
+                "incompatible_mutations": [
+                    "Blindness"
+                ]
+            }
+        }
+    },
+    "Psychological Disorders": {
+        "Cannibalism": {
+            "alt_name": "Canis Canem",
+            "descripton": "This pooch is on a very strict diet.",
+            "heritability": 10.0,
+            "health_impact": "HEALTHY",
+            "rarity": "REMARKABLE"
+        },
+        "Psychopathy": {
+            "alt_name": "Antisocial Personality Disorder",
+            "descripton": "This pooch is good with the stock market.",
+            "heritability": 30.0,
+            "health_impact": "NEUTRAL",
+            "rarity": "UNCOMMON"
+        }
+    },
+    "Skin Disorders": {
+        "Full Body Prolapse": {
+            "alt_name": "Canis Invertus",
+            "descripton": "This pooch is inside out.",
+            "heritability": 50.0,
+            "health_impact": "BRUTAL",
+            "rarity": "EXTRAORDINARY"
+        },
+        "Ichthyosis": {
+            "alt_name": "Scale Disease",
+            "descripton": "This pooch has certain reptillian qualities to it.",
+            "heritability": 45.0,
+            "health_impact": "NEUTRAL",
+            "rarity": "RARE",
+            "advanced_options": {
+                "dollar_value_add": 50
+            }
+        }
+    },
+    "Supernatural Disorders": {
+        "Mild Possession": {
+            "alt_name": "Mitis Possessio",
+            "description": "This pooch has been possessed by a mischievious spirit.",
+            "heritability": 0.0,
+            "health_impact": "HARMFUL",
+            "rarity": "REMARKABLE",
+            "advanced_options": {
+                "bloodskull_value_mult": 3
+            }
+        },
+        "Explosion Syndrome": {
+            "alt_name": "Dogis Boomis",
+            "description": "This pooch paints rooms fast.",
+            "heritability": 100.0,
+            "health_impact": "INSTANT_DEATH",
+            "rarity": "EXTRAORDINARY",
+            "advanced_options": {
+                "on_death": "kill",
+                "on_death_targets": "all",
+                "death_message": "[pooch] exploded all over the walls.",
+                "kill_message": "[victim] was killed in the explosion."
+            }
+        },
+        "God Syndrome": {
+            "alt_name": "Jesus Poochicus",
+            "description": "This pooch can't die, on Dog.",
+            "heritability": 1.0,
+            "health_impact": "IMMORTALITY",
+            "rarity": "UNIQUE",
+            "advanced_options": {
+                "on_death": "spread",
+                "on_death_targets": "random",
+                "always_on_death": 1
+            }
+        }
+    }
+}

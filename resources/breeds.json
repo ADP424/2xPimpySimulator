@@ -1,0 +1,19 @@
+{
+    "Poodle": {
+        "Standard Poodle": {
+            "alt_name": "Pudelin",
+            "description": "The first and largest breed of poodle, first bred as hunting companions. They are thin with a curly coat of fur, at least 15 inches tall, and weigh 40-70 pounds on average.",
+            "rarity": "COMMON"
+        },
+        "Miniature Poodle": {
+            "alt_name": "Caniche",
+            "description": "The much smaller counterpart to standard poodles, only 10-15 inches tall and the same number of pounds. They have a wide variety of colors and are a popular choice as an apartment companion.",
+            "rarity": "COMMON"
+        },
+        "Toy Poodle": {
+            "alt_name": "Duck Dog",
+            "description": "The newest breed of poodle, developed in the 20th century. They weigh just 4-6 pounds and are under 10 inches tall. You frequently see them riding around in their owners' handbags.",
+            "rarity": "COMMON"
+        }
+    }
+}
