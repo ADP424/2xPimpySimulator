@@ -1,5 +1,4 @@
-from __future__ import annotations
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import TYPE_CHECKING
 from sqlalchemy import BigInteger, DateTime, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -22,15 +21,17 @@ class Server(Base):
     event_channel_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     joined_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=text("now()"))
 
-    pooches: Mapped[list[Pooch]] = relationship(back_populates="server", cascade="all, delete-orphan")
+    pooches: Mapped[list[Pooch]] = relationship(
+        "Pooch", back_populates="server", cascade="all, delete-orphan", overlaps="owned_pooches,owner,vendor"
+    )
 
-    owners: Mapped[list[Owner]]  = relationship("Owner",  cascade="all, delete-orphan")
-    vendors: Mapped[list[Vendor]] = relationship("Vendor", cascade="all, delete-orphan")
-    kennels: Mapped[list[Kennel]] = relationship("Kennel", cascade="all, delete-orphan")
+    owners: Mapped[list[Owner]] = relationship("Owner", back_populates="server", cascade="all, delete-orphan")
+    vendors: Mapped[list[Vendor]] = relationship("Vendor", back_populates="server", cascade="all, delete-orphan")
+    kennels: Mapped[list[Kennel]] = relationship(
+        "Kennel", back_populates="server", cascade="all, delete-orphan", overlaps="kennels,owner"
+    )
 
     hell_rows: Mapped[list[HellPooch]] = relationship(
-        "HellPooch",
-        back_populates="server",
-        cascade="all, delete-orphan",
+        "HellPooch", back_populates="server", cascade="all, delete-orphan", overlaps="hell_rows"
     )
     hell = association_proxy("hell_rows", "pooch")

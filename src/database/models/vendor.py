@@ -1,5 +1,4 @@
-from __future__ import annotations
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import TYPE_CHECKING
 from sqlalchemy import BigInteger, DateTime, Text, ForeignKey, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -30,11 +29,19 @@ class Vendor(Base):
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=text("now()"))
 
-    owned_pooches: Mapped[list[Pooch]] = relationship(back_populates="vendor")
+    owned_pooches: Mapped[list[Pooch]] = relationship(
+        "Pooch",
+        back_populates="vendor",
+        foreign_keys="Pooch.server_id, Pooch.vendor_id",
+        overlaps="owned_pooches,owner,pooches,server",
+    )
 
     pooches_for_sale_rows: Mapped[list[VendorPoochForSale]] = relationship(
         "VendorPoochForSale",
         back_populates="vendor",
         cascade="all, delete-orphan",
+        overlaps="vendor_pooch_for_sale_rows",
     )
     pooches_for_sale = association_proxy("pooches_for_sale_rows", "pooch")
+
+    server = relationship("Server", back_populates="vendors", foreign_keys=[server_id])

@@ -1,6 +1,4 @@
-from __future__ import annotations
-
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import BigInteger, DateTime, ForeignKey, text
@@ -38,6 +36,8 @@ class GraveyardPooch(Base):
     buried_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=text("now()"))
 
     owner: Mapped[Owner] = relationship(
-        "Owner", foreign_keys=[server_id, owner_discord_id], back_populates="graveyard_rows"
+        "Owner", foreign_keys=[server_id, owner_discord_id], back_populates="graveyard_rows", overlaps="graveyard_rows"
     )
-    pooch: Mapped[Pooch] = relationship("Pooch", foreign_keys=[server_id, pooch_id])
+    pooch: Mapped[Pooch] = relationship(
+        "Pooch", foreign_keys=[server_id, pooch_id], back_populates="graveyard_rows", overlaps="graveyard_rows,owner"
+    )

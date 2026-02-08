@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from sqlalchemy import BigInteger, Text
 from sqlalchemy.orm import Mapped, mapped_column
 

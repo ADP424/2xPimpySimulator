@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from typing import TYPE_CHECKING
 
 from sqlalchemy import BigInteger, ForeignKey, UniqueConstraint
@@ -35,5 +33,15 @@ class VendorPoochForSale(Base):
     vendor_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     pooch_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
 
-    vendor: Mapped[Vendor] = relationship("Vendor", foreign_keys=[server_id, vendor_id], back_populates="pooches_for_sale_rows")
-    pooch: Mapped[Pooch] = relationship("Pooch", foreign_keys=[server_id, pooch_id])
+    vendor: Mapped[Vendor] = relationship(
+        "Vendor",
+        foreign_keys=[server_id, vendor_id],
+        back_populates="pooches_for_sale_rows",
+        overlaps="vendor_pooch_for_sale_rows",
+    )
+    pooch: Mapped[Pooch] = relationship(
+        "Pooch",
+        foreign_keys=[server_id, pooch_id],
+        back_populates="vendor_pooch_for_sale_rows",
+        overlaps="pooches_for_sale_rows,vendor",
+    )

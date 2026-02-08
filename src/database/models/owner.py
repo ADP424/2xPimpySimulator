@@ -1,5 +1,4 @@
-from __future__ import annotations
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import BigInteger, DateTime, Integer, ForeignKey, text
@@ -24,12 +23,15 @@ class Owner(Base):
     bloodskulls: Mapped[int] = mapped_column(Integer, default=0)
     joined_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=text("now()"))
 
-    owned_pooches: Mapped[list[Pooch]] = relationship(back_populates="owner")
+    owned_pooches: Mapped[list[Pooch]] = relationship(
+        "Pooch", back_populates="owner", foreign_keys="Pooch.server_id, Pooch.owner_discord_id"
+    )
 
     kennels: Mapped[list[Kennel]] = relationship(
         "Kennel",
         back_populates="owner",
         cascade="all, delete-orphan",
+        overlaps="server",
     )
 
     graveyard_rows: Mapped[list[GraveyardPooch]] = relationship(
@@ -38,3 +40,5 @@ class Owner(Base):
         cascade="all, delete-orphan",
     )
     graveyard = association_proxy("graveyard_rows", "pooch")
+
+    server = relationship("Server", back_populates="owners", foreign_keys=[server_id])

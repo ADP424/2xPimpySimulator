@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from typing import TYPE_CHECKING
 
 from sqlalchemy import BigInteger, ForeignKey, UniqueConstraint
@@ -38,10 +36,12 @@ class PoochPregnancy(Base):
         "Pooch",
         foreign_keys=[server_id, pooch_id],
         back_populates="pregnancies_as_mother",
+        overlaps="pregnancy_as_fetus_rows",
     )
 
     fetus: Mapped[Pooch] = relationship(
         "Pooch",
         foreign_keys=[server_id, fetus_id],
         back_populates="pregnancy_as_fetus_rows",
+        overlaps="mother,pregnancies_as_mother",
     )

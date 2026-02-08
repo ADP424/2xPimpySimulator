@@ -135,6 +135,7 @@ CREATE TABLE kennels (
     id                  BIGSERIAL PRIMARY KEY,
     server_id           BIGINT NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
     owner_discord_id    BIGINT NOT NULL,
+    name                TEXT NOT NULL,
     pooch_limit         INTEGER NOT NULL DEFAULT 10,
     created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
 

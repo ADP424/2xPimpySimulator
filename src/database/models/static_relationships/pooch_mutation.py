@@ -24,7 +24,9 @@ class PoochMutation(Base):
 
     server_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("servers.id", ondelete="CASCADE"), primary_key=True)
     pooch_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    mutation_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("mutations.id", ondelete="RESTRICT"), primary_key=True)
+    mutation_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("mutations.id", ondelete="RESTRICT"), primary_key=True
+    )
 
     mutation: Mapped[Mutation] = relationship("Mutation")
     pooch: Mapped[Pooch] = relationship("Pooch", back_populates="pooch_mutations")

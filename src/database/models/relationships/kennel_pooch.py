@@ -33,6 +33,8 @@ class KennelPooch(Base):
     pooch_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
 
     kennel: Mapped[Kennel] = relationship(
-        "Kennel", foreign_keys=[server_id, kennel_id], back_populates="kennel_pooch_rows"
+        "Kennel", foreign_keys=[server_id, kennel_id], back_populates="kennel_pooch_rows", overlaps="kennel_rows"
     )
-    pooch: Mapped[Pooch] = relationship("Pooch", foreign_keys=[server_id, pooch_id], back_populates="kennel_rows")
+    pooch: Mapped[Pooch] = relationship(
+        "Pooch", foreign_keys=[server_id, pooch_id], back_populates="kennel_rows", overlaps="kennel,kennel_pooch_rows"
+    )

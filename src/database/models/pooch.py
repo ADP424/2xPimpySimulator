@@ -1,5 +1,4 @@
-from __future__ import annotations
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import TYPE_CHECKING
 from sqlalchemy import BigInteger, Boolean, DateTime, Integer, Text, ForeignKey, UniqueConstraint, CheckConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -64,15 +63,16 @@ class Pooch(Base):
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=text("now()"))
 
-    server: Mapped[Server] = relationship(back_populates="pooches")
-    owner: Mapped[Owner | None] = relationship(back_populates="owned_pooches")
-    vendor: Mapped[Vendor | None] = relationship(back_populates="owned_pooches")
+    server: Mapped[Server] = relationship(back_populates="pooches", overlaps="owned_pooches")
+    owner: Mapped[Owner | None] = relationship(back_populates="owned_pooches", overlaps="server")
+    vendor: Mapped[Vendor | None] = relationship(back_populates="owned_pooches", overlaps="owned_pooches,owner,server")
 
     parentage: Mapped[PoochParentage | None] = relationship(
         "PoochParentage",
         back_populates="child",
         uselist=False,
         cascade="all, delete-orphan",
+        foreign_keys="PoochParentage.server_id, PoochParentage.pooch_id",
     )
     father = association_proxy("parentage", "father")
     mother = association_proxy("parentage", "mother")
@@ -88,13 +88,12 @@ class Pooch(Base):
         back_populates="fetus",
         cascade="all, delete-orphan",
         foreign_keys="PoochPregnancy.server_id, PoochPregnancy.fetus_id",
+        overlaps="pregnancies_as_mother",
     )
     fetuses = association_proxy("pregnancies_as_mother", "fetus")
 
     kennel_rows: Mapped[list[KennelPooch]] = relationship(
-        "KennelPooch",
-        back_populates="pooch",
-        cascade="all, delete-orphan",
+        "KennelPooch", back_populates="pooch", cascade="all, delete-orphan", overlaps="kennel_pooch_rows"
     )
     kennels = association_proxy("kennel_rows", "kennel")
 
@@ -111,3 +110,20 @@ class Pooch(Base):
         cascade="all, delete-orphan",
     )
     mutations = association_proxy("pooch_mutations", "mutation")
+
+    graveyard_rows = relationship(
+        "GraveyardPooch",
+        back_populates="pooch",
+        foreign_keys="GraveyardPooch.server_id, GraveyardPooch.pooch_id",
+        overlaps="graveyard_rows",
+    )
+
+    hell_rows = relationship(
+        "HellPooch", back_populates="pooch", foreign_keys="HellPooch.server_id, HellPooch.pooch_id"
+    )
+
+    vendor_pooch_for_sale_rows = relationship(
+        "VendorPoochForSale",
+        back_populates="pooch",
+        foreign_keys="VendorPoochForSale.server_id, VendorPoochForSale.pooch_id",
+    )

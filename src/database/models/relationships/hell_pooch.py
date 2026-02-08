@@ -1,6 +1,4 @@
-from __future__ import annotations
-
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import BigInteger, DateTime, ForeignKey, text
@@ -30,5 +28,9 @@ class HellPooch(Base):
 
     damned_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=text("now()"))
 
-    server: Mapped[Server] = relationship("Server", foreign_keys=[server_id], back_populates="hell_rows")
-    pooch: Mapped[Pooch] = relationship("Pooch", foreign_keys=[server_id, pooch_id])
+    server: Mapped[Server] = relationship(
+        "Server", foreign_keys=[server_id], back_populates="hell_rows", overlaps="hell_rows"
+    )
+    pooch: Mapped[Pooch] = relationship(
+        "Pooch", foreign_keys=[server_id, pooch_id], back_populates="hell_rows", overlaps="hell_rows,server"
+    )

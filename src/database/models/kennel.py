@@ -1,9 +1,7 @@
-from __future__ import annotations
-
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import BigInteger, DateTime, Integer, ForeignKey, UniqueConstraint, text
+from sqlalchemy import BigInteger, DateTime, Integer, ForeignKey, Text, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.schema import ForeignKeyConstraint
 from sqlalchemy.ext.associationproxy import association_proxy
@@ -31,6 +29,7 @@ class Kennel(Base):
     server_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("servers.id", ondelete="CASCADE"))
     owner_discord_id: Mapped[int] = mapped_column(BigInteger)
 
+    name: Mapped[str] = mapped_column(Text)
     pooch_limit: Mapped[int] = mapped_column(Integer, default=10)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=text("now()"))
 
@@ -43,3 +42,5 @@ class Kennel(Base):
     )
 
     pooches = association_proxy("kennel_pooch_rows", "pooch")
+
+    server = relationship("Server", back_populates="kennels", foreign_keys=[server_id], overlaps="owner")
