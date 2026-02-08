@@ -27,7 +27,7 @@ class NavigationSelect(Select):
         if self.values[0] == "kennels":
             source = KennelsPageSource(server_id=interaction.guild_id, owner_discord_id=interaction.user.id)
             view = PaginatorView(source, owner_id=interaction.user.id)
-            await edit_interaction(content="Your kennels:", embed=None, view=view)
+            await edit_interaction(interaction, content="Your kennels:", embed=None, view=view)
             await view.start(interaction)
         else:
             await interaction.response.send_message("Town coming soon.", ephemeral=True)

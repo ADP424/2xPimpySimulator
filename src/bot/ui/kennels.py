@@ -74,14 +74,14 @@ class KennelPageControls:
         self.info_btn.disabled = False
         self.breed_btn.disabled = False
         self.walk_btn.disabled = False
-        await edit_interaction(view=interaction.view)
+        await edit_interaction(interaction, view=interaction.view)
 
     async def _on_info(self, interaction: discord.Interaction):
         if self.selected_pooch_id is None:
             return
         view = PoochInfoView(server_id=self.server_id, pooch_id=self.selected_pooch_id, owner_id=self.owner_id)
         embed = await view.build_embed()
-        await edit_interaction(embed=embed, view=view)
+        await edit_interaction(interaction, embed=embed, view=view)
 
     async def _noop(self, interaction: discord.Interaction):
         await interaction.response.send_message("Coming soon.", ephemeral=True)

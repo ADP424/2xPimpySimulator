@@ -113,7 +113,7 @@ class PoochInfoView(View):
         elif fired_kind == "siblings":
             self.sibling_info_btn.disabled = False
 
-        await edit_interaction(view=self)
+        await edit_interaction(interaction, view=self)
 
     async def _open_parent(self, interaction: discord.Interaction):
         pid = self._selected.get("parents")
@@ -121,7 +121,7 @@ class PoochInfoView(View):
             return
         self.pooch_id = pid
         embed = await self.build_embed()
-        await edit_interaction(embed=embed, view=self)
+        await edit_interaction(interaction, embed=embed, view=self)
 
     async def _open_child(self, interaction: discord.Interaction):
         pid = self._selected.get("children")
@@ -129,7 +129,7 @@ class PoochInfoView(View):
             return
         self.pooch_id = pid
         embed = await self.build_embed()
-        await edit_interaction(embed=embed, view=self)
+        await edit_interaction(interaction, embed=embed, view=self)
 
     async def _open_sibling(self, interaction: discord.Interaction):
         pid = self._selected.get("siblings")
@@ -137,4 +137,4 @@ class PoochInfoView(View):
             return
         self.pooch_id = pid
         embed = await self.build_embed()
-        await edit_interaction(embed=embed, view=self)
+        await edit_interaction(interaction, embed=embed, view=self)
