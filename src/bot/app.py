@@ -1,4 +1,5 @@
 import os
+import asyncio
 import discord
 from discord import app_commands
 from dotenv import load_dotenv
@@ -6,6 +7,8 @@ from dotenv import load_dotenv
 from logger import get_logger
 
 from .commands.home import register_home_command
+from .commands.set_event_channel import register_set_event_channel_command
+from .day_change_loop import day_change_runner
 
 logger = get_logger("bot/app")
 
@@ -16,6 +19,7 @@ def run():
     load_dotenv()
     token = os.getenv("DISCORD_TOKEN")
     stage = os.getenv("STAGE", "dev").lower()
+    tz = os.getenv("TZ", "America/New_York")
 
     intents = discord.Intents.default()
     intents.message_content = True
@@ -24,13 +28,18 @@ def run():
     tree = app_commands.CommandTree(bot)
 
     register_home_command(tree)
+    register_set_event_channel_command(tree)
 
     @bot.event
     async def on_ready():
         for guild in GUILDS:
             await tree.sync(guild=guild)
-        print(f"Bot ready as {bot.user} ({stage})")
+        logger.info(f"Bot ready as {bot.user} ({stage})")
+
+        if not hasattr(bot, "_day_change_task"):
+            bot._day_change_task = asyncio.create_task(day_change_runner(bot, stage=stage, tz=tz))  # type: ignore
 
     if not token:
         raise RuntimeError("DISCORD_TOKEN not set")
+
     bot.run(token)

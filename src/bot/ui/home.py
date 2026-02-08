@@ -30,4 +30,4 @@ class NavigationSelect(Select):
             await edit_interaction(interaction, content="Your kennels:", embed=None, view=view)
             await view.start(interaction)
         else:
-            await interaction.response.send_message("Town coming soon.", ephemeral=True)
+            await interaction.response.send_message("Town coming soon.", ephemeral=False)

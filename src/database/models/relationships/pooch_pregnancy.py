@@ -15,7 +15,7 @@ class PoochPregnancy(Base):
     __table_args__ = (
         UniqueConstraint("server_id", "fetus_id", name="pooch_pregnancy_unique_fetus_per_server"),
         ForeignKeyConstraint(
-            ["server_id", "pooch_id"],
+            ["server_id", "mother_id"],
             ["pooches.server_id", "pooches.id"],
             ondelete="CASCADE",
             name="pooch_pregnancy_mother_fk",
@@ -29,12 +29,12 @@ class PoochPregnancy(Base):
     )
 
     server_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("servers.id", ondelete="CASCADE"), primary_key=True)
-    pooch_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    mother_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     fetus_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
 
     mother: Mapped[Pooch] = relationship(
         "Pooch",
-        foreign_keys=[server_id, pooch_id],
+        foreign_keys=[server_id, mother_id],
         back_populates="pregnancies_as_mother",
         overlaps="pregnancy_as_fetus_rows",
     )

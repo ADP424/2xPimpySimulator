@@ -14,14 +14,14 @@ class PoochParentage(Base):
     __tablename__ = "pooch_parentage"
 
     server_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("servers.id", ondelete="CASCADE"), primary_key=True)
-    pooch_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    child_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
 
     father_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     mother_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
 
     __table_args__ = (
         ForeignKeyConstraint(
-            ["server_id", "pooch_id"],
+            ["server_id", "child_id"],
             ["pooches.server_id", "pooches.id"],
             ondelete="CASCADE",
             name="pooch_parentage_child_fk",
@@ -42,7 +42,7 @@ class PoochParentage(Base):
 
     child: Mapped[Pooch] = relationship(
         "Pooch",
-        foreign_keys=[server_id, pooch_id],
+        foreign_keys=[server_id, child_id],
         back_populates="parentage",
         uselist=False,
     )

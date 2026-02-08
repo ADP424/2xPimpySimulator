@@ -43,7 +43,7 @@ CREATE TABLE pooches (
     name                TEXT NOT NULL,
     age                 INTEGER NOT NULL DEFAULT 0,
     sex                 sex NOT NULL,
-    base_health         INTEGER NOT NULL DEFAULT 8,
+    base_health         INTEGER NOT NULL DEFAULT 10,
     health_loss_age     INTEGER NOT NULL DEFAULT 0,
 
     breeding_cooldown   INTEGER NOT NULL DEFAULT 2,
@@ -76,32 +76,32 @@ CREATE TABLE pooches (
 -- POOCH RELATIONS (parents and pregnancies)
 CREATE TABLE pooch_parentage (
     server_id   BIGINT NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
-    pooch_id    BIGINT NOT NULL,
+    child_id    BIGINT NOT NULL,
     father_id   BIGINT NULL,
     mother_id   BIGINT NULL,
 
-    PRIMARY KEY (server_id, pooch_id),
+    PRIMARY KEY (server_id, child_id),
 
-    FOREIGN KEY (server_id, pooch_id)  REFERENCES pooches(server_id, id) ON DELETE CASCADE,
+    FOREIGN KEY (server_id, child_id)  REFERENCES pooches(server_id, id) ON DELETE CASCADE,
     FOREIGN KEY (server_id, father_id) REFERENCES pooches(server_id, id) ON DELETE SET NULL,
     FOREIGN KEY (server_id, mother_id) REFERENCES pooches(server_id, id) ON DELETE SET NULL,
 
-    CONSTRAINT no_self_parent CHECK (pooch_id <> father_id AND pooch_id <> mother_id),
+    CONSTRAINT no_self_parent CHECK (child_id <> father_id AND child_id <> mother_id),
     CONSTRAINT no_duplicate_parents CHECK (father_id IS NULL OR mother_id IS NULL OR father_id <> mother_id)
 );
 
 CREATE TABLE pooch_pregnancy (
     server_id   BIGINT NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
-    pooch_id    BIGINT NOT NULL,
+    mother_id    BIGINT NOT NULL,
     fetus_id    BIGINT NOT NULL,
 
-    PRIMARY KEY (server_id, pooch_id, fetus_id),
+    PRIMARY KEY (server_id, mother_id, fetus_id),
     UNIQUE (server_id, fetus_id),
 
-    FOREIGN KEY (server_id, pooch_id) REFERENCES pooches(server_id, id) ON DELETE CASCADE,
+    FOREIGN KEY (server_id, mother_id) REFERENCES pooches(server_id, id) ON DELETE CASCADE,
     FOREIGN KEY (server_id, fetus_id) REFERENCES pooches(server_id, id) ON DELETE CASCADE,
 
-    CONSTRAINT no_self_fetus CHECK (pooch_id <> fetus_id)
+    CONSTRAINT no_self_fetus CHECK (mother_id <> fetus_id)
 );
 
 

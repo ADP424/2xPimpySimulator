@@ -1,20 +1,52 @@
+from contextlib import asynccontextmanager
 import os
+from typing import AsyncIterator, Optional
 from urllib.parse import quote_plus
 from dotenv import load_dotenv
 
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine, async_sessionmaker, AsyncSession
 
+_ENGINE: Optional[AsyncEngine] = None
+_SESSIONMAKER: Optional[async_sessionmaker[AsyncSession]] = None
 
-def get_database_url() -> str:
+
+def _get_engine() -> AsyncEngine:
+    global _ENGINE
+    if _ENGINE is None:
+        _ENGINE = _make_engine()
+    return _ENGINE
+
+
+def _get_sessionmaker() -> async_sessionmaker[AsyncSession]:
+    global _SESSIONMAKER
+    if _SESSIONMAKER is None:
+        _SESSIONMAKER = _make_sessionmaker(_get_engine())
+    return _SESSIONMAKER
+
+
+@asynccontextmanager
+async def session_scope() -> AsyncIterator[AsyncSession]:
     """
-    Builds a SQLAlchemy async URL from .env.
+    Yield an engine session and commit on success, rollback on error.
+    Designed to be used like `async with session_scope() as session`.
 
     Returns
     -------
-    str
-        The URL database connection.
+    AsyncIterator[AsyncSession]
+        The yielded session.
     """
 
+    sessionmaker = _get_sessionmaker()
+    async with sessionmaker() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+
+
+def _get_database_url() -> str:
     load_dotenv()
 
     db = os.environ.get("DATABASE")
@@ -38,22 +70,13 @@ def get_database_url() -> str:
     return f"postgresql+asyncpg://{user_q}:{password_q}@{host}:{port}/{db}"
 
 
-def make_engine() -> AsyncEngine:
-    """
-    Creates and returns a SQLAlchemy AsyncEngine to the DB.
-
-    Returns
-    -------
-    AsyncEngine
-        The asynchronous SQLAlchemy engine connection.
-    """
-
+def _make_engine() -> AsyncEngine:
     return create_async_engine(
-        get_database_url(),
+        _get_database_url(),
         pool_pre_ping=True,
         future=True,
     )
 
 
-def make_sessionmaker(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:
+def _make_sessionmaker(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:
     return async_sessionmaker(engine, expire_on_commit=False)

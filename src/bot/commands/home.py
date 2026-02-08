@@ -8,5 +8,5 @@ def register_home_command(tree: app_commands.CommandTree):
         await interaction.response.send_message(
             content=f"Welcome home, <@{interaction.user.id}>!",
             view=HomeView(),
-            ephemeral=True,
+            ephemeral=False,
         )

@@ -51,7 +51,7 @@ class Pooch(Base):
     age: Mapped[int] = mapped_column(Integer, default=0)
     sex: Mapped[str] = mapped_column(SEX)
 
-    base_health: Mapped[int] = mapped_column(Integer, default=8)
+    base_health: Mapped[int] = mapped_column(Integer, default=10)
     health_loss_age: Mapped[int] = mapped_column(Integer, default=0)
 
     breeding_cooldown: Mapped[int] = mapped_column(Integer, default=2)
@@ -72,7 +72,7 @@ class Pooch(Base):
         back_populates="child",
         uselist=False,
         cascade="all, delete-orphan",
-        foreign_keys="PoochParentage.server_id, PoochParentage.pooch_id",
+        foreign_keys="PoochParentage.server_id, PoochParentage.child_id",
     )
     father = association_proxy("parentage", "father")
     mother = association_proxy("parentage", "mother")
@@ -81,7 +81,7 @@ class Pooch(Base):
         "PoochPregnancy",
         back_populates="mother",
         cascade="all, delete-orphan",
-        foreign_keys="PoochPregnancy.server_id, PoochPregnancy.pooch_id",
+        foreign_keys="PoochPregnancy.server_id, PoochPregnancy.mother_id",
     )
     pregnancy_as_fetus_rows: Mapped[list[PoochPregnancy]] = relationship(
         "PoochPregnancy",

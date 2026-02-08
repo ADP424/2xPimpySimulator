@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 
-from database.models.owner import Owner as PoochORM
+from database.models import Owner as PoochORM
 
 
 @dataclass(frozen=True)
@@ -59,7 +59,7 @@ def to_pooch(pooch: PoochORM) -> Pooch:
         name=str(getattr(pooch, "name")),
         age=int(getattr(pooch, "age", -1)),
         sex=str(getattr(pooch, "sex", "Unknown")),
-        base_health=int(getattr(pooch, "base_health", 8)),
+        base_health=int(getattr(pooch, "base_health", 10)),
         health_loss_age=int(getattr(pooch, "health_loss_age", 0)),
         alive=bool(getattr(pooch, "alive", True)),
         owner_discord_id=getattr(pooch, "owner_discord_id", None),

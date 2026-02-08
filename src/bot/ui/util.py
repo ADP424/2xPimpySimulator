@@ -7,6 +7,7 @@ import discord
 async def run_blocking(fn: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
     return await asyncio.to_thread(fn, *args, **kwargs)
 
+
 async def edit_interaction(
     interaction: discord.Interaction,
     *,

@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from database.models.kennel import Kennel as KennelORM
+from database.models import Kennel as KennelORM
 
 
 @dataclass(frozen=True)

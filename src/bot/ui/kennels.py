@@ -7,7 +7,7 @@ from bot.ui.util import edit_interaction
 from .components.paginator import PageSource
 from .pooch_info import PoochInfoView
 
-from game.main import list_owner_kennels, list_kennel_pooches
+from game import list_owner_kennels, list_kennel_pooches
 
 
 class KennelsPageSource(PageSource):
@@ -84,4 +84,4 @@ class KennelPageControls:
         await edit_interaction(interaction, embed=embed, view=view)
 
     async def _noop(self, interaction: discord.Interaction):
-        await interaction.response.send_message("Coming soon.", ephemeral=True)
+        await interaction.response.send_message("Coming soon.", ephemeral=False)

@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from database.models.owner import Owner as OwnerORM
+from database.models import Owner as OwnerORM
 
 
 @dataclass(frozen=True)

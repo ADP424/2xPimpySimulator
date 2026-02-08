@@ -2,7 +2,7 @@ import discord
 from discord.ui import View, Select, Button
 from typing import Optional, Sequence
 
-from game.main import get_pooch_by_id, get_pooch_family
+from game import get_pooch_by_id, get_pooch_family
 from bot.ui.util import edit_interaction
 
 
@@ -24,7 +24,7 @@ class _FamilySelect(Select):
 
 
 class PoochInfoView(View):
-    def __init__(self, *, server_id: int, pooch_id: int, owner_id: int, timeout: float = 300):
+    def __init__(self, *, server_id: int, pooch_id: int, owner_id: Optional[int], timeout: float = 300):
         super().__init__(timeout=timeout)
         self.server_id = server_id
         self.pooch_id = pooch_id
@@ -40,6 +40,8 @@ class PoochInfoView(View):
         self.sibling_info_btn.callback = self._open_sibling  # type: ignore
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if self.owner_id is None:
+            return True
         return interaction.user.id == self.owner_id
 
     async def build_embed(self) -> discord.Embed:
