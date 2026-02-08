@@ -10,3 +10,4 @@ __pycache__/
 
 # other
 .vscode
+pimpy_simulator.egg-info

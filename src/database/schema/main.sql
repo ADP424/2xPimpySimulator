@@ -110,7 +110,7 @@ CREATE TABLE pooch_breeds (
     server_id   BIGINT NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
     pooch_id    BIGINT NOT NULL,
     breed_id    BIGINT NOT NULL REFERENCES breeds(id) ON DELETE RESTRICT,
-    weight      NUMERIC(8, 6) NOT NULL,
+    weight      INTEGER NOT NULL,
 
     PRIMARY KEY (server_id, pooch_id, breed_id),
 
