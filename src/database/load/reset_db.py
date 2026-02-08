@@ -21,7 +21,7 @@ def _execute_sql_file(cur: psycopg.Cursor, path: Path):
 
 
 def main():
-    schema_directory = Path(__file__).parent
+    schema_directory = Path(__file__).parent.parent / "schema"
 
     with psycopg.connect(_get_sync_dsn(), autocommit=True) as conn:
         with conn.cursor() as cur:

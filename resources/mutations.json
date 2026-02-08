@@ -3,7 +3,7 @@
         "Cataracts": {
             "alt_name": "Lenticular Sclerosis",
             "description": "This pooch has some annoying eye floaters, limiting its vision.",
-            "heritability": 15.0,
+            "heritability": 0.15,
             "health_impact": "NEUTRAL",
             "rarity": "UNCOMMON",
             "advanced_options": {
@@ -15,7 +15,7 @@
         "Partial Blindness": {
             "alt_name": "Visual Impairment",
             "description": "This pooch's eyesight is severely limited.",
-            "heritability": 20.0,
+            "heritability": 0.2,
             "health_impact": "NEUTRAL",
             "rarity": "NOVEL",
             "advanced_options": {
@@ -28,7 +28,7 @@
         "Total Blindness": {
             "alt_name": "Congenital Blindness",
             "description": "This pooch has never known what it's like to see.",
-            "heritability": 25.0,
+            "heritability": 0.25,
             "health_impact": "NEUTRAL",
             "rarity": "RARE",
             "advanced_options": {
@@ -43,7 +43,7 @@
         "Bleeder's Disease": {
             "alt_name": "Hemophilia",
             "description": "This pooch should be extra careful around sharp objects.",
-            "heritability": 20.0,
+            "heritability": 0.2,
             "health_impact": "SEVERE",
             "rarity": "NOVEL"
         }
@@ -52,7 +52,7 @@
         "Brittle Bone Disease": {
             "alt_name": "Osteogenesis Imperfecta",
             "description": "This pooch's body is ready to snap at any second.",
-            "heritability": 20.0,
+            "heritability": 0.2,
             "health_impact": "SEVERE",
             "rarity": "NOVEL"
         }
@@ -61,10 +61,10 @@
         "Polycystic Ovary Syndrome": {
             "alt_name": "Stein-Leventhal Syndrome",
             "description": "This pooch is relatively infertile.",
-            "heritability": 25.0,
+            "heritability": 0.25,
             "health_impact": "NEUTRAL",
             "rarity": "COMMON",
-            "male": false,
+            "affects_males": false,
             "advanced_options": {
                 "breeding_cooldown": 3,
                 "dollar_value_mult": 0.5
@@ -73,10 +73,10 @@
         "Severe Polycystic Ovary Syndrome": {
             "alt_name": "Stein-Leventhal Syndrome",
             "description": "This pooch is extremely infertile.",
-            "heritability": 25.0,
+            "heritability": 0.25,
             "health_impact": "NEUTRAL",
             "rarity": "COMMON",
-            "male": false,
+            "affects_males": false,
             "advanced_options": {
                 "breeding_cooldown": 98,
                 "dollar_value_mult": 0.1
@@ -87,14 +87,14 @@
         "Autism": {
             "alt_name": "Autism Spectrum Disorder",
             "description": "This pooch enjoys trains a little too much.",
-            "heritability": 35.0,
+            "heritability": 0.35,
             "health_impact": "NEUTRAL",
             "rarity": "COMMON"
         },
         "Schizophrenia": {
             "alt_name": "Schizo",
             "description": "This pooch barks when the mailman isn't there.",
-            "heritability": 45.0,
+            "heritability": 0.45,
             "health_impact": "HARMFUL",
             "rarity": "RARE",
             "advanced_options": {
@@ -108,14 +108,14 @@
         "Cannibalism": {
             "alt_name": "Canis Canem",
             "descripton": "This pooch is on a very strict diet.",
-            "heritability": 10.0,
+            "heritability": 0.1,
             "health_impact": "HEALTHY",
             "rarity": "REMARKABLE"
         },
         "Psychopathy": {
             "alt_name": "Antisocial Personality Disorder",
             "descripton": "This pooch is good with the stock market.",
-            "heritability": 30.0,
+            "heritability": 0.3,
             "health_impact": "NEUTRAL",
             "rarity": "UNCOMMON"
         }
@@ -124,14 +124,14 @@
         "Full Body Prolapse": {
             "alt_name": "Canis Invertus",
             "descripton": "This pooch is inside out.",
-            "heritability": 50.0,
+            "heritability": 0.5,
             "health_impact": "BRUTAL",
             "rarity": "EXTRAORDINARY"
         },
         "Ichthyosis": {
             "alt_name": "Scale Disease",
             "descripton": "This pooch has certain reptillian qualities to it.",
-            "heritability": 45.0,
+            "heritability": 0.45,
             "health_impact": "NEUTRAL",
             "rarity": "RARE",
             "advanced_options": {
@@ -153,7 +153,7 @@
         "Explosion Syndrome": {
             "alt_name": "Dogis Boomis",
             "description": "This pooch paints rooms fast.",
-            "heritability": 100.0,
+            "heritability": 1.0,
             "health_impact": "INSTANT_DEATH",
             "rarity": "EXTRAORDINARY",
             "advanced_options": {

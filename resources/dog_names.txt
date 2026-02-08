@@ -15,7 +15,6 @@ Popcorn
 Taco
 Maple
 Willow
-Daisy
 Clover
 River
 Aspen
