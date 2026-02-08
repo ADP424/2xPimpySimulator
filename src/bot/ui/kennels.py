@@ -3,6 +3,7 @@ from discord.ui import Select, Button, View
 from typing import Optional
 
 from bot.ui.util import edit_interaction
+from game.model import Kennel, Pooch
 
 from .components.paginator import PageSource
 from .pooch_info import PoochInfoView
@@ -14,7 +15,7 @@ class KennelsPageSource(PageSource):
     def __init__(self, *, server_id: int, owner_discord_id: int):
         self.server_id = server_id
         self.owner_discord_id = owner_discord_id
-        self._kennels: list = []
+        self._kennels: list[Kennel] = []
 
     async def load(self):
         self._kennels = await list_owner_kennels(self.server_id, self.owner_discord_id)
@@ -37,17 +38,23 @@ class KennelsPageSource(PageSource):
 
 
 class KennelPageControls:
-    def __init__(self, *, server_id: int, owner_id: int, pooches: list):
+    def __init__(self, *, server_id: int, owner_id: int, pooches: list[Pooch]):
         self.server_id = server_id
         self.owner_id = owner_id
         self.pooches = pooches
         self.selected_pooch_id: Optional[int] = None
 
+        if not pooches:
+            options = [discord.SelectOption(label="No pooches in this kennel", value="__none__")]
+        else:
+            options = [discord.SelectOption(label=pooch.name, value=str(pooch.id)) for pooch in pooches]
+
         self.select = Select(
             placeholder="Select a pooch",
-            options=[discord.SelectOption(label=p.name, value=str(p.id)) for p in pooches] if pooches else [],
+            options=options,
             disabled=not bool(pooches),
         )
+
         self.select.callback = self._on_select  # type: ignore
 
         self.info_btn = Button(label="Info", style=discord.ButtonStyle.primary, disabled=True)

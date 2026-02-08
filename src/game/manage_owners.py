@@ -1,6 +1,7 @@
 from database import (
     get_owner_by_discord_id,
     create_owner,
+    create_kennel as create_kennel,
     list_kennels_for_owner,
     list_pooches_for_kennel,
 )
@@ -12,6 +13,8 @@ async def get_or_create_owner(server_id: int, owner_discord_id: int) -> Owner:
     owner = await get_owner_by_discord_id(server_id, owner_discord_id)
     if owner is None:
         owner = await create_owner(server_id, owner_discord_id)
+        await create_kennel(server_id, owner_discord_id)
+
     return to_owner(owner)
 
 

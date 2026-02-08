@@ -5,7 +5,7 @@ from database.models import Server as ServerORM
 
 @dataclass(frozen=True)
 class Server:
-    server_id: int
+    id: int
     event_channel_id: int
 
 
@@ -24,9 +24,11 @@ def to_server(server: ServerORM) -> Server:
         The converted Server dataclass object.
     """
 
+    event_channel_id = getattr(server, "event_channel_id")
+    if event_channel_id is not None:
+        event_channel_id = int(event_channel_id)
+
     return Server(
-        server_id=int(getattr(server, "server_id")),
-        event_channel_id=int(
-            getattr(server, "event_channel_id"),
-        ),
+        id=int(getattr(server, "id")),
+        event_channel_id=event_channel_id,
     )

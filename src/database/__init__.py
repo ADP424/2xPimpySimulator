@@ -1,4 +1,6 @@
 from .main import (
+    get_server_by_id,
+    create_server,
     get_owner_by_discord_id,
     create_owner,
     list_kennels_for_owner,
@@ -8,6 +10,7 @@ from .main import (
     set_event_channel_id,
     get_event_channel_id,
     list_alive_player_pooches_all_servers,
+    create_kennel,
     get_pooch_kennel,
     add_pooch_to_kennel,
     remove_pooch_from_kennels,
@@ -24,6 +27,8 @@ from .main import (
 )
 
 __all__ = [
+    "get_server_by_id",
+    "create_server",
     "get_owner_by_discord_id",
     "create_owner",
     "list_kennels_for_owner",
@@ -34,6 +39,7 @@ __all__ = [
     "set_event_channel_id",
     "get_event_channel_id",
     "list_alive_player_pooches_all_servers",
+    "create_kennel",
     "get_pooch_kennel",
     "add_pooch_to_kennel",
     "remove_pooch_from_kennels",

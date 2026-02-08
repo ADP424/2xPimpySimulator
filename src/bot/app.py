@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 
 from logger import get_logger
 
+from game import get_or_create_server
 from .commands.home import register_home_command
 from .commands.set_event_channel import register_set_event_channel_command
 from .day_change_loop import day_change_runner
@@ -34,6 +35,8 @@ def run():
     async def on_ready():
         for guild in GUILDS:
             await tree.sync(guild=guild)
+            server = await get_or_create_server(guild.id)
+            logger.info(f"Initialized Server with ID '{server.id}'.")
         logger.info(f"Bot ready as {bot.user} ({stage})")
 
         if not hasattr(bot, "_day_change_task"):

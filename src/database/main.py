@@ -1,10 +1,27 @@
+import random
 from typing import Optional
 
-from sqlalchemy import delete, select, or_
+from database.models.enums.sex import SEX
+from sqlalchemy import cast, delete, func, select, or_
 
 from .session import session_scope
 
 from .models import *  # loads all ORM models (via database/models/__init__.py)
+
+
+async def get_server_by_id(server_id: int) -> Optional[Server]:
+    async with session_scope() as session:
+        query = select(Server).where(Server.id == server_id)
+        response = await session.execute(query)
+        return response.scalar_one_or_none()
+
+
+async def create_server(server_id: int) -> Server:
+    async with session_scope() as session:
+        server = Server(id=server_id)
+        session.add(server)
+        await session.flush()
+        return server
 
 
 async def get_owner_by_discord_id(server_id: int, owner_discord_id: int) -> Optional[Owner]:
@@ -88,13 +105,8 @@ async def get_pooch_family(server_id: int, pooch_id: int) -> dict[str, list[Pooc
         children = list(children_response.scalars().all())
 
         siblings: list[Pooch] = []
-        sib_conditions = []
-        if father_id is not None:
-            sib_conditions.append(PoochParentage.father_id == father_id)
-        if mother_id is not None:
-            sib_conditions.append(PoochParentage.mother_id == mother_id)
 
-        if sib_conditions:
+        if father_id is not None and mother_id is not None:
             sib_query = (
                 select(Pooch)
                 .join(
@@ -104,12 +116,15 @@ async def get_pooch_family(server_id: int, pooch_id: int) -> dict[str, list[Pooc
                 .where(
                     PoochParentage.server_id == server_id,
                     Pooch.id != pooch_id,
-                    or_(*sib_conditions),
+                    PoochParentage.father_id != None,
+                    PoochParentage.father_id == father_id,
+                    PoochParentage.mother_id != None,
+                    PoochParentage.mother_id == father_id,
                 )
                 .order_by(Pooch.created_at.asc(), Pooch.id.asc())
             )
-            sib_response = await session.execute(sib_query)
-            siblings = list(sib_response.scalars().all())
+            sibling_response = await session.execute(sib_query)
+            siblings = list(sibling_response.scalars().all())
 
         return {"parents": parents, "children": children, "siblings": siblings}
 
@@ -119,7 +134,6 @@ async def set_event_channel_id(server_id: int, channel_id: int):
         server = await session.get(Server, {"server_id": server_id})
         if server is not None:
             server.event_channel_id = channel_id
-            session.add(server)
 
 
 async def get_event_channel_id(server_id: int) -> Optional[int]:
@@ -133,6 +147,23 @@ async def list_alive_player_pooches_all_servers() -> list[Pooch]:
         statement = select(Pooch).where(Pooch.alive == True, Pooch.vendor_id.is_(None))
         response = await session.execute(statement)
         return list(response.scalars().all())
+
+
+async def create_kennel(
+    server_id: int, owner_discord_id: int, name: str | None = None, pooch_limit: int | None = None
+) -> Kennel:
+    async with session_scope() as session:
+        owner = await get_owner_by_discord_id(server_id, owner_discord_id)
+        if owner is not None:
+            kennel = Kennel(
+                server_id=server_id,
+                owner_discord_id=owner_discord_id,
+                name=name or f"Kennel",
+                pooch_limit=pooch_limit or 10,
+            )
+            session.add(kennel)
+            await session.flush()
+            return kennel
 
 
 async def get_pooch_kennel(server_id: int, pooch_id: int) -> Optional[int]:
@@ -160,16 +191,34 @@ async def remove_pooch_from_kennels(server_id: int, pooch_id: int):
 
 
 async def create_newborn_pooch(
-    *, server_id: int, owner_discord_id: int | None, name: str, sex: str, base_health: int
+    *,
+    server_id: int,
+    owner_discord_id: int | None = None,
+    name: str | None = None,
+    sex: str | None = None,
+    base_health: int | None = None,
 ) -> Pooch:
+
+    async def _get_random_pooch_name():
+        statement = select(DogName).order_by(func.random()).limit(1)
+        response = await session.execute(statement)
+        dog_name = response.scalar_one_or_none()
+        return dog_name.name if dog_name is not None else "Dog"
+
+    async def _get_random_sex():
+        statement = select(func.unnest(func.enum_range(cast(None, SEX)))).order_by(func.random()).limit(1)
+        response = await session.execute(statement)
+        sex = response.scalar_one_or_none()
+        return sex if sex is not None else "female"
+
     async with session_scope() as session:
         pooch = Pooch(
             server_id=server_id,
             owner_discord_id=owner_discord_id,
-            name=name,
-            sex=sex,
+            name=name or _get_random_pooch_name(),
+            sex=sex or _get_random_sex(),
             age=0,
-            base_health=base_health,
+            base_health=base_health or random.randint(8, 12),
             health_loss_age=0,
             alive=True,
         )
@@ -201,7 +250,6 @@ async def decrement_breeding_cooldown(server_id: int, pooch_id: int):
         if pooch is None:
             return
         pooch.breeding_cooldown = max(int(getattr(pooch, "breeding_cooldown", 0)) - 1, 0)
-        session.add(pooch)
 
 
 async def age_pooch(server_id: int, pooch_id: int) -> Optional[Pooch]:
@@ -212,7 +260,6 @@ async def age_pooch(server_id: int, pooch_id: int) -> Optional[Pooch]:
         pooch.age = int(getattr(pooch, "age", 0)) + 1
         if int(pooch.age) > 5:
             pooch.health_loss_age = int(getattr(pooch, "health_loss_age", 0)) + 1
-        session.add(pooch)
         return pooch
 
 
@@ -222,7 +269,6 @@ async def set_pooch_dead(server_id: int, pooch_id: int):
         if pooch is None:
             return
         pooch.alive = False
-        session.add(pooch)
 
 
 async def bury_pooch(server_id: int, owner_discord_id: int, pooch_id: int):

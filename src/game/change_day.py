@@ -2,7 +2,7 @@ import random
 from typing import Dict, List, Optional
 
 from .model import BirthEvent, DeathEvent, DayChangeSummary
-from . import get_pooch_by_id
+from .manage_pooches import get_pooch_by_id
 
 from database import (
     list_alive_player_pooches_all_servers,
@@ -103,7 +103,7 @@ async def run_day_change(rng_seed: Optional[int] = None) -> Dict[int, DayChangeS
                     owner_discord_id=None,
                     name=_random_name(rng),
                     sex=_random_sex(rng),
-                    base_health=rng.randint(6, 12),
+                    base_health=rng.randint(8, 12),
                 )
                 await add_vendor_stock(server_id, vid, int(vp.id), rng.randint(50, 150))
 

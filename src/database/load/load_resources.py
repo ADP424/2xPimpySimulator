@@ -47,7 +47,9 @@ async def load_mutations():
                         name=str(mutation),
                         alt_name=str(attributes.get("alt_name", str(mutation))),
                         category=str(mutation_category),
-                        description=str(attributes.get("description", f"{str(mutation).capitalize()} is a mutation for dogs.")),
+                        description=str(
+                            attributes.get("description", f"{str(mutation).capitalize()} is a mutation for dogs.")
+                        ),
                         heritability=float(attributes.get("heritability", 25.0)),
                         health_impact=str(attributes.get("health_impact", "neutral")).lower(),
                         rarity=str(attributes.get("rarity", "common")).lower(),

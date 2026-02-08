@@ -2,6 +2,7 @@
 from .kennel import Kennel, to_kennel
 from .owner import Owner, to_owner
 from .pooch import Pooch, to_pooch
+from .server import Server, to_server
 
 # Event models
 from .events.birth_event import BirthEvent
@@ -15,6 +16,8 @@ __all__ = [
     "to_owner",
     "Pooch",
     "to_pooch",
+    "Server",
+    "to_server",
     "BirthEvent",
     "DayChangeSummary",
     "DeathEvent",

@@ -14,6 +14,7 @@ from .manage_pooches import (
 )
 
 from .manage_servers import (
+    get_or_create_server,
     get_event_channel,
     set_event_channel,
 )
@@ -25,6 +26,7 @@ __all__ = [
     "list_kennel_pooches",
     "get_pooch_by_id",
     "get_pooch_family",
+    "get_or_create_server",
     "get_event_channel",
     "set_event_channel",
 ]
