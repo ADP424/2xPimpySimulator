@@ -4,6 +4,7 @@ from discord.ui import View, Select
 from bot.ui.util import edit_interaction
 
 from .kennels import KennelsPageSource
+from .vendors import VendorsPageSource
 from .components.paginator import PaginatorView
 
 
@@ -19,6 +20,7 @@ class NavigationSelect(Select):
             placeholder="Where do you want to go?",
             options=[
                 discord.SelectOption(label="Kennels", value="kennels"),
+                discord.SelectOption(label="Vendors", value="vendors"),
                 discord.SelectOption(label="Town", value="town"),
             ],
         )
@@ -28,6 +30,11 @@ class NavigationSelect(Select):
             source = KennelsPageSource(server_id=interaction.guild_id, owner_discord_id=interaction.user.id)
             view = PaginatorView(source, owner_id=interaction.user.id)
             await edit_interaction(interaction, content="Your kennels:", embed=None, view=view)
+            await view.start(interaction)
+        elif self.values[0] == "vendors":
+            source = VendorsPageSource(server_id=interaction.guild_id, owner_discord_id=interaction.user.id)
+            view = PaginatorView(source, owner_id=interaction.user.id)
+            await edit_interaction(interaction, content="Vendor stalls:", embed=None, view=view)
             await view.start(interaction)
         else:
             await interaction.response.send_message("Town coming soon.", ephemeral=False)

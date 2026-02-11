@@ -62,7 +62,7 @@ class PoochInfoView(View):
             inline=True,
         )
         embed.add_field(name="Status", value=str(pooch.status), inline=True)
-        embed.add_field(name="Birthday", value=str(pooch.birthday), inline=True)
+        embed.add_field(name="Birthday", value=str(pooch.birthday.date()), inline=True)
 
         parents = family.get("parents", [])
         children = family.get("children", [])

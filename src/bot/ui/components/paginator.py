@@ -35,6 +35,10 @@ class PaginatorView(View):
         self._page = 0
         await self._render(interaction)
 
+    async def refresh(self, interaction: discord.Interaction):
+        await self._source.load()
+        await self._render(interaction)
+
     def _clamp_page(self):
         max_page = max(self._source.page_count() - 1, 0)
         self._page = max(0, min(self._page, max_page))

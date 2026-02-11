@@ -11,9 +11,9 @@ async def run_blocking(fn: Callable[..., Any], *args: Any, **kwargs: Any) -> Any
 async def edit_interaction(
     interaction: discord.Interaction,
     *,
-    content: Optional[str],
-    embed: Optional[discord.Embed],
-    view: Optional[discord.ui.View],
+    content: Optional[str] = None,
+    embed: Optional[discord.Embed] = None,
+    view: Optional[discord.ui.View] = None,
 ):
     """
     Edit an interaction safely (since Discord only allows one response to an interaction).

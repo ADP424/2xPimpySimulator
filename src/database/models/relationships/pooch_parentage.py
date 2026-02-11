@@ -2,7 +2,6 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import BigInteger, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.schema import ForeignKeyConstraint
 
 from ..base import Base
 
@@ -13,50 +12,31 @@ if TYPE_CHECKING:
 class PoochParentage(Base):
     __tablename__ = "pooch_parentage"
 
-    server_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("servers.id", ondelete="CASCADE"), primary_key=True)
-    child_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-
-    father_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
-    mother_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
-
-    __table_args__ = (
-        ForeignKeyConstraint(
-            ["server_id", "child_id"],
-            ["pooches.server_id", "pooches.id"],
-            ondelete="CASCADE",
-            name="pooch_parentage_child_fk",
-        ),
-        ForeignKeyConstraint(
-            ["server_id", "father_id"],
-            ["pooches.server_id", "pooches.id"],
-            ondelete="SET NULL",
-            name="pooch_parentage_father_fk",
-        ),
-        ForeignKeyConstraint(
-            ["server_id", "mother_id"],
-            ["pooches.server_id", "pooches.id"],
-            ondelete="SET NULL",
-            name="pooch_parentage_mother_fk",
-        ),
+    child_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("pooches.id", ondelete="CASCADE"), primary_key=True)
+    father_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("pooches.id", ondelete="SET NULL"), nullable=True
+    )
+    mother_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("pooches.id", ondelete="SET NULL"), nullable=True
     )
 
     child: Mapped[Pooch] = relationship(
         "Pooch",
-        foreign_keys=[server_id, child_id],
+        foreign_keys=[child_id],
         back_populates="parentage",
         uselist=False,
     )
 
     father: Mapped[Pooch | None] = relationship(
         "Pooch",
-        foreign_keys=[server_id, father_id],
+        foreign_keys=[father_id],
         uselist=False,
         viewonly=True,
     )
 
     mother: Mapped[Pooch | None] = relationship(
         "Pooch",
-        foreign_keys=[server_id, mother_id],
+        foreign_keys=[mother_id],
         uselist=False,
         viewonly=True,
     )

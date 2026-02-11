@@ -9,6 +9,7 @@ from .vendor import Vendor
 from .relationships.graveyard_pooch import GraveyardPooch
 from .relationships.hell_pooch import HellPooch
 from .relationships.kennel_pooch import KennelPooch
+from .relationships.owner_server import OwnerServer
 from .relationships.pooch_parentage import PoochParentage
 from .relationships.pooch_pregnancy import PoochPregnancy
 from .relationships.vendor_pooch_for_sale import VendorPoochForSale
@@ -37,6 +38,7 @@ __all__ = [
     "GraveyardPooch",
     "HellPooch",
     "KennelPooch",
+    "OwnerServer",
     "PoochParentage",
     "PoochPregnancy",
     "VendorPoochForSale",

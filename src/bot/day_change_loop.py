@@ -5,16 +5,21 @@ from zoneinfo import ZoneInfo
 import discord
 
 from game import get_event_channel, run_day_change
+from logger import get_logger
 from .ui.day_change_status import make_status_view
 
 if discord.TYPE_CHECKING:
     from game.model import DayChangeSummary
 
 
+logger = get_logger("bot/day_change_loop")
+
+
 async def post_day_change_summaries(bot: discord.Client, summaries: dict[int, DayChangeSummary]):
     for server_id, summary in summaries.items():
         channel_id = await get_event_channel(server_id)
         if not channel_id:
+            logger.info(f"Event channel not set in server with ID '{server_id}'. Skipping summaries...")
             continue
 
         channel = bot.get_channel(int(channel_id))
@@ -22,7 +27,14 @@ async def post_day_change_summaries(bot: discord.Client, summaries: dict[int, Da
             try:
                 channel = await bot.fetch_channel(int(channel_id))
             except Exception:
+                logger.info(
+                    f"Couldn't find event channel with ID '{channel_id}' for server with ID '{server_id}'. Skipping summaries..."
+                )
                 continue
+
+        if not summary.births and not summary.deaths:
+            await channel.send(embed=discord.Embed(title="🌙 Day Change", description="Nothing to report."))
+            continue
 
         desc = f"Births: **{len(summary.births)}**\nDeaths: **{len(summary.deaths)}**"
         view = make_status_view(
@@ -44,14 +56,17 @@ async def day_change_runner(bot: discord.Client, *, stage: str, tz: str = "Ameri
     zone = ZoneInfo(tz)
 
     async def run_once():
+        logger.info("Changing day...")
         summaries = await run_day_change()
         await post_day_change_summaries(bot, summaries)
 
     if stage == "dev":
+        logger.info("Beginning day change loop as DEV...")
         while True:
             await run_once()
             await asyncio.sleep(60)
     else:
+        logger.info("Beginning day change loop as PROD...")
         while True:
             now = datetime.now(tz=zone)
             tomorrow = (now + timedelta(days=1)).date()

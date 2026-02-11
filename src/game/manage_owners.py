@@ -4,13 +4,14 @@ from database import (
     create_kennel as create_kennel,
     list_kennels_for_owner,
     list_pooches_for_kennel,
+    give_money_to_owner,
 )
 
 from .model import Kennel, to_kennel, Owner, to_owner, Pooch, to_pooch
 
 
 async def get_or_create_owner(server_id: int, owner_discord_id: int) -> Owner:
-    owner = await get_owner_by_discord_id(server_id, owner_discord_id)
+    owner = await get_owner_by_discord_id(owner_discord_id)
     if owner is None:
         owner = await create_owner(server_id, owner_discord_id)
         await create_kennel(server_id, owner_discord_id)
@@ -26,3 +27,13 @@ async def list_owner_kennels(server_id: int, owner_discord_id: int) -> list[Kenn
 async def list_kennel_pooches(server_id: int, kennel_id: int) -> list[Pooch]:
     pooches = await list_pooches_for_kennel(server_id, kennel_id)
     return [to_pooch(p) for p in pooches]
+
+
+async def add_money(server_id: int, owner_discord_id: int, amount: int) -> Owner:
+    owner = await give_money_to_owner(server_id, owner_discord_id, amount)
+    if owner is None:
+        await get_or_create_owner(server_id, owner_discord_id)
+        owner = await give_money_to_owner(server_id, owner_discord_id, amount)
+        if owner is None:
+            raise RuntimeError("Failed to create owner")
+    return to_owner(owner)

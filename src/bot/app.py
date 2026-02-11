@@ -1,5 +1,6 @@
 import os
 import asyncio
+from bot.commands.get_money import register_get_money_command
 import discord
 from discord import app_commands
 from dotenv import load_dotenv
@@ -31,9 +32,14 @@ def run():
     register_home_command(tree)
     register_set_event_channel_command(tree)
 
+    # dev only commands
+    if stage == "dev":
+        register_get_money_command(tree)
+
     @bot.event
     async def on_ready():
         for guild in GUILDS:
+            tree.copy_global_to(guild=guild)
             await tree.sync(guild=guild)
             server = await get_or_create_server(guild.id)
             logger.info(f"Initialized Server with ID '{server.id}'.")

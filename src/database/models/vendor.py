@@ -13,13 +13,10 @@ if TYPE_CHECKING:
 
 class Vendor(Base):
     __tablename__ = "vendors"
-    __table_args__ = (
-        UniqueConstraint("server_id", "id", name="vendors_server_id_id_uniq"),
-        UniqueConstraint("server_id", "name", name="vendors_server_id_name_uniq"),
-    )
+    __table_args__ = (UniqueConstraint("server_discord_id", "name", name="vendors_server_discord_id_name_uniq"),)
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    server_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("servers.id", ondelete="CASCADE"))
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    server_discord_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("servers.discord_id", ondelete="CASCADE"))
 
     name: Mapped[str] = mapped_column(Text)
 
@@ -32,16 +29,14 @@ class Vendor(Base):
     owned_pooches: Mapped[list[Pooch]] = relationship(
         "Pooch",
         back_populates="vendor",
-        foreign_keys="Pooch.server_id, Pooch.vendor_id",
-        overlaps="owned_pooches,owner,pooches,server",
+        foreign_keys="Pooch.vendor_id",
     )
 
     pooches_for_sale_rows: Mapped[list[VendorPoochForSale]] = relationship(
         "VendorPoochForSale",
         back_populates="vendor",
         cascade="all, delete-orphan",
-        overlaps="vendor_pooch_for_sale_rows",
     )
     pooches_for_sale = association_proxy("pooches_for_sale_rows", "pooch")
 
-    server = relationship("Server", back_populates="vendors", foreign_keys=[server_id])
+    server = relationship("Server", back_populates="vendors", foreign_keys=[server_discord_id])

@@ -1,27 +1,33 @@
 -- SERVERS
 CREATE TABLE servers (
-    id                  BIGINT PRIMARY KEY,
-    event_channel_id    BIGINT NULL,
-    joined_at           TIMESTAMPTZ NOT NULL DEFAULT now()
+    discord_id                  BIGINT PRIMARY KEY,
+    event_channel_discord_id    BIGINT NULL,
+    joined_at                   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 
 -- OWNERS (players)
 CREATE TABLE owners (
-    server_id       BIGINT NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
-    discord_id      BIGINT NOT NULL,
+    discord_id      BIGINT NOT NULL PRIMARY KEY,
     dollars         INTEGER NOT NULL DEFAULT 100,
     bloodskulls     INTEGER NOT NULL DEFAULT 0,
-    joined_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+    joined_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 
-    PRIMARY KEY (server_id, discord_id)
+
+-- OWNER SERVERS
+CREATE TABLE owner_servers (
+    server_discord_id   BIGINT NOT NULL REFERENCES servers(discord_id) ON DELETE CASCADE,
+    owner_discord_id    BIGINT NOT NULL REFERENCES owners(discord_id) ON DELETE CASCADE,
+
+    PRIMARY KEY (server_id, owner_discord_id)
 );
 
 
 -- VENDORS (NPCs)
 CREATE TABLE vendors (
     id                  BIGSERIAL PRIMARY KEY,
-    server_id           BIGINT NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
+    server_discord_id   BIGINT NOT NULL REFERENCES servers(discord_id) ON DELETE CASCADE,
     name                TEXT NOT NULL,
 
     desired_mutation_1  BIGINT NULL REFERENCES mutations(id),
@@ -30,7 +36,6 @@ CREATE TABLE vendors (
 
     created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
 
-    UNIQUE (server_id, id),
     UNIQUE (server_id, name)
 );
 
@@ -38,7 +43,6 @@ CREATE TABLE vendors (
 -- POOCHES
 CREATE TABLE pooches (
     id                  BIGSERIAL PRIMARY KEY,
-    server_id           BIGINT NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
 
     name                TEXT NOT NULL,
     age                 INTEGER NOT NULL DEFAULT 0,
@@ -50,21 +54,14 @@ CREATE TABLE pooches (
     alive               BOOLEAN NOT NULL DEFAULT TRUE,
     virgin              BOOLEAN NOT NULL DEFAULT TRUE,
 
-    owner_discord_id    BIGINT NULL,
-    vendor_id           BIGINT NULL,
+    owner_discord_id    BIGINT NULL REFERENCES owners(discord_id) ON DELETE SET NULL,
+    vendor_id           BIGINT NULL REFERENCES vendors(id) ON DELETE SET NULL,
 
     created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
 
-    UNIQUE (server_id, id),
-
-    FOREIGN KEY (server_id, owner_discord_id) REFERENCES owners(server_id, discord_id) ON DELETE SET NULL,
-    FOREIGN KEY (server_id, vendor_id) REFERENCES vendors(server_id, id) ON DELETE SET NULL,
-
     -- a pooch cannot be owned by both a player and vendor at the same time
     CONSTRAINT pooch_owner_xor_vendor CHECK (
-        (owner_discord_id IS NOT NULL AND vendor_id IS NULL)
-        OR (owner_discord_id IS NULL AND vendor_id IS NOT NULL)
-        OR (owner_discord_id IS NULL AND vendor_id IS NULL)
+        (owner_discord_id IS NULL) OR (vendor_id IS NULL)
     ),
 
     CONSTRAINT pooch_age_minimum CHECK (age >= -1),
@@ -75,31 +72,20 @@ CREATE TABLE pooches (
 
 -- POOCH RELATIONS (parents and pregnancies)
 CREATE TABLE pooch_parentage (
-    server_id   BIGINT NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
-    child_id    BIGINT NOT NULL,
-    father_id   BIGINT NULL,
-    mother_id   BIGINT NULL,
-
-    PRIMARY KEY (server_id, child_id),
-
-    FOREIGN KEY (server_id, child_id)  REFERENCES pooches(server_id, id) ON DELETE CASCADE,
-    FOREIGN KEY (server_id, father_id) REFERENCES pooches(server_id, id) ON DELETE SET NULL,
-    FOREIGN KEY (server_id, mother_id) REFERENCES pooches(server_id, id) ON DELETE SET NULL,
+    child_id    BIGINT PRIMARY KEY REFERENCES pooches(id) ON DELETE CASCADE,
+    father_id   BIGINT NULL REFERENCES pooches(id) ON DELETE SET NULL,
+    mother_id   BIGINT NULL REFERENCES pooches(id) ON DELETE SET NULL,
 
     CONSTRAINT no_self_parent CHECK (child_id <> father_id AND child_id <> mother_id),
     CONSTRAINT no_duplicate_parents CHECK (father_id IS NULL OR mother_id IS NULL OR father_id <> mother_id)
 );
 
 CREATE TABLE pooch_pregnancy (
-    server_id   BIGINT NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
-    mother_id    BIGINT NOT NULL,
-    fetus_id    BIGINT NOT NULL,
+    mother_id   BIGINT NOT NULL REFERENCES pooches(id) ON DELETE CASCADE,
+    fetus_id    BIGINT NOT NULL REFERENCES pooches(id) ON DELETE CASCADE,
 
-    PRIMARY KEY (server_id, mother_id, fetus_id),
-    UNIQUE (server_id, fetus_id),
-
-    FOREIGN KEY (server_id, mother_id) REFERENCES pooches(server_id, id) ON DELETE CASCADE,
-    FOREIGN KEY (server_id, fetus_id) REFERENCES pooches(server_id, id) ON DELETE CASCADE,
+    PRIMARY KEY (mother_id, fetus_id),
+    UNIQUE (fetus_id),
 
     CONSTRAINT no_self_fetus CHECK (mother_id <> fetus_id)
 );
@@ -107,92 +93,60 @@ CREATE TABLE pooch_pregnancy (
 
 -- POOCH BREEDS
 CREATE TABLE pooch_breeds (
-    server_id   BIGINT NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
-    pooch_id    BIGINT NOT NULL,
+    pooch_id    BIGINT NOT NULL REFERENCES pooches(id) ON DELETE CASCADE,
     breed_id    BIGINT NOT NULL REFERENCES breeds(id) ON DELETE RESTRICT,
     weight      INTEGER NOT NULL,
 
-    PRIMARY KEY (server_id, pooch_id, breed_id),
-
-    FOREIGN KEY (server_id, pooch_id) REFERENCES pooches(server_id, id) ON DELETE CASCADE
+    PRIMARY KEY (pooch_id, breed_id)
 );
 
 
 -- POOCH MUTATIONS
 CREATE TABLE pooch_mutations (
-    server_id   BIGINT NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
-    pooch_id    BIGINT NOT NULL,
+    pooch_id    BIGINT NOT NULL REFERENCES pooches(id) ON DELETE CASCADE,
     mutation_id BIGINT NOT NULL REFERENCES mutations(id) ON DELETE RESTRICT,
 
-    PRIMARY KEY (server_id, pooch_id, mutation_id),
-
-    FOREIGN KEY (server_id, pooch_id) REFERENCES pooches(server_id, id) ON DELETE CASCADE
+    PRIMARY KEY (pooch_id, mutation_id)
 );
 
 
 -- KENNELS
 CREATE TABLE kennels (
     id                  BIGSERIAL PRIMARY KEY,
-    server_id           BIGINT NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
-    owner_discord_id    BIGINT NOT NULL,
+    owner_discord_id    BIGINT NOT NULL REFERENCES owners(discord_id) ON DELETE CASCADE,
+
     name                TEXT NOT NULL,
     pooch_limit         INTEGER NOT NULL DEFAULT 10,
-    created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
-
-    UNIQUE (server_id, id),
-
-    FOREIGN KEY (server_id, owner_discord_id) REFERENCES owners(server_id, discord_id) ON DELETE CASCADE
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 
 -- KENNEL POOCHES
 CREATE TABLE kennel_pooches (
-    server_id   BIGINT NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
-    kennel_id   BIGINT NOT NULL,
-    pooch_id    BIGINT NOT NULL,
-
-    PRIMARY KEY (server_id, kennel_id, pooch_id),
-
-    FOREIGN KEY (server_id, kennel_id) REFERENCES kennels(server_id, id) ON DELETE CASCADE,
-    FOREIGN KEY (server_id, pooch_id)  REFERENCES pooches(server_id, id) ON DELETE RESTRICT
+    pooch_id    BIGINT PRIMARY KEY REFERENCES pooches(id) ON DELETE CASCADE,
+    kennel_id   BIGINT NOT NULL REFERENCES kennels(id) ON DELETE CASCADE
 );
 
 
 -- GRAVEYARDS (one per owner)
 CREATE TABLE graveyard_pooches (
-    server_id           BIGINT NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
-    owner_discord_id    BIGINT NOT NULL,
-    pooch_id            BIGINT NOT NULL,
-    buried_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
+    pooch_id            BIGINT PRIMARY KEY REFERENCES pooches(id) ON DELETE CASCADE,
+    owner_discord_id    BIGINT NOT NULL REFERENCES owners(discord_id) ON DELETE CASCADE,
 
-    PRIMARY KEY (server_id, owner_discord_id, pooch_id),
-
-    FOREIGN KEY (server_id, owner_discord_id) REFERENCES owners(server_id, discord_id) ON DELETE CASCADE,
-    FOREIGN KEY (server_id, pooch_id) REFERENCES pooches(server_id, id) ON DELETE RESTRICT
+    buried_at           TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 
 -- VENDOR POOCHES FOR SALE
 CREATE TABLE vendor_pooches_for_sale (
-    server_id   BIGINT NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
-    vendor_id   BIGINT NOT NULL,
-    pooch_id    BIGINT NOT NULL,
-
-    PRIMARY KEY (server_id, vendor_id, pooch_id),
-    UNIQUE (server_id, pooch_id),
-
-    FOREIGN KEY (server_id, vendor_id) REFERENCES vendors(server_id, id) ON DELETE CASCADE,
-    FOREIGN KEY (server_id, pooch_id)  REFERENCES pooches(server_id, id) ON DELETE RESTRICT
+    pooch_id    BIGINT PRIMARY KEY REFERENCES pooches(id) ON DELETE CASCADE,
+    vendor_id   BIGINT NOT NULL REFERENCES vendors(id) ON DELETE CASCADE
 );
 
 
--- HELL (one per server)
+-- HELL
 CREATE TABLE hell_pooches (
-    server_id   BIGINT NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
-    pooch_id    BIGINT NOT NULL,
-    damned_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    pooch_id    BIGINT PRIMARY KEY REFERENCES pooches(id) ON DELETE CASCADE,
 
-    PRIMARY KEY (server_id, pooch_id),
-
-    FOREIGN KEY (server_id, pooch_id) REFERENCES pooches(server_id, id) ON DELETE RESTRICT
+    damned_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
