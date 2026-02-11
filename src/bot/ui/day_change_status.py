@@ -5,6 +5,7 @@ from typing import List, Optional, Tuple
 from game import get_pooch_by_id
 from .pooch_info import PoochInfoView
 from .components.paginator import PageSource, PaginatorView
+from bot.ui.util import edit_interaction
 
 
 class DayChangeStatusPageSource(PageSource):
@@ -68,10 +69,7 @@ class _StatusControls:
     async def _on_select(self, interaction: discord.Interaction):
         self.selected_pooch_id = int(self.select.values[0])
         self.info_btn.disabled = False
-        if interaction.response.is_done():
-            await interaction.edit_original_response(view=interaction.view)  # type: ignore
-        else:
-            await interaction.response.edit_message(view=interaction.view)  # type: ignore
+        await edit_interaction(interaction, view=self.select.view)
 
     async def _on_info(self, interaction: discord.Interaction):
         if self.selected_pooch_id is None:

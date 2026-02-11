@@ -15,7 +15,7 @@ class Server(Base):
     __tablename__ = "servers"
 
     discord_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    event_channel_discord_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    event_channel_discord_id: Mapped[int] = mapped_column(BigInteger, nullable=True)
     joined_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=text("now()"))
 
     vendors: Mapped[list[Vendor]] = relationship("Vendor", back_populates="server", cascade="all, delete-orphan")

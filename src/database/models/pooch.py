@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from sqlalchemy import BigInteger, Boolean, DateTime, Integer, Text, ForeignKey, CheckConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -47,19 +47,19 @@ class Pooch(Base):
     alive: Mapped[bool] = mapped_column(Boolean, default=True)
     virgin: Mapped[bool] = mapped_column(Boolean, default=True)
 
-    owner_discord_id: Mapped[int | None] = mapped_column(
+    owner_discord_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("owners.discord_id", ondelete="SET NULL"), nullable=True
     )
-    vendor_id: Mapped[int | None] = mapped_column(
+    vendor_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("vendors.id", ondelete="SET NULL"), nullable=True
     )
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=text("now()"))
 
-    owner: Mapped[Owner | None] = relationship("Owner", back_populates="owned_pooches", foreign_keys=[owner_discord_id])
-    vendor: Mapped[Vendor | None] = relationship("Vendor", back_populates="owned_pooches", foreign_keys=[vendor_id])
+    owner: Mapped[Owner] = relationship("Owner", back_populates="owned_pooches", foreign_keys=[owner_discord_id])
+    vendor: Mapped[Vendor] = relationship("Vendor", back_populates="owned_pooches", foreign_keys=[vendor_id])
 
-    parentage: Mapped[PoochParentage | None] = relationship(
+    parentage: Mapped[PoochParentage] = relationship(
         "PoochParentage",
         back_populates="child",
         uselist=False,
@@ -97,7 +97,7 @@ class Pooch(Base):
     )
     mutations = association_proxy("pooch_mutations", "mutation")
 
-    kennel_row: Mapped[Optional[KennelPooch]] = relationship(
+    kennel_row: Mapped[KennelPooch] = relationship(
         "KennelPooch",
         back_populates="pooch",
         uselist=False,
@@ -105,21 +105,21 @@ class Pooch(Base):
     )
     kennels = association_proxy("kennel_row", "kennel")
 
-    graveyard_row: Mapped[Optional[GraveyardPooch]] = relationship(
+    graveyard_row: Mapped[GraveyardPooch] = relationship(
         "GraveyardPooch",
         back_populates="pooch",
         uselist=False,
         foreign_keys="GraveyardPooch.pooch_id",
     )
 
-    hell_row: Mapped[Optional[HellPooch]] = relationship(
+    hell_row: Mapped[HellPooch] = relationship(
         "HellPooch",
         back_populates="pooch",
         uselist=False,
         foreign_keys="HellPooch.pooch_id",
     )
 
-    vendor_pooch_for_sale_row: Mapped[Optional[VendorPoochForSale]] = relationship(
+    vendor_pooch_for_sale_row: Mapped[VendorPoochForSale] = relationship(
         "VendorPoochForSale",
         back_populates="pooch",
         uselist=False,

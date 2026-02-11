@@ -2,13 +2,12 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 
-from database.models import Owner as PoochORM
+from database.models import Pooch as PoochORM
 
 
 @dataclass(frozen=True)
 class Pooch:
     id: int
-    server_id: int
     name: str
     age: int
     sex: str
@@ -54,14 +53,13 @@ def to_pooch(pooch: PoochORM) -> Pooch:
     """
 
     return Pooch(
-        id=int(getattr(pooch, "id")),
-        server_id=int(getattr(pooch, "server_id")),
-        name=str(getattr(pooch, "name")),
-        age=int(getattr(pooch, "age", -1)),
-        sex=str(getattr(pooch, "sex", "Unknown")),
-        base_health=int(getattr(pooch, "base_health", 10)),
-        health_loss_age=int(getattr(pooch, "health_loss_age", 0)),
-        alive=bool(getattr(pooch, "alive", True)),
-        owner_discord_id=getattr(pooch, "owner_discord_id", None),
-        created_at=getattr(pooch, "created_at", None),
+        id=pooch.id,
+        name=pooch.name,
+        age=pooch.age,
+        sex=pooch.sex,
+        base_health=pooch.base_health,
+        health_loss_age=pooch.health_loss_age,
+        alive=pooch.alive,
+        owner_discord_id=pooch.owner_discord_id,
+        created_at=pooch.created_at,
     )

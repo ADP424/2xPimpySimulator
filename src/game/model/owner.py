@@ -5,7 +5,6 @@ from database.models import Owner as OwnerORM
 
 @dataclass(frozen=True)
 class Owner:
-    server_id: int
     discord_id: int
     dollars: int
     bloodskulls: int
@@ -27,8 +26,7 @@ def to_owner(owner: OwnerORM) -> Owner:
     """
 
     return Owner(
-        server_id=int(getattr(owner, "server_id")),
-        discord_id=int(getattr(owner, "discord_id")),
-        dollars=int(getattr(owner, "dollars")),
-        bloodskulls=int(getattr(owner, "bloodskulls")),
+        discord_id=owner.discord_id,
+        dollars=owner.dollars,
+        bloodskulls=owner.bloodskulls,
     )

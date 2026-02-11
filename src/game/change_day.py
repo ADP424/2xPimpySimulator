@@ -1,14 +1,14 @@
 import random
-from typing import Dict, List, Optional
+from typing import Optional
 
 from .model import BirthEvent, DeathEvent, DayChangeSummary
-from .manage_pooches import get_pooch_by_id
 
 from database import (
     list_living_pooches,
     list_pooch_pregnancies,
     delete_pregnancy,
     get_pooch_kennel,
+    get_pooch_by_id as db_get_pooch_by_id,
     create_pooch,
     add_pooch_to_kennel,
     decrement_pooch_breeding_cooldown,
@@ -32,60 +32,91 @@ def _death_roll(total_health: int, rng: random.Random) -> bool:
     return rng.random() < chance
 
 
-async def run_day_change(rng_seed: Optional[int] = None) -> Dict[int, DayChangeSummary]:
+async def _build_vendor_server_map(server_ids: set[int]) -> dict[int, int]:
+    """Build a mapping from vendor_id to server discord_id."""
+    vendor_server: dict[int, int] = {}
+    for sid in server_ids:
+        vendors = await list_vendors(sid)
+        for v in vendors:
+            vendor_server[int(v.id)] = sid
+    return vendor_server
+
+
+def _resolve_server_id(
+    pooch,
+    vendor_server_map: dict[int, int],
+    server_ids: set[int],
+) -> Optional[int]:
+    """Determine which server a pooch ORM object belongs to."""
+    if pooch.vendor_id is not None:
+        server = vendor_server_map.get(int(pooch.vendor_id))
+        if server is not None:
+            return server
+    # For player-owned pooches, if there is exactly one server, use it
+    if len(server_ids) == 1:
+        return next(iter(server_ids))
+    return None
+
+
+async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeSummary]:
     rng = random.Random(rng_seed)
 
-    births_by_server: Dict[int, List[BirthEvent]] = {}
-    deaths_by_server: Dict[int, List[DeathEvent]] = {}
+    births_by_server: dict[int, list[BirthEvent]] = {}
+    deaths_by_server: dict[int, list[DeathEvent]] = {}
 
     all_servers = await list_servers()
-    server_ids: set[int] = {int(server.id) for server in all_servers}
+    server_ids: set[int] = {int(server.discord_id) for server in all_servers}
+
+    vendor_server_map = await _build_vendor_server_map(server_ids)
 
     # births
     pregnancies = await list_pooch_pregnancies()
     for pregnancy in pregnancies:
-        server_id = int(pregnancy.server_id)
         mother_id = int(pregnancy.mother_id)
         fetus_id = int(pregnancy.fetus_id)
 
-        server_ids.add(server_id)
+        await delete_pregnancy(mother_id, fetus_id)
 
-        await delete_pregnancy(server_id, mother_id, fetus_id)
+        mother = await db_get_pooch_by_id(mother_id)
+        if mother is None:
+            continue
 
-        mother = await get_pooch_by_id(server_id, mother_id)
-        baby = await create_pooch(
-            server_id=server_id,
-            owner_discord_id=mother.owner_discord_id,
-        )
+        server_id = _resolve_server_id(mother, vendor_server_map, server_ids)
 
-        kennel_id = await get_pooch_kennel(server_id, mother_id)
-        if kennel_id is not None:
-            await add_pooch_to_kennel(server_id, kennel_id, int(baby.id))
+        baby = await create_pooch(owner_discord_id=mother.owner_discord_id)
 
-        births_by_server.setdefault(server_id, []).append(
-            BirthEvent(server_id=server_id, mother_id=mother_id, child_id=int(baby.id))
-        )
+        kennel = await get_pooch_kennel(mother_id)
+        if kennel is not None:
+            await add_pooch_to_kennel(int(kennel.id), int(baby.id))
+
+        if server_id is not None:
+            server_ids.add(server_id)
+            births_by_server.setdefault(server_id, []).append(
+                BirthEvent(server_id=server_id, mother_id=mother_id, child_id=int(baby.id))
+            )
 
     # deaths (and other updates)
     pooches = await list_living_pooches()
     for pooch in pooches:
-        server_id = int(pooch.server_id)
         pooch_id = int(pooch.id)
 
-        server_ids.add(server_id)
+        server_id = _resolve_server_id(pooch, vendor_server_map, server_ids)
+        if server_id is not None:
+            server_ids.add(server_id)
 
-        await decrement_pooch_breeding_cooldown(server_id, pooch_id)
-        updated = await age_pooch(server_id, pooch_id)
+        await decrement_pooch_breeding_cooldown(pooch_id)
+        updated = await age_pooch(pooch_id)
         if updated is None:
             continue
 
-        game_pooch = await get_pooch_by_id(server_id, pooch_id)
-        if _death_roll(game_pooch.health, rng):
-            await set_pooch_dead(server_id, pooch_id)
-            await remove_pooch_from_kennel(server_id, pooch_id)
-            if game_pooch.owner_discord_id is not None:
-                await bury_pooch(server_id, int(game_pooch.owner_discord_id), pooch_id)
-            deaths_by_server.setdefault(server_id, []).append(DeathEvent(server_id=server_id, pooch_id=pooch_id))
+        total_health = max(int(updated.base_health) - int(updated.health_loss_age), 0)
+        if _death_roll(total_health, rng):
+            await set_pooch_dead(pooch_id)
+            await remove_pooch_from_kennel(pooch_id)
+            if pooch.owner_discord_id is not None:
+                await bury_pooch(int(pooch.owner_discord_id), pooch_id)
+            if server_id is not None:
+                deaths_by_server.setdefault(server_id, []).append(DeathEvent(server_id=server_id, pooch_id=pooch_id))
 
     # vendor restock (run for every known server, even if no births/deaths)
     for server_id in sorted(server_ids):
@@ -96,14 +127,14 @@ async def run_day_change(rng_seed: Optional[int] = None) -> Dict[int, DayChangeS
                 vendors.append(vendor)
         for vendor in vendors:
             vendor_id = int(vendor.id)
-            await clear_vendor_pooch_stock(server_id, vendor_id)
+            await clear_vendor_pooch_stock(vendor_id)
             stock_n = rng.randint(2, 5)
             for _ in range(stock_n):
-                vendor_pooch = await create_pooch(server_id=server_id, owner_discord_id=None)
-                await add_pooch_to_vendor_stock(server_id, vendor_id, int(vendor_pooch.id))
+                vendor_pooch = await create_pooch(vendor_id=vendor_id)
+                await add_pooch_to_vendor_stock(vendor_id, int(vendor_pooch.id))
 
     # summaries (always emit one per server)
-    out: Dict[int, DayChangeSummary] = {}
+    out: dict[int, DayChangeSummary] = {}
     for server_id in sorted(server_ids):
         out[server_id] = DayChangeSummary(
             server_id=server_id,

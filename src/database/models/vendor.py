@@ -20,9 +20,9 @@ class Vendor(Base):
 
     name: Mapped[str] = mapped_column(Text)
 
-    desired_mutation_1: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("mutations.id"), nullable=True)
-    desired_mutation_2: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("mutations.id"), nullable=True)
-    desired_mutation_3: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("mutations.id"), nullable=True)
+    desired_mutation_1: Mapped[int] = mapped_column(BigInteger, ForeignKey("mutations.id"), nullable=True)
+    desired_mutation_2: Mapped[int] = mapped_column(BigInteger, ForeignKey("mutations.id"), nullable=True)
+    desired_mutation_3: Mapped[int] = mapped_column(BigInteger, ForeignKey("mutations.id"), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=text("now()"))
 

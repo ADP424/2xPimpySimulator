@@ -81,7 +81,7 @@ class KennelPageControls:
         self.info_btn.disabled = False
         self.breed_btn.disabled = False
         self.walk_btn.disabled = False
-        await edit_interaction(interaction, view=interaction.view)
+        await edit_interaction(interaction, view=self.select.view)
 
     async def _on_info(self, interaction: discord.Interaction):
         if self.selected_pooch_id is None:

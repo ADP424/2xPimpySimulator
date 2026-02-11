@@ -6,7 +6,6 @@ from database.models import Kennel as KennelORM
 @dataclass(frozen=True)
 class Kennel:
     id: int
-    server_id: int
     owner_discord_id: int
     name: str
     pooch_limit: int
@@ -28,9 +27,8 @@ def to_kennel(kennel: KennelORM) -> Kennel:
     """
 
     return Kennel(
-        id=int(getattr(kennel, "id")),
-        server_id=int(getattr(kennel, "server_id")),
-        owner_discord_id=int(getattr(kennel, "owner_discord_id")),
-        name=str(getattr(kennel, "name")),
-        pooch_limit=int(getattr(kennel, "pooch_limit")),
+        id=kennel.id,
+        owner_discord_id=kennel.owner_discord_id,
+        name=kennel.name,
+        pooch_limit=kennel.pooch_limit,
     )
