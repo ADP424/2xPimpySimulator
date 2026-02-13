@@ -30,10 +30,10 @@ class Pooch:
     def status(self) -> str:
         if not self.alive:
             return "dead"
-        elif self.health <= 3:
-            return "unhealthy"
         elif self.age >= 12:
             return "old"
+        elif self.health <= 3:
+            return "sick"
         return "healthy"
 
 

@@ -1,6 +1,8 @@
 import random
 from typing import Optional
 
+from logger import get_logger
+
 from game.manage_pooches import get_pooch_by_id
 from game.manage_kennels import add_pooch_to_kennel
 
@@ -24,6 +26,9 @@ from database import (
     list_servers_for_pooch,
     list_servers,
 )
+
+
+logger = get_logger("game/change_day")
 
 
 def _death_roll(total_health: int, rng: random.Random) -> bool:
@@ -57,6 +62,7 @@ async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeS
     deaths_by_server: dict[int, list[DeathEvent]] = {}
 
     # births
+    logger.info("Handling births for the day...")
     pregnancies = await list_pooch_pregnancies()
     for pregnancy in pregnancies:
         mother_id = pregnancy.mother_id
@@ -99,8 +105,10 @@ async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeS
             births_by_server.setdefault(server.discord_id, []).append(
                 BirthEvent(server=to_server(server), mother=to_pooch(mother), child=to_pooch(baby))
             )
+    logger.info("Completed daily births.")
 
     # deaths (and other updates)
+    logger.info("Handling deaths for the day...")
     pooches = await list_living_pooches()
     for pooch in pooches:
         await decrement_pooch_breeding_cooldown(pooch.id)
@@ -114,14 +122,16 @@ async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeS
             await remove_pooch_from_kennel(pooch.id)
             if pooch.owner_discord_id is not None:
                 await bury_pooch(pooch.owner_discord_id, pooch.id)
-            for server in await list_servers_for_pooch(baby.id):
+            for server in await list_servers_for_pooch(pooch.id):
                 deaths_by_server.setdefault(server.discord_id, []).append(
                     DeathEvent(server=to_server(server), pooch=to_pooch(pooch))
                 )
+    logger.info("Completed daily deaths.")
 
     servers = await list_servers()
 
     # vendor restock
+    logger.info("Restocking vendors for the day...")
     for server in servers:
         vendors = await list_vendors(server.discord_id)
         if len(vendors) < 3:
@@ -134,6 +144,7 @@ async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeS
             for _ in range(stock_count):
                 vendor_pooch = await create_pooch(vendor_id=vendor.id, age=rng.randint(0, 5), rng_seed=rng_seed)  # TODO
                 await add_pooch_to_vendor_stock(vendor.id, vendor_pooch.id)
+    logger.info("Completed daily vendor restock.")
 
     # summaries
     out: dict[int, DayChangeSummary] = {}

@@ -1,6 +1,6 @@
 import random
 from typing import Optional
-from sqlalchemy import cast, func, select
+from sqlalchemy import cast, func, literal, select
 
 from .session import session_scope
 
@@ -54,13 +54,17 @@ async def create_pooch(
     rng = random.Random(rng_seed)
 
     async def _get_random_pooch_name():
-        statement = select(DogName).order_by(func.md5(DogName + rng_seed)).limit(1)
+        statement = select(DogName).order_by(func.md5(DogName.name + literal(str(rng_seed)))).limit(1)
         response = await session.execute(statement)
         dog_name = response.scalar_one_or_none()
         return dog_name.name if dog_name is not None else "Dog"
 
     async def _get_random_sex():
-        statement = select(func.unnest(func.enum_range(cast(None, SEX)))).order_by(func.md5(SEX + rng_seed)).limit(1)
+        statement = (
+            select(func.unnest(func.enum_range(cast(None, SEX))))
+            .order_by(func.md5(SEX.name + literal(str(rng_seed))))
+            .limit(1)
+        )
         response = await session.execute(statement)
         sex = response.scalar_one_or_none()
         return sex if sex is not None else "female"
