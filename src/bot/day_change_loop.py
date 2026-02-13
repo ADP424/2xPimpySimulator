@@ -16,19 +16,19 @@ logger = get_logger("bot/day_change_loop")
 
 
 async def post_day_change_summaries(bot: discord.Client, summaries: dict[int, DayChangeSummary]):
-    for server_id, summary in summaries.items():
-        channel_id = await get_event_channel(server_id)
+    for server_discord_id, summary in summaries.items():
+        channel_id = await get_event_channel(server_discord_id)
         if not channel_id:
-            logger.info(f"Event channel not set in server with ID '{server_id}'. Skipping summaries...")
+            logger.info(f"Event channel not set in server with ID '{server_discord_id}'. Skipping summaries...")
             continue
 
-        channel = bot.get_channel(int(channel_id))
+        channel = bot.get_channel(channel_id)
         if channel is None:
             try:
-                channel = await bot.fetch_channel(int(channel_id))
+                channel = await bot.fetch_channel(channel_id)
             except Exception:
                 logger.info(
-                    f"Couldn't find event channel with ID '{channel_id}' for server with ID '{server_id}'. Skipping summaries..."
+                    f"Couldn't find event channel with ID '{channel_id}' for server with ID '{server_discord_id}'. Skipping summaries..."
                 )
                 continue
 
@@ -38,8 +38,8 @@ async def post_day_change_summaries(bot: discord.Client, summaries: dict[int, Da
 
         desc = f"Births: **{len(summary.births)}**\nDeaths: **{len(summary.deaths)}**"
         view = make_status_view(
-            server_id=server_id,
-            pooch_ids=summary.mentioned_pooch_ids,
+            server=summary.server,
+            pooches=summary.mentioned_pooches,
             title="🌙 Day Change",
             description=desc,
         )

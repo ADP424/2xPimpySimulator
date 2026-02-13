@@ -17,6 +17,7 @@ async def create_pooch(
     sex: Optional[str] = None,
     age: int = -1,
     base_health: Optional[int] = None,
+    rng_seed: Optional[int] = None,
 ) -> Pooch:
     """
     Create a pooch.
@@ -41,23 +42,28 @@ async def create_pooch(
     base_health: int, optional
         The base health to give the pooch. Chooses randomly within a range if not given.
 
+    rng_seed: int, optional
+        The seed to use to determine randomness, if any pooch traits are left to chance (name, sex, base health, etc.).
+
     Returns
     -------
     Pooch
         The Pooch ORM object that was just created.
     """
 
+    rng = random.Random(rng_seed)
+
     async def _get_random_pooch_name():
-        statement = select(DogName).order_by(func.random()).limit(1)
+        statement = select(DogName).order_by(func.md5(DogName + rng_seed)).limit(1)
         response = await session.execute(statement)
         dog_name = response.scalar_one_or_none()
         return dog_name.name if dog_name is not None else "Dog"
 
     async def _get_random_sex():
-        statement = select(func.unnest(func.enum_range(cast(None, SEX)))).order_by(func.random()).limit(1)
+        statement = select(func.unnest(func.enum_range(cast(None, SEX)))).order_by(func.md5(SEX + rng_seed)).limit(1)
         response = await session.execute(statement)
-        s = response.scalar_one_or_none()
-        return s if s is not None else "female"
+        sex = response.scalar_one_or_none()
+        return sex if sex is not None else "female"
 
     if owner_discord_id is not None:
         owner = await get_owner_by_discord_id(owner_discord_id)
@@ -80,7 +86,7 @@ async def create_pooch(
             name=name or await _get_random_pooch_name(),
             sex=sex or await _get_random_sex(),
             age=age,
-            base_health=base_health or random.randint(8, 12),  # TODO
+            base_health=base_health or rng.randint(8, 12),  # TODO
             health_loss_age=0,  # TODO
             breeding_cooldown=2,  # TODO
             alive=True,
@@ -153,7 +159,9 @@ async def create_kennel(owner_discord_id: int, name: str = "Kennel", pooch_limit
     return kennel
 
 
-async def create_vendor(server_discord_id: int, name: Optional[str] = None) -> Optional[Vendor]:
+async def create_vendor(
+    server_discord_id: int, name: Optional[str] = None, rng_seed: Optional[int] = None
+) -> Optional[Vendor]:
     """
     Fetch the list of vendors for a given server.
 
@@ -165,6 +173,9 @@ async def create_vendor(server_discord_id: int, name: Optional[str] = None) -> O
     name: str, optional
         The name to give the new vendor. Chooses a random one if not given.
 
+    rng_seed: int, optional
+        The seed to use to determine randomness, if any vendor traits are left to chance (name, desired mutations).
+
     Returns
     -------
     Vendor, optional
@@ -172,11 +183,11 @@ async def create_vendor(server_discord_id: int, name: Optional[str] = None) -> O
     """
 
     async def _get_random_vendor_name():
-        statement = select(VendorFirstName).order_by(func.random()).limit(1)
+        statement = select(VendorFirstName).order_by(func.md5(VendorFirstName + rng_seed)).limit(1)
         response = await session.execute(statement)
         first_name = response.scalar_one_or_none()
 
-        statement = select(VendorLastName).order_by(func.random()).limit(1)
+        statement = select(VendorLastName).order_by(func.md5(VendorLastName + rng_seed)).limit(1)
         response = await session.execute(statement)
         last_name = response.scalar_one_or_none()
 

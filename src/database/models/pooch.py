@@ -50,9 +50,7 @@ class Pooch(Base):
     owner_discord_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("owners.discord_id", ondelete="SET NULL"), nullable=True
     )
-    vendor_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("vendors.id", ondelete="SET NULL"), nullable=True
-    )
+    vendor_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("vendors.id", ondelete="SET NULL"), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=text("now()"))
 

@@ -1,7 +1,10 @@
 from dataclasses import dataclass
 
+from game.model.server import Server
+from game.model.pooch import Pooch
+
 
 @dataclass(frozen=True)
 class DeathEvent:
-    server_id: int
-    pooch_id: int
+    server: Server
+    pooch: Pooch

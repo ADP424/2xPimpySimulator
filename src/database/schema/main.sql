@@ -20,7 +20,7 @@ CREATE TABLE owner_servers (
     server_discord_id   BIGINT NOT NULL REFERENCES servers(discord_id) ON DELETE CASCADE,
     owner_discord_id    BIGINT NOT NULL REFERENCES owners(discord_id) ON DELETE CASCADE,
 
-    PRIMARY KEY (server_id, owner_discord_id)
+    PRIMARY KEY (server_discord_id, owner_discord_id)
 );
 
 
@@ -36,7 +36,7 @@ CREATE TABLE vendors (
 
     created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
 
-    UNIQUE (server_id, name)
+    UNIQUE (server_discord_id, name)
 );
 
 

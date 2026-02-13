@@ -2,28 +2,30 @@ from dataclasses import dataclass
 
 from .birth_event import BirthEvent
 from .death_event import DeathEvent
+from game.model.server import Server
+from game.model.pooch import Pooch
 
 
 @dataclass(frozen=True)
 class DayChangeSummary:
-    server_id: int
+    server: Server
     births: list[BirthEvent]
     deaths: list[DeathEvent]
 
     @property
-    def mentioned_pooch_ids(self) -> list[int]:
-        ids: list[int] = []
+    def mentioned_pooches(self) -> list[Pooch]:
+        pooches: list[Pooch] = []
 
         for birth in self.births:
-            ids.extend([birth.mother_id, birth.child_id])
+            pooches.extend([birth.mother, birth.child])
         for death in self.deaths:
-            ids.append(death.pooch_id)
+            pooches.append(death.pooch)
 
-        seen = set()
-        out: list[int] = []
-        for id in ids:
-            if id not in seen:
-                seen.add(id)
-                out.append(id)
+        seen: set[int] = set()
+        mentioned: list[Pooch] = []
+        for pooch in pooches:
+            if pooch.id not in seen:
+                seen.add(pooch.id)
+                mentioned.append(pooch)
 
-        return out
+        return mentioned

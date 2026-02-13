@@ -6,6 +6,11 @@ from .get import (
     get_server_by_discord_id,
     get_pooch_kennel,
     get_pooch_parents,
+    get_vendor_server,
+    get_owner_server,
+)
+
+from .list import (
     list_pooches_for_kennel,
     list_kennels_for_owner,
     list_living_pooches,
@@ -14,6 +19,8 @@ from .get import (
     list_pooch_pregnancies,
     list_vendors,
     list_vendor_pooch_stock,
+    list_servers_for_pooch,
+    list_owner_servers,
     list_servers,
 )
 
@@ -54,6 +61,9 @@ __all__ = [
     "get_server_by_discord_id",
     "get_pooch_kennel",
     "get_pooch_parents",
+    "get_vendor_server",
+    "get_owner_server",
+    # List
     "list_pooches_for_kennel",
     "list_kennels_for_owner",
     "list_living_pooches",
@@ -62,6 +72,8 @@ __all__ = [
     "list_pooch_pregnancies",
     "list_vendors",
     "list_vendor_pooch_stock",
+    "list_servers_for_pooch",
+    "list_owner_servers",
     "list_servers",
     # Set
     "create_pooch",

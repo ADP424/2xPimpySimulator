@@ -13,12 +13,8 @@ class PoochParentage(Base):
     __tablename__ = "pooch_parentage"
 
     child_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("pooches.id", ondelete="CASCADE"), primary_key=True)
-    father_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("pooches.id", ondelete="SET NULL"), nullable=True
-    )
-    mother_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("pooches.id", ondelete="SET NULL"), nullable=True
-    )
+    father_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("pooches.id", ondelete="SET NULL"), nullable=True)
+    mother_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("pooches.id", ondelete="SET NULL"), nullable=True)
 
     child: Mapped[Pooch] = relationship(
         "Pooch",

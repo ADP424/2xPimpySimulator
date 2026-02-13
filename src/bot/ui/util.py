@@ -8,6 +8,10 @@ async def run_blocking(fn: Callable[..., Any], *args: Any, **kwargs: Any) -> Any
     return await asyncio.to_thread(fn, *args, **kwargs)
 
 
+def mention(discord_id: int) -> str:
+    return f"<@{discord_id}>"
+
+
 async def edit_interaction(
     interaction: discord.Interaction,
     *,

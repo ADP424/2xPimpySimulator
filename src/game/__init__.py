@@ -2,10 +2,13 @@ from .change_day import (
     run_day_change,
 )
 
+from .manage_kennels import (
+    list_kennel_pooches,
+)
+
 from .manage_owners import (
     get_or_create_owner,
     list_owner_kennels,
-    list_kennel_pooches,
     add_money,
 )
 
@@ -24,16 +27,17 @@ from .manage_vendors import (
     list_server_vendors,
     list_vendor_pooches,
     buy_pooch,
-    get_price,
+    get_pooch_price,
 )
 
 __all__ = [
     # Day change commands
     "run_day_change",
+    # Kennel commands
+    "list_kennel_pooches",
     # Owner commands
     "get_or_create_owner",
     "list_owner_kennels",
-    "list_kennel_pooches",
     "add_money",
     # Pooch commands
     "get_pooch_by_id",
@@ -46,5 +50,5 @@ __all__ = [
     "list_server_vendors",
     "list_vendor_pooches",
     "buy_pooch",
-    "get_price",
+    "get_pooch_price",
 ]
