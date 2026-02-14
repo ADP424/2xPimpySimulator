@@ -24,6 +24,7 @@ from .manage_servers import (
 )
 
 from .manage_vendors import (
+    get_vendor_by_id,
     list_server_vendors,
     list_vendor_pooches,
     buy_pooch,
@@ -47,6 +48,7 @@ __all__ = [
     "get_event_channel",
     "set_event_channel",
     # Vendor commands
+    "get_vendor_by_id",
     "list_server_vendors",
     "list_vendor_pooches",
     "buy_pooch",

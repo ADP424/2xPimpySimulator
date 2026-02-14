@@ -26,7 +26,7 @@ async def get_or_create_server(server_discord_id: int) -> Server:
     server = await get_server_by_discord_id(server_discord_id)
     if server is None:
         server = await create_server(server_discord_id)
-    return to_server(server)
+    return await to_server(server)
 
 
 async def get_event_channel(server_discord_id: int) -> Optional[int]:

@@ -10,7 +10,7 @@ class Owner:
     bloodskulls: int
 
 
-def to_owner(owner: OwnerORM) -> Owner:
+async def to_owner(owner: OwnerORM) -> Owner:
     """
     Convert an ORM Owner object to a game Owner object.
 

@@ -2,7 +2,7 @@ import discord
 from discord.ui import Select, Button, View
 from typing import Optional
 
-from bot.ui.util import edit_interaction
+from bot.ui.util import edit_interaction, persist_select_defaults, reply_to_interaction_message
 from game.model import Kennel, Pooch
 
 from .components.paginator import PageSource
@@ -86,6 +86,7 @@ class KennelPageControls:
         self.info_button.disabled = False
         self.breed_button.disabled = False
         self.walk_button.disabled = False
+        persist_select_defaults(self.select)
         await edit_interaction(interaction, view=self.select.view)
 
     async def _on_info(self, interaction: discord.Interaction):
@@ -95,7 +96,7 @@ class KennelPageControls:
         owner = await get_or_create_owner(self.server_discord_id, self.owner_discord_id)
         view = PoochInfoView(server=server, pooch=self.selected_pooch, owner=owner)
         embed = await view.build_embed()
-        await edit_interaction(interaction, embed=embed, view=view)
+        await reply_to_interaction_message(interaction, embed=embed, view=view)
 
     async def _noop(self, interaction: discord.Interaction):
         await interaction.response.send_message("Coming soon.", ephemeral=False)

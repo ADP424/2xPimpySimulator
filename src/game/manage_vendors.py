@@ -2,6 +2,7 @@ from typing import Optional
 from database import (
     list_vendors as db_list_vendors,
     list_vendor_pooch_stock,
+    get_vendor_by_id as db_get_vendor_by_id,
     get_owner_by_discord_id,
     get_pooch_by_id as db_get_pooch_by_id,
     remove_pooch_from_vendor_stock,
@@ -11,8 +12,35 @@ from database import (
     list_kennels_for_owner,
     list_pooches_for_kennel,
 )
+from .exceptions.vendor_not_found import VendorNotFound
 
 from .model import Vendor, to_vendor, Pooch, to_pooch
+
+
+async def get_vendor_by_id(vendor_id: int) -> Vendor:
+    """
+    Return a vendor with the given ID.
+
+    Parameters
+    ----------
+    vendor_id: int
+        The ID of the vendor to return.
+
+    Returns
+    -------
+    Vendor
+        The vendor with the given ID.
+
+    Raises
+    ------
+    VendorNotFound
+        When a Vendor with `vendor_id` is not found.
+    """
+
+    vendor = await db_get_vendor_by_id(vendor_id)
+    if vendor is None:
+        raise VendorNotFound(vendor_id)
+    return await to_vendor(vendor)
 
 
 def get_pooch_price(pooch_id: int, vendor_id: Optional[int] = None) -> int:
@@ -54,7 +82,7 @@ async def list_server_vendors(server_discord_id: int) -> list[Vendor]:
     """
 
     vendors = await db_list_vendors(server_discord_id)
-    return [to_vendor(vendor) for vendor in vendors]
+    return [(await to_vendor(vendor)) for vendor in vendors]
 
 
 async def list_vendor_pooches(vendor_id: int) -> list[Pooch]:
@@ -73,7 +101,7 @@ async def list_vendor_pooches(vendor_id: int) -> list[Pooch]:
     """
 
     pooches = await list_vendor_pooch_stock(vendor_id)
-    return [to_pooch(pooch) for pooch in pooches]
+    return [(await to_pooch(pooch)) for pooch in pooches]
 
 
 async def buy_pooch(

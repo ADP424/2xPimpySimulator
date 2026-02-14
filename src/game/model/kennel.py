@@ -1,4 +1,9 @@
 from dataclasses import dataclass
+from typing import Optional
+
+from database import get_owner_by_discord_id
+
+from .owner import Owner, to_owner
 
 from database.models import Kennel as KennelORM
 
@@ -10,8 +15,10 @@ class Kennel:
     name: str
     pooch_limit: int
 
+    owner: Optional[Owner]
 
-def to_kennel(kennel: KennelORM) -> Kennel:
+
+async def to_kennel(kennel: KennelORM) -> Kennel:
     """
     Convert an ORM Kennel object to a game Kennel object.
 
@@ -31,4 +38,9 @@ def to_kennel(kennel: KennelORM) -> Kennel:
         owner_discord_id=kennel.owner_discord_id,
         name=kennel.name,
         pooch_limit=kennel.pooch_limit,
+        owner=(
+            (await to_owner(await get_owner_by_discord_id(kennel.owner_discord_id)))
+            if kennel.owner_discord_id is not None
+            else None
+        ),
     )

@@ -25,14 +25,14 @@ async def get_pooch_by_id(pooch_id: int) -> Pooch:
 
     Raises
     ------
-    KeyError
+    PoochNotFound
         When a Pooch with `pooch_id` is not found.
     """
 
     pooch = await db_get_pooch_by_id(pooch_id)
     if pooch is None:
         raise PoochNotFound(f"Pooch {pooch_id} not found.")
-    return to_pooch(pooch)
+    return await to_pooch(pooch)
 
 
 async def get_pooch_family(pooch_id: int) -> dict[str, list[Pooch]]:
@@ -51,13 +51,13 @@ async def get_pooch_family(pooch_id: int) -> dict[str, list[Pooch]]:
     """
 
     father, mother = await get_pooch_parents(pooch_id)
-    parents = [to_pooch(parent) for parent in (father, mother) if parent is not None]
+    parents = [(await to_pooch(parent)) for parent in (father, mother) if parent is not None]
 
     children_orm = await list_pooch_children(pooch_id)
-    children = [to_pooch(child) for child in children_orm]
+    children = [(await to_pooch(child)) for child in children_orm]
 
     siblings_orm = await list_pooch_siblings(pooch_id)
-    siblings = [to_pooch(sibling) for sibling in siblings_orm]
+    siblings = [(await to_pooch(sibling)) for sibling in siblings_orm]
 
     return {
         "parents": parents,

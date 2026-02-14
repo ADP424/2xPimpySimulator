@@ -9,7 +9,7 @@ class Server:
     event_channel_discord_id: int
 
 
-def to_server(server: ServerORM) -> Server:
+async def to_server(server: ServerORM) -> Server:
     """
     Convert an ORM Server object to a game Server object.
 

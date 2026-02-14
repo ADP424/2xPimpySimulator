@@ -2,7 +2,7 @@ import discord
 from discord.ui import Select, Button, View
 from typing import Optional
 
-from bot.ui.util import edit_interaction
+from bot.ui.util import edit_interaction, persist_select_defaults, reply_to_interaction_message
 from game.model import Pooch, Vendor
 from game import (
     buy_pooch,
@@ -107,6 +107,8 @@ class VendorPageControls:
             self.info_button.disabled = False
             self.buy_button.disabled = False
 
+        persist_select_defaults(self.select)
+
         await edit_interaction(interaction, view=self.select.view)
 
     async def _on_info(self, interaction: discord.Interaction):
@@ -116,7 +118,7 @@ class VendorPageControls:
         owner = await get_or_create_owner(self.server_discord_id, self.owner_discord_id)
         view = PoochInfoView(server=server, pooch=self.selected_pooch, owner=owner)
         embed = await view.build_embed()
-        await edit_interaction(interaction, embed=embed, view=view)
+        await reply_to_interaction_message(interaction, embed=embed, view=view)
 
     async def _on_buy(self, interaction: discord.Interaction):
         if self.selected_pooch is None:

@@ -1,9 +1,9 @@
 import discord
-from discord.ui import View, Select, Button
+from discord.ui import Select, Button
 from typing import TYPE_CHECKING, Optional, Sequence
 
-from game import get_pooch_family
-from bot.ui.util import edit_interaction, mention
+from game import get_pooch_family, get_vendor_by_id
+from bot.ui.util import DAY_VIEW_TIMEOUT_SECONDS, DayBoundView, edit_interaction, mention, persist_select_defaults
 
 if TYPE_CHECKING:
     from game.model import Server, Pooch, Owner
@@ -21,8 +21,10 @@ class _FamilySelect(Select):
         self._members = list(members)
 
 
-class PoochInfoView(View):
-    def __init__(self, *, server: Server, pooch: Pooch, owner: Optional[Owner], timeout: float = 300):
+class PoochInfoView(DayBoundView):
+    def __init__(
+        self, *, server: Server, pooch: Pooch, owner: Optional[Owner], timeout: float = DAY_VIEW_TIMEOUT_SECONDS
+    ):
         super().__init__(timeout=timeout)
         self.server = server
         self.pooch = pooch
@@ -38,6 +40,8 @@ class PoochInfoView(View):
         self.sibling_info_button.callback = self._open_sibling  # type: ignore
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if not await super().interaction_check(interaction):
+            return False
         if self.owner is None:
             return True
         return interaction.user.id == self.owner.discord_id
@@ -55,7 +59,11 @@ class PoochInfoView(View):
 
         embed.add_field(
             name="Owner",
-            value=mention(self.pooch.owner_discord_id) if self.pooch.owner_discord_id else "Nobody",
+            value=(
+                mention(self.pooch.owner_discord_id)
+                if self.pooch.owner_discord_id is not None
+                else (self.pooch.vendor.name if self.pooch.vendor is not None else "Nobody")
+            ),
             inline=True,
         )
         embed.add_field(name="Status", value=self.pooch.status.capitalize(), inline=True)
@@ -117,6 +125,7 @@ class PoochInfoView(View):
         elif fired_select.kind == "siblings":
             self.sibling_info_button.disabled = False
 
+        persist_select_defaults(fired_select)
         await edit_interaction(interaction, view=self)
 
     async def _open_parent(self, interaction: discord.Interaction):

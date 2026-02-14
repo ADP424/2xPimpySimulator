@@ -27,7 +27,6 @@ from database import (
     list_servers,
 )
 
-
 logger = get_logger("game/change_day")
 
 
@@ -80,9 +79,9 @@ async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeS
             for server in servers:
                 births_by_server.setdefault(server.discord_id, []).append(
                     BirthEvent(
-                        server=to_server(server),
-                        mother=to_pooch(mother),
-                        child=to_pooch(baby),
+                        server=(await to_server(server)),
+                        mother=(await to_pooch(mother)),
+                        child=(await to_pooch(baby)),
                         failure_message="The mother doesn't belong to a kennel. Her baby was abandoned.",
                     )
                 )
@@ -93,9 +92,9 @@ async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeS
             for server in servers:
                 births_by_server.setdefault(server.discord_id, []).append(
                     BirthEvent(
-                        server=to_server(server),
-                        mother=to_pooch(mother),
-                        child=to_pooch(baby),
+                        server=(await to_server(server)),
+                        mother=(await to_pooch(mother)),
+                        child=(await to_pooch(baby)),
                         failure_message="There wasn't enough space in the mother's kennel. Her baby was crushed.",
                     )
                 )
@@ -103,7 +102,9 @@ async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeS
 
         for server in servers:
             births_by_server.setdefault(server.discord_id, []).append(
-                BirthEvent(server=to_server(server), mother=to_pooch(mother), child=to_pooch(baby))
+                BirthEvent(
+                    server=(await to_server(server)), mother=(await to_pooch(mother)), child=(await to_pooch(baby))
+                )
             )
     logger.info("Completed daily births.")
 
@@ -124,7 +125,7 @@ async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeS
                 await bury_pooch(pooch.owner_discord_id, pooch.id)
             for server in await list_servers_for_pooch(pooch.id):
                 deaths_by_server.setdefault(server.discord_id, []).append(
-                    DeathEvent(server=to_server(server), pooch=to_pooch(pooch))
+                    DeathEvent(server=(await to_server(server)), pooch=(await to_pooch(pooch)))
                 )
     logger.info("Completed daily deaths.")
 
@@ -150,7 +151,7 @@ async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeS
     out: dict[int, DayChangeSummary] = {}
     for server in servers:
         out[server.discord_id] = DayChangeSummary(
-            server=to_server(server),
+            server=(await to_server(server)),
             births=births_by_server.get(server.discord_id, []),
             deaths=deaths_by_server.get(server.discord_id, []),
         )

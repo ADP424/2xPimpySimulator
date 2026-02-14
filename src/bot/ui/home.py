@@ -1,16 +1,16 @@
 import discord
-from discord.ui import View, Select
+from discord.ui import Select
 
-from bot.ui.util import edit_interaction
+from bot.ui.util import DAY_VIEW_TIMEOUT_SECONDS, DayBoundView, edit_interaction
 
 from .kennels import KennelsPageSource
 from .vendors import VendorsPageSource
 from .components.paginator import PaginatorView
 
 
-class HomeView(View):
+class HomeView(DayBoundView):
     def __init__(self):
-        super().__init__(timeout=300)
+        super().__init__(timeout=DAY_VIEW_TIMEOUT_SECONDS)
         self.add_item(NavigationSelect())
 
 

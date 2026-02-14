@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, List, Optional, Tuple
 
 from .pooch_info import PoochInfoView
 from .components.paginator import PageSource, PaginatorView
-from bot.ui.util import edit_interaction
+from bot.ui.util import DayBoundView, edit_interaction, mention, persist_select_defaults, reply_to_interaction_message
 
 if TYPE_CHECKING:
     from game.model import Server, Pooch
@@ -32,7 +32,11 @@ class DayChangeStatusPageSource(PageSource):
 
         embed.add_field(
             name=f"Mentioned Pooches ({start + 1}-{end} of {len(self.pooches)})",
-            value="\n".join(f"• {pooch.name}" for pooch in pooches) or "None",
+            value="\n".join(
+                f"• {pooch.name}{f" (Owned by {mention(pooch.owner_discord_id) if pooch.owner_discord_id is not None else (pooch.vendor.name if pooch.vendor is not None else "Nobody")})"}"
+                for pooch in pooches
+            )
+            or "None",
             inline=False,
         )
 
@@ -69,6 +73,7 @@ class _StatusControls:
         if self.selected_pooch is None:
             return
         self.info_button.disabled = False
+        persist_select_defaults(self.select)
         await edit_interaction(interaction, view=self.select.view)
 
     async def _on_info(self, interaction: discord.Interaction):
@@ -76,7 +81,8 @@ class _StatusControls:
             return
         info_view = PoochInfoView(server=self.server, pooch=self.selected_pooch, owner=None)
         embed = await info_view.build_embed()
-        await interaction.response.edit_message(embed=embed, view=info_view)
+        # Don't overwrite the shared day-change message; reply with the info card instead.
+        await reply_to_interaction_message(interaction, embed=embed, view=info_view)
 
 
 class PublicPaginatorView(PaginatorView):
@@ -84,7 +90,8 @@ class PublicPaginatorView(PaginatorView):
         super().__init__(source, owner_discord_id=0)
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        return True
+        # Public messages are usable by anyone, but should still expire on day change.
+        return await DayBoundView.interaction_check(self, interaction)
 
 
 def make_status_view(*, server: Server, pooches: List[Pooch], title: str, description: str) -> PublicPaginatorView:

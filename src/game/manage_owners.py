@@ -45,7 +45,7 @@ async def get_or_create_owner(server_discord_id: int, owner_discord_id: int) -> 
         if owner_server is None:
             await add_owner_to_server(server_discord_id, owner_discord_id)
 
-    return to_owner(owner)
+    return await to_owner(owner)
 
 
 async def list_owner_kennels(owner_discord_id: int) -> list[Kennel]:
@@ -64,7 +64,7 @@ async def list_owner_kennels(owner_discord_id: int) -> list[Kennel]:
     """
 
     kennels = await list_kennels_for_owner(owner_discord_id)
-    return [to_kennel(kennel) for kennel in kennels]
+    return [(await to_kennel(kennel)) for kennel in kennels]
 
 
 async def add_money(server_discord_id: int, owner_discord_id: int, amount: int) -> Owner:
@@ -91,4 +91,4 @@ async def add_money(server_discord_id: int, owner_discord_id: int, amount: int) 
         owner = await give_money_to_owner(owner_discord_id, amount)
         if owner is None:
             raise OwnerNotFound(owner_discord_id)
-    return to_owner(owner)
+    return await to_owner(owner)

@@ -1,6 +1,11 @@
 from dataclasses import dataclass
+from typing import Optional
+
+from database import get_server_by_discord_id
 
 from database.models import Vendor as VendorORM
+
+from .server import Server, to_server
 
 
 @dataclass(frozen=True)
@@ -9,10 +14,17 @@ class Vendor:
     server_discord_id: int
     name: str
 
+    server: Optional[Server]
 
-def to_vendor(vendor: VendorORM) -> Vendor:
+
+async def to_vendor(vendor: VendorORM) -> Vendor:
     return Vendor(
-        id=int(getattr(vendor, "id")),
-        server_discord_id=int(getattr(vendor, "server_discord_id")),
-        name=str(getattr(vendor, "name")),
+        id=vendor.id,
+        server_discord_id=vendor.server_discord_id,
+        name=vendor.name,
+        server=(
+            (await to_server(await get_server_by_discord_id(vendor.server_discord_id)))
+            if vendor.server_discord_id is not None
+            else None
+        ),
     )

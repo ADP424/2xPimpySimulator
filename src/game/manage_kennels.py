@@ -35,7 +35,7 @@ async def list_kennel_pooches(kennel_id: int) -> list[Pooch]:
         raise KennelNotFound(kennel_id)
 
     pooches = await list_pooches_for_kennel(kennel_id)
-    return [to_pooch(pooch) for pooch in pooches]
+    return [(await to_pooch(pooch)) for pooch in pooches]
 
 
 async def add_pooch_to_kennel(kennel_id: int, pooch_id: int) -> bool:
