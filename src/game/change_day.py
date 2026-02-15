@@ -137,13 +137,13 @@ async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeS
         vendors = await list_vendors(server.discord_id)
         if len(vendors) < 3:
             for _ in range(3 - len(vendors)):  # TODO: Remove this and all magic numbers
-                vendor = await create_vendor(server.discord_id, rng_seed=rng_seed)
+                vendor = await create_vendor(server.discord_id, rng=rng)
                 vendors.append(vendor)
         for vendor in vendors:
             await clear_vendor_pooch_stock(vendor.id)
             stock_count = rng.randint(2, 5)  # TODO
             for _ in range(stock_count):
-                vendor_pooch = await create_pooch(vendor_id=vendor.id, age=rng.randint(0, 5), rng_seed=rng_seed)  # TODO
+                vendor_pooch = await create_pooch(vendor_id=vendor.id, age=rng.randint(0, 5), rng=rng)  # TODO
                 await add_pooch_to_vendor_stock(vendor.id, vendor_pooch.id)
     logger.info("Completed daily vendor restock.")
 

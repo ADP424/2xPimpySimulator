@@ -39,7 +39,7 @@ def run():
     @bot.event
     async def on_ready():
         for guild in GUILDS:
-            # tree.copy_global_to(guild=guild)
+            tree.copy_global_to(guild=guild)
             await tree.sync(guild=guild)
             server = await get_or_create_server(guild.id)
             logger.info(f"Initialized Server with ID '{server.discord_id}'.")

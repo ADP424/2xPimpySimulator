@@ -2,7 +2,7 @@ import discord
 from discord.ui import Select, Button, View
 from typing import Optional
 
-from bot.ui.util import edit_interaction, persist_select_defaults, reply_to_interaction_message
+from .util import edit_interaction, reply_to_interacted_message
 from game.model import Pooch, Vendor
 from game import (
     buy_pooch,
@@ -107,8 +107,6 @@ class VendorPageControls:
             self.info_button.disabled = False
             self.buy_button.disabled = False
 
-        persist_select_defaults(self.select)
-
         await edit_interaction(interaction, view=self.select.view)
 
     async def _on_info(self, interaction: discord.Interaction):
@@ -118,7 +116,7 @@ class VendorPageControls:
         owner = await get_or_create_owner(self.server_discord_id, self.owner_discord_id)
         view = PoochInfoView(server=server, pooch=self.selected_pooch, owner=owner)
         embed = await view.build_embed()
-        await reply_to_interaction_message(interaction, embed=embed, view=view)
+        await edit_interaction(interaction, embed=embed, view=view)
 
     async def _on_buy(self, interaction: discord.Interaction):
         if self.selected_pooch is None:
@@ -130,12 +128,9 @@ class VendorPageControls:
             self.selected_pooch.id,
         )
 
-        # If the purchase failed, tell the user why and keep the menu up.
         if not success:
-            await interaction.response.send_message(message, ephemeral=True)
+            await reply_to_interacted_message(interaction, content=message)
             return
-
-        # Refresh the existing paginator message to reflect the updated stock.
-        await interaction.response.send_message(f"✅ {message}", ephemeral=True)
-        if isinstance(interaction.view, PaginatorView):
-            await interaction.view.refresh(interaction)
+        
+        await edit_interaction(interaction, view=self.select.view)
+        await reply_to_interacted_message(interaction, content=f"✅ {message}")

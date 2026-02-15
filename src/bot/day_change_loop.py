@@ -1,5 +1,6 @@
 import asyncio
 from datetime import datetime, time, timedelta
+import os
 from zoneinfo import ZoneInfo
 
 import discord
@@ -44,12 +45,17 @@ async def post_day_change_summaries(bot: discord.Client, summaries: dict[int, Da
             description=desc,
         )
 
-        message = await channel.send(embed=discord.Embed(title="🌙 Day Change", description=desc), view=view)
-
+        # Build the first page *before* sending so paginator button disabled-states
+        # are correct on the initial message (there is no interaction object here).
         await view._source.load()  # type: ignore
         view._page = 0  # type: ignore
+        view._update_nav_disabled()  # type: ignore
         content, embed = await view._source.render(view, 0)  # type: ignore
-        await message.edit(content=content, embed=embed, view=view)
+
+        send_kwargs: dict[str, object] = {"embed": embed, "view": view}
+        if content is not None:
+            send_kwargs["content"] = content
+        await channel.send(**send_kwargs)  # type: ignore
 
 
 async def day_change_runner(bot: discord.Client, *, stage: str, tz: str = "America/New_York"):
@@ -57,7 +63,7 @@ async def day_change_runner(bot: discord.Client, *, stage: str, tz: str = "Ameri
 
     async def run_once():
         logger.info("Changing day...")
-        summaries = await run_day_change()
+        summaries = await run_day_change(rng_seed=int.from_bytes(os.urandom(8)))
         await post_day_change_summaries(bot, summaries)
 
     if stage == "dev":

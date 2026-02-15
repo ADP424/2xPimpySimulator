@@ -2,7 +2,7 @@ import discord
 from discord.ui import View, Button
 from typing import Optional, Protocol
 
-from bot.ui.util import DAY_VIEW_TIMEOUT_SECONDS, DayBoundView, edit_interaction
+from bot.ui.util import edit_interaction
 
 
 class PageSource(Protocol):
@@ -11,9 +11,9 @@ class PageSource(Protocol):
     async def render(self, view: View, page_index: int) -> tuple[Optional[str], Optional[discord.Embed]]: ...
 
 
-class PaginatorView(DayBoundView):
+class PaginatorView(View):
 
-    def __init__(self, source: PageSource, owner_discord_id: int, *, timeout: float = DAY_VIEW_TIMEOUT_SECONDS):
+    def __init__(self, source: PageSource, owner_discord_id: int, *, timeout: float = 300):
         super().__init__(timeout=timeout)
         self._source = source
         self._owner_id = owner_discord_id
@@ -28,8 +28,6 @@ class PaginatorView(DayBoundView):
         self.add_item(self._next)
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        if not await super().interaction_check(interaction):
-            return False
         return interaction.user.id == self._owner_id
 
     async def start(self, interaction: discord.Interaction):

@@ -1,6 +1,6 @@
 import random
 from typing import Optional
-from sqlalchemy import cast, func, literal, select
+from sqlalchemy import bindparam, cast, func, literal, select
 
 from .session import session_scope
 
@@ -17,7 +17,7 @@ async def create_pooch(
     sex: Optional[str] = None,
     age: int = -1,
     base_health: Optional[int] = None,
-    rng_seed: Optional[int] = None,
+    rng: Optional[random.Random] = None,
 ) -> Pooch:
     """
     Create a pooch.
@@ -42,8 +42,8 @@ async def create_pooch(
     base_health: int, optional
         The base health to give the pooch. Chooses randomly within a range if not given.
 
-    rng_seed: int, optional
-        The seed to use to determine randomness, if any pooch traits are left to chance (name, sex, base health, etc.).
+    rng: Random, optional
+        The random generator to determine randomness, if any pooch traits are left to chance (name, sex, base health, etc.).
 
     Returns
     -------
@@ -51,23 +51,16 @@ async def create_pooch(
         The Pooch ORM object that was just created.
     """
 
-    rng = random.Random(rng_seed)
+    rng = rng if rng is not None else random.Random()
 
     async def _get_random_pooch_name():
-        statement = select(DogName).order_by(func.md5(DogName.name + literal(str(rng_seed)))).limit(1)
-        response = await session.execute(statement)
+        statement = select(DogName).order_by(func.hashtextextended(DogName.name, bindparam("seed"))).limit(1)
+        response = await session.execute(statement, {"seed": rng.randint(0, 2**16)})
         dog_name = response.scalar_one_or_none()
         return dog_name.name if dog_name is not None else "Dog"
 
     async def _get_random_sex():
-        statement = (
-            select(func.unnest(func.enum_range(cast(None, SEX))))
-            .order_by(func.md5(SEX.name + literal(str(rng_seed))))
-            .limit(1)
-        )
-        response = await session.execute(statement)
-        sex = response.scalar_one_or_none()
-        return sex if sex is not None else "female"
+        return "female" if rng.randint(0, 1) == 0 else "male"
 
     if owner_discord_id is not None:
         owner = await get_owner_by_discord_id(owner_discord_id)
@@ -164,7 +157,7 @@ async def create_kennel(owner_discord_id: int, name: str = "Kennel", pooch_limit
 
 
 async def create_vendor(
-    server_discord_id: int, name: Optional[str] = None, rng_seed: Optional[int] = None
+    server_discord_id: int, name: Optional[str] = None, rng: Optional[random.Random] = None
 ) -> Optional[Vendor]:
     """
     Fetch the list of vendors for a given server.
@@ -177,8 +170,8 @@ async def create_vendor(
     name: str, optional
         The name to give the new vendor. Chooses a random one if not given.
 
-    rng_seed: int, optional
-        The seed to use to determine randomness, if any vendor traits are left to chance (name, desired mutations).
+    rng: int, optional
+        The random generate to determine randomness, if any vendor traits are left to chance (name, desired mutations).
 
     Returns
     -------
@@ -186,13 +179,15 @@ async def create_vendor(
         The Vendor ORM object that was just created, or None if the server with the given ID wasn't found.
     """
 
+    rng = rng if rng is not None else random.Random()
+
     async def _get_random_vendor_name():
-        statement = select(VendorFirstName).order_by(func.md5(VendorFirstName + rng_seed)).limit(1)
-        response = await session.execute(statement)
+        statement = select(VendorFirstName).order_by(func.hashtextextended(VendorFirstName.name, bindparam("seed"))).limit(1)
+        response = await session.execute(statement, {"seed": rng.randint(0, 2**16)})
         first_name = response.scalar_one_or_none()
 
-        statement = select(VendorLastName).order_by(func.md5(VendorLastName + rng_seed)).limit(1)
-        response = await session.execute(statement)
+        statement = select(VendorLastName).order_by(func.hashtextextended(VendorLastName.name, bindparam("seed"))).limit(1)
+        response = await session.execute(statement, {"seed": rng.randint(0, 2**16)})
         last_name = response.scalar_one_or_none()
 
         return f"{(first_name.name + ' ') if first_name is not None else ''}{last_name.name if last_name is not None else ''}"
