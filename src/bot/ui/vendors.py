@@ -89,6 +89,10 @@ class VendorPageControls:
             self.buy_button.disabled = True
 
     def attach(self, view: View):
+        self.select.row = 1
+        self.info_button.row = 2
+        self.buy_button.row = 2
+
         view.add_item(self.select)
         view.add_item(self.info_button)
         view.add_item(self.buy_button)
@@ -99,6 +103,8 @@ class VendorPageControls:
             self.selected_pooch = None
             self.info_button.disabled = True
             self.buy_button.disabled = True
+            for option in self.select.options:
+                option.default = False
         else:
             selected_id = int(value)
             self.selected_pooch = next((pooch for pooch in self.pooches if pooch.id == selected_id), None)
@@ -106,6 +112,10 @@ class VendorPageControls:
                 return
             self.info_button.disabled = False
             self.buy_button.disabled = False
+
+            # Make sure the dropdown selection persists between refreshes
+            for option in self.select.options:
+                option.default = option.value == str(selected_id)
 
         await edit_interaction(interaction, view=self.select.view)
 
@@ -116,7 +126,7 @@ class VendorPageControls:
         owner = await get_or_create_owner(self.server_discord_id, self.owner_discord_id)
         view = PoochInfoView(server=server, pooch=self.selected_pooch, owner=owner)
         embed = await view.build_embed()
-        await edit_interaction(interaction, embed=embed, view=view)
+        await reply_to_interacted_message(interaction, embed=embed, view=view)
 
     async def _on_buy(self, interaction: discord.Interaction):
         if self.selected_pooch is None:
@@ -131,6 +141,10 @@ class VendorPageControls:
         if not success:
             await reply_to_interacted_message(interaction, content=message)
             return
-        
-        await edit_interaction(interaction, view=self.select.view)
+        parent_view = self.select.view
+        if isinstance(parent_view, PaginatorView):
+            await parent_view.refresh(interaction)
+        else:
+            await edit_interaction(interaction, view=parent_view)
+
         await reply_to_interacted_message(interaction, content=f"✅ {message}")

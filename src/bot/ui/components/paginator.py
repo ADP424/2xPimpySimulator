@@ -19,8 +19,8 @@ class PaginatorView(View):
         self._owner_id = owner_discord_id
         self._page = 0
 
-        self._prev = Button(label="◀", style=discord.ButtonStyle.secondary, disabled=True)
-        self._next = Button(label="▶", style=discord.ButtonStyle.secondary, disabled=True)
+        self._prev = Button(label="◀", style=discord.ButtonStyle.secondary, disabled=True, row=0)
+        self._next = Button(label="▶", style=discord.ButtonStyle.secondary, disabled=True, row=0)
         self._prev.callback = self._on_prev  # type: ignore
         self._next.callback = self._on_next  # type: ignore
 
@@ -39,6 +39,15 @@ class PaginatorView(View):
         await self._source.load()
         await self._render(interaction)
 
+    async def build_first_page(self) -> tuple[Optional[str], Optional[discord.Embed]]:
+        """
+        Prepare and return the first page content/embed without editing a message.
+        """
+
+        await self._source.load()
+        self._page = 0
+        return await self._build_page()
+
     def _clamp_page(self):
         max_page = max(self._source.page_count() - 1, 0)
         self._page = max(0, min(self._page, max_page))
@@ -48,13 +57,16 @@ class PaginatorView(View):
         self._prev.disabled = (count <= 1) or (self._page <= 0)
         self._next.disabled = (count <= 1) or (self._page >= count - 1)
 
-    async def _render(self, interaction: discord.Interaction):
+    async def _build_page(self) -> tuple[Optional[str], Optional[discord.Embed]]:
         self._clamp_page()
         self.clear_items()
         self.add_item(self._prev)
         self.add_item(self._next)
         self._update_nav_disabled()
-        content, embed = await self._source.render(self, self._page)
+        return await self._source.render(self, self._page)
+
+    async def _render(self, interaction: discord.Interaction):
+        content, embed = await self._build_page()
         await edit_interaction(interaction, content=content, embed=embed, view=self)
 
     async def _on_prev(self, interaction: discord.Interaction):

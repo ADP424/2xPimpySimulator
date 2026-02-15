@@ -60,6 +60,8 @@ class _StatusControls:
         self.info_button.callback = self._on_info  # type: ignore
 
     def attach(self, view: View):
+        self.select.row = 1
+        self.info_button.row = 2
         view.add_item(self.select)
         view.add_item(self.info_button)
 
@@ -69,9 +71,11 @@ class _StatusControls:
         if self.selected_pooch is None:
             return
         self.info_button.disabled = False
-        # Persist the selected option so Discord shows it after the message refresh.
-        for opt in self.select.options:
-            opt.default = (opt.value == str(selected_id))
+
+        # Make sure the dropdown selection persists between refreshes
+        for option in self.select.options:
+            option.default = option.value == str(selected_id)
+
         await edit_interaction(interaction, view=self.select.view)
 
     async def _on_info(self, interaction: discord.Interaction):
@@ -79,7 +83,6 @@ class _StatusControls:
             return
         info_view = PoochInfoView(server=self.server, pooch=self.selected_pooch, owner=None)
         embed = await info_view.build_embed()
-        # For shared/status messages, never overwrite the original.
         await reply_to_interacted_message(interaction, embed=embed, view=info_view)
 
 

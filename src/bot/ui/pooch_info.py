@@ -3,7 +3,7 @@ from discord.ui import View, Select, Button
 from typing import TYPE_CHECKING, Optional, Sequence
 
 from game import get_pooch_family
-from bot.ui.util import edit_interaction, mention
+from bot.ui.util import edit_interaction, mention, reply_to_interacted_message
 
 if TYPE_CHECKING:
     from game.model import Server, Pooch, Owner
@@ -69,26 +69,37 @@ class PoochInfoView(View):
         embed.add_field(name="Children", value=", ".join(child.name for child in children) or "None", inline=False)
         embed.add_field(name="Siblings", value=", ".join(sibling.name for sibling in siblings) or "None", inline=False)
 
+        row_cursor = 0
+
         if parents:
             select = _FamilySelect(parents, placeholder="Select a parent", kind="parents")
             select.callback = self._on_family_selected  # type: ignore
+            select.row = row_cursor
             self.add_item(select)
             self.parent_info_button.disabled = True
+            self.parent_info_button.row = row_cursor + 1
             self.add_item(self.parent_info_button)
+            row_cursor += 2
 
         if children:
             select = _FamilySelect(children, placeholder="Select a child", kind="children")
             select.callback = self._on_family_selected  # type: ignore
+            select.row = row_cursor
             self.add_item(select)
             self.child_info_button.disabled = True
+            self.child_info_button.row = row_cursor + 1
             self.add_item(self.child_info_button)
+            row_cursor += 2
 
         if siblings:
             select = _FamilySelect(siblings, placeholder="Select a sibling", kind="siblings")
             select.callback = self._on_family_selected  # type: ignore
+            select.row = row_cursor
             self.add_item(select)
             self.sibling_info_button.disabled = True
+            self.sibling_info_button.row = row_cursor + 1
             self.add_item(self.sibling_info_button)
+            row_cursor += 2
 
         return embed
 
@@ -110,6 +121,10 @@ class PoochInfoView(View):
 
         self._selected[fired_select.kind] = selected_member
 
+        # Make sure the dropdown selection persists between refreshes
+        for option in fired_select.options:
+            option.default = option.value == selected_value
+
         if fired_select.kind == "parents":
             self.parent_info_button.disabled = False
         elif fired_select.kind == "children":
@@ -123,22 +138,22 @@ class PoochInfoView(View):
         pooch = self._selected.get("parents")
         if pooch is None:
             return
-        self.pooch = pooch
-        embed = await self.build_embed()
-        await edit_interaction(interaction, embed=embed, view=self)
+        view = PoochInfoView(server=self.server, pooch=pooch, owner=self.owner)
+        embed = await view.build_embed()
+        await reply_to_interacted_message(interaction, embed=embed, view=view)
 
     async def _open_child(self, interaction: discord.Interaction):
         pooch = self._selected.get("children")
         if pooch is None:
             return
-        self.pooch = pooch
-        embed = await self.build_embed()
-        await edit_interaction(interaction, embed=embed, view=self)
+        view = PoochInfoView(server=self.server, pooch=pooch, owner=self.owner)
+        embed = await view.build_embed()
+        await reply_to_interacted_message(interaction, embed=embed, view=view)
 
     async def _open_sibling(self, interaction: discord.Interaction):
         pooch = self._selected.get("siblings")
         if pooch is None:
             return
-        self.pooch = pooch
-        embed = await self.build_embed()
-        await edit_interaction(interaction, embed=embed, view=self)
+        view = PoochInfoView(server=self.server, pooch=pooch, owner=self.owner)
+        embed = await view.build_embed()
+        await reply_to_interacted_message(interaction, embed=embed, view=view)

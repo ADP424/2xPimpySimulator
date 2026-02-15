@@ -9,6 +9,7 @@ from logger import get_logger
 
 from game import get_or_create_server
 from .commands.home import register_home_command
+from .commands.town import register_town_command
 from .commands.set_event_channel import register_set_event_channel_command
 from .day_change_loop import day_change_runner
 
@@ -30,6 +31,7 @@ def run():
     tree = app_commands.CommandTree(bot)
 
     register_home_command(tree)
+    register_town_command(tree)
     register_set_event_channel_command(tree)
 
     # dev only commands

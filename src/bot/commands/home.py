@@ -1,6 +1,5 @@
 from discord import app_commands, Interaction
-from game import get_or_create_owner
-from ..ui.home import HomeView
+from ..ui.home import HomeView, build_home_content
 
 
 def register_home_command(tree: app_commands.CommandTree):
@@ -10,13 +9,8 @@ def register_home_command(tree: app_commands.CommandTree):
             await interaction.response.send_message("This command must be used in a server channel.", ephemeral=True)
             return
 
-        owner = await get_or_create_owner(interaction.guild_id, interaction.user.id)
         await interaction.response.send_message(
-            content=(
-                f"**<@{owner.discord_id}>'s Home**\n"
-                f"You have ${owner.dollars}.\n"
-                f"You have {owner.bloodskulls} bloodskulls."
-            ),
+            content=await build_home_content(guild_id=interaction.guild_id, user_id=interaction.user.id),
             view=HomeView(),
             ephemeral=False,
         )

@@ -2,7 +2,7 @@ import discord
 from discord.ui import Select, Button, View
 from typing import Optional
 
-from bot.ui.util import edit_interaction
+from bot.ui.util import edit_interaction, reply_to_interacted_message
 from game.model import Kennel, Pooch
 
 from .components.paginator import PageSource
@@ -73,6 +73,11 @@ class KennelPageControls:
             self.walk_button.disabled = True
 
     def attach(self, view: View):
+        self.select.row = 1
+        self.info_button.row = 2
+        self.breed_button.row = 2
+        self.walk_button.row = 2
+
         view.add_item(self.select)
         view.add_item(self.info_button)
         view.add_item(self.breed_button)
@@ -86,6 +91,11 @@ class KennelPageControls:
         self.info_button.disabled = False
         self.breed_button.disabled = False
         self.walk_button.disabled = False
+
+        # Make sure the dropdown selection persists between refreshes
+        for option in self.select.options:
+            option.default = option.value == str(selected_id)
+
         await edit_interaction(interaction, view=self.select.view)
 
     async def _on_info(self, interaction: discord.Interaction):
@@ -95,7 +105,7 @@ class KennelPageControls:
         owner = await get_or_create_owner(self.server_discord_id, self.owner_discord_id)
         view = PoochInfoView(server=server, pooch=self.selected_pooch, owner=owner)
         embed = await view.build_embed()
-        await edit_interaction(interaction, embed=embed, view=view)
+        await reply_to_interacted_message(interaction, embed=embed, view=view)
 
     async def _noop(self, interaction: discord.Interaction):
         await interaction.response.send_message("Coming soon.", ephemeral=False)

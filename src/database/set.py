@@ -182,11 +182,15 @@ async def create_vendor(
     rng = rng if rng is not None else random.Random()
 
     async def _get_random_vendor_name():
-        statement = select(VendorFirstName).order_by(func.hashtextextended(VendorFirstName.name, bindparam("seed"))).limit(1)
+        statement = (
+            select(VendorFirstName).order_by(func.hashtextextended(VendorFirstName.name, bindparam("seed"))).limit(1)
+        )
         response = await session.execute(statement, {"seed": rng.randint(0, 2**16)})
         first_name = response.scalar_one_or_none()
 
-        statement = select(VendorLastName).order_by(func.hashtextextended(VendorLastName.name, bindparam("seed"))).limit(1)
+        statement = (
+            select(VendorLastName).order_by(func.hashtextextended(VendorLastName.name, bindparam("seed"))).limit(1)
+        )
         response = await session.execute(statement, {"seed": rng.randint(0, 2**16)})
         last_name = response.scalar_one_or_none()
 
