@@ -1,33 +1,40 @@
 from typing import Optional
+
 from database import (
-    list_vendors as db_list_vendors,
-    list_vendor_pooch_stock,
-    get_vendor_by_id as db_get_vendor_by_id,
-    get_owner_by_discord_id,
-    get_pooch_by_id as db_get_pooch_by_id,
-    remove_pooch_from_vendor_stock,
-    transfer_pooch_to_owner,
-    give_money_to_owner,
     add_pooch_to_kennel,
+    get_mutation_by_id,
+    get_owner_by_discord_id,
+)
+from database import get_pooch_by_id as db_get_pooch_by_id
+from database import (
+    get_pooch_health,
+)
+from database import get_vendor_by_id as db_get_vendor_by_id
+from database import (
+    give_money_to_owner,
     list_kennels_for_owner,
-    list_pooches_for_kennel,
     list_pooch_breeds,
     list_pooch_mutations,
-    get_pooch_health,
-    get_mutation_by_id,
+    list_pooches_for_kennel,
+    list_vendor_pooch_stock,
 )
+from database import list_vendors as db_list_vendors
+from database import (
+    remove_pooch_from_vendor_stock,
+    transfer_pooch_to_owner,
+)
+
 from .constants import (
     BASE_POOCH_DOLLAR_VALUE,
     BREED_RARITY_TO_DOLLAR_VALUE_MULT,
-    POOCH_DOLLAR_VALUE_LOSS_BY_AGE,
     POOCH_BASE_HEALTH_RANGE,
+    POOCH_DOLLAR_VALUE_LOSS_BY_AGE,
     POOCH_DOLLAR_VALUE_LOSS_BY_HEALTH_BELOW_AVERAGE,
     VENDOR_DESIRED_MUTATION_MULT,
 )
-from .exceptions.vendor_not_found import VendorNotFound
 from .exceptions.pooch_not_found import PoochNotFound
-
-from .model import Vendor, to_vendor, Pooch, to_pooch
+from .exceptions.vendor_not_found import VendorNotFound
+from .model import Pooch, Vendor, to_pooch, to_vendor
 
 
 async def get_vendor_by_id(vendor_id: int) -> Vendor:

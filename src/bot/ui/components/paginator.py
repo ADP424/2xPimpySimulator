@@ -1,8 +1,9 @@
-from bot.constants import VIEW_TIMEOUT
-import discord
-from discord.ui import View, Button
 from typing import Optional, Protocol
 
+import discord
+from discord.ui import Button, View
+
+from bot.constants import VIEW_TIMEOUT
 from bot.ui.util import edit_interaction
 
 

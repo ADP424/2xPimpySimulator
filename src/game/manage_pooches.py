@@ -1,11 +1,11 @@
+from database import get_pooch_by_id as db_get_pooch_by_id
 from database import (
-    get_pooch_by_id as db_get_pooch_by_id,
     get_pooch_parents,
     list_pooch_children,
     list_pooch_siblings,
 )
-from .exceptions.pooch_not_found import PoochNotFound
 
+from .exceptions.pooch_not_found import PoochNotFound
 from .model import Pooch, to_pooch
 
 

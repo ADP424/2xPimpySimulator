@@ -1,11 +1,11 @@
-from bot.constants import VIEW_TIMEOUT
 import discord
-from discord.ui import View, Select, Button
+from discord.ui import Button, Select, View
 
+from bot.constants import VIEW_TIMEOUT
 from bot.ui.util import edit_interaction, reply_to_interacted_message
 
-from .vendors import VendorsPageSource
 from .components.paginator import PaginatorView
+from .vendors import VendorsPageSource
 
 
 class TownView(View):

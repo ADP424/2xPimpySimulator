@@ -1,14 +1,19 @@
-import discord
-from discord.ui import Select, Button, View
 from typing import Optional
 
+import discord
+from discord.ui import Button, Select, View
+
 from bot.ui.util import edit_interaction, reply_to_interacted_message
+from game import (
+    get_or_create_owner,
+    get_or_create_server,
+    list_kennel_pooches,
+    list_owner_kennels,
+)
 from game.model import Kennel, Pooch
 
 from .components.paginator import PageSource
 from .pooch_info import PoochInfoView
-
-from game import get_or_create_owner, get_or_create_server, list_kennel_pooches, list_owner_kennels
 
 
 class KennelsPageSource(PageSource):

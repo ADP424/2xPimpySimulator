@@ -1,9 +1,25 @@
 from sqlalchemy import func, or_, select
 
-from .session import session_scope
 from .get import get_pooch_parents
 
-from .models import *  # loads all ORM models (via database/models/__init__.py)
+# from .models import *  # loads all ORM models (via database/models/__init__.py)
+from .models import (
+    Breed,
+    Kennel,
+    KennelPooch,
+    Mutation,
+    Owner,
+    OwnerServer,
+    Pooch,
+    PoochBreed,
+    PoochMutation,
+    PoochParentage,
+    PoochPregnancy,
+    Server,
+    Vendor,
+    VendorPoochForSale,
+)
+from .session import session_scope
 
 
 async def list_pooches_for_kennel(kennel_id: int) -> list[Pooch]:
@@ -74,7 +90,7 @@ async def list_living_pooches() -> list[Pooch]:
     """
 
     async with session_scope() as session:
-        query = select(Pooch).where(Pooch.alive == True).order_by(Pooch.created_at.asc(), Pooch.id.asc())
+        query = select(Pooch).where(Pooch.alive == True).order_by(Pooch.created_at.asc(), Pooch.id.asc())  # noqa: E712
         response = await session.execute(query)
 
     return list(response.scalars().all())
@@ -185,7 +201,7 @@ async def list_pooch_breeds(pooch_id: int) -> list[tuple[Breed, float]]:
         )
         response = await session.execute(query)
 
-    return list(response.scalars().all())
+    return [(breed, float(weight)) for breed, weight in list(response.tuples().all())]
 
 
 async def list_pooch_mutations(pooch_id: int) -> list[Mutation]:

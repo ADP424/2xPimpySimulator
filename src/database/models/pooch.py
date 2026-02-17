@@ -1,24 +1,33 @@
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import BigInteger, Boolean, DateTime, Integer, Text, ForeignKey, CheckConstraint, text
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Text,
+    text,
+)
 from sqlalchemy.ext.associationproxy import association_proxy
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
 from .enums.sex import SEX
 
 if TYPE_CHECKING:
     from .owner import Owner
-    from .vendor import Vendor
-    from .relationships.pooch_parentage import PoochParentage
-    from .relationships.pooch_pregnancy import PoochPregnancy
-    from .relationships.kennel_pooch import KennelPooch
     from .relationships.graveyard_pooch import GraveyardPooch
     from .relationships.hell_pooch import HellPooch
+    from .relationships.kennel_pooch import KennelPooch
+    from .relationships.pooch_parentage import PoochParentage
+    from .relationships.pooch_pregnancy import PoochPregnancy
     from .relationships.vendor_pooch_for_sale import VendorPoochForSale
     from .static_relationships.pooch_breed import PoochBreed
     from .static_relationships.pooch_mutation import PoochMutation
+    from .vendor import Vendor
 
 
 class Pooch(Base):

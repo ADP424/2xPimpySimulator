@@ -1,9 +1,10 @@
 from typing import Optional
+
 from sqlalchemy import select
 
+# from .models import *  # loads all ORM models (via database/models/__init__.py)
+from .models import Owner, Pooch, Server
 from .session import session_scope
-
-from .models import *  # loads all ORM models (via database/models/__init__.py)
 
 
 async def age_pooch(pooch_id: int) -> Optional[Pooch]:
@@ -47,7 +48,7 @@ async def decrement_pooch_breeding_cooldown(pooch_id: int) -> Optional[Pooch]:
     Returns
     -------
     Pooch, optional
-        The Pooch ORM object whose breeding cooldown just decreased.
+        The Pooch ORM object whose breeding cooldown just decreased, or None if no pooch was found.
     """
 
     async with session_scope() as session:
@@ -75,7 +76,7 @@ async def set_pooch_dead(pooch_id: int) -> Optional[Pooch]:
     Returns
     -------
     Pooch, optional
-        The Pooch ORM object that was just killed.
+        The Pooch ORM object that was just killed, or None if the pooch wasn't found.
     """
 
     async with session_scope() as session:
@@ -166,7 +167,8 @@ async def set_event_channel_discord_id(server_discord_id: int, channel_discord_i
     Returns
     -------
     Server, optional
-        The Server object the event channel Discord ID was set for, or None if no server with the given Discord ID was found.
+        The Server object the event channel Discord ID was set for, or None if no server with
+        the given Discord ID was found.
     """
 
     async with session_scope() as session:

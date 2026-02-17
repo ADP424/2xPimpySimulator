@@ -1,10 +1,15 @@
-from contextlib import asynccontextmanager
 import os
+from contextlib import asynccontextmanager
 from typing import AsyncIterator, Optional
 from urllib.parse import quote_plus
-from dotenv import load_dotenv
 
-from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine, async_sessionmaker, AsyncSession
+from dotenv import load_dotenv
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 
 _ENGINE: Optional[AsyncEngine] = None
 _SESSIONMAKER: Optional[async_sessionmaker[AsyncSession]] = None

@@ -18,7 +18,9 @@ class Mutation(Base):
     category: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
 
-    heritability: Mapped[float] = mapped_column(Numeric(4, 3), nullable=False, server_default=text("0.25"))
+    heritability: Mapped[float] = mapped_column(
+        Numeric(4, 3, asdecimal=False), nullable=False, server_default=text("0.25")
+    )
 
     health_impact: Mapped[str] = mapped_column(HEALTH_IMPACT, nullable=False, server_default=text("'neutral'"))
     rarity: Mapped[str] = mapped_column(RARITY, nullable=False, server_default=text("'common'"))

@@ -2,10 +2,9 @@ from dataclasses import dataclass
 from typing import Optional
 
 from database import get_owner_by_discord_id
+from database.models import Kennel as KennelORM
 
 from .owner import Owner, to_owner
-
-from database.models import Kennel as KennelORM
 
 
 @dataclass(frozen=True)

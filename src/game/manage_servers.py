@@ -1,9 +1,11 @@
 from typing import Optional
+
 from database import (
-    get_server_by_discord_id,
     create_server,
+    get_server_by_discord_id,
     set_event_channel_discord_id,
 )
+
 from .model import Server, to_server
 
 

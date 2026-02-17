@@ -1,14 +1,16 @@
-from bot.constants import ITEMS_PER_PAGE
-import discord
-from discord.ui import Button, Select, View
 from typing import TYPE_CHECKING, List, Optional, Tuple
 
-from .pooch_info import PoochInfoView
-from .components.paginator import PageSource, PaginatorView
+import discord
+from discord.ui import Button, Select, View
+
+from bot.constants import ITEMS_PER_PAGE
 from bot.ui.util import edit_interaction, reply_to_interacted_message
 
+from .components.paginator import PageSource, PaginatorView
+from .pooch_info import PoochInfoView
+
 if TYPE_CHECKING:
-    from game.model import Server, Pooch
+    from game.model import Pooch, Server
 
 
 class DayChangeStatusPageSource(PageSource):

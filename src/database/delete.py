@@ -1,11 +1,12 @@
 from typing import Optional
+
 from sqlalchemy import delete, select
 
+from .get import Vendor, get_pooch_by_id, get_vendor_by_id
+
+# from .models import *  # loads all ORM models (via database/models/__init__.py)
+from .models import KennelPooch, Pooch, PoochPregnancy, VendorPoochForSale
 from .session import session_scope
-
-from .models import *  # loads all ORM models (via database/models/__init__.py)
-
-from .get import get_vendor_by_id, get_pooch_by_id
 
 
 async def remove_pooch_from_kennel(pooch_id: int) -> Pooch:
@@ -20,7 +21,7 @@ async def remove_pooch_from_kennel(pooch_id: int) -> Pooch:
     Returns
     -------
     Pooch, optional
-        The Pooch ORM object removed from the kennel, or None if it wasn't found.
+        The Pooch ORM object removed from the kennel, or None if the pooch wasn't found in a kennel.
     """
 
     async with session_scope() as session:
@@ -60,7 +61,8 @@ async def remove_pooch_from_vendor_stock(vendor_id: int, pooch_id: int) -> Optio
     Returns
     -------
     Pooch, optional
-        The Pooch that was removed from the vendor's inventory, or None if no pooch with the given ID was found in the given vendor's inventory.
+        The Pooch that was removed from the vendor's inventory, or None if no pooch with the given ID
+        was found in the given vendor's inventory.
     """
 
     async with session_scope() as session:

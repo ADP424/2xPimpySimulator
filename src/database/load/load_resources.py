@@ -2,9 +2,10 @@ import asyncio
 import json
 from typing import Any
 
-from database.models import Breed, Mutation, DogName, VendorFirstName, VendorLastName
+from sqlalchemy import delete
+
+from database.models import Breed, DogName, Mutation, VendorFirstName, VendorLastName
 from database.session import session_scope
-from sqlalchemy import delete, func, select
 
 
 async def load_breeds():

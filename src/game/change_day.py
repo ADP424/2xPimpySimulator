@@ -1,6 +1,27 @@
 import random
 from typing import Optional
 
+from database import (
+    add_breed_to_pooch,
+    add_mutation_to_pooch,
+    add_pooch_to_vendor_stock,
+    age_pooch,
+    bury_pooch,
+    clear_vendor_pooch_stock,
+    create_pooch,
+    create_vendor,
+    decrement_pooch_breeding_cooldown,
+    delete_pregnancy,
+    get_pooch_health,
+    get_pooch_kennel,
+    list_living_pooches,
+    list_pooch_pregnancies,
+    list_servers,
+    list_servers_for_pooch,
+    list_vendors,
+    remove_pooch_from_kennel,
+    set_pooch_dead,
+)
 from game.constants import (
     DEATH_CHANCE_PER_HEALTH_UNDER_MIN,
     MIN_HEALTH_FOR_DEATH_CHANCE,
@@ -12,34 +33,11 @@ from game.constants import (
     VENDOR_POOCH_AGE_RANGE,
     VENDOR_POOCH_STOCK_COUNT_RANGE,
 )
+from game.manage_kennels import add_pooch_to_kennel
+from game.manage_pooches import get_pooch_by_id
 from logger import get_logger
 
-from game.manage_pooches import get_pooch_by_id
-from game.manage_kennels import add_pooch_to_kennel
-
-from .model import BirthEvent, DeathEvent, DayChangeSummary, to_pooch, to_server
-
-from database import (
-    list_living_pooches,
-    list_pooch_pregnancies,
-    delete_pregnancy,
-    get_pooch_kennel,
-    create_pooch,
-    decrement_pooch_breeding_cooldown,
-    age_pooch,
-    remove_pooch_from_kennel,
-    set_pooch_dead,
-    bury_pooch,
-    list_vendors,
-    clear_vendor_pooch_stock,
-    add_pooch_to_vendor_stock,
-    create_vendor,
-    list_servers_for_pooch,
-    list_servers,
-    get_pooch_health,
-    add_breed_to_pooch,
-    add_mutation_to_pooch,
-)
+from .model import BirthEvent, DayChangeSummary, DeathEvent, to_pooch, to_server
 
 logger = get_logger("game/change_day")
 
@@ -66,7 +64,8 @@ async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeS
     Returns
     -------
     dict[int, DayChangeSummary]
-        A dictionary summarizing the day's events for each server in the form `{ server_discord_id : DayChangeSummary }`.
+        A dictionary summarizing the day's events for each server in the form
+        `{ server_discord_id : DayChangeSummary }`.
     """
 
     rng = random.Random(rng_seed)
@@ -126,14 +125,11 @@ async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeS
     logger.info("Handling deaths for the day...")
     pooches = await list_living_pooches()
     for pooch in pooches:
-        await decrement_pooch_breeding_cooldown(pooch.id)
-        updated = await age_pooch(pooch.id)
-        if updated is None:
-            continue
-
+        pooch = await decrement_pooch_breeding_cooldown(pooch.id)
+        pooch = await age_pooch(pooch.id)
         total_health: int = await get_pooch_health(pooch.id)
         if _death_roll(total_health, rng):
-            await set_pooch_dead(pooch.id)
+            pooch = await set_pooch_dead(pooch.id)
             await remove_pooch_from_kennel(pooch.id)
             if pooch.owner_discord_id is not None:
                 await bury_pooch(pooch.owner_discord_id, pooch.id)
@@ -165,12 +161,13 @@ async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeS
                     base_health=rng.randint(POOCH_BASE_HEALTH_RANGE[0], POOCH_BASE_HEALTH_RANGE[1]),
                     rng=rng,
                 )
-                for _ in range(rng.randint(NUM_BREEDS_PER_VENDOR_POOCH_RANGE[0], NUM_BREEDS_PER_VENDOR_POOCH_RANGE[1])):
-                    await add_breed_to_pooch()
+                num_breeds = rng.randint(NUM_BREEDS_PER_VENDOR_POOCH_RANGE[0], NUM_BREEDS_PER_VENDOR_POOCH_RANGE[1])
+                for _ in range(num_breeds):
+                    await add_breed_to_pooch(vendor_pooch.id, weight=(1 / num_breeds))
                 for _ in range(
                     rng.randint(NUM_MUTATIONS_PER_VENDOR_POOCH_RANGE[0], NUM_MUTATIONS_PER_VENDOR_POOCH_RANGE[1])
                 ):
-                    await add_mutation_to_pooch()
+                    await add_mutation_to_pooch(vendor_pooch.id)
                 await add_pooch_to_vendor_stock(vendor.id, vendor_pooch.id)
     logger.info("Completed daily vendor restock.")
 

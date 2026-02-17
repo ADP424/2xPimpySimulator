@@ -1,9 +1,22 @@
 from typing import Optional
+
 from sqlalchemy import func, select
 
+# from .models import *  # loads all ORM models (via database/models/__init__.py)
+from .models import (
+    HealthImpactWeight,
+    Kennel,
+    KennelPooch,
+    Mutation,
+    Owner,
+    OwnerServer,
+    Pooch,
+    PoochMutation,
+    PoochParentage,
+    Server,
+    Vendor,
+)
 from .session import session_scope
-
-from .models import *  # loads all ORM models (via database/models/__init__.py)
 
 
 async def get_pooch_by_id(pooch_id: int) -> Optional[Pooch]:

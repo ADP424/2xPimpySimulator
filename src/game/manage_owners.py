@@ -1,16 +1,16 @@
 from database import (
-    get_owner_by_discord_id,
-    create_owner,
-    create_kennel,
     add_owner_to_server,
-    list_kennels_for_owner,
-    give_money_to_owner,
+    create_kennel,
+    create_owner,
+    get_owner_by_discord_id,
     get_owner_server,
+    give_money_to_owner,
+    list_kennels_for_owner,
 )
-from .manage_servers import get_or_create_server
-from .exceptions.owner_not_found import OwnerNotFound
 
-from .model import Kennel, to_kennel, Owner, to_owner
+from .exceptions.owner_not_found import OwnerNotFound
+from .manage_servers import get_or_create_server
+from .model import Kennel, Owner, to_kennel, to_owner
 
 
 async def get_or_create_owner(server_discord_id: int, owner_discord_id: int) -> Owner:

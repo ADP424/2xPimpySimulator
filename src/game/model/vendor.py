@@ -1,11 +1,11 @@
 from dataclasses import dataclass
 from typing import Optional
 
-from database import get_server_by_discord_id, get_mutation_by_id
+from database import get_mutation_by_id, get_server_by_discord_id
 from database.models import Vendor as VendorORM
 
-from .server import Server, to_server
 from .mutation import Mutation, to_mutation
+from .server import Server, to_server
 
 
 @dataclass(frozen=True)

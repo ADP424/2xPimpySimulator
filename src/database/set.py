@@ -1,5 +1,6 @@
 import random
 from typing import Optional, TypeVar
+
 from sqlalchemy import bindparam, func, select
 
 from .constants import (
@@ -11,12 +12,29 @@ from .constants import (
     RANDOM_SEED_SIZE_LIMIT,
     VENDOR_PRICE_MARKUP,
 )
+from .get import get_owner_by_discord_id, get_pooch_by_id, get_vendor_by_id
+
+# from .models import *  # loads all ORM models (via database/models/__init__.py)
+from .models import (
+    Breed,
+    DogName,
+    GraveyardPooch,
+    Kennel,
+    KennelPooch,
+    Mutation,
+    Owner,
+    OwnerServer,
+    Pooch,
+    PoochBreed,
+    PoochMutation,
+    RarityWeight,
+    Server,
+    Vendor,
+    VendorFirstName,
+    VendorLastName,
+    VendorPoochForSale,
+)
 from .session import session_scope
-
-from .models import *  # loads all ORM models (via database/models/__init__.py)
-from .models.enums.sex import SEX
-
-from .get import get_owner_by_discord_id, get_vendor_by_id, get_pooch_by_id
 
 T = TypeVar("T")
 
@@ -213,7 +231,10 @@ async def create_vendor(
         response = await session.execute(statement, {"seed": rng.randint(0, RANDOM_SEED_SIZE_LIMIT)})
         last_name = response.scalar_one_or_none()
 
-        return f"{(first_name.name + " ") if first_name is not None else ""}{last_name.name if last_name is not None else ""}"
+        return (
+            f"{(first_name.name + " ") if first_name is not None else ""}"
+            f"{last_name.name if last_name is not None else ""}"
+        )
 
     async def _get_random_mutation_id() -> Optional[int]:
         statement = select(Mutation.id).order_by(func.hashtextextended(Mutation.name, bindparam("seed"))).limit(1)
@@ -285,7 +306,10 @@ async def add_pooch_to_kennel(kennel_id: int, pooch_id: int) -> KennelPooch:
     return kennel_pooch
 
 
-def _weighted_choice(rng: random.Random, items: list[tuple[T, int]]) -> T:
+def _weighted_choice(rng: random.Random, items: list[tuple[T, int]]) -> Optional[T]:
+    if len(items) == 0:
+        return None
+
     total = sum(weight for _, weight in items)
     roll = rng.uniform(0, total)
 
@@ -297,8 +321,8 @@ def _weighted_choice(rng: random.Random, items: list[tuple[T, int]]) -> T:
 
 
 async def add_breed_to_pooch(
-    pooch_id: int, breed_id: Optional[int] = None, rng: Optional[random.Random] = None
-) -> PoochBreed:
+    pooch_id: int, breed_id: Optional[int] = None, weight: float = 0.5, rng: Optional[random.Random] = None
+) -> Optional[PoochBreed]:
     """
     Add the breed with the given ID to the pooch with the given ID.
     If a breed ID isn't given, choose a random one, with chance based on its rarity.
@@ -311,13 +335,17 @@ async def add_breed_to_pooch(
     breed_id: int, optional
         The ID of the breed to add to the pooch.
 
+    weight: float, default : 0.5
+        What fraction of the pooch's breed should be this breed.
+
     rng: Random, optional
         The random generator to use to determine the random breed, if `breed_id` is left blank.
 
     Returns
     -------
-    PoochBreed
-        The PoochBreed relationship ORM object just created.
+    PoochBreed, optional
+        The PoochBreed relationship ORM object just created, or None if the breed was left to chance
+        and the pooch already has EVERY breed.
     """
 
     rng = rng if rng is not None else random.Random()
@@ -325,21 +353,38 @@ async def add_breed_to_pooch(
     async with session_scope() as session:
 
         if breed_id is None:
-            query = select(Breed, RarityWeight.weight).join(RarityWeight, RarityWeight.rarity == Breed.rarity)
-
-            response = await session.execute(query)
-            rows = [(breed, weight) for breed, weight in response.tuples().all()]
+            breed_query = (
+                select(Breed, RarityWeight.weight)
+                .join(RarityWeight, RarityWeight.rarity == Breed.rarity)
+                .where(Breed.id.not_in(select(PoochBreed.breed_id).where(PoochBreed.pooch_id == pooch_id)))
+            )
+            breed_response = await session.execute(breed_query)
+            rows = [(breed, weight) for breed, weight in breed_response.tuples().all()]
             breed = _weighted_choice(rng, rows)
-            breed_id = breed.id
+            breed_id = breed.id if breed is not None else None
 
-        pooch_breed = PoochBreed(pooch_id=pooch_id, breed_id=breed_id)
+        # If the pooch somehow has every possible breed already
+        if breed_id is None:
+            return None
+
+        query = (
+            select(RarityWeight.weight)
+            .join(Breed, Breed.rarity == RarityWeight.rarity)
+            .join(PoochBreed, PoochBreed.breed_id == Breed.id)
+            .where(PoochBreed.pooch_id == pooch_id)
+        )
+        response = await session.execute(query)
+        total_weight = sum(response.scalars().all())
+        pooch_breed = PoochBreed(pooch_id=pooch_id, breed_id=breed_id, weight=max(round(2 * weight * total_weight), 1))
         session.add(pooch_breed)
         await session.flush()
 
     return pooch_breed
 
 
-async def add_mutation_to_pooch(pooch_id: int, mutation_id: Optional[int] = None) -> PoochMutation:
+async def add_mutation_to_pooch(
+    pooch_id: int, mutation_id: Optional[int] = None, rng: Optional[random.Random] = None
+) -> PoochMutation:
     """
     Add the mutation with the given ID to the pooch with the given ID.
     If a mutation ID isn't given, choose a random one, with chance based on its rarity.
@@ -352,6 +397,9 @@ async def add_mutation_to_pooch(pooch_id: int, mutation_id: Optional[int] = None
     mutation_id: int, optional
         The ID of the mutation to add to the pooch.
 
+    rng: Random, optional
+        The random generator to use to determine the random mutation, if `mutation_id` is left blank.
+
     Returns
     -------
     PoochMutation
@@ -363,14 +411,21 @@ async def add_mutation_to_pooch(pooch_id: int, mutation_id: Optional[int] = None
     async with session_scope() as session:
 
         if mutation_id is None:
-            query = select(Mutation, RarityWeight.weight).join(RarityWeight, RarityWeight.rarity == Mutation.rarity)
-
-            response = await session.execute(query)
-            rows = [(mutation, weight) for mutation, weight in response.tuples().all()]
+            mutation_query = (
+                select(Mutation, RarityWeight.weight)
+                .join(RarityWeight, RarityWeight.rarity == Mutation.rarity)
+                .where(Mutation.id.not_in(select(PoochMutation.mutation_id).where(PoochMutation.pooch_id == pooch_id)))
+            )
+            mutation_response = await session.execute(mutation_query)
+            rows = [(mutation, weight) for mutation, weight in mutation_response.tuples().all()]
             mutation = _weighted_choice(rng, rows)
-            mutation_id = mutation.id
+            mutation_id = mutation.id if mutation is not None else None
 
-        pooch_mutation = PoochMutation(pooch_id=pooch_id, pooch_mutation=mutation_id)
+        # If the pooch somehow has every possible mutation already
+        if mutation_id is None:
+            return None
+
+        pooch_mutation = PoochMutation(pooch_id=pooch_id, mutation_id=mutation_id)
         session.add(pooch_mutation)
         await session.flush()
 

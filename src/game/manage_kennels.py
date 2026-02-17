@@ -1,12 +1,12 @@
+from database import add_pooch_to_kennel as db_add_pooch_to_kennel
 from database import (
     get_kennel_by_id,
     get_pooch_by_id,
     list_pooches_for_kennel,
-    add_pooch_to_kennel as db_add_pooch_to_kennel,
 )
+
 from .exceptions.kennel_not_found import KennelNotFound
 from .exceptions.pooch_not_found import PoochNotFound
-
 from .model import Pooch, to_pooch
 
 

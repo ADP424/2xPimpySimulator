@@ -6,8 +6,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from database.models.base import Base
 
 if TYPE_CHECKING:
-    from ..server import Server
     from ..owner import Owner
+    from ..server import Server
 
 
 class OwnerServer(Base):

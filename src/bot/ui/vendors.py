@@ -1,9 +1,8 @@
-import discord
-from discord.ui import Select, Button, View
 from typing import Optional
 
-from .util import edit_interaction, reply_to_interacted_message
-from game.model import Pooch, Vendor
+import discord
+from discord.ui import Button, Select, View
+
 from game import (
     buy_pooch,
     get_or_create_owner,
@@ -12,9 +11,11 @@ from game import (
     list_server_vendors,
     list_vendor_pooches,
 )
+from game.model import Pooch, Vendor
 
 from .components.paginator import PageSource, PaginatorView
 from .pooch_info import PoochInfoView
+from .util import edit_interaction, reply_to_interacted_message
 
 
 class VendorsPageSource(PageSource):

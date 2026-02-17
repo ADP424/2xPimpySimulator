@@ -1,12 +1,13 @@
 import asyncio
-from datetime import datetime, time, timedelta
 import os
+from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 import discord
 
 from game import get_event_channel, run_day_change
 from logger import get_logger
+
 from .ui.day_change_status import make_status_view
 
 if discord.TYPE_CHECKING:
@@ -29,7 +30,8 @@ async def post_day_change_summaries(bot: discord.Client, summaries: dict[int, Da
                 channel = await bot.fetch_channel(channel_id)
             except Exception:
                 logger.info(
-                    f"Couldn't find event channel with ID '{channel_id}' for server with ID '{server_discord_id}'. Skipping summaries..."
+                    f"Couldn't find event channel with ID '{channel_id}' for server with ID '{server_discord_id}'."
+                    "Skipping summaries..."
                 )
                 continue
 

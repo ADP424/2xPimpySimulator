@@ -1,9 +1,10 @@
 from dataclasses import dataclass
 
+from game.model.pooch import Pooch
+from game.model.server import Server
+
 from .birth_event import BirthEvent
 from .death_event import DeathEvent
-from game.model.server import Server
-from game.model.pooch import Pooch
 
 
 @dataclass(frozen=True)

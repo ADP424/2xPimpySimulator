@@ -1,12 +1,12 @@
-from bot.constants import VIEW_TIMEOUT
 import discord
-from discord.ui import View, Select, Button
+from discord.ui import Button, Select, View
 
-from game import get_or_create_owner
+from bot.constants import VIEW_TIMEOUT
 from bot.ui.util import edit_interaction, mention, reply_to_interacted_message
+from game import get_or_create_owner
 
-from .kennels import KennelsPageSource
 from .components.paginator import PaginatorView
+from .kennels import KennelsPageSource
 
 
 async def build_home_content(*, guild_id: int, user_id: int) -> str:

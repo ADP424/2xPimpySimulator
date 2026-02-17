@@ -1,17 +1,18 @@
-import os
 import asyncio
-from bot.commands.get_money import register_get_money_command
-from .constants import GUILDS
+import os
+
 import discord
 from discord import app_commands
 from dotenv import load_dotenv
 
+from bot.commands.get_money import register_get_money_command
+from game import get_or_create_server
 from logger import get_logger
 
-from game import get_or_create_server
 from .commands.home import register_home_command
-from .commands.town import register_town_command
 from .commands.set_event_channel import register_set_event_channel_command
+from .commands.town import register_town_command
+from .constants import GUILDS
 from .day_change_loop import day_change_runner
 
 logger = get_logger("bot/app")

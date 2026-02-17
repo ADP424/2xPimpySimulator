@@ -1,13 +1,14 @@
-from bot.constants import VIEW_TIMEOUT
-import discord
-from discord.ui import View, Select, Button
 from typing import TYPE_CHECKING, Optional, Sequence
 
-from game import get_pooch_family
+import discord
+from discord.ui import Button, Select, View
+
+from bot.constants import VIEW_TIMEOUT
 from bot.ui.util import edit_interaction, mention, reply_to_interacted_message
+from game import get_pooch_family
 
 if TYPE_CHECKING:
-    from game.model import Server, Pooch, Owner
+    from game.model import Owner, Pooch, Server
 
 
 class _FamilySelect(Select):
@@ -56,7 +57,11 @@ class PoochInfoView(View):
 
         embed.add_field(
             name="Owner",
-            value=mention(self.pooch.owner_discord_id) if self.pooch.owner_discord_id else "Nobody",
+            value=(
+                mention(self.pooch.owner_discord_id)
+                if self.pooch.owner_discord_id
+                else (self.pooch.vendor.name if self.pooch.vendor is not None else "Nobody")
+            ),
             inline=True,
         )
         embed.add_field(name="Status", value=self.pooch.status.capitalize(), inline=True)

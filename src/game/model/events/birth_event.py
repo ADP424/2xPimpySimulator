@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 from typing import Optional
 
-from game.model.server import Server
 from game.model.pooch import Pooch
+from game.model.server import Server
 
 
 @dataclass(frozen=True)

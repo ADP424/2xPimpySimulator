@@ -20,5 +20,8 @@ extend-ignore = """
     E402
 """
 
+[tool.isort]
+profile = "black"
+
 [tool.pytest.ini_options]
 addopts = "--cov=src --cov-report=term-missing --cov-config=.coveragerc"

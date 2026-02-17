@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 
-from database import get_owner_by_discord_id, get_vendor_by_id, get_pooch_health
+from database import get_owner_by_discord_id, get_pooch_health, get_vendor_by_id
 from database.models import Pooch as PoochORM
 
 from .owner import Owner, to_owner

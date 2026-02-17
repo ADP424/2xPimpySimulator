@@ -2,16 +2,16 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import BigInteger, DateTime, Integer, text
-from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.ext.associationproxy import association_proxy
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
 
 if TYPE_CHECKING:
-    from .pooch import Pooch
     from .kennel import Kennel
-    from .relationships.owner_server import OwnerServer
+    from .pooch import Pooch
     from .relationships.graveyard_pooch import GraveyardPooch
+    from .relationships.owner_server import OwnerServer
 
 
 class Owner(Base):
