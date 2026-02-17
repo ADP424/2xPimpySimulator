@@ -1,5 +1,3 @@
-# Core models
-# Event models
 from .events.birth_event import BirthEvent
 from .events.day_change_summary import DayChangeSummary
 from .events.death_event import DeathEvent
