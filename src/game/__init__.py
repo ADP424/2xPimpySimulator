@@ -28,7 +28,7 @@ from .manage_vendors import (
     list_server_vendors,
     list_vendor_pooches,
     buy_pooch,
-    get_pooch_price,
+    get_pooch_buy_price,
 )
 
 __all__ = [
@@ -52,5 +52,5 @@ __all__ = [
     "list_server_vendors",
     "list_vendor_pooches",
     "buy_pooch",
-    "get_pooch_price",
+    "get_pooch_buy_price",
 ]

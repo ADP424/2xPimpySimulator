@@ -1,3 +1,4 @@
+from bot.constants import VIEW_TIMEOUT
 import discord
 from discord.ui import View, Select, Button
 
@@ -8,7 +9,7 @@ from .components.paginator import PaginatorView
 
 
 class TownView(View):
-    def __init__(self, timeout: float = 300):
+    def __init__(self, timeout: float = VIEW_TIMEOUT):
         super().__init__(timeout=timeout)
         self.add_item(TownNavigationSelect())
         self.add_item(HomeButton())

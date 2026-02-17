@@ -1,6 +1,17 @@
 import random
 from typing import Optional
 
+from game.constants import (
+    DEATH_CHANCE_PER_HEALTH_UNDER_MIN,
+    MIN_HEALTH_FOR_DEATH_CHANCE,
+    NUM_BREEDS_PER_VENDOR_POOCH_RANGE,
+    NUM_MUTATIONS_PER_VENDOR_POOCH_RANGE,
+    NUM_VENDORS_PER_SERVER,
+    POOCH_BASE_HEALTH_RANGE,
+    VENDOR_MARKUP_RANGE,
+    VENDOR_POOCH_AGE_RANGE,
+    VENDOR_POOCH_STOCK_COUNT_RANGE,
+)
 from logger import get_logger
 
 from game.manage_pooches import get_pooch_by_id
@@ -25,6 +36,9 @@ from database import (
     create_vendor,
     list_servers_for_pooch,
     list_servers,
+    get_pooch_health,
+    add_breed_to_pooch,
+    add_mutation_to_pooch,
 )
 
 logger = get_logger("game/change_day")
@@ -33,10 +47,10 @@ logger = get_logger("game/change_day")
 def _death_roll(total_health: int, rng: random.Random) -> bool:
     """Randomly determine whether a Pooch should die or not, based on its health."""
 
-    if total_health >= 5:  # TODO
+    if total_health >= MIN_HEALTH_FOR_DEATH_CHANCE:
         return False
-    deficit = 5 - max(total_health, 0)
-    chance = min(0.2 * deficit, 1.0)
+    deficit = MIN_HEALTH_FOR_DEATH_CHANCE - max(total_health, 0)
+    chance = min(DEATH_CHANCE_PER_HEALTH_UNDER_MIN * deficit, 1.0)
     return rng.random() < chance
 
 
@@ -117,7 +131,7 @@ async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeS
         if updated is None:
             continue
 
-        total_health = max(updated.base_health - updated.health_loss_age, 0)
+        total_health: int = await get_pooch_health(pooch.id)
         if _death_roll(total_health, rng):
             await set_pooch_dead(pooch.id)
             await remove_pooch_from_kennel(pooch.id)
@@ -135,15 +149,28 @@ async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeS
     logger.info("Restocking vendors for the day...")
     for server in servers:
         vendors = await list_vendors(server.discord_id)
-        if len(vendors) < 3:
-            for _ in range(3 - len(vendors)):  # TODO: Remove this and all magic numbers
-                vendor = await create_vendor(server.discord_id, rng=rng)
+        if len(vendors) < NUM_VENDORS_PER_SERVER:
+            for _ in range(NUM_VENDORS_PER_SERVER - len(vendors)):
+                vendor = await create_vendor(
+                    server.discord_id, price_markup=rng.uniform(VENDOR_MARKUP_RANGE[0], VENDOR_MARKUP_RANGE[1]), rng=rng
+                )
                 vendors.append(vendor)
         for vendor in vendors:
             await clear_vendor_pooch_stock(vendor.id)
-            stock_count = rng.randint(2, 5)  # TODO
+            stock_count = rng.randint(VENDOR_POOCH_STOCK_COUNT_RANGE[0], VENDOR_POOCH_STOCK_COUNT_RANGE[1])
             for _ in range(stock_count):
-                vendor_pooch = await create_pooch(vendor_id=vendor.id, age=rng.randint(0, 5), rng=rng)  # TODO
+                vendor_pooch = await create_pooch(
+                    vendor_id=vendor.id,
+                    age=rng.randint(VENDOR_POOCH_AGE_RANGE[0], VENDOR_POOCH_AGE_RANGE[1]),
+                    base_health=rng.randint(POOCH_BASE_HEALTH_RANGE[0], POOCH_BASE_HEALTH_RANGE[1]),
+                    rng=rng,
+                )
+                for _ in range(rng.randint(NUM_BREEDS_PER_VENDOR_POOCH_RANGE[0], NUM_BREEDS_PER_VENDOR_POOCH_RANGE[1])):
+                    await add_breed_to_pooch()
+                for _ in range(
+                    rng.randint(NUM_MUTATIONS_PER_VENDOR_POOCH_RANGE[0], NUM_MUTATIONS_PER_VENDOR_POOCH_RANGE[1])
+                ):
+                    await add_mutation_to_pooch()
                 await add_pooch_to_vendor_stock(vendor.id, vendor_pooch.id)
     logger.info("Completed daily vendor restock.")
 

@@ -1,4 +1,4 @@
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 
 from .session import session_scope
 from .get import get_pooch_parents
@@ -155,6 +155,61 @@ async def list_pooch_pregnancies() -> list[PoochPregnancy]:
 
     async with session_scope() as session:
         response = await session.execute(select(PoochPregnancy).order_by(PoochPregnancy.fetus_id.asc()))
+
+    return list(response.scalars().all())
+
+
+async def list_pooch_breeds(pooch_id: int) -> list[tuple[Breed, float]]:
+    """
+    Fetch the list of breeds the given pooch has, plus the relative weight of that breed in the pooch.
+
+    Parameters
+    ----------
+    pooch_id: int
+        The ID of the pooch to get the breeds of.
+
+    Returns
+    -------
+    list[tuple[Breed, float]]
+        The list of Breed ORM objects and their relative weight on the connected pooch in the form `(breed, weight)`.
+    """
+
+    async with session_scope() as session:
+        total_weight_subquery = (
+            select(func.sum(PoochBreed.weight)).where(PoochBreed.pooch_id == pooch_id).scalar_subquery()
+        )
+        query = (
+            select(Breed, (PoochBreed.weight / total_weight_subquery).label("relative_weight"))
+            .join(PoochBreed, PoochBreed.breed_id == Breed.id)
+            .where(PoochBreed.pooch_id == pooch_id)
+        )
+        response = await session.execute(query)
+
+    return list(response.scalars().all())
+
+
+async def list_pooch_mutations(pooch_id: int) -> list[Mutation]:
+    """
+    Fetch the list of mutations the given pooch has.
+
+    Parameters
+    ----------
+    pooch_id: int
+        The ID of the pooch to get the mutations of.
+
+    Returns
+    -------
+    list[Mutation]
+        The list of Mutation ORM objects connected to the pooch.
+    """
+
+    async with session_scope() as session:
+        query = (
+            select(Mutation)
+            .join(PoochMutation, PoochMutation.mutation_id == Mutation.id)
+            .where(PoochMutation.pooch_id == pooch_id)
+        )
+        response = await session.execute(query)
 
     return list(response.scalars().all())
 

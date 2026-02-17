@@ -1,3 +1,4 @@
+from bot.constants import VIEW_TIMEOUT
 import discord
 from discord.ui import View, Select, Button
 
@@ -26,7 +27,7 @@ async def send_home_menu(interaction: discord.Interaction):
 
 
 class HomeView(View):
-    def __init__(self, timeout: float = 300):
+    def __init__(self, timeout: float = VIEW_TIMEOUT):
         super().__init__(timeout=timeout)
         self.add_item(HomeNavigationSelect())
         self.add_item(TownButton())

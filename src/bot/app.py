@@ -1,6 +1,7 @@
 import os
 import asyncio
 from bot.commands.get_money import register_get_money_command
+from .constants import GUILDS
 import discord
 from discord import app_commands
 from dotenv import load_dotenv
@@ -14,8 +15,6 @@ from .commands.set_event_channel import register_set_event_channel_command
 from .day_change_loop import day_change_runner
 
 logger = get_logger("bot/app")
-
-GUILDS = [discord.Object(id=1267910656838078474)]
 
 
 def run():

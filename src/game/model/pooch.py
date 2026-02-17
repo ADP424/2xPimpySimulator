@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 
-from database import get_owner_by_discord_id, get_vendor_by_id
+from database import get_owner_by_discord_id, get_vendor_by_id, get_pooch_health
 from database.models import Pooch as PoochORM
 
 from .owner import Owner, to_owner
@@ -23,16 +23,14 @@ class Pooch:
     vendor_id: Optional[int]
     created_at: Optional[datetime]
 
+    health: int
+
     owner: Optional[Owner]
     vendor: Optional[Vendor]
 
     @property
     def birthday(self) -> Optional[datetime]:
         return self.created_at
-
-    @property
-    def health(self) -> int:
-        return max(int(self.base_health) - int(self.health_loss_age), 0)
 
     @property
     def status(self) -> str:
@@ -68,6 +66,7 @@ async def to_pooch(pooch: PoochORM) -> Pooch:
         base_health=pooch.base_health,
         health_loss_age=pooch.health_loss_age,
         alive=pooch.alive,
+        health=(await get_pooch_health(pooch.id)),
         owner_discord_id=pooch.owner_discord_id,
         vendor_id=pooch.vendor_id,
         created_at=pooch.created_at,

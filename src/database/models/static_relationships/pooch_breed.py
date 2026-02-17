@@ -16,5 +16,5 @@ class PoochBreed(Base):
 
     weight: Mapped[int] = mapped_column(Integer, nullable=False)
 
-    breed: Mapped[Breed] = relationship("Breed")
     pooch: Mapped[Pooch] = relationship("Pooch", back_populates="pooch_breeds")
+    breed: Mapped[Breed] = relationship("Breed")

@@ -1,7 +1,16 @@
 import random
-from typing import Optional
-from sqlalchemy import bindparam, cast, func, literal, select
+from typing import Optional, TypeVar
+from sqlalchemy import bindparam, func, select
 
+from .constants import (
+    KENNEL_POOCH_LIMIT,
+    POOCH_BASE_HEALTH,
+    POOCH_BREEDING_COOLDOWN,
+    POOCH_FETAL_AGE,
+    POOCH_HEALTH_LOSS_AGE,
+    RANDOM_SEED_SIZE_LIMIT,
+    VENDOR_PRICE_MARKUP,
+)
 from .session import session_scope
 
 from .models import *  # loads all ORM models (via database/models/__init__.py)
@@ -9,14 +18,16 @@ from .models.enums.sex import SEX
 
 from .get import get_owner_by_discord_id, get_vendor_by_id, get_pooch_by_id
 
+T = TypeVar("T")
+
 
 async def create_pooch(
     owner_discord_id: Optional[int] = None,
     vendor_id: Optional[int] = None,
     name: Optional[str] = None,
     sex: Optional[str] = None,
-    age: int = -1,
-    base_health: Optional[int] = None,
+    age: int = POOCH_FETAL_AGE,
+    base_health: int = POOCH_BASE_HEALTH,
     rng: Optional[random.Random] = None,
 ) -> Pooch:
     """
@@ -36,14 +47,14 @@ async def create_pooch(
     sex: str, optional
         The sex to give the pooch. Chooses a random one if not given.
 
-    age: int, default = -1
-        The age to make the pooch. Defaults to -1 (fetal age).
+    age: int, default : `POOCH_FETAL_AGE`
+        The age to make the pooch. Defaults to the fetal age.
 
-    base_health: int, optional
+    base_health: int, default : `POOCH_BASE_HEALTH`
         The base health to give the pooch. Chooses randomly within a range if not given.
 
     rng: Random, optional
-        The random generator to determine randomness, if any pooch traits are left to chance (name, sex, base health, etc.).
+        The random generator to determine randomness, if any pooch traits are left to chance (name, sex).
 
     Returns
     -------
@@ -53,9 +64,9 @@ async def create_pooch(
 
     rng = rng if rng is not None else random.Random()
 
-    async def _get_random_pooch_name():
+    async def _get_random_pooch_name() -> str:
         statement = select(DogName).order_by(func.hashtextextended(DogName.name, bindparam("seed"))).limit(1)
-        response = await session.execute(statement, {"seed": rng.randint(0, 2**16)})
+        response = await session.execute(statement, {"seed": rng.randint(0, RANDOM_SEED_SIZE_LIMIT)})
         dog_name = response.scalar_one_or_none()
         return dog_name.name if dog_name is not None else "Dog"
 
@@ -83,9 +94,9 @@ async def create_pooch(
             name=name or await _get_random_pooch_name(),
             sex=sex or await _get_random_sex(),
             age=age,
-            base_health=base_health or rng.randint(8, 12),  # TODO
-            health_loss_age=0,  # TODO
-            breeding_cooldown=2,  # TODO
+            base_health=base_health,
+            health_loss_age=POOCH_HEALTH_LOSS_AGE,
+            breeding_cooldown=POOCH_BREEDING_COOLDOWN,
             alive=True,
             virgin=True,
         )
@@ -118,7 +129,9 @@ async def create_owner(owner_discord_id: int) -> Owner:
     return owner
 
 
-async def create_kennel(owner_discord_id: int, name: str = "Kennel", pooch_limit: int = 10) -> Optional[Kennel]:  # TODO
+async def create_kennel(
+    owner_discord_id: int, name: str = "Kennel", pooch_limit: int = KENNEL_POOCH_LIMIT
+) -> Optional[Kennel]:
     """
     Create a kennel for the given owner.
 
@@ -127,10 +140,10 @@ async def create_kennel(owner_discord_id: int, name: str = "Kennel", pooch_limit
     owner_discord_id: int
         The discord ID of the owner to create the kennel for.
 
-    name: str, default: "Kennel"
+    name: str, default : "Kennel"
         The name to give the new kennel.
 
-    pooch_limit: int, default: 10
+    pooch_limit: int, default : `KENNEL_POOCH_LIMIT`
         The size limit to give the new kennel.
 
     Returns
@@ -157,10 +170,13 @@ async def create_kennel(owner_discord_id: int, name: str = "Kennel", pooch_limit
 
 
 async def create_vendor(
-    server_discord_id: int, name: Optional[str] = None, rng: Optional[random.Random] = None
+    server_discord_id: int,
+    name: Optional[str] = None,
+    price_markup: float = VENDOR_PRICE_MARKUP,
+    rng: Optional[random.Random] = None,
 ) -> Optional[Vendor]:
     """
-    Fetch the list of vendors for a given server.
+    Create a vendor in the given server.
 
     Parameters
     ----------
@@ -170,8 +186,11 @@ async def create_vendor(
     name: str, optional
         The name to give the new vendor. Chooses a random one if not given.
 
-    rng: int, optional
-        The random generate to determine randomness, if any vendor traits are left to chance (name, desired mutations).
+    price_markup: float, default : `VENDOR_PRICE_MARKUP`
+        The markup to multiply the buying price of any pooches the vendor is selling by.
+
+    rng: Random, optional
+        The random generator to determine randomness, if any vendor traits are left to chance (name, desired mutations).
 
     Returns
     -------
@@ -181,25 +200,36 @@ async def create_vendor(
 
     rng = rng if rng is not None else random.Random()
 
-    async def _get_random_vendor_name():
+    async def _get_random_vendor_name() -> str:
         statement = (
             select(VendorFirstName).order_by(func.hashtextextended(VendorFirstName.name, bindparam("seed"))).limit(1)
         )
-        response = await session.execute(statement, {"seed": rng.randint(0, 2**16)})
+        response = await session.execute(statement, {"seed": rng.randint(0, RANDOM_SEED_SIZE_LIMIT)})
         first_name = response.scalar_one_or_none()
 
         statement = (
             select(VendorLastName).order_by(func.hashtextextended(VendorLastName.name, bindparam("seed"))).limit(1)
         )
-        response = await session.execute(statement, {"seed": rng.randint(0, 2**16)})
+        response = await session.execute(statement, {"seed": rng.randint(0, RANDOM_SEED_SIZE_LIMIT)})
         last_name = response.scalar_one_or_none()
 
-        return f"{(first_name.name + ' ') if first_name is not None else ''}{last_name.name if last_name is not None else ''}"
+        return f"{(first_name.name + " ") if first_name is not None else ""}{last_name.name if last_name is not None else ""}"
 
-    # TODO: Add random desired mutations
+    async def _get_random_mutation_id() -> Optional[int]:
+        statement = select(Mutation.id).order_by(func.hashtextextended(Mutation.name, bindparam("seed"))).limit(1)
+        response = await session.execute(statement, {"seed": rng.randint(0, RANDOM_SEED_SIZE_LIMIT)})
+        mutation = response.scalar_one_or_none()
+        return mutation
 
     async with session_scope() as session:
-        vendor = Vendor(server_discord_id=server_discord_id, name=name or await _get_random_vendor_name())
+        vendor = Vendor(
+            server_discord_id=server_discord_id,
+            name=name or await _get_random_vendor_name(),
+            price_markup=price_markup,
+            desired_mutation_1=(await _get_random_mutation_id()),
+            desired_mutation_2=(await _get_random_mutation_id()),
+            desired_mutation_3=(await _get_random_mutation_id()),
+        )
         session.add(vendor)
         await session.flush()
 
@@ -253,6 +283,98 @@ async def add_pooch_to_kennel(kennel_id: int, pooch_id: int) -> KennelPooch:
         await session.flush()
 
     return kennel_pooch
+
+
+def _weighted_choice(rng: random.Random, items: list[tuple[T, int]]) -> T:
+    total = sum(weight for _, weight in items)
+    roll = rng.uniform(0, total)
+
+    accumulated = 0
+    for item, weight in items:
+        accumulated += weight
+        if roll <= accumulated:
+            return item
+
+
+async def add_breed_to_pooch(
+    pooch_id: int, breed_id: Optional[int] = None, rng: Optional[random.Random] = None
+) -> PoochBreed:
+    """
+    Add the breed with the given ID to the pooch with the given ID.
+    If a breed ID isn't given, choose a random one, with chance based on its rarity.
+
+    Parameters
+    ----------
+    pooch_id: int
+        The ID of the pooch to add the breed to.
+
+    breed_id: int, optional
+        The ID of the breed to add to the pooch.
+
+    rng: Random, optional
+        The random generator to use to determine the random breed, if `breed_id` is left blank.
+
+    Returns
+    -------
+    PoochBreed
+        The PoochBreed relationship ORM object just created.
+    """
+
+    rng = rng if rng is not None else random.Random()
+
+    async with session_scope() as session:
+
+        if breed_id is None:
+            query = select(Breed, RarityWeight.weight).join(RarityWeight, RarityWeight.rarity == Breed.rarity)
+
+            response = await session.execute(query)
+            rows = [(breed, weight) for breed, weight in response.tuples().all()]
+            breed = _weighted_choice(rng, rows)
+            breed_id = breed.id
+
+        pooch_breed = PoochBreed(pooch_id=pooch_id, breed_id=breed_id)
+        session.add(pooch_breed)
+        await session.flush()
+
+    return pooch_breed
+
+
+async def add_mutation_to_pooch(pooch_id: int, mutation_id: Optional[int] = None) -> PoochMutation:
+    """
+    Add the mutation with the given ID to the pooch with the given ID.
+    If a mutation ID isn't given, choose a random one, with chance based on its rarity.
+
+    Parameters
+    ----------
+    pooch_id: int
+        The ID of the pooch to add the mutation to.
+
+    mutation_id: int, optional
+        The ID of the mutation to add to the pooch.
+
+    Returns
+    -------
+    PoochMutation
+        The PoochMutation relationship ORM object just created.
+    """
+
+    rng = rng if rng is not None else random.Random()
+
+    async with session_scope() as session:
+
+        if mutation_id is None:
+            query = select(Mutation, RarityWeight.weight).join(RarityWeight, RarityWeight.rarity == Mutation.rarity)
+
+            response = await session.execute(query)
+            rows = [(mutation, weight) for mutation, weight in response.tuples().all()]
+            mutation = _weighted_choice(rng, rows)
+            mutation_id = mutation.id
+
+        pooch_mutation = PoochMutation(pooch_id=pooch_id, pooch_mutation=mutation_id)
+        session.add(pooch_mutation)
+        await session.flush()
+
+    return pooch_mutation
 
 
 async def add_owner_to_server(server_discord_id: int, owner_discord_id: int) -> OwnerServer:

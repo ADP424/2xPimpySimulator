@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import TYPE_CHECKING
-from sqlalchemy import BigInteger, DateTime, Text, ForeignKey, UniqueConstraint, text
+from sqlalchemy import BigInteger, DateTime, Numeric, Text, ForeignKey, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.ext.associationproxy import association_proxy
 
@@ -19,6 +19,7 @@ class Vendor(Base):
     server_discord_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("servers.discord_id", ondelete="CASCADE"))
 
     name: Mapped[str] = mapped_column(Text)
+    price_markup: Mapped[float] = mapped_column(Numeric(4, 3), nullable=False, server_default=text("1.0"))
 
     desired_mutation_1: Mapped[int] = mapped_column(BigInteger, ForeignKey("mutations.id"), nullable=True)
     desired_mutation_2: Mapped[int] = mapped_column(BigInteger, ForeignKey("mutations.id"), nullable=True)

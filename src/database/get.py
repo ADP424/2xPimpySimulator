@@ -1,5 +1,5 @@
 from typing import Optional
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from .session import session_scope
 
@@ -100,7 +100,7 @@ async def get_server_by_discord_id(server_discord_id: int) -> Optional[Server]:
     Parameters
     ----------
     server_discord_id: int
-        The ID of the server to fetch.
+        The Discord ID of the server to fetch.
 
     Returns
     -------
@@ -110,6 +110,28 @@ async def get_server_by_discord_id(server_discord_id: int) -> Optional[Server]:
 
     async with session_scope() as session:
         query = select(Server).where(Server.discord_id == server_discord_id)
+        response = await session.execute(query)
+
+    return response.scalar_one_or_none()
+
+
+async def get_mutation_by_id(mutation_id: int) -> Optional[Mutation]:
+    """
+    Fetch a mutation by its ID.
+
+    Parameters
+    ----------
+    mutation_id: int
+        The ID of the mutation to fetch.
+
+    Returns
+    -------
+    Mutation, optional
+        The Mutation ORM object, or None if no mutation with the given ID exists.
+    """
+
+    async with session_scope() as session:
+        query = select(Mutation).where(Mutation.id == mutation_id)
         response = await session.execute(query)
 
     return response.scalar_one_or_none()
@@ -216,6 +238,35 @@ async def get_owner_server(server_discord_id: int, owner_discord_id: int) -> Opt
     async with session_scope() as session:
         query = select(OwnerServer).where(
             OwnerServer.server_discord_id == server_discord_id and OwnerServer.owner_discord_id == owner_discord_id
+        )
+        response = await session.execute(query)
+
+    return response.scalar_one_or_none()
+
+
+async def get_pooch_health(pooch_id: int) -> Optional[int]:
+    """
+    Get the current health of the given pooch, taking into account age and mutations.
+
+    Parameters
+    ----------
+    pooch_id: int
+        The ID of the pooch to get the health of.
+
+    Returns
+    -------
+    int, optional
+        The current health of the pooch, or None if the pooch wasn't found.
+    """
+
+    async with session_scope() as session:
+        query = (
+            select(Pooch.base_health - Pooch.health_loss_age + func.coalesce(func.sum(HealthImpactWeight.weight), 0))
+            .outerjoin(PoochMutation, PoochMutation.pooch_id == Pooch.id)
+            .outerjoin(Mutation, Mutation.id == PoochMutation.mutation_id)
+            .outerjoin(HealthImpactWeight, HealthImpactWeight.health_impact == Mutation.health_impact)
+            .where(Pooch.id == pooch_id)
+            .group_by(Pooch.id, Pooch.base_health, Pooch.health_loss_age)
         )
         response = await session.execute(query)
 

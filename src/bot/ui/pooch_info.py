@@ -1,3 +1,4 @@
+from bot.constants import VIEW_TIMEOUT
 import discord
 from discord.ui import View, Select, Button
 from typing import TYPE_CHECKING, Optional, Sequence
@@ -22,7 +23,7 @@ class _FamilySelect(Select):
 
 
 class PoochInfoView(View):
-    def __init__(self, *, server: Server, pooch: Pooch, owner: Optional[Owner], timeout: float = 300):
+    def __init__(self, *, server: Server, pooch: Pooch, owner: Optional[Owner], timeout: float = VIEW_TIMEOUT):
         super().__init__(timeout=timeout)
         self.server = server
         self.pooch = pooch

@@ -1,3 +1,4 @@
+from bot.constants import ITEMS_PER_PAGE
 import discord
 from discord.ui import Button, Select, View
 from typing import TYPE_CHECKING, List, Optional, Tuple
@@ -21,11 +22,11 @@ class DayChangeStatusPageSource(PageSource):
         return
 
     def page_count(self) -> int:
-        return max((len(self.pooches) + 9) // 10, 1)
+        return max((len(self.pooches) + (ITEMS_PER_PAGE - 1)) // ITEMS_PER_PAGE, 1)
 
     async def render(self, view: View, page_index: int) -> Tuple[Optional[str], Optional[discord.Embed]]:
-        start = page_index * 10
-        end = min(start + 10, len(self.pooches))
+        start = page_index * ITEMS_PER_PAGE
+        end = min(start + ITEMS_PER_PAGE, len(self.pooches))
         pooches = self.pooches[start:end]
 
         embed = discord.Embed(title=self.title, description=self.description)

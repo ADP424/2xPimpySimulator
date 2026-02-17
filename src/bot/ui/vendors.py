@@ -8,7 +8,7 @@ from game import (
     buy_pooch,
     get_or_create_owner,
     get_or_create_server,
-    get_pooch_price,
+    get_pooch_buy_price,
     list_server_vendors,
     list_vendor_pooches,
 )
@@ -38,11 +38,16 @@ class VendorsPageSource(PageSource):
 
         embed = discord.Embed(title=vendor.name, description=f"{len(pooches)} pooches for sale")
 
+        prices_by_pooch_id: dict[int, int] = {}
+        for pooch in pooches:
+            prices_by_pooch_id[pooch.id] = await get_pooch_buy_price(pooch.id, vendor.id)
+
         controls = VendorPageControls(
             server_discord_id=self.server_discord_id,
             owner_discord_id=self.owner_discord_id,
             vendor=vendor,
             pooches=pooches,
+            prices_by_pooch_id=prices_by_pooch_id,
         )
         controls.attach(view)
         return None, embed
@@ -56,6 +61,7 @@ class VendorPageControls:
         owner_discord_id: int,
         vendor: Vendor,
         pooches: list[Pooch],
+        prices_by_pooch_id: dict[int, int],
     ):
         self.server_discord_id = server_discord_id
         self.owner_discord_id = owner_discord_id
@@ -67,7 +73,10 @@ class VendorPageControls:
             options = [discord.SelectOption(label="No pooches for sale", value="__none__")]
         else:
             options = [
-                discord.SelectOption(label=f"{pooch.name} (${get_pooch_price(pooch.id)})", value=str(pooch.id))
+                discord.SelectOption(
+                    label=f"{pooch.name} (${prices_by_pooch_id.get(pooch.id, 0)})",
+                    value=str(pooch.id),
+                )
                 for pooch in pooches
             ]
 

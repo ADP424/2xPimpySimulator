@@ -1,3 +1,4 @@
+from bot.constants import VIEW_TIMEOUT
 import discord
 from discord.ui import View, Button
 from typing import Optional, Protocol
@@ -13,7 +14,7 @@ class PageSource(Protocol):
 
 class PaginatorView(View):
 
-    def __init__(self, source: PageSource, owner_discord_id: int, *, timeout: float = 300):
+    def __init__(self, source: PageSource, owner_discord_id: int, *, timeout: float = VIEW_TIMEOUT):
         super().__init__(timeout=timeout)
         self._source = source
         self._owner_id = owner_discord_id

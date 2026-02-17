@@ -49,14 +49,16 @@ async def session_scope() -> AsyncIterator[AsyncSession]:
 def _get_database_url() -> str:
     load_dotenv()
 
-    db = os.environ.get("DATABASE")
+    database = os.environ.get("DATABASE")
     user = os.environ.get("USER")
     host = os.environ.get("HOST")
     password = os.environ.get("PASSWORD")
     port = os.environ.get("PORT", "5432")
 
     missing = [
-        key for key, value in [("DATABASE", db), ("USER", user), ("HOST", host), ("PASSWORD", password)] if not value
+        key
+        for key, value in [("DATABASE", database), ("USER", user), ("HOST", host), ("PASSWORD", password)]
+        if not value
     ]
     if missing:
         raise RuntimeError(
@@ -67,7 +69,7 @@ def _get_database_url() -> str:
     user_q = quote_plus(str(user))
     password_q = quote_plus(str(password))
 
-    return f"postgresql+asyncpg://{user_q}:{password_q}@{host}:{port}/{db}"
+    return f"postgresql+asyncpg://{user_q}:{password_q}@{host}:{port}/{database}"
 
 
 def _make_engine() -> AsyncEngine:
