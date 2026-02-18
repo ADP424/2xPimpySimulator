@@ -118,7 +118,7 @@ class KennelPageControls:
             return
 
         pooch = self.selected_pooch
-        mates = [pooch for pooch in self.pooches if pooch.id != pooch.id and pooch.sex != pooch.sex]
+        mates = [mate for mate in self.pooches if mate.id != pooch.id and mate.sex != pooch.sex]
 
         if not mates:
             await reply_to_interacted_message(

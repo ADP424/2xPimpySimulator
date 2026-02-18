@@ -26,15 +26,21 @@ class PoochBreedInfo:
 @dataclass(frozen=True)
 class Pooch:
     id: int
+
     name: str
     age: int
     sex: str
 
     base_health: int
     health_loss_age: int
+
+    breeding_cooldown: int
     alive: bool
+    virgin: bool
+
     owner_discord_id: Optional[int]
     vendor_id: Optional[int]
+
     created_at: Optional[datetime]
 
     health: int
@@ -88,7 +94,9 @@ async def to_pooch(pooch: PoochORM) -> Pooch:
         sex=pooch.sex,
         base_health=pooch.base_health,
         health_loss_age=pooch.health_loss_age,
+        breeding_cooldown=pooch.breeding_cooldown,
         alive=pooch.alive,
+        virgin=pooch.virgin,
         health=(await get_pooch_health(pooch.id)),
         owner_discord_id=pooch.owner_discord_id,
         vendor_id=pooch.vendor_id,

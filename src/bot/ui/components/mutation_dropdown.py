@@ -12,7 +12,7 @@ from game.model import Mutation
 
 def build_mutation_info_embed(mutation: Mutation) -> discord.Embed:
     embed = discord.Embed(title=mutation.name, description=mutation.description)
-    embed.add_field(name="Alt Name", value=mutation.alt_name or "—", inline=True)
+    embed.add_field(name="Also Known As", value=mutation.alt_name or "—", inline=True)
     embed.add_field(name="Category", value=mutation.category or "—", inline=True)
     embed.add_field(name="Rarity", value=str(mutation.rarity).capitalize(), inline=True)
     embed.add_field(name="Health Impact", value=str(mutation.health_impact).replace("_", " ").capitalize(), inline=True)

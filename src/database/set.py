@@ -48,6 +48,7 @@ async def create_pooch(
     sex: Optional[str] = None,
     age: int = POOCH_FETAL_AGE,
     base_health: int = POOCH_BASE_HEALTH,
+    breeding_cooldown: int = POOCH_BREEDING_COOLDOWN,
     rng: Optional[random.Random] = None,
 ) -> Pooch:
     """
@@ -71,7 +72,10 @@ async def create_pooch(
         The age to make the pooch. Defaults to the fetal age.
 
     base_health: int, default : `POOCH_BASE_HEALTH`
-        The base health to give the pooch. Chooses randomly within a range if not given.
+        The base health to give the pooch. Defaults to the base average pooch health.
+
+    breeding_cooldown: int, default : `POOCH_BREEDING_COOLDOWN`
+        The breeding cooldown to start the pooch off with. Defaults to the base breeding cooldown.
 
     rng: Random, optional
         The random generator to determine randomness, if any pooch traits are left to chance (name, sex).
@@ -116,7 +120,7 @@ async def create_pooch(
             age=age,
             base_health=base_health,
             health_loss_age=POOCH_HEALTH_LOSS_AGE,
-            breeding_cooldown=POOCH_BREEDING_COOLDOWN,
+            breeding_cooldown=breeding_cooldown,
             alive=True,
             virgin=True,
         )

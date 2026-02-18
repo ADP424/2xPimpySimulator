@@ -19,14 +19,17 @@ from database import (
     set_pooch_parentage,
     set_pooch_virgin,
 )
-from game.constants import (
+
+from .constants import (
     NUM_INCEST_MUTATION_ROLLS,
+    POOCH_BASE_HEALTH_RANGE,
     POOCH_BREEDING_COOLDOWN,
     POOCH_FETAL_AGE,
     TRIPLETS_CHANCE,
     TWINS_CHANCE,
 )
-from game.exceptions.pooch_not_found import PoochNotFound
+from .exceptions.pooch_not_found import PoochNotFound
+from .utils import get_pooch_mutation_advanced_option_total
 
 
 def _combine_puppy_name(father_name: str, mother_name: str) -> str:
@@ -175,8 +178,14 @@ async def breed_pooches(first_pooch_id: int, second_pooch_id: int, rng_seed: Opt
     if father.breeding_cooldown > 0 or mother.breeding_cooldown > 0:
         raise ValueError("One or both pooches are still on breeding cooldown.")
 
-    await set_pooch_breeding_cooldown(father.id, POOCH_BREEDING_COOLDOWN)
-    await set_pooch_breeding_cooldown(mother.id, POOCH_BREEDING_COOLDOWN)
+    await set_pooch_breeding_cooldown(
+        father.id,
+        max(POOCH_BREEDING_COOLDOWN + get_pooch_mutation_advanced_option_total(father.id, "breeding_cooldown"), 0),
+    )
+    await set_pooch_breeding_cooldown(
+        mother.id,
+        max(POOCH_BREEDING_COOLDOWN + get_pooch_mutation_advanced_option_total(mother.id, "breeding_cooldown"), 0),
+    )
     await set_pooch_virgin(father.id)
     await set_pooch_virgin(mother.id)
 
@@ -203,6 +212,7 @@ async def breed_pooches(first_pooch_id: int, second_pooch_id: int, rng_seed: Opt
             owner_discord_id=mother.owner_discord_id,
             name=puppy_name,
             age=POOCH_FETAL_AGE,
+            base_health=rng.randint(POOCH_BASE_HEALTH_RANGE[0], POOCH_BASE_HEALTH_RANGE[1]),
             rng=rng,
         )
 
@@ -242,6 +252,11 @@ async def breed_pooches(first_pooch_id: int, second_pooch_id: int, rng_seed: Opt
         for _ in range(NUM_INCEST_MUTATION_ROLLS):
             if incest_level > 0 and rng.random() < incest_level:
                 await add_mutation_to_pooch(puppy.id, rng=rng)
+
+        set_pooch_breeding_cooldown(
+            puppy.id,
+            max(POOCH_BREEDING_COOLDOWN + get_pooch_mutation_advanced_option_total(puppy.id, "breeding_cooldown"), 0),
+        )
 
         puppies.append(puppy.id)
 

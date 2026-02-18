@@ -22,6 +22,7 @@ from database import (
     remove_pooch_from_kennel,
     set_pooch_dead,
 )
+from database.update import set_pooch_breeding_cooldown
 from game.constants import (
     DEATH_CHANCE_PER_HEALTH_UNDER_MIN,
     MIN_HEALTH_FOR_DEATH_CHANCE,
@@ -29,12 +30,14 @@ from game.constants import (
     NUM_MUTATIONS_PER_VENDOR_POOCH_RANGE,
     NUM_VENDORS_PER_SERVER,
     POOCH_BASE_HEALTH_RANGE,
+    POOCH_BREEDING_COOLDOWN,
     VENDOR_MARKUP_RANGE,
     VENDOR_POOCH_AGE_RANGE,
     VENDOR_POOCH_STOCK_COUNT_RANGE,
 )
 from game.manage_kennels import add_pooch_to_kennel
 from game.manage_pooches import get_pooch_by_id
+from game.utils import get_pooch_mutation_advanced_option_total
 from logger import get_logger
 
 from .model import BirthEvent, DayChangeSummary, DeathEvent, to_pooch, to_server
@@ -168,6 +171,14 @@ async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeS
                     rng.randint(NUM_MUTATIONS_PER_VENDOR_POOCH_RANGE[0], NUM_MUTATIONS_PER_VENDOR_POOCH_RANGE[1])
                 ):
                     await add_mutation_to_pooch(vendor_pooch.id)
+                set_pooch_breeding_cooldown(
+                    vendor_pooch.id,
+                    max(
+                        POOCH_BREEDING_COOLDOWN
+                        + get_pooch_mutation_advanced_option_total(vendor_pooch.id, "breeding_cooldown"),
+                        0,
+                    ),
+                )
                 await add_pooch_to_vendor_stock(vendor.id, vendor_pooch.id)
     logger.info("Completed daily vendor restock.")
 

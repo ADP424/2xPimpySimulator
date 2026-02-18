@@ -12,7 +12,7 @@ from game.model import Breed
 
 def build_breed_info_embed(breed: Breed) -> discord.Embed:
     embed = discord.Embed(title=breed.name, description=breed.description)
-    embed.add_field(name="Alt Name", value=breed.alt_name or "—", inline=True)
+    embed.add_field(name="Also Known As", value=breed.alt_name or "—", inline=True)
     embed.add_field(name="Category", value=breed.category or "—", inline=True)
     embed.add_field(name="Rarity", value=str(breed.rarity).capitalize(), inline=True)
     return embed
