@@ -6,6 +6,7 @@ from bot.ui.util import edit_interaction, reply_to_interacted_message
 
 from .components.paginator import PaginatorView
 from .vendors import VendorsPageSource
+from .vet_clinic import VetClinicView
 
 
 class TownView(View):
@@ -18,9 +19,10 @@ class TownView(View):
 class TownNavigationSelect(Select):
     def __init__(self):
         super().__init__(
-            placeholder="Navigate the town",
+            placeholder="Navigate the Town",
             options=[
                 discord.SelectOption(label="Vendors", value="vendors"),
+                discord.SelectOption(label="Veterinary Clinic", value="vet"),
             ],
             row=0,
         )
@@ -36,10 +38,14 @@ class TownNavigationSelect(Select):
             content, embed = await view.build_first_page()
             await reply_to_interacted_message(
                 interaction,
-                content=content if content is not None else "Vendor stalls:",
+                content=content if content is not None else "**Vendor Stalls**",
                 embed=embed,
                 view=view,
             )
+
+        if self.values[0] == "vet":
+            view = VetClinicView(owner_discord_id=interaction.user.id)
+            await reply_to_interacted_message(interaction, content="Welcome to the town vet!", view=view)
 
 
 class HomeButton(Button):

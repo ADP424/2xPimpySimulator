@@ -18,6 +18,10 @@ from .manage_servers import (
     get_or_create_server,
     set_event_channel,
 )
+from .manage_static import (
+    list_all_breeds,
+    list_all_mutations,
+)
 from .manage_vendors import (
     buy_pooch,
     get_pooch_buy_price,
@@ -48,4 +52,7 @@ __all__ = [
     "list_vendor_pooches",
     "buy_pooch",
     "get_pooch_buy_price",
+    # Static listing commands
+    "list_all_breeds",
+    "list_all_mutations",
 ]

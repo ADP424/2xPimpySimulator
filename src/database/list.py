@@ -230,6 +230,24 @@ async def list_pooch_mutations(pooch_id: int) -> list[Mutation]:
     return list(response.scalars().all())
 
 
+async def list_all_breeds() -> list[Breed]:
+    """Fetch every Breed (static table) in alphabetical order."""
+
+    async with session_scope() as session:
+        response = await session.execute(select(Breed).order_by(Breed.name.asc(), Breed.id.asc()))
+
+    return list(response.scalars().all())
+
+
+async def list_all_mutations() -> list[Mutation]:
+    """Fetch every Mutation (static table) in alphabetical order."""
+
+    async with session_scope() as session:
+        response = await session.execute(select(Mutation).order_by(Mutation.name.asc(), Mutation.id.asc()))
+
+    return list(response.scalars().all())
+
+
 async def list_vendors(server_discord_id: int) -> list[Vendor]:
     """
     Fetch the list of vendors for a given server.

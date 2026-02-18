@@ -18,6 +18,8 @@ from .get import (
     get_vendor_server,
 )
 from .list import (
+    list_all_breeds,
+    list_all_mutations,
     list_kennels_for_owner,
     list_living_pooches,
     list_owner_servers,
@@ -76,6 +78,8 @@ __all__ = [
     "list_pooch_pregnancies",
     "list_pooch_breeds",
     "list_pooch_mutations",
+    "list_all_breeds",
+    "list_all_mutations",
     "list_vendors",
     "list_vendor_pooch_stock",
     "list_servers_for_pooch",

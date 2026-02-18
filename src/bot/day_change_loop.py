@@ -36,19 +36,17 @@ async def post_day_change_summaries(bot: discord.Client, summaries: dict[int, Da
                 continue
 
         if not summary.births and not summary.deaths:
-            await channel.send(embed=discord.Embed(title="🌙 Day Change", description="Nothing to report."))
+            await channel.send(embed=discord.Embed(title="Day Change", description="Nothing to report."))
             continue
 
-        desc = f"Births: **{len(summary.births)}**\nDeaths: **{len(summary.deaths)}**"
+        description = f"Births: **{len(summary.births)}**\nDeaths: **{len(summary.deaths)}**"
         view = make_status_view(
             server=summary.server,
             pooches=summary.mentioned_pooches,
-            title="🌙 Day Change",
-            description=desc,
+            title="Day Change",
+            description=description,
         )
 
-        # Build the first page *before* sending so paginator button disabled-states
-        # are correct on the initial message (there is no interaction object here).
         await view._source.load()  # type: ignore
         view._page = 0  # type: ignore
         view._update_nav_disabled()  # type: ignore

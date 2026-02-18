@@ -11,10 +11,16 @@ from database import (
 )
 from database.models import Pooch as PoochORM
 
-from .breed import PoochBreedInfo, to_pooch_breed_info
+from .breed import Breed, to_breed
 from .mutation import Mutation, to_mutation
 from .owner import Owner, to_owner
 from .vendor import Vendor, to_vendor
+
+
+@dataclass(frozen=True)
+class PoochBreedInfo:
+    breed: Breed
+    relative_weight: float
 
 
 @dataclass(frozen=True)
@@ -69,11 +75,11 @@ async def to_pooch(pooch: PoochORM) -> Pooch:
         The converted Pooch dataclass object.
     """
 
-    pooch_breeds = await list_pooch_breeds(pooch.id)
-    breeds = [(await to_pooch_breed_info(breed, relative_weight)) for breed, relative_weight in pooch_breeds]
+    breed_pairs = await list_pooch_breeds(pooch.id)
+    breeds = [PoochBreedInfo(breed=(await to_breed(b)), relative_weight=rel) for b, rel in breed_pairs]
 
-    pooch_mutations = await list_pooch_mutations(pooch.id)
-    mutations = [(await to_mutation(mutation)) for mutation in pooch_mutations]
+    mutation_orms = await list_pooch_mutations(pooch.id)
+    mutations = [(await to_mutation(m)) for m in mutation_orms]
 
     return Pooch(
         id=pooch.id,
