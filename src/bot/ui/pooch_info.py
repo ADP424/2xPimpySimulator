@@ -8,7 +8,7 @@ from bot.ui.util import edit_interaction, mention, reply_to_interacted_message
 from game import get_pooch_family
 
 if TYPE_CHECKING:
-    from game.model import Owner, Pooch, Server
+    from game.model import Mutation, Owner, Pooch, PoochBreedInfo, Server
 
 
 class _FamilySelect(Select):
@@ -21,6 +21,34 @@ class _FamilySelect(Select):
         )
         self.kind = kind
         self._members = list(members)
+
+
+class _BreedSelect(Select):
+    def __init__(self, breeds: Sequence["PoochBreedInfo"], *, placeholder: str = "Select a breed"):
+        super().__init__(
+            placeholder=placeholder,
+            options=[
+                discord.SelectOption(
+                    label=f"{pb.breed.name} ({pb.relative_weight:.0%})",
+                    value=str(pb.breed.id),
+                )
+                for pb in breeds
+            ],
+            min_values=1,
+            max_values=1,
+        )
+        self._breeds = list(breeds)
+
+
+class _MutationSelect(Select):
+    def __init__(self, mutations: Sequence["Mutation"], *, placeholder: str = "Select a mutation"):
+        super().__init__(
+            placeholder=placeholder,
+            options=[discord.SelectOption(label=m.name, value=str(m.id)) for m in mutations],
+            min_values=1,
+            max_values=1,
+        )
+        self._mutations = list(mutations)
 
 
 class PoochInfoView(View):
@@ -67,6 +95,12 @@ class PoochInfoView(View):
         embed.add_field(name="Status", value=self.pooch.status.capitalize(), inline=True)
         embed.add_field(name="Birthday", value=str(self.pooch.birthday.date()), inline=True)
 
+        # Breeds & mutations
+        breed_names = ", ".join(f"{pb.breed.name} ({pb.relative_weight:.0%})" for pb in self.pooch.breeds) or "None"
+        mutation_names = ", ".join(m.name for m in self.pooch.mutations) or "None"
+        embed.add_field(name="Breeds", value=breed_names, inline=False)
+        embed.add_field(name="Mutations", value=mutation_names, inline=False)
+
         parents = family.get("parents", [])
         children = family.get("children", [])
         siblings = family.get("siblings", [])
@@ -107,7 +141,84 @@ class PoochInfoView(View):
             self.add_item(self.sibling_info_button)
             row_cursor += 2
 
+        # Breed & mutation info selectors
+        if self.pooch.breeds:
+            breed_select = _BreedSelect(self.pooch.breeds)
+            breed_select.callback = self._on_breed_selected  # type: ignore
+            breed_select.row = row_cursor
+            self.add_item(breed_select)
+            row_cursor += 1
+
+        if self.pooch.mutations:
+            mutation_select = _MutationSelect(self.pooch.mutations)
+            mutation_select.callback = self._on_mutation_selected  # type: ignore
+            mutation_select.row = row_cursor
+            self.add_item(mutation_select)
+            row_cursor += 1
+
         return embed
+
+    async def _on_breed_selected(self, interaction: discord.Interaction):
+        selected_value = str(interaction.data["values"][0])  # type: ignore
+        selected_id = int(selected_value)
+
+        selected = next((pb for pb in self.pooch.breeds if pb.breed.id == selected_id), None)
+        if selected is None:
+            return
+
+        # Keep the selection highlighted
+        for item in self.children:
+            if isinstance(item, _BreedSelect):
+                for option in item.options:
+                    option.default = option.value == selected_value
+
+        breed = selected.breed
+        embed = discord.Embed(title=breed.name, description=(breed.description or "None"))
+        embed.add_field(name="Also Known As", value=breed.alt_name or "None", inline=True)
+        embed.add_field(name="Category", value=breed.category or "None", inline=True)
+        embed.add_field(name="Rarity", value=str(breed.rarity).capitalize(), inline=True)
+        embed.add_field(name="Relative Weight", value=f"{selected.relative_weight:.0%}", inline=True)
+        embed.add_field(name="Description", value=breed.description or "None", inline=False)
+
+        if not interaction.response.is_done():
+            await interaction.response.defer()
+        await interaction.followup.send(embed=embed)
+        await edit_interaction(interaction, view=self)
+
+    async def _on_mutation_selected(self, interaction: discord.Interaction):
+        selected_value = str(interaction.data["values"][0])  # type: ignore
+        selected_id = int(selected_value)
+
+        selected = next((m for m in self.pooch.mutations if m.id == selected_id), None)
+        if selected is None:
+            return
+
+        # Keep the selection highlighted
+        for item in self.children:
+            if isinstance(item, _MutationSelect):
+                for option in item.options:
+                    option.default = option.value == selected_value
+
+        mutation = selected
+        embed = discord.Embed(title=mutation.name, description=(mutation.description or "None"))
+        embed.add_field(name="Also Known As", value=mutation.alt_name or "None", inline=True)
+        embed.add_field(name="Category", value=mutation.category or "None", inline=True)
+        embed.add_field(name="Rarity", value=str(mutation.rarity).capitalize(), inline=True)
+        embed.add_field(name="Heritability", value=f"{mutation.heritability:.0%}", inline=True)
+        embed.add_field(name="Health Impact", value=str(mutation.health_impact).capitalize(), inline=True)
+        embed.add_field(
+            name="Affects",
+            value=(
+                ", ".join(part for part, ok in (("Females", mutation.affects_females), ("Males", mutation.affects_males)) if ok)
+                or "None"
+            ),
+            inline=True,
+        )
+
+        if not interaction.response.is_done():
+            await interaction.response.defer()
+        await interaction.followup.send(embed=embed)
+        await edit_interaction(interaction, view=self)
 
     async def _on_family_selected(self, interaction: discord.Interaction):
         selected_value = str(interaction.data["values"][0])  # type: ignore

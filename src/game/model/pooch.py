@@ -2,9 +2,17 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 
-from database import get_owner_by_discord_id, get_pooch_health, get_vendor_by_id
+from database import (
+    get_owner_by_discord_id,
+    get_pooch_health,
+    get_vendor_by_id,
+    list_pooch_breeds,
+    list_pooch_mutations,
+)
 from database.models import Pooch as PoochORM
 
+from .breed import PoochBreedInfo, to_pooch_breed_info
+from .mutation import Mutation, to_mutation
 from .owner import Owner, to_owner
 from .vendor import Vendor, to_vendor
 
@@ -27,6 +35,9 @@ class Pooch:
 
     owner: Optional[Owner]
     vendor: Optional[Vendor]
+
+    breeds: list[PoochBreedInfo]
+    mutations: list[Mutation]
 
     @property
     def birthday(self) -> Optional[datetime]:
@@ -58,6 +69,12 @@ async def to_pooch(pooch: PoochORM) -> Pooch:
         The converted Pooch dataclass object.
     """
 
+    pooch_breeds = await list_pooch_breeds(pooch.id)
+    breeds = [(await to_pooch_breed_info(breed, relative_weight)) for breed, relative_weight in pooch_breeds]
+
+    pooch_mutations = await list_pooch_mutations(pooch.id)
+    mutations = [(await to_mutation(mutation)) for mutation in pooch_mutations]
+
     return Pooch(
         id=pooch.id,
         name=pooch.name,
@@ -76,4 +93,6 @@ async def to_pooch(pooch: PoochORM) -> Pooch:
             else None
         ),
         vendor=(await to_vendor(await get_vendor_by_id(pooch.vendor_id))) if pooch.vendor_id is not None else None,
+        breeds=breeds,
+        mutations=mutations,
     )

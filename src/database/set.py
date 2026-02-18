@@ -231,10 +231,9 @@ async def create_vendor(
         response = await session.execute(statement, {"seed": rng.randint(0, RANDOM_SEED_SIZE_LIMIT)})
         last_name = response.scalar_one_or_none()
 
-        return (
-            f"{(first_name.name + " ") if first_name is not None else ""}"
-            f"{last_name.name if last_name is not None else ""}"
-        )
+        first = (first_name.name + " ") if first_name is not None else ""
+        last = last_name.name if last_name is not None else ""
+        return f"{first}{last}"
 
     async def _get_random_mutation_id() -> Optional[int]:
         statement = select(Mutation.id).order_by(func.hashtextextended(Mutation.name, bindparam("seed"))).limit(1)
