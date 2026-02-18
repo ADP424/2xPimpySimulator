@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 
 class DayChangeStatusPageSource(PageSource):
-    def __init__(self, *, server: Server, pooches: List[Pooch], title: str, description: str):
+    def __init__(self, server: Server, pooches: List[Pooch], title: str, description: str):
         self.server = server
         self.pooches = pooches
         self.title = title
@@ -45,7 +45,7 @@ class DayChangeStatusPageSource(PageSource):
 
 
 class _StatusControls:
-    def __init__(self, *, server: Server, pooches: list[Pooch]):
+    def __init__(self, server: Server, pooches: list[Pooch]):
         self.server = server
         self.pooches = pooches
         self.selected_pooch: Optional[Pooch] = None
@@ -93,10 +93,10 @@ class PublicPaginatorView(PaginatorView):
     def __init__(self, source: PageSource):
         super().__init__(source, owner_discord_id=0)
 
-    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+    async def interaction_check(self, _: discord.Interaction) -> bool:
         return True
 
 
-def make_status_view(*, server: Server, pooches: List[Pooch], title: str, description: str) -> PublicPaginatorView:
+def make_status_view(server: Server, pooches: List[Pooch], title: str, description: str) -> PublicPaginatorView:
     source = DayChangeStatusPageSource(server=server, pooches=pooches, title=title, description=description)
     return PublicPaginatorView(source)

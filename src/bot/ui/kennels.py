@@ -12,12 +12,13 @@ from game import (
 )
 from game.model import Kennel, Pooch
 
+from .breeding import BreedMateView
 from .components.paginator import PageSource
 from .pooch_info import PoochInfoView
 
 
 class KennelsPageSource(PageSource):
-    def __init__(self, *, server_discord_id: int, owner_discord_id: int):
+    def __init__(self, server_discord_id: int, owner_discord_id: int):
         self.server_discord_id = server_discord_id
         self.owner_discord_id = owner_discord_id
         self._kennels: list[Kennel] = []
@@ -45,7 +46,7 @@ class KennelsPageSource(PageSource):
 
 
 class KennelPageControls:
-    def __init__(self, *, server_discord_id: int, owner_discord_id: int, pooches: list[Pooch]):
+    def __init__(self, server_discord_id: int, owner_discord_id: int, pooches: list[Pooch]):
         self.server_discord_id = server_discord_id
         self.owner_discord_id = owner_discord_id
         self.pooches = pooches
@@ -69,7 +70,7 @@ class KennelPageControls:
         self.walk_button = Button(label="Walk", style=discord.ButtonStyle.secondary, disabled=True)
 
         self.info_button.callback = self._on_info  # type: ignore
-        self.breed_button.callback = self._noop  # type: ignore
+        self.breed_button.callback = self._on_breed  # type: ignore
         self.walk_button.callback = self._noop  # type: ignore
 
         if not pooches:
@@ -111,6 +112,22 @@ class KennelPageControls:
         view = PoochInfoView(server=server, pooch=self.selected_pooch, owner=owner)
         embed = await view.build_embed()
         await reply_to_interacted_message(interaction, embed=embed, view=view)
+
+    async def _on_breed(self, interaction: discord.Interaction):
+        if self.selected_pooch is None:
+            return
+
+        pooch = self.selected_pooch
+        mates = [pooch for pooch in self.pooches if pooch.id != pooch.id and pooch.sex != pooch.sex]
+
+        if not mates:
+            await reply_to_interacted_message(
+                interaction, content="There are no valid mates in this kennel for that pooch."
+            )
+            return
+
+        view = BreedMateView(pooch=pooch, mates=mates)
+        await reply_to_interacted_message(interaction, content="Select a mate:", view=view)
 
     async def _noop(self, interaction: discord.Interaction):
         await interaction.response.send_message("Coming soon.", ephemeral=False)

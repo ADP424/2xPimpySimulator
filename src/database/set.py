@@ -27,6 +27,8 @@ from .models import (
     Pooch,
     PoochBreed,
     PoochMutation,
+    PoochParentage,
+    PoochPregnancy,
     RarityWeight,
     Server,
     Vendor,
@@ -519,3 +521,90 @@ async def bury_pooch(owner_discord_id: int, pooch_id: int) -> Optional[Graveyard
         await session.flush()
 
     return graveyard_pooch
+
+
+async def create_pooch_pregnancy(mother_id: int, fetus_id: int) -> PoochPregnancy:
+    """
+    Create a pregnancy relationship between a mother and fetus.
+
+    Parameters
+    ----------
+    mother_id: int
+        The ID of the mother pooch.
+
+    fetus_id: int
+        The ID of the fetus pooch.
+
+    Returns
+    -------
+    PoochPregnancy
+        The ORM PoochPregnancy object just created.
+    """
+
+    async with session_scope() as session:
+        pregnancy = PoochPregnancy(mother_id=mother_id, fetus_id=fetus_id)
+        session.add(pregnancy)
+        await session.flush()
+
+    return pregnancy
+
+
+async def set_pooch_parentage(child_id: int, father_id: int | None, mother_id: int | None) -> PoochParentage:
+    """
+    Set the parentage for a child pooch.
+
+    Parameters
+    ----------
+    child_id: int
+        The ID of the child.
+
+    father_id: int | None
+        The ID of the father, if known.
+
+    mother_id: int | None
+        The ID of the mother, if known.
+
+    Returns
+    -------
+    PoochParentage
+        The created relationship row.
+    """
+
+    async with session_scope() as session:
+        parentage = PoochParentage(child_id=child_id, father_id=father_id, mother_id=mother_id)
+        session.add(parentage)
+        await session.flush()
+
+    return parentage
+
+
+async def add_pooch_breeds(pooch_id: int, breed_weights: dict[int, int]) -> list[PoochBreed]:
+    """
+    Bulk-set breeds for a pooch by inserting one PoochBreed row per breed id.
+    Inteded for freshly created pooches. Does **not** delete existing breeds.
+
+    Parameters
+    ----------
+    pooch_id: int
+        The ID of the pooch.
+
+    breed_weights: dict[int, int]
+        Mapping of breed_id -> integer weight. Any non-positive weights are ignored.
+
+    Returns
+    -------
+    list[PoochBreed]
+        The created PoochBreed relationship rows.
+    """
+
+    rows: list[PoochBreed] = []
+    async with session_scope() as session:
+        for breed_id, weight in breed_weights.items():
+            if weight is None or int(weight) <= 0:
+                continue
+            row = PoochBreed(pooch_id=pooch_id, breed_id=int(breed_id), weight=int(weight))
+            session.add(row)
+            rows.append(row)
+        await session.flush()
+
+    return rows

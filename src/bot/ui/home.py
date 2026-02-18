@@ -9,7 +9,7 @@ from .components.paginator import PaginatorView
 from .kennels import KennelsPageSource
 
 
-async def build_home_content(*, guild_id: int, user_id: int) -> str:
+async def build_home_content(guild_id: int, user_id: int) -> str:
     owner = await get_or_create_owner(guild_id, user_id)
     return (
         f"**{mention(owner.discord_id)}'s Home**\n"

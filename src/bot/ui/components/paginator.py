@@ -15,7 +15,7 @@ class PageSource(Protocol):
 
 class PaginatorView(View):
 
-    def __init__(self, source: PageSource, owner_discord_id: int, *, timeout: float = VIEW_TIMEOUT):
+    def __init__(self, source: PageSource, owner_discord_id: int, timeout: float = VIEW_TIMEOUT):
         super().__init__(timeout=timeout)
         self._source = source
         self._owner_id = owner_discord_id

@@ -89,7 +89,7 @@ async def remove_pooch_from_vendor_stock(vendor_id: int, pooch_id: int) -> Optio
     return pooch
 
 
-async def clear_vendor_pooch_stock(vendor_id: int) -> Optional[Vendor]:
+async def clear_vendor_pooch_stock(vendor_id: int, delete_pooches: bool = False) -> Optional[Vendor]:
     """
     Clear the pooch stock of the vendor with the given ID.
 
@@ -97,6 +97,9 @@ async def clear_vendor_pooch_stock(vendor_id: int) -> Optional[Vendor]:
     ----------
     vendor_id: int
         The ID of the vendor to clear the stock of.
+
+    delete_pooches: bool, default : False
+        Whether to delete the Pooch ORM objects as well as removing them from the vendor.
 
     Returns
     -------
@@ -110,7 +113,14 @@ async def clear_vendor_pooch_stock(vendor_id: int) -> Optional[Vendor]:
         return None
 
     async with session_scope() as session:
-        await session.execute(delete(VendorPoochForSale).where(VendorPoochForSale.vendor_id == vendor_id))
+        if delete_pooches:
+            await session.execute(
+                delete(Pooch)
+                .where(VendorPoochForSale.pooch_id == Pooch.id)
+                .where(VendorPoochForSale.vendor_id == vendor_id)
+            )
+        else:
+            await session.execute(delete(VendorPoochForSale).where(VendorPoochForSale.vendor_id == vendor_id))
 
     return vendor
 

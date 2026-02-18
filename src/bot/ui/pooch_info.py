@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 
 class _FamilySelect(Select):
-    def __init__(self, members: Sequence[Pooch], *, placeholder: str, kind: str):
+    def __init__(self, members: Sequence[Pooch], placeholder: str, kind: str):
         super().__init__(
             placeholder=placeholder,
             options=[discord.SelectOption(label=member.name, value=str(member.id)) for member in members],
@@ -27,7 +27,7 @@ class _FamilySelect(Select):
 
 
 class PoochInfoView(View):
-    def __init__(self, *, server: Server, pooch: Pooch, owner: Optional[Owner], timeout: float = VIEW_TIMEOUT):
+    def __init__(self, server: Server, pooch: Pooch, owner: Optional[Owner], timeout: float = VIEW_TIMEOUT):
         super().__init__(timeout=timeout)
         self.server = server
         self.pooch = pooch

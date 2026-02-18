@@ -58,7 +58,7 @@ async def post_day_change_summaries(bot: discord.Client, summaries: dict[int, Da
         await channel.send(**send_kwargs)  # type: ignore
 
 
-async def day_change_runner(bot: discord.Client, *, stage: str, tz: str = "America/New_York"):
+async def day_change_runner(bot: discord.Client, stage: str, tz: str = "America/New_York"):
     zone = ZoneInfo(tz)
 
     async def run_once():

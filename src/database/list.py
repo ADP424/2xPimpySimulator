@@ -204,6 +204,31 @@ async def list_pooch_breeds(pooch_id: int) -> list[tuple[Breed, float]]:
     return [(breed, float(weight)) for breed, weight in list(response.tuples().all())]
 
 
+async def list_pooch_breed_weights(pooch_id: int) -> list[tuple[int, int]]:
+    """
+    Fetch the list of breed weights the given pooch has.
+    Returns the integer weights stored in the `pooch_breeds` relationship table. Useful for
+    deterministic calculations (like inheritance) where you want the underlying weights rather
+    than the normalized relative weights returned by `list_pooch_breeds`.
+
+    Parameters
+    ----------
+    pooch_id: int
+        The ID of the pooch to get the breeds of.
+
+    Returns
+    -------
+    list[tuple[int, int]]
+        A list of `(breed_id, weight)` pairs.
+    """
+
+    async with session_scope() as session:
+        query = select(PoochBreed.breed_id, PoochBreed.weight).where(PoochBreed.pooch_id == pooch_id)
+        response = await session.execute(query)
+
+    return [(breed_id, weight) for breed_id, weight in response.tuples().all()]
+
+
 async def list_pooch_mutations(pooch_id: int) -> list[Mutation]:
     """
     Fetch the list of mutations the given pooch has.
@@ -231,19 +256,35 @@ async def list_pooch_mutations(pooch_id: int) -> list[Mutation]:
 
 
 async def list_all_breeds() -> list[Breed]:
-    """Fetch every Breed (static table) in alphabetical order."""
+    """
+    Fetch every breed in alphabetical order by category, then by name.
+
+    Returns
+    -------
+    list[Breed]
+        Every ORM Breed object in the static breed table.
+    """
 
     async with session_scope() as session:
-        response = await session.execute(select(Breed).order_by(Breed.name.asc(), Breed.id.asc()))
+        response = await session.execute(select(Breed).order_by(Breed.category.asc(), Breed.name.asc(), Breed.id.asc()))
 
     return list(response.scalars().all())
 
 
 async def list_all_mutations() -> list[Mutation]:
-    """Fetch every Mutation (static table) in alphabetical order."""
+    """
+    Fetch every mutation in alphabetical order by category, then by name.
+
+    Returns
+    -------
+    list[Mutation]
+        Every ORM Mutation object in the static mutation table.
+    """
 
     async with session_scope() as session:
-        response = await session.execute(select(Mutation).order_by(Mutation.name.asc(), Mutation.id.asc()))
+        response = await session.execute(
+            select(Mutation).order_by(Mutation.category.asc(), Mutation.name.asc(), Mutation.id.asc())
+        )
 
     return list(response.scalars().all())
 

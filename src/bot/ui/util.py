@@ -15,7 +15,6 @@ def mention(discord_id: int) -> str:
 
 async def edit_interaction(
     interaction: discord.Interaction,
-    *,
     content: Any = MISSING,
     embed: Any = MISSING,
     view: Any = MISSING,
@@ -40,7 +39,6 @@ async def edit_interaction(
 
 async def reply_to_interacted_message(
     interaction: discord.Interaction,
-    *,
     content: Any = MISSING,
     embed: Any = MISSING,
     view: Any = MISSING,

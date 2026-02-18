@@ -19,7 +19,7 @@ PAGE_SIZE = 10
 
 
 class VetClinicView(View):
-    def __init__(self, *, owner_discord_id: int, timeout: float = VIEW_TIMEOUT):
+    def __init__(self, owner_discord_id: int, timeout: float = VIEW_TIMEOUT):
         super().__init__(timeout=timeout)
         self._owner_id = owner_discord_id
 
@@ -31,7 +31,7 @@ class VetClinicView(View):
 
 
 class _ListBreedsButton(Button):
-    def __init__(self, *, owner_discord_id: int):
+    def __init__(self, owner_discord_id: int):
         super().__init__(label="List Breeds", style=discord.ButtonStyle.primary, row=0)
         self._owner_id = owner_discord_id
 
@@ -48,7 +48,7 @@ class _ListBreedsButton(Button):
 
 
 class _ListMutationsButton(Button):
-    def __init__(self, *, owner_discord_id: int):
+    def __init__(self, owner_discord_id: int):
         super().__init__(label="List Mutations", style=discord.ButtonStyle.primary, row=0)
         self._owner_id = owner_discord_id
 

@@ -44,7 +44,7 @@ class MutationOption:
 class MutationDropdownControls:
     """Reusable dropdown + info button for showing general mutation info."""
 
-    def __init__(self, *, mutations: list[MutationOption], placeholder: str = "Select a mutation"):
+    def __init__(self, mutations: list[MutationOption], placeholder: str = "Select a mutation"):
         self.mutations = mutations
         self.selected: Optional[Mutation] = None
 
@@ -68,7 +68,7 @@ class MutationDropdownControls:
         if not mutations:
             self.info_button.disabled = True
 
-    def attach(self, view: View, *, row: int):
+    def attach(self, view: View, row: int):
         self.select.row = row
         self.info_button.row = row + 1
         view.add_item(self.select)

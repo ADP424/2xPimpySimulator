@@ -19,7 +19,7 @@ from .util import edit_interaction, reply_to_interacted_message
 
 
 class VendorsMenuView(View):
-    def __init__(self, *, server_discord_id: int, owner_discord_id: int):
+    def __init__(self, server_discord_id: int, owner_discord_id: int):
         from bot.constants import VIEW_TIMEOUT
 
         super().__init__(timeout=VIEW_TIMEOUT)
@@ -28,7 +28,7 @@ class VendorsMenuView(View):
 
 
 class VendorsPageSource(PageSource):
-    def __init__(self, *, server_discord_id: int, owner_discord_id: int):
+    def __init__(self, server_discord_id: int, owner_discord_id: int):
         self.server_discord_id = server_discord_id
         self.owner_discord_id = owner_discord_id
         self._vendors: list[Vendor] = []
@@ -66,7 +66,6 @@ class VendorsPageSource(PageSource):
 class VendorPageControls:
     def __init__(
         self,
-        *,
         server_discord_id: int,
         owner_discord_id: int,
         vendor: Vendor,

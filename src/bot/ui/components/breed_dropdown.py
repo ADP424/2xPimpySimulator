@@ -27,7 +27,7 @@ class BreedOption:
 class BreedDropdownControls:
     """Reusable dropdown + info button for showing general breed info."""
 
-    def __init__(self, *, breeds: list[BreedOption], placeholder: str = "Select a breed"):
+    def __init__(self, breeds: list[BreedOption], placeholder: str = "Select a breed"):
         self.breeds = breeds
         self.selected: Optional[Breed] = None
 
@@ -51,7 +51,7 @@ class BreedDropdownControls:
         if not breeds:
             self.info_button.disabled = True
 
-    def attach(self, view: View, *, row: int):
+    def attach(self, view: View, row: int):
         self.select.row = row
         self.info_button.row = row + 1
         view.add_item(self.select)

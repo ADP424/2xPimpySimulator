@@ -177,3 +177,59 @@ async def set_event_channel_discord_id(server_discord_id: int, channel_discord_i
             server.event_channel_discord_id = channel_discord_id
 
     return server
+
+
+async def set_pooch_breeding_cooldown(pooch_id: int, cooldown: int) -> Optional[Pooch]:
+    """
+    Set the breeding cooldown of a pooch, to a minimum of 0.
+
+    Parameters
+    ----------
+    pooch_id: int
+        The ID of the pooch to set the cooldown of.
+
+    cooldown: int
+        The value to set the pooch's breeding cooldown to.
+
+    Returns
+    -------
+    Pooch, optional
+        The Pooch whose cooldown was set, or None if the pooch wasn't found.
+    """
+
+    async with session_scope() as session:
+        query = select(Pooch).where(Pooch.id == pooch_id)
+        pooch = (await session.execute(query)).scalar_one_or_none()
+        if pooch is None:
+            return None
+        pooch.breeding_cooldown = max(cooldown, 0)
+
+    return pooch
+
+
+async def set_pooch_virgin(pooch_id: int, virgin: bool = False) -> Optional[Pooch]:
+    """
+    Set the virgin flag of a pooch, false by default.
+
+    Parameters
+    ----------
+    pooch_id: int
+        The ID of the pooch to update the virginity status of.
+
+    virgin: bool, default : False
+        `True` to set the pooch to a virgin, `False` to lose their virginity.
+
+    Returns
+    -------
+    Pooch, optional
+        The Pooch object whose virginity status was changed, or None if the pooch wasn't found.
+    """
+
+    async with session_scope() as session:
+        query = select(Pooch).where(Pooch.id == pooch_id)
+        pooch = (await session.execute(query)).scalar_one_or_none()
+        if pooch is None:
+            return None
+        pooch.virgin = virgin
+
+    return pooch

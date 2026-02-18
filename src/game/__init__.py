@@ -1,3 +1,7 @@
+from .breeding import (
+    breed_pooches,
+    calculate_incest_level,
+)
 from .change_day import (
     run_day_change,
 )
@@ -55,4 +59,6 @@ __all__ = [
     # Static listing commands
     "list_all_breeds",
     "list_all_mutations",
+    "breed_pooches",
+    "calculate_incest_level",
 ]
