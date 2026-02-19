@@ -1,7 +1,7 @@
 from database import list_all_breeds as db_list_all_breeds
 from database import list_all_mutations as db_list_all_mutations
 
-from .model import Breed, Mutation, to_breed, to_mutation
+from .models import Breed, Mutation, to_breed, to_mutation
 
 
 async def list_all_breeds() -> list[Breed]:

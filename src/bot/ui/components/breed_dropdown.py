@@ -7,7 +7,7 @@ import discord
 from discord.ui import Button, Select, View
 
 from bot.ui.util import edit_interaction, reply_to_interacted_message
-from game.model import Breed
+from game.models import Breed
 
 
 def build_breed_info_embed(breed: Breed) -> discord.Embed:

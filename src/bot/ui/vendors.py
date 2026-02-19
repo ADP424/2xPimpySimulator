@@ -11,7 +11,7 @@ from game import (
     list_server_vendors,
     list_vendor_pooches,
 )
-from game.model import Pooch, Vendor
+from game.models import Pooch, Vendor
 
 from .components.paginator import PageSource, PaginatorView
 from .pooch_info import PoochInfoView

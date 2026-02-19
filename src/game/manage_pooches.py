@@ -6,7 +6,7 @@ from database import (
 )
 
 from .exceptions.pooch_not_found import PoochNotFound
-from .model import Pooch, to_pooch
+from .models import Pooch, to_pooch
 
 
 async def get_pooch_by_id(pooch_id: int) -> Pooch:

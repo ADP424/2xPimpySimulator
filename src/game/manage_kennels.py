@@ -7,7 +7,7 @@ from database import (
 
 from .exceptions.kennel_not_found import KennelNotFound
 from .exceptions.pooch_not_found import PoochNotFound
-from .model import Pooch, to_pooch
+from .models import Pooch, to_pooch
 
 
 async def list_kennel_pooches(kennel_id: int) -> list[Pooch]:

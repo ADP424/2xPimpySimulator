@@ -10,7 +10,7 @@ from game import (
     list_kennel_pooches,
     list_owner_kennels,
 )
-from game.model import Kennel, Pooch
+from game.models import Kennel, Pooch
 
 from .breeding import BreedMateView
 from .components.paginator import PageSource

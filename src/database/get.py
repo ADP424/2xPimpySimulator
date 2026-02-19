@@ -284,3 +284,29 @@ async def get_pooch_health(pooch_id: int) -> Optional[int]:
         response = await session.execute(query)
 
     return response.scalar_one_or_none()
+
+
+async def get_mutation_health_impact(mutation_id: int) -> Optional[int]:
+    """
+    Get the health impact for the mutation with the given ID as an integer.
+
+    Parameters
+    ----------
+    mutation_id: int
+        The ID of the mutation to get the numerical health impact of.
+
+    Returns
+    -------
+    int, optional
+        The health impact of the given mutation, or None if the mutation wasn't found.
+    """
+
+    async with session_scope() as session:
+        query = (
+            select(HealthImpactWeight.weight)
+            .join(Mutation, Mutation.health_impact == HealthImpactWeight.health_impact)
+            .where(Mutation.id == mutation_id)
+        )
+        response = await session.execute(query)
+
+    return response.scalar_one_or_none()

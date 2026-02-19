@@ -9,7 +9,7 @@ from discord.ui import Button, View
 from bot.constants import VIEW_TIMEOUT
 from bot.ui.util import reply_to_interacted_message
 from game import list_all_breeds, list_all_mutations
-from game.model import Breed, Mutation
+from game.models import Breed, Mutation
 
 from .components.breed_dropdown import BreedDropdownControls, BreedOption
 from .components.mutation_dropdown import MutationDropdownControls, MutationOption

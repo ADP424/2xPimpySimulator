@@ -5,7 +5,7 @@ from discord.ui import Select, View
 
 from bot.ui.util import edit_interaction, reply_to_interacted_message
 from game import breed_pooches
-from game.model import Pooch
+from game.models import Pooch
 
 
 class BreedMateView(View):

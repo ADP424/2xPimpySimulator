@@ -34,7 +34,7 @@ from .constants import (
 )
 from .exceptions.pooch_not_found import PoochNotFound
 from .exceptions.vendor_not_found import VendorNotFound
-from .model import Pooch, Vendor, to_pooch, to_vendor
+from .models import Pooch, Vendor, to_pooch, to_vendor
 
 
 async def get_vendor_by_id(vendor_id: int) -> Vendor:

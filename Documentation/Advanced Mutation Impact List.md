@@ -10,10 +10,10 @@ How many more/fewer age cycles before the pooch can breed again.
 A custom message to replace the standard one with when the pooch dies of this mutation.
 - "[pooch]" is replaced by the name of the pooch with the mutation.
 
-### `kill_message`
-A custom message to replace the standard one with when this mutation kills another pooch with an `on_death` `kill` effect.
+### `impact_message`
+A custom message to replace the standard one with when this mutation impacts another pooch with an `on_death` effect.
 - "[pooch]" is replaced with the name of the pooch with the mutation.
-- "[victim]" is replaced with the name of the pooch killed by the mutation.
+- "[victim]" is replaced with the name of the pooch affected by the mutation.
 
 ### `on_death`
 An effect the pooch has on its targets when it dies (see `on_death_targets`).
@@ -22,9 +22,9 @@ An effect the pooch has on its targets when it dies (see `on_death_targets`).
 - `spread_all`: Causes every target to immediately inherit ALL mutations the pooch with this mutation has.
 
 ### `on_death_chance`
-The percent chance, as a number between 0 and 100, that the `on_death` effect will happen.
+The chance, as a float between 0 and 1, inclusive, that the `on_death` effect will happen.
 This chance is rolled individually for each member in the `on_death_targets`.
-The chance is 100% by default.
+The chance is 1.0 (100%) by default.
 
 ### `always_on_death`
 Whether the `on_death` effect should always trigger or only trigger if the mutation is the one that killed the pooch.

@@ -10,7 +10,7 @@ from database import (
 
 from .exceptions.owner_not_found import OwnerNotFound
 from .manage_servers import get_or_create_server
-from .model import Kennel, Owner, to_kennel, to_owner
+from .models import Kennel, Owner, to_kennel, to_owner
 
 
 async def get_or_create_owner(server_discord_id: int, owner_discord_id: int) -> Owner:

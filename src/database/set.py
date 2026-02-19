@@ -373,6 +373,15 @@ async def add_breed_to_pooch(
         if breed_id is None:
             return None
 
+        existing_pooch_breed = await session.scalar(
+            select(PoochBreed).where(
+                PoochBreed.pooch_id == pooch_id,
+                PoochBreed.breed_id == breed_id,
+            )
+        )
+        if existing_pooch_breed is not None:
+            return existing_pooch_breed
+
         query = (
             select(RarityWeight.weight)
             .join(Breed, Breed.rarity == RarityWeight.rarity)
@@ -390,7 +399,7 @@ async def add_breed_to_pooch(
 
 async def add_mutation_to_pooch(
     pooch_id: int, mutation_id: Optional[int] = None, rng: Optional[random.Random] = None
-) -> PoochMutation:
+) -> Optional[PoochMutation]:
     """
     Add the mutation with the given ID to the pooch with the given ID.
     If a mutation ID isn't given, choose a random one, with chance based on its rarity.
@@ -409,7 +418,8 @@ async def add_mutation_to_pooch(
     Returns
     -------
     PoochMutation
-        The PoochMutation relationship ORM object just created.
+        The PoochMutation relationship ORM object just created, or None if the relation failed to create.
+        Creation fails if the mutation is incompatible with existing ones, or the relation already exists.
     """
 
     rng = rng if rng is not None else random.Random()
@@ -430,6 +440,45 @@ async def add_mutation_to_pooch(
         # If the pooch somehow has every possible mutation already
         if mutation_id is None:
             return None
+
+        existing_pooch_mutation = await session.scalar(
+            select(PoochMutation).where(
+                PoochMutation.pooch_id == pooch_id,
+                PoochMutation.mutation_id == mutation_id,
+            )
+        )
+        if existing_pooch_mutation is not None:
+            return existing_pooch_mutation
+
+        new_mutation = await session.scalar(select(Mutation).where(Mutation.id == mutation_id))
+        if new_mutation is None:
+            return None
+
+        new_name = new_mutation.name
+        new_incompatible_mutations: set[str] = set(new_mutation.advanced_options.get("incompatible_mutations", []))
+
+        existing_mutations = (
+            (
+                await session.execute(
+                    select(Mutation)
+                    .join(PoochMutation, PoochMutation.mutation_id == Mutation.id)
+                    .where(PoochMutation.pooch_id == pooch_id)
+                )
+            )
+            .scalars()
+            .all()
+        )
+        existing_names = {mutation.name for mutation in existing_mutations}
+
+        # Check if the new mutation is incompatible with any existing ones
+        if new_incompatible_mutations.intersection(existing_names):
+            return None
+
+        # Check if an existing mutation is incompatible with this new one
+        for mutation in existing_mutations:
+            incompatible_mutations: set[str] = set(mutation.advanced_options.get("incompatible_mutations", []))
+            if new_name in incompatible_mutations:
+                return None
 
         pooch_mutation = PoochMutation(pooch_id=pooch_id, mutation_id=mutation_id)
         session.add(pooch_mutation)

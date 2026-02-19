@@ -7,6 +7,7 @@ from .delete import (
 from .get import (
     get_kennel_by_id,
     get_mutation_by_id,
+    get_mutation_health_impact,
     get_owner_by_discord_id,
     get_owner_server,
     get_pooch_by_id,
@@ -75,6 +76,7 @@ __all__ = [
     "get_vendor_server",
     "get_owner_server",
     "get_pooch_health",
+    "get_mutation_health_impact",
     # List
     "list_pooches_for_kennel",
     "list_kennels_for_owner",

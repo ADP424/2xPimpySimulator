@@ -11,7 +11,7 @@ from logger import get_logger
 from .ui.day_change_status import make_status_view
 
 if discord.TYPE_CHECKING:
-    from game.model import DayChangeSummary
+    from game.models import DayChangeSummary
 
 
 logger = get_logger("bot/day_change_loop")
@@ -42,7 +42,8 @@ async def post_day_change_summaries(bot: discord.Client, summaries: dict[int, Da
         description = f"Births: **{len(summary.births)}**\nDeaths: **{len(summary.deaths)}**"
         view = make_status_view(
             server=summary.server,
-            pooches=summary.mentioned_pooches,
+            births=summary.births,
+            deaths=summary.deaths,
             title="Day Change",
             description=description,
         )

@@ -2,6 +2,7 @@ from .breed import Breed, to_breed
 from .events.birth_event import BirthEvent
 from .events.day_change_summary import DayChangeSummary
 from .events.death_event import DeathEvent
+from .events.other_event import OtherEvent
 from .kennel import Kennel, to_kennel
 from .mutation import Mutation, to_mutation
 from .owner import Owner, to_owner
@@ -27,4 +28,5 @@ __all__ = [
     "BirthEvent",
     "DayChangeSummary",
     "DeathEvent",
+    "OtherEvent",
 ]

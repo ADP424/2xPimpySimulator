@@ -6,14 +6,14 @@ from discord.ui import Select, View
 from bot.constants import VIEW_TIMEOUT
 from bot.ui.util import edit_interaction, mention, reply_to_interacted_message
 from game import get_pooch_family
-from game.model.mutation import Mutation
-from game.model.pooch import PoochBreedInfo
+from game.models.mutation import Mutation
+from game.models.pooch import PoochBreedInfo
 
 from .components.breed_dropdown import build_breed_info_embed
 from .components.mutation_dropdown import build_mutation_info_embed
 
 if TYPE_CHECKING:
-    from game.model import Owner, Pooch, Server
+    from game.models import Owner, Pooch, Server
 
 
 class _FamilySelect(Select):

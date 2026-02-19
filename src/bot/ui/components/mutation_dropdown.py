@@ -7,7 +7,7 @@ import discord
 from discord.ui import Button, Select, View
 
 from bot.ui.util import edit_interaction, reply_to_interacted_message
-from game.model import Mutation
+from game.models import Mutation
 
 
 def build_mutation_info_embed(mutation: Mutation) -> discord.Embed:

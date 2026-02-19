@@ -1,6 +1,8 @@
 import random
 from typing import Optional
 
+import numpy
+
 from database import (
     add_breed_to_pooch,
     add_mutation_to_pooch,
@@ -12,18 +14,24 @@ from database import (
     create_vendor,
     decrement_pooch_breeding_cooldown,
     delete_pregnancy,
+    get_mutation_health_impact,
     get_pooch_health,
     get_pooch_kennel,
     list_living_pooches,
+    list_pooch_mutations,
     list_pooch_pregnancies,
+    list_pooches_for_kennel,
     list_servers,
     list_servers_for_pooch,
     list_vendors,
     remove_pooch_from_kennel,
     set_pooch_dead,
 )
+from database.models import Mutation, Pooch
 from database.update import set_pooch_breeding_cooldown
-from game.constants import (
+from logger import get_logger
+
+from .constants import (
     DEATH_CHANCE_PER_HEALTH_UNDER_MIN,
     MIN_HEALTH_FOR_DEATH_CHANCE,
     NUM_BREEDS_PER_VENDOR_POOCH_RANGE,
@@ -35,12 +43,17 @@ from game.constants import (
     VENDOR_POOCH_AGE_RANGE,
     VENDOR_POOCH_STOCK_COUNT_RANGE,
 )
-from game.manage_kennels import add_pooch_to_kennel
-from game.manage_pooches import get_pooch_by_id
-from game.utils import get_pooch_mutation_advanced_option_total
-from logger import get_logger
-
-from .model import BirthEvent, DayChangeSummary, DeathEvent, to_pooch, to_server
+from .manage_kennels import add_pooch_to_kennel
+from .manage_pooches import get_pooch_by_id
+from .models import (
+    BirthEvent,
+    DayChangeSummary,
+    DeathEvent,
+    OtherEvent,
+    to_pooch,
+    to_server,
+)
+from .utils import get_pooch_mutation_advanced_option_total
 
 logger = get_logger("game/change_day")
 
@@ -72,9 +85,11 @@ async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeS
     """
 
     rng = random.Random(rng_seed)
+    numpy_rng = numpy.random.default_rng(rng_seed)
 
     births_by_server: dict[int, list[BirthEvent]] = {}
     deaths_by_server: dict[int, list[DeathEvent]] = {}
+    other_events_by_server: dict[int, list[OtherEvent]] = {}
 
     # births
     logger.info("Handling births for the day...")
@@ -98,7 +113,7 @@ async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeS
                         server=(await to_server(server)),
                         mother=(await to_pooch(mother)),
                         child=(await to_pooch(baby)),
-                        failure_message="The mother doesn't belong to a kennel. Her baby was abandoned.",
+                        message="The mother doesn't belong to a kennel. Her baby was abandoned.",
                     )
                 )
             continue
@@ -111,7 +126,7 @@ async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeS
                         server=(await to_server(server)),
                         mother=(await to_pooch(mother)),
                         child=(await to_pooch(baby)),
-                        failure_message="There wasn't enough space in the mother's kennel. Her baby was crushed.",
+                        message="There wasn't enough space in the mother's kennel. Her baby was crushed.",
                     )
                 )
             continue
@@ -119,27 +134,141 @@ async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeS
         for server in servers:
             births_by_server.setdefault(server.discord_id, []).append(
                 BirthEvent(
-                    server=(await to_server(server)), mother=(await to_pooch(mother)), child=(await to_pooch(baby))
+                    server=(await to_server(server)),
+                    mother=(await to_pooch(mother)),
+                    child=(await to_pooch(baby)),
+                    message=f"{mother.name} gave birth to {baby.name}.",
                 )
             )
     logger.info("Completed daily births.")
 
     # deaths (and other updates)
     logger.info("Handling deaths for the day...")
+
+    async def _kill_pooch(pooch: Pooch) -> Pooch:
+        pooch = await set_pooch_dead(pooch.id)
+        await remove_pooch_from_kennel(pooch.id)
+        if pooch.owner_discord_id is not None:
+            await bury_pooch(pooch.owner_discord_id, pooch.id)
+        return pooch
+
     pooches = await list_living_pooches()
     for pooch in pooches:
         pooch = await decrement_pooch_breeding_cooldown(pooch.id)
         pooch = await age_pooch(pooch.id)
         total_health: int = await get_pooch_health(pooch.id)
+
+        if not pooch.alive:
+            continue
+
         if _death_roll(total_health, rng):
-            pooch = await set_pooch_dead(pooch.id)
-            await remove_pooch_from_kennel(pooch.id)
-            if pooch.owner_discord_id is not None:
-                await bury_pooch(pooch.owner_discord_id, pooch.id)
+            pooch = await _kill_pooch(pooch)
+            pooch_mutations = await list_pooch_mutations(pooch.id)
+
+            death_cause: Mutation = (
+                numpy_rng.choice(
+                    pooch_mutations, p=[(await get_mutation_health_impact(mutation.id)) for mutation in pooch_mutations]
+                )
+                if pooch_mutations
+                else None
+            )
+            death_message = death_cause.advanced_options.get("death_message", f"{pooch.name} died.").replace(
+                "[pooch]", pooch.name
+            )
             for server in await list_servers_for_pooch(pooch.id):
                 deaths_by_server.setdefault(server.discord_id, []).append(
-                    DeathEvent(server=(await to_server(server)), pooch=(await to_pooch(pooch)))
+                    DeathEvent(server=(await to_server(server)), pooch=(await to_pooch(pooch)), message=death_message)
                 )
+
+            for pooch_mutation in pooch_mutations:
+                on_death: Optional[str] = pooch_mutation.advanced_options.get("on_death", "none").lower()
+                always_on_death = bool(pooch_mutation.advanced_options.get("on_death", 0))
+                on_death_chance: float = pooch_mutation.advanced_options.get("on_death_chance", 1.0)
+
+                if (
+                    on_death == "none"
+                    or (not always_on_death and pooch_mutation.id != death_cause.id)
+                    or rng.random() > on_death_chance
+                ):
+                    continue
+
+                on_death_targets: str = pooch_mutation.advanced_options.get("on_death_targets", "none").lower()
+
+                target_pooches: list[Pooch] = []
+                if on_death_targets == "all":
+                    pooch_kennel = await get_pooch_kennel(pooch.id)
+                    if pooch_kennel is None:
+                        continue
+                    target_pooches = await list_pooches_for_kennel(pooch_kennel.id)
+                elif on_death_targets == "random":
+                    pooch_kennel = await get_pooch_kennel(pooch.id)
+                    if pooch_kennel is None:
+                        continue
+                    target_pooches = [rng.choice(await list_pooches_for_kennel(pooch_kennel.id))]
+
+                if on_death == "kill":
+                    for target in target_pooches:
+                        await _kill_pooch(target)
+                        death_message = (
+                            pooch_mutation.advanced_options.get(
+                                "impact_message", f"{target.name} died from {pooch.name}'s {pooch_mutation.name}."
+                            )
+                            .replace("[pooch]", pooch.name)
+                            .replace("[victim]", target.name)
+                        )
+                        for server in await list_servers_for_pooch(target.id):
+                            deaths_by_server.setdefault(server.discord_id, []).append(
+                                DeathEvent(
+                                    server=(await to_server(server)),
+                                    pooch=(await to_pooch(target)),
+                                    message=death_message,
+                                )
+                            )
+                elif on_death == "spread":
+                    for target in target_pooches:
+                        await add_mutation_to_pooch(target.id, pooch_mutation.id)
+                        target = await get_pooch_by_id(target.id)
+                        spread_message = (
+                            pooch_mutation.advanced_options.get(
+                                "impact_message",
+                                f"{pooch.name} spread its {pooch_mutation.name} to {target.name} as they died.",
+                            )
+                            .replace("[pooch]", pooch.name)
+                            .replace("[victim]", target.name)
+                        )
+                        for server in await list_servers_for_pooch(target.id):
+                            other_events_by_server.setdefault(server.discord_id, []).append(
+                                OtherEvent(
+                                    server=(await to_server(server)),
+                                    pooch=(await to_pooch(target)),
+                                    message=spread_message,
+                                )
+                            )
+                elif on_death == "spread_all":
+                    for target in target_pooches:
+                        for mutation in pooch_mutations:
+                            await add_mutation_to_pooch(target.id, mutation.id)
+                        target = await get_pooch_by_id(target.id)
+                        spread_message = (
+                            pooch_mutation.advanced_options.get(
+                                "impact_message",
+                                (
+                                    f"{pooch.name} spread ALL its mutations to {target.name} as they died, "
+                                    f"because of its {pooch_mutation.name}."
+                                ),
+                            )
+                            .replace("[pooch]", pooch.name)
+                            .replace("[victim]", target.name)
+                        )
+                        for server in await list_servers_for_pooch(target.id):
+                            other_events_by_server.setdefault(server.discord_id, []).append(
+                                OtherEvent(
+                                    server=(await to_server(server)),
+                                    pooch=(await to_pooch(target)),
+                                    message=spread_message,
+                                )
+                            )
+
     logger.info("Completed daily deaths.")
 
     servers = await list_servers()

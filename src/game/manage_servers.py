@@ -6,7 +6,7 @@ from database import (
     set_event_channel_discord_id,
 )
 
-from .model import Server, to_server
+from .models import Server, to_server
 
 
 async def get_or_create_server(server_discord_id: int) -> Server:
