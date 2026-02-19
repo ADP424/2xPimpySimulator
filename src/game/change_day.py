@@ -164,17 +164,32 @@ async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeS
         if _death_roll(total_health, rng):
             pooch = await _kill_pooch(pooch)
             pooch_mutations = await list_pooch_mutations(pooch.id)
+            negative_pooch_mutations = await list_pooch_mutations(pooch.id, positive=False, neutral=False)
 
-            death_cause: Mutation = (
-                numpy_rng.choice(
-                    pooch_mutations, p=[(await get_mutation_health_impact(mutation.id)) for mutation in pooch_mutations]
+            negative_health_impacts = [
+                await get_mutation_health_impact(mutation.id) for mutation in negative_pooch_mutations
+            ]
+            negative_health_impacts = [
+                health_impact for health_impact in negative_health_impacts if health_impact is not None
+            ]
+            if negative_health_impacts:
+                total_health_impact = sum(negative_health_impacts)
+                death_cause: Mutation = (
+                    numpy_rng.choice(
+                        pooch_mutations,
+                        p=[(health_impact / total_health_impact) for health_impact in negative_health_impacts],
+                    )
+                    if pooch_mutations
+                    else None
                 )
-                if pooch_mutations
-                else None
-            )
-            death_message = death_cause.advanced_options.get("death_message", f"{pooch.name} died.").replace(
-                "[pooch]", pooch.name
-            )
+                death_message = death_cause.advanced_options.get("death_message", f"{pooch.name} died.").replace(
+                    "[pooch]", pooch.name
+                )
+            elif pooch.health_loss_age > 0:
+                death_message = f"{pooch.name} died of old age."
+            else:
+                death_message = f"{pooch.name} died of unknown causes."
+
             for server in await list_servers_for_pooch(pooch.id):
                 deaths_by_server.setdefault(server.discord_id, []).append(
                     DeathEvent(server=(await to_server(server)), pooch=(await to_pooch(pooch)), message=death_message)
@@ -300,11 +315,11 @@ async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeS
                     rng.randint(NUM_MUTATIONS_PER_VENDOR_POOCH_RANGE[0], NUM_MUTATIONS_PER_VENDOR_POOCH_RANGE[1])
                 ):
                     await add_mutation_to_pooch(vendor_pooch.id)
-                set_pooch_breeding_cooldown(
+                await set_pooch_breeding_cooldown(
                     vendor_pooch.id,
                     max(
                         POOCH_BREEDING_COOLDOWN
-                        + get_pooch_mutation_advanced_option_total(vendor_pooch.id, "breeding_cooldown"),
+                        + await get_pooch_mutation_advanced_option_total(vendor_pooch.id, "breeding_cooldown"),
                         0,
                     ),
                 )
@@ -318,5 +333,6 @@ async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeS
             server=(await to_server(server)),
             births=births_by_server.get(server.discord_id, []),
             deaths=deaths_by_server.get(server.discord_id, []),
+            other_events=other_events_by_server.get(server.discord_id, []),
         )
     return out

@@ -44,6 +44,7 @@ async def post_day_change_summaries(bot: discord.Client, summaries: dict[int, Da
             server=summary.server,
             births=summary.births,
             deaths=summary.deaths,
+            other_events=summary.other_events,
             title="Day Change",
             description=description,
         )

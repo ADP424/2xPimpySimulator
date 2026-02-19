@@ -18,6 +18,7 @@ from .models import (
     Server,
     Vendor,
     VendorPoochForSale,
+    HealthImpactWeight,
 )
 from .session import session_scope
 
@@ -229,7 +230,9 @@ async def list_pooch_breed_weights(pooch_id: int) -> list[tuple[int, int]]:
     return [(breed_id, weight) for breed_id, weight in response.tuples().all()]
 
 
-async def list_pooch_mutations(pooch_id: int) -> list[Mutation]:
+async def list_pooch_mutations(
+    pooch_id: int, positive: bool = True, negative: bool = True, neutral: bool = True
+) -> list[Mutation]:
     """
     Fetch the list of mutations the given pooch has.
 
@@ -237,6 +240,15 @@ async def list_pooch_mutations(pooch_id: int) -> list[Mutation]:
     ----------
     pooch_id: int
         The ID of the pooch to get the mutations of.
+
+    positive: bool, default : True
+        Whether to include mutations with positive health impacts or not (> 0).
+
+    negative: bool, default : True
+        Whether to include mutations with negative health impacts or not (< 0).
+
+    neutral: bool, default : True
+        Whether to include mutations with neutral health impacts or not (= 0).
 
     Returns
     -------
@@ -248,8 +260,22 @@ async def list_pooch_mutations(pooch_id: int) -> list[Mutation]:
         query = (
             select(Mutation)
             .join(PoochMutation, PoochMutation.mutation_id == Mutation.id)
+            .join(HealthImpactWeight, HealthImpactWeight.health_impact == Mutation.health_impact)
             .where(PoochMutation.pooch_id == pooch_id)
         )
+
+        conditions = []
+        if positive:
+            conditions.append(HealthImpactWeight.weight > 0)
+        if negative:
+            conditions.append(HealthImpactWeight.weight < 0)
+        if neutral:
+            conditions.append(HealthImpactWeight.weight == 0)
+
+        if not conditions:
+            return []
+
+        query = query.where(or_(*conditions))
         response = await session.execute(query)
 
     return list(response.scalars().all())

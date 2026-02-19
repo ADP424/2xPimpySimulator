@@ -180,11 +180,15 @@ async def breed_pooches(first_pooch_id: int, second_pooch_id: int, rng_seed: Opt
 
     await set_pooch_breeding_cooldown(
         father.id,
-        max(POOCH_BREEDING_COOLDOWN + get_pooch_mutation_advanced_option_total(father.id, "breeding_cooldown"), 0),
+        max(
+            POOCH_BREEDING_COOLDOWN + await get_pooch_mutation_advanced_option_total(father.id, "breeding_cooldown"), 0
+        ),
     )
     await set_pooch_breeding_cooldown(
         mother.id,
-        max(POOCH_BREEDING_COOLDOWN + get_pooch_mutation_advanced_option_total(mother.id, "breeding_cooldown"), 0),
+        max(
+            POOCH_BREEDING_COOLDOWN + await get_pooch_mutation_advanced_option_total(mother.id, "breeding_cooldown"), 0
+        ),
     )
     await set_pooch_virgin(father.id)
     await set_pooch_virgin(mother.id)
@@ -255,7 +259,10 @@ async def breed_pooches(first_pooch_id: int, second_pooch_id: int, rng_seed: Opt
 
         set_pooch_breeding_cooldown(
             puppy.id,
-            max(POOCH_BREEDING_COOLDOWN + get_pooch_mutation_advanced_option_total(puppy.id, "breeding_cooldown"), 0),
+            max(
+                POOCH_BREEDING_COOLDOWN + await get_pooch_mutation_advanced_option_total(puppy.id, "breeding_cooldown"),
+                0,
+            ),
         )
 
         puppies.append(puppy.id)
