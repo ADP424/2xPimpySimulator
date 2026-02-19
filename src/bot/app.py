@@ -48,7 +48,7 @@ def run():
         logger.info(f"Bot ready as {bot.user} ({stage})")
 
         if not hasattr(bot, "_day_change_task"):
-            bot._day_change_task = asyncio.create_task(day_change_runner(bot, stage=stage, tz=tz))  # type: ignore
+            bot._day_change_task = asyncio.create_task(day_change_runner(bot, stage=stage, tz=tz))
 
     if not token:
         raise RuntimeError("DISCORD_TOKEN not set")

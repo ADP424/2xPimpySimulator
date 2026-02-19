@@ -35,7 +35,7 @@ class _FamilySelect(Select):
         self.kind = kind
         self._members = list(members)
 
-    async def callback(self, interaction: discord.Interaction):  # type: ignore[override]
+    async def callback(self, interaction: discord.Interaction):
         # Persist selection on the original message *and* open the selected pooch's info.
         value = self.values[0]
         for opt in self.options:
@@ -82,7 +82,7 @@ class _BreedSelect(Select):
         )
         self._pooch_breeds = list(pooch_breeds)
 
-    async def callback(self, interaction: discord.Interaction):  # type: ignore[override]
+    async def callback(self, interaction: discord.Interaction):
         value = self.values[0]
         for option in self.options:
             option.default = option.value == value
@@ -119,7 +119,7 @@ class _MutationSelect(Select):
         )
         self._mutations = list(mutations)
 
-    async def callback(self, interaction: discord.Interaction):  # type: ignore[override]
+    async def callback(self, interaction: discord.Interaction):
         value = self.values[0]
         for option in self.options:
             option.default = option.value == value

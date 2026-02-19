@@ -21,7 +21,7 @@ class BreedMateView(View):
             min_values=1,
             max_values=1,
         )
-        self.select.callback = self._on_select  # type: ignore
+        self.select.callback = self._on_select
         self.add_item(self.select)
 
     async def _on_select(self, interaction: discord.Interaction):

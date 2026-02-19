@@ -49,15 +49,15 @@ async def post_day_change_summaries(bot: discord.Client, summaries: dict[int, Da
             description=description,
         )
 
-        await view._source.load()  # type: ignore
-        view._page = 0  # type: ignore
-        view._update_nav_disabled()  # type: ignore
-        content, embed = await view._source.render(view, 0)  # type: ignore
+        await view._source.load()
+        view._page = 0
+        view._update_nav_disabled()
+        content, embed = await view._source.render(view, 0)
 
         send_kwargs: dict[str, object] = {"embed": embed, "view": view}
         if content is not None:
             send_kwargs["content"] = content
-        await channel.send(**send_kwargs)  # type: ignore
+        await channel.send(**send_kwargs)
 
 
 async def day_change_runner(bot: discord.Client, stage: str, tz: str = "America/New_York"):

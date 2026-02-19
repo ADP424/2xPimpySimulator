@@ -94,13 +94,13 @@ class VendorPageControls:
             options=options,
             disabled=not bool(pooches),
         )
-        self.select.callback = self._on_select  # type: ignore
+        self.select.callback = self._on_select
 
         self.info_button = Button(label="Info", style=discord.ButtonStyle.primary, disabled=True)
         self.buy_button = Button(label="Buy", style=discord.ButtonStyle.success, disabled=True)
 
-        self.info_button.callback = self._on_info  # type: ignore
-        self.buy_button.callback = self._on_buy  # type: ignore
+        self.info_button.callback = self._on_info
+        self.buy_button.callback = self._on_buy
 
         if not pooches:
             self.info_button.disabled = True

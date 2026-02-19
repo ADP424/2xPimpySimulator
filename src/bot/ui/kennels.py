@@ -63,15 +63,15 @@ class KennelPageControls:
             disabled=not bool(pooches),
         )
 
-        self.select.callback = self._on_select  # type: ignore
+        self.select.callback = self._on_select
 
         self.info_button = Button(label="Info", style=discord.ButtonStyle.primary, disabled=True)
         self.breed_button = Button(label="Breed", style=discord.ButtonStyle.secondary, disabled=True)
         self.walk_button = Button(label="Walk", style=discord.ButtonStyle.secondary, disabled=True)
 
-        self.info_button.callback = self._on_info  # type: ignore
-        self.breed_button.callback = self._on_breed  # type: ignore
-        self.walk_button.callback = self._noop  # type: ignore
+        self.info_button.callback = self._on_info
+        self.breed_button.callback = self._on_breed
+        self.walk_button.callback = self._noop
 
         if not pooches:
             self.info_button.disabled = True

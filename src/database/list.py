@@ -5,6 +5,7 @@ from .get import get_pooch_parents
 # from .models import *  # loads all ORM models (via database/models/__init__.py)
 from .models import (
     Breed,
+    HealthImpactWeight,
     Kennel,
     KennelPooch,
     Mutation,
@@ -18,7 +19,6 @@ from .models import (
     Server,
     Vendor,
     VendorPoochForSale,
-    HealthImpactWeight,
 )
 from .session import session_scope
 
