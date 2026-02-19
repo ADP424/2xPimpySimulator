@@ -6,7 +6,7 @@ import discord
 from discord.ui import Button, Select, View
 
 from bot.constants import ITEMS_PER_PAGE
-from bot.ui.util import edit_interaction, reply_to_interacted_message
+from bot.ui.util import defer_interaction, edit_interaction, reply_to_interacted_message
 
 from .components.paginator import PageSource, PaginatorView
 from .pooch_info import PoochInfoView
@@ -53,9 +53,12 @@ class DayChangeStatusPageSource(PageSource):
         deaths = self.deaths[death_start:death_end]
         other_events = self.other_events[other_event_start:other_event_end]
 
-        birthed_pooches = [birth.child for birth in births]
-        dead_pooches = [death.pooch for death in deaths]
-        other_pooches = [other_event.pooch for other_event in other_events]
+        def _dedupe_pooches(pooches: list[Pooch]) -> list[Pooch]:
+            return list({pooch.id: pooch for pooch in pooches}.values())
+
+        birthed_pooches = _dedupe_pooches([birth.child for birth in births])
+        dead_pooches = _dedupe_pooches([death.pooch for death in deaths])
+        other_pooches = _dedupe_pooches([other_event.pooch for other_event in other_events])
 
         embed = discord.Embed(title=self.title, description=self.description)
 
@@ -105,36 +108,36 @@ class _StatusControls:
             options=(
                 [discord.SelectOption(label=pooch.name, value=str(pooch.id)) for pooch in birthed_pooches]
                 if birthed_pooches
-                else []
+                else [discord.SelectOption(label="No pooches were born today", value="__none__")]
             ),
             disabled=not bool(birthed_pooches),
         )
-        self.born_select.callback = self._on_born_select
+        self.born_select.callback = self._on_born_select  # type: ignore
 
         self.dead_select = Select(
             placeholder="Newly dead pooches",
             options=(
                 [discord.SelectOption(label=pooch.name, value=str(pooch.id)) for pooch in dead_pooches]
                 if dead_pooches
-                else []
+                else [discord.SelectOption(label="No pooches died today", value="__none__")]
             ),
             disabled=not bool(dead_pooches),
         )
-        self.dead_select.callback = self._on_dead_select
+        self.dead_select.callback = self._on_dead_select  # type: ignore
 
         self.other_select = Select(
             placeholder="Miscellaneous pooches",
             options=(
                 [discord.SelectOption(label=pooch.name, value=str(pooch.id)) for pooch in other_pooches]
                 if other_pooches
-                else []
+                else [discord.SelectOption(label="No miscellaneous events today", value="__none__")]
             ),
             disabled=not bool(other_pooches),
         )
-        self.other_select.callback = self._on_other_select
+        self.other_select.callback = self._on_other_select  # type: ignore
 
         self.info_button = Button(label="Info", style=discord.ButtonStyle.primary, disabled=True)
-        self.info_button.callback = self._on_info
+        self.info_button.callback = self._on_info  # type: ignore
 
     def attach(self, view: View):
         self.born_select.row = 1
@@ -147,6 +150,7 @@ class _StatusControls:
         view.add_item(self.info_button)
 
     async def _on_born_select(self, interaction: discord.Interaction):
+        await defer_interaction(interaction)
         selected_id = int(self.born_select.values[0])
         self.selected_born_id = selected_id
         self.selected_dead_id = None
@@ -168,6 +172,7 @@ class _StatusControls:
         await edit_interaction(interaction, view=self.born_select.view)
 
     async def _on_dead_select(self, interaction: discord.Interaction):
+        await defer_interaction(interaction)
         selected_id = int(self.dead_select.values[0])
         self.selected_dead_id = selected_id
         self.selected_born_id = None
@@ -189,6 +194,7 @@ class _StatusControls:
         await edit_interaction(interaction, view=self.dead_select.view)
 
     async def _on_other_select(self, interaction: discord.Interaction):
+        await defer_interaction(interaction)
         selected_id = int(self.other_select.values[0])
         self.selected_other_id = selected_id
         self.selected_born_id = None
@@ -207,9 +213,10 @@ class _StatusControls:
         for option in self.dead_select.options:
             option.default = False
 
-        await edit_interaction(interaction, view=self.dead_select.view)
+        await edit_interaction(interaction, view=self.other_select.view)
 
     async def _on_info(self, interaction: discord.Interaction):
+        await defer_interaction(interaction)
         if self.selected_pooch is None:
             return
         info_view = PoochInfoView(server=self.server, pooch=self.selected_pooch, owner=None)

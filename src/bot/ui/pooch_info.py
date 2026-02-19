@@ -4,7 +4,12 @@ import discord
 from discord.ui import Select, View
 
 from bot.constants import VIEW_TIMEOUT
-from bot.ui.util import edit_interaction, mention, reply_to_interacted_message
+from bot.ui.util import (
+    defer_interaction,
+    edit_interaction,
+    mention,
+    reply_to_interacted_message,
+)
 from game import get_pooch_family
 from game.models.mutation import Mutation
 from game.models.pooch import PoochBreedInfo
@@ -35,7 +40,8 @@ class _FamilySelect(Select):
         self.kind = kind
         self._members = list(members)
 
-    async def callback(self, interaction: discord.Interaction):
+    async def callback(self, interaction: discord.Interaction):  # type: ignore[override]
+        await defer_interaction(interaction)
         # Persist selection on the original message *and* open the selected pooch's info.
         value = self.values[0]
         for opt in self.options:
@@ -82,7 +88,8 @@ class _BreedSelect(Select):
         )
         self._pooch_breeds = list(pooch_breeds)
 
-    async def callback(self, interaction: discord.Interaction):
+    async def callback(self, interaction: discord.Interaction):  # type: ignore[override]
+        await defer_interaction(interaction)
         value = self.values[0]
         for option in self.options:
             option.default = option.value == value
@@ -119,7 +126,8 @@ class _MutationSelect(Select):
         )
         self._mutations = list(mutations)
 
-    async def callback(self, interaction: discord.Interaction):
+    async def callback(self, interaction: discord.Interaction):  # type: ignore[override]
+        await defer_interaction(interaction)
         value = self.values[0]
         for option in self.options:
             option.default = option.value == value

@@ -3,7 +3,7 @@ from typing import Optional
 import discord
 from discord.ui import Button, Select, View
 
-from bot.ui.util import edit_interaction, reply_to_interacted_message
+from bot.ui.util import defer_interaction, edit_interaction, reply_to_interacted_message
 from game import (
     get_or_create_owner,
     get_or_create_server,
@@ -63,15 +63,15 @@ class KennelPageControls:
             disabled=not bool(pooches),
         )
 
-        self.select.callback = self._on_select
+        self.select.callback = self._on_select  # type: ignore
 
         self.info_button = Button(label="Info", style=discord.ButtonStyle.primary, disabled=True)
         self.breed_button = Button(label="Breed", style=discord.ButtonStyle.secondary, disabled=True)
         self.walk_button = Button(label="Walk", style=discord.ButtonStyle.secondary, disabled=True)
 
-        self.info_button.callback = self._on_info
-        self.breed_button.callback = self._on_breed
-        self.walk_button.callback = self._noop
+        self.info_button.callback = self._on_info  # type: ignore
+        self.breed_button.callback = self._on_breed  # type: ignore
+        self.walk_button.callback = self._noop  # type: ignore
 
         if not pooches:
             self.info_button.disabled = True
@@ -90,6 +90,7 @@ class KennelPageControls:
         view.add_item(self.walk_button)
 
     async def _on_select(self, interaction: discord.Interaction):
+        await defer_interaction(interaction)
         selected_id = int(self.select.values[0])
         self.selected_pooch = next((pooch for pooch in self.pooches if pooch.id == selected_id), None)
         if self.selected_pooch is None:
@@ -105,6 +106,7 @@ class KennelPageControls:
         await edit_interaction(interaction, view=self.select.view)
 
     async def _on_info(self, interaction: discord.Interaction):
+        await defer_interaction(interaction)
         if self.selected_pooch is None:
             return
         server = await get_or_create_server(self.server_discord_id)
@@ -114,6 +116,7 @@ class KennelPageControls:
         await reply_to_interacted_message(interaction, embed=embed, view=view)
 
     async def _on_breed(self, interaction: discord.Interaction):
+        await defer_interaction(interaction)
         if self.selected_pooch is None:
             return
 
@@ -130,4 +133,5 @@ class KennelPageControls:
         await reply_to_interacted_message(interaction, content="Select a mate:", view=view)
 
     async def _noop(self, interaction: discord.Interaction):
-        await interaction.response.send_message("Coming soon.", ephemeral=False)
+        await defer_interaction(interaction)
+        await reply_to_interacted_message(interaction, content="Coming soon.")

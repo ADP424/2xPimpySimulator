@@ -2,7 +2,7 @@ import discord
 from discord.ui import Button, Select, View
 
 from bot.constants import VIEW_TIMEOUT
-from bot.ui.util import edit_interaction, reply_to_interacted_message
+from bot.ui.util import defer_interaction, edit_interaction, reply_to_interacted_message
 
 from .components.paginator import PaginatorView
 from .vendors import VendorsPageSource
@@ -28,6 +28,7 @@ class TownNavigationSelect(Select):
         )
 
     async def callback(self, interaction: discord.Interaction):
+        await defer_interaction(interaction)
         for option in self.options:
             option.default = option.value == self.values[0]
         await edit_interaction(interaction, view=self.view)
@@ -53,6 +54,7 @@ class HomeButton(Button):
         super().__init__(label="Home", style=discord.ButtonStyle.secondary, row=1)
 
     async def callback(self, interaction: discord.Interaction):
+        await defer_interaction(interaction)
         from .home import send_home_menu  # local import to dodge circular dependencies
 
         await send_home_menu(interaction)

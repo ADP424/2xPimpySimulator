@@ -15,7 +15,7 @@ from game.models import Pooch, Vendor
 
 from .components.paginator import PageSource, PaginatorView
 from .pooch_info import PoochInfoView
-from .util import edit_interaction, reply_to_interacted_message
+from .util import defer_interaction, edit_interaction, reply_to_interacted_message
 
 
 class VendorsMenuView(View):
@@ -94,13 +94,13 @@ class VendorPageControls:
             options=options,
             disabled=not bool(pooches),
         )
-        self.select.callback = self._on_select
+        self.select.callback = self._on_select  # type: ignore
 
         self.info_button = Button(label="Info", style=discord.ButtonStyle.primary, disabled=True)
         self.buy_button = Button(label="Buy", style=discord.ButtonStyle.success, disabled=True)
 
-        self.info_button.callback = self._on_info
-        self.buy_button.callback = self._on_buy
+        self.info_button.callback = self._on_info  # type: ignore
+        self.buy_button.callback = self._on_buy  # type: ignore
 
         if not pooches:
             self.info_button.disabled = True
@@ -116,6 +116,7 @@ class VendorPageControls:
         view.add_item(self.buy_button)
 
     async def _on_select(self, interaction: discord.Interaction):
+        await defer_interaction(interaction)
         value = self.select.values[0]
         if value == "__none__":
             self.selected_pooch = None
@@ -138,6 +139,7 @@ class VendorPageControls:
         await edit_interaction(interaction, view=self.select.view)
 
     async def _on_info(self, interaction: discord.Interaction):
+        await defer_interaction(interaction)
         if self.selected_pooch is None:
             return
         server = await get_or_create_server(self.server_discord_id)
@@ -147,6 +149,7 @@ class VendorPageControls:
         await reply_to_interacted_message(interaction, embed=embed, view=view)
 
     async def _on_buy(self, interaction: discord.Interaction):
+        await defer_interaction(interaction)
         if self.selected_pooch is None:
             return
 

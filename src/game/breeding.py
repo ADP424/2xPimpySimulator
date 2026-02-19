@@ -257,7 +257,7 @@ async def breed_pooches(first_pooch_id: int, second_pooch_id: int, rng_seed: Opt
             if incest_level > 0 and rng.random() < incest_level:
                 await add_mutation_to_pooch(puppy.id, rng=rng)
 
-        set_pooch_breeding_cooldown(
+        await set_pooch_breeding_cooldown(
             puppy.id,
             max(
                 POOCH_BREEDING_COOLDOWN + await get_pooch_mutation_advanced_option_total(puppy.id, "breeding_cooldown"),

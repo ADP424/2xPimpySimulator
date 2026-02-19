@@ -386,8 +386,9 @@ async def list_servers_for_pooch(pooch_id: int) -> list[Server]:
     async with session_scope() as session:
         query = (
             select(Server)
-            .join(Vendor, Vendor.server_discord_id == Server.discord_id)
-            .join(OwnerServer, OwnerServer.server_discord_id == Server.discord_id)
+            .distinct()
+            .outerjoin(Vendor, Vendor.server_discord_id == Server.discord_id)
+            .outerjoin(OwnerServer, OwnerServer.server_discord_id == Server.discord_id)
             .join(Pooch, or_(Pooch.vendor_id == Vendor.id, Pooch.owner_discord_id == OwnerServer.owner_discord_id))
             .where(Pooch.id == pooch_id)
             .order_by(Server.joined_at.asc(), Server.discord_id.asc())

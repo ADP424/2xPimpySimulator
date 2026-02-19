@@ -214,12 +214,24 @@ async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeS
                     pooch_kennel = await get_pooch_kennel(pooch.id)
                     if pooch_kennel is None:
                         continue
-                    target_pooches = await list_pooches_for_kennel(pooch_kennel.id)
+                    target_pooches = [
+                        kennel_pooch
+                        for kennel_pooch in (await list_pooches_for_kennel(pooch_kennel.id))
+                        if kennel_pooch.alive and kennel_pooch.id != pooch.id
+                    ]
                 elif on_death_targets == "random":
                     pooch_kennel = await get_pooch_kennel(pooch.id)
                     if pooch_kennel is None:
                         continue
-                    target_pooches = [rng.choice(await list_pooches_for_kennel(pooch_kennel.id))]
+                    target_pooches = [
+                        rng.choice(
+                            [
+                                kennel_pooch
+                                for kennel_pooch in (await list_pooches_for_kennel(pooch_kennel.id))
+                                if kennel_pooch.alive and kennel_pooch.id != pooch.id
+                            ]
+                        )
+                    ]
 
                 if on_death == "kill":
                     for target in target_pooches:

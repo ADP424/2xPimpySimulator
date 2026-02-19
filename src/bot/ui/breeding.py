@@ -3,7 +3,7 @@ from __future__ import annotations
 import discord
 from discord.ui import Select, View
 
-from bot.ui.util import edit_interaction, reply_to_interacted_message
+from bot.ui.util import defer_interaction, edit_interaction, reply_to_interacted_message
 from game import breed_pooches
 from game.models import Pooch
 
@@ -21,10 +21,11 @@ class BreedMateView(View):
             min_values=1,
             max_values=1,
         )
-        self.select.callback = self._on_select
+        self.select.callback = self._on_select  # type: ignore
         self.add_item(self.select)
 
     async def _on_select(self, interaction: discord.Interaction):
+        await defer_interaction(interaction)
         mate_id = int(self.select.values[0])
         mate = next((mate for mate in self.mates if mate.id == mate_id), None)
         if mate is None:

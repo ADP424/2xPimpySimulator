@@ -23,8 +23,8 @@ class PaginatorView(View):
 
         self._prev = Button(label="◀", style=discord.ButtonStyle.secondary, disabled=True, row=0)
         self._next = Button(label="▶", style=discord.ButtonStyle.secondary, disabled=True, row=0)
-        self._prev.callback = self._on_prev
-        self._next.callback = self._on_next
+        self._prev.callback = self._on_prev  # type: ignore
+        self._next.callback = self._on_next  # type: ignore
 
         self.add_item(self._prev)
         self.add_item(self._next)

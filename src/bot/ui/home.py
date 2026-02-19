@@ -2,7 +2,12 @@ import discord
 from discord.ui import Button, Select, View
 
 from bot.constants import VIEW_TIMEOUT
-from bot.ui.util import edit_interaction, mention, reply_to_interacted_message
+from bot.ui.util import (
+    defer_interaction,
+    edit_interaction,
+    mention,
+    reply_to_interacted_message,
+)
 from game import get_or_create_owner
 
 from .components.paginator import PaginatorView
@@ -19,6 +24,7 @@ async def build_home_content(guild_id: int, user_id: int) -> str:
 
 
 async def send_home_menu(interaction: discord.Interaction):
+    await defer_interaction(interaction)
     if interaction.guild_id is None:
         await reply_to_interacted_message(interaction, content="This must be used in a server.")
         return
@@ -44,6 +50,7 @@ class HomeNavigationSelect(Select):
         )
 
     async def callback(self, interaction: discord.Interaction):
+        await defer_interaction(interaction)
 
         # Make sure the dropdown selection persists between refreshes
         for option in self.options:
@@ -68,6 +75,7 @@ class TownButton(Button):
         super().__init__(label="Town", style=discord.ButtonStyle.primary, row=1)
 
     async def callback(self, interaction: discord.Interaction):
+        await defer_interaction(interaction)
         from .town import TownView  # local import to dodge circular dependencies
 
         await reply_to_interacted_message(
