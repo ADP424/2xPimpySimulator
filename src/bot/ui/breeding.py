@@ -3,7 +3,7 @@ from __future__ import annotations
 import discord
 from discord.ui import Select, View
 
-from bot.ui.util import defer_interaction, edit_interaction, reply_to_interacted_message
+from bot.ui.util import InteractionResponder
 from game import breed_pooches
 from game.models import Pooch
 
@@ -25,7 +25,7 @@ class BreedMateView(View):
         self.add_item(self.select)
 
     async def _on_select(self, interaction: discord.Interaction):
-        await defer_interaction(interaction)
+        r = InteractionResponder(interaction)
         mate_id = int(self.select.values[0])
         mate = next((mate for mate in self.mates if mate.id == mate_id), None)
         if mate is None:
@@ -33,12 +33,12 @@ class BreedMateView(View):
 
         # Disable after selection to prevent double-submits
         self.select.disabled = True
-        await edit_interaction(interaction, view=self)
+        await r.edit(view=self)
 
         try:
             puppies = await breed_pooches(self.pooch.id, mate.id)
         except ValueError as exception:
-            await reply_to_interacted_message(interaction, content=str(exception))
+            await r.reply(content=str(exception))
             return
 
         if len(puppies) == 1:
@@ -48,4 +48,4 @@ class BreedMateView(View):
         elif len(puppies) == 3:
             message = f"✅ **Triplets!** {self.pooch.name} and {mate.name} are expecting **3** puppies."
 
-        await reply_to_interacted_message(interaction, content=message)
+        await r.reply(content=message)

@@ -15,7 +15,7 @@ from game.models import Pooch, Vendor
 
 from .components.paginator import PageSource, PaginatorView
 from .pooch_info import PoochInfoView
-from .util import defer_interaction, edit_interaction, reply_to_interacted_message
+from .util import InteractionResponder
 
 
 class VendorsMenuView(View):
@@ -116,7 +116,7 @@ class VendorPageControls:
         view.add_item(self.buy_button)
 
     async def _on_select(self, interaction: discord.Interaction):
-        await defer_interaction(interaction)
+        r = InteractionResponder(interaction)
         value = self.select.values[0]
         if value == "__none__":
             self.selected_pooch = None
@@ -136,36 +136,41 @@ class VendorPageControls:
             for option in self.select.options:
                 option.default = option.value == str(selected_id)
 
-        await edit_interaction(interaction, view=self.select.view)
+        await r.edit(view=self.select.view)
 
     async def _on_info(self, interaction: discord.Interaction):
-        await defer_interaction(interaction)
+        r = InteractionResponder(interaction)
         if self.selected_pooch is None:
             return
         server = await get_or_create_server(self.server_discord_id)
         owner = await get_or_create_owner(self.server_discord_id, self.owner_discord_id)
         view = PoochInfoView(server=server, pooch=self.selected_pooch, owner=owner)
         embed = await view.build_embed()
-        await reply_to_interacted_message(interaction, embed=embed, view=view)
+        await r.reply(embed=embed, view=view)
 
     async def _on_buy(self, interaction: discord.Interaction):
-        await defer_interaction(interaction)
+        r = InteractionResponder(interaction)
         if self.selected_pooch is None:
             return
+        await r.defer(thinking=True)
 
-        success, message = await buy_pooch(
-            self.owner_discord_id,
-            self.vendor.id,
-            self.selected_pooch.id,
-        )
+        try:
+            success, message = await buy_pooch(
+                self.owner_discord_id,
+                self.vendor.id,
+                self.selected_pooch.id,
+            )
+        except Exception:
+            await r.finish_with_error("Purchase failed unexpectedly.")
+            return
 
         if not success:
-            await reply_to_interacted_message(interaction, content=message)
+            await r.reply(content=message)
             return
         parent_view = self.select.view
         if isinstance(parent_view, PaginatorView):
             await parent_view.refresh(interaction)
         else:
-            await edit_interaction(interaction, view=parent_view)
+            await r.edit(view=parent_view)
 
-        await reply_to_interacted_message(interaction, content=f"✅ {message}")
+        await r.reply(content=f"✅ {message}")

@@ -5,10 +5,8 @@ from discord.ui import Select, View
 
 from bot.constants import VIEW_TIMEOUT
 from bot.ui.util import (
-    defer_interaction,
-    edit_interaction,
+    InteractionResponder,
     mention,
-    reply_to_interacted_message,
 )
 from game import get_pooch_family
 from game.models.mutation import Mutation
@@ -41,13 +39,13 @@ class _FamilySelect(Select):
         self._members = list(members)
 
     async def callback(self, interaction: discord.Interaction):  # type: ignore[override]
-        await defer_interaction(interaction)
+        r = InteractionResponder(interaction)
         # Persist selection on the original message *and* open the selected pooch's info.
         value = self.values[0]
         for opt in self.options:
             opt.default = opt.value == value
 
-        await edit_interaction(interaction, view=self.view)
+        await r.edit(view=self.view)
 
         if value == "__none__":
             return
@@ -63,7 +61,7 @@ class _FamilySelect(Select):
 
         next_view = PoochInfoView(server=view.server, pooch=selected_member, owner=view.owner)
         embed = await next_view.build_embed()
-        await reply_to_interacted_message(interaction, embed=embed, view=next_view)
+        await r.reply(embed=embed, view=next_view)
 
 
 class _BreedSelect(Select):
@@ -89,12 +87,12 @@ class _BreedSelect(Select):
         self._pooch_breeds = list(pooch_breeds)
 
     async def callback(self, interaction: discord.Interaction):  # type: ignore[override]
-        await defer_interaction(interaction)
+        r = InteractionResponder(interaction)
         value = self.values[0]
         for option in self.options:
             option.default = option.value == value
 
-        await edit_interaction(interaction, view=self.view)
+        await r.edit(view=self.view)
 
         if value == "__none__":
             return
@@ -107,7 +105,7 @@ class _BreedSelect(Select):
             return
 
         embed = build_breed_info_embed(selected)
-        await reply_to_interacted_message(interaction, embed=embed)
+        await r.reply(embed=embed)
 
 
 class _MutationSelect(Select):
@@ -127,12 +125,12 @@ class _MutationSelect(Select):
         self._mutations = list(mutations)
 
     async def callback(self, interaction: discord.Interaction):  # type: ignore[override]
-        await defer_interaction(interaction)
+        r = InteractionResponder(interaction)
         value = self.values[0]
         for option in self.options:
             option.default = option.value == value
 
-        await edit_interaction(interaction, view=self.view)
+        await r.edit(view=self.view)
 
         if value == "__none__":
             return
@@ -143,7 +141,7 @@ class _MutationSelect(Select):
             return
 
         embed = build_mutation_info_embed(selected)
-        await reply_to_interacted_message(interaction, embed=embed)
+        await r.reply(embed=embed)
 
 
 class PoochInfoView(View):

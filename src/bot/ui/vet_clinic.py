@@ -7,7 +7,7 @@ import discord
 from discord.ui import Button, View
 
 from bot.constants import VIEW_TIMEOUT
-from bot.ui.util import defer_interaction, reply_to_interacted_message
+from bot.ui.util import InteractionResponder
 from game import list_all_breeds, list_all_mutations
 from game.models import Breed, Mutation
 
@@ -36,16 +36,11 @@ class _ListBreedsButton(Button):
         self._owner_id = owner_discord_id
 
     async def callback(self, interaction: discord.Interaction):
-        await defer_interaction(interaction)
+        r = InteractionResponder(interaction)
         source = BreedListPageSource()
         view = PaginatorView(source, owner_discord_id=self._owner_id)
         content, embed = await view.build_first_page()
-        await reply_to_interacted_message(
-            interaction,
-            content=content,
-            embed=embed,
-            view=view,
-        )
+        await r.reply(content=content, embed=embed, view=view)
 
 
 class _ListMutationsButton(Button):
@@ -54,16 +49,11 @@ class _ListMutationsButton(Button):
         self._owner_id = owner_discord_id
 
     async def callback(self, interaction: discord.Interaction):
-        await defer_interaction(interaction)
+        r = InteractionResponder(interaction)
         source = MutationListPageSource()
         view = PaginatorView(source, owner_discord_id=self._owner_id)
         content, embed = await view.build_first_page()
-        await reply_to_interacted_message(
-            interaction,
-            content=content,
-            embed=embed,
-            view=view,
-        )
+        await r.reply(content=content, embed=embed, view=view)
 
 
 class BreedListPageSource(PageSource):

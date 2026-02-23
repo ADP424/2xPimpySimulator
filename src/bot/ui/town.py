@@ -2,7 +2,7 @@ import discord
 from discord.ui import Button, Select, View
 
 from bot.constants import VIEW_TIMEOUT
-from bot.ui.util import defer_interaction, edit_interaction, reply_to_interacted_message
+from bot.ui.util import InteractionResponder
 
 from .components.paginator import PaginatorView
 from .vendors import VendorsPageSource
@@ -28,17 +28,16 @@ class TownNavigationSelect(Select):
         )
 
     async def callback(self, interaction: discord.Interaction):
-        await defer_interaction(interaction)
+        r = InteractionResponder(interaction)
         for option in self.options:
             option.default = option.value == self.values[0]
-        await edit_interaction(interaction, view=self.view)
+        await r.edit(view=self.view)
 
         if self.values[0] == "vendors":
             source = VendorsPageSource(server_discord_id=interaction.guild_id, owner_discord_id=interaction.user.id)
             view = PaginatorView(source, owner_discord_id=interaction.user.id)
             content, embed = await view.build_first_page()
-            await reply_to_interacted_message(
-                interaction,
+            await r.reply(
                 content=content if content is not None else "**Vendor Stalls**",
                 embed=embed,
                 view=view,
@@ -46,7 +45,7 @@ class TownNavigationSelect(Select):
 
         if self.values[0] == "vet":
             view = VetClinicView(owner_discord_id=interaction.user.id)
-            await reply_to_interacted_message(interaction, content="Welcome to the town vet!", view=view)
+            await r.reply(content="Welcome to the town vet!", view=view)
 
 
 class HomeButton(Button):
@@ -54,7 +53,7 @@ class HomeButton(Button):
         super().__init__(label="Home", style=discord.ButtonStyle.secondary, row=1)
 
     async def callback(self, interaction: discord.Interaction):
-        await defer_interaction(interaction)
         from .home import send_home_menu  # local import to dodge circular dependencies
 
+        # send_home_menu replies; it does not need a defer for fast actions.
         await send_home_menu(interaction)

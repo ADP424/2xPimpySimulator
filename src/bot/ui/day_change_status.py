@@ -6,7 +6,7 @@ import discord
 from discord.ui import Button, Select, View
 
 from bot.constants import ITEMS_PER_PAGE
-from bot.ui.util import defer_interaction, edit_interaction, reply_to_interacted_message
+from bot.ui.util import InteractionResponder
 
 from .components.paginator import PageSource, PaginatorView
 from .pooch_info import PoochInfoView
@@ -150,7 +150,7 @@ class _StatusControls:
         view.add_item(self.info_button)
 
     async def _on_born_select(self, interaction: discord.Interaction):
-        await defer_interaction(interaction)
+        r = InteractionResponder(interaction)
         selected_id = int(self.born_select.values[0])
         self.selected_born_id = selected_id
         self.selected_dead_id = None
@@ -169,10 +169,10 @@ class _StatusControls:
         for option in self.other_select.options:
             option.default = False
 
-        await edit_interaction(interaction, view=self.born_select.view)
+        await r.edit(view=self.born_select.view)
 
     async def _on_dead_select(self, interaction: discord.Interaction):
-        await defer_interaction(interaction)
+        r = InteractionResponder(interaction)
         selected_id = int(self.dead_select.values[0])
         self.selected_dead_id = selected_id
         self.selected_born_id = None
@@ -191,10 +191,10 @@ class _StatusControls:
         for option in self.other_select.options:
             option.default = False
 
-        await edit_interaction(interaction, view=self.dead_select.view)
+        await r.edit(view=self.dead_select.view)
 
     async def _on_other_select(self, interaction: discord.Interaction):
-        await defer_interaction(interaction)
+        r = InteractionResponder(interaction)
         selected_id = int(self.other_select.values[0])
         self.selected_other_id = selected_id
         self.selected_born_id = None
@@ -213,15 +213,15 @@ class _StatusControls:
         for option in self.dead_select.options:
             option.default = False
 
-        await edit_interaction(interaction, view=self.other_select.view)
+        await r.edit(view=self.other_select.view)
 
     async def _on_info(self, interaction: discord.Interaction):
-        await defer_interaction(interaction)
+        r = InteractionResponder(interaction)
         if self.selected_pooch is None:
             return
         info_view = PoochInfoView(server=self.server, pooch=self.selected_pooch, owner=None)
         embed = await info_view.build_embed()
-        await reply_to_interacted_message(interaction, embed=embed, view=info_view)
+        await r.reply(embed=embed, view=info_view)
 
 
 class PublicPaginatorView(PaginatorView):
