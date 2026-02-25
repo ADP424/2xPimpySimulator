@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}{{ server_name }} - Town{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>🏘️ {{ server_name }}</h1>
+    <p>Welcome to the town! Choose where to go.</p>
+</div>
+
+<div class="town-grid">
+    <a href="{{ url_for('vendor.vendors_list') }}" class="town-location">
+        <span class="location-icon">🏪</span>
+        <h3>Marketplace</h3>
+        <p>Buy pooches from vendors</p>
+    </a>
+    
+    <a href="{{ url_for('info.veterinary_clinic') }}" class="town-location">
+        <span class="location-icon">🏥</span>
+        <h3>Veterinary Clinic</h3>
+        <p>Learn about breeds and mutations</p>
+    </a>
+    
+    <a href="{{ url_for('kennel.kennels_list') }}" class="town-location">
+        <span class="location-icon">🏠</span>
+        <h3>Your Kennels</h3>
+        <p>Manage your pooches</p>
+    </a>
+    
+    <a href="{{ url_for('main.home') }}" class="town-location">
+        <span class="location-icon">👤</span>
+        <h3>Your Home</h3>
+        <p>View your account and balances</p>
+    </a>
+</div>
+{% endblock %}

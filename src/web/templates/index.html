@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}Welcome - Pooch Breeder{% endblock %}
+
+{% block content %}
+<div class="hero">
+    <h1>🐕 Pooch Breeder</h1>
+    <p class="hero-subtitle">Breed, collect, and trade virtual dogs!</p>
+    
+    <div class="hero-actions">
+        <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-large">
+            <img src="{{ url_for('static', filename='images/discord-logo.svg') }}" alt="Discord" class="btn-icon">
+            Login with Discord
+        </a>
+    </div>
+    
+    <div class="features">
+        <div class="feature">
+            <span class="feature-icon">🏠</span>
+            <h3>Build Your Kennel</h3>
+            <p>Collect and manage your pack of pooches</p>
+        </div>
+        <div class="feature">
+            <span class="feature-icon">💕</span>
+            <h3>Breed Champions</h3>
+            <p>Combine traits to create unique dogs</p>
+        </div>
+        <div class="feature">
+            <span class="feature-icon">💰</span>
+            <h3>Trade & Sell</h3>
+            <p>Visit vendors to buy and sell pooches</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

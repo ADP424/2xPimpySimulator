@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}Vendors - {{ server_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>🏪 Vendors</h1>
+    <p>Browse vendors selling pooches in {{ server_name }}</p>
+</div>
+
+<div class="loading" id="loading">Loading vendors...</div>
+
+<div id="vendors-container" style="display: none;">
+    <div id="vendors-grid" class="vendors-grid"></div>
+    <div id="no-vendors" class="empty-state" style="display: none;">
+        <p>No vendors found in this server.</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const PAGE_DATA = {
+    serverId: {{ server_id }}
+};
+
+document.addEventListener('DOMContentLoaded', async function() {
+    try {
+        const response = await fetch('/api/vendors');
+        const vendors = await response.json();
+
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('vendors-container').style.display = 'block';
+
+        if (vendors.length === 0) {
+            document.getElementById('no-vendors').style.display = 'block';
+            return;
+        }
+
+        const grid = document.getElementById('vendors-grid');
+        grid.innerHTML = vendors.map(vendor => createVendorCard(vendor)).join('');
+
+    } catch (error) {
+        document.getElementById('loading').textContent = 'Failed to load vendors';
+        console.error('Error:', error);
+    }
+});
+
+function formatMarkup(markup) {
+    const pct = Math.round((markup - 1) * 100);
+    const sign = pct >= 0 ? '+' : '';
+    return `${sign}${pct}%`;
+}
+
+function createVendorCard(vendor) {
+    return `
+        <a href="/vendor/${vendor.id}" class="vendor-card">
+            <div class="vendor-header">
+                <h3>🏪 ${escapeHtml(vendor.name)}</h3>
+                <span class="vendor-stock">${vendor.stock_count ?? 0} pooches</span>
+            </div>
+            <div class="vendor-info">
+                <div class="info-row">
+                    <span class="label">Stock:</span>
+                    <span class="value">${vendor.stock_count ?? 0} pooches</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Price markup:</span>
+                    <span class="value">${formatMarkup(vendor.price_markup)}</span>
+                </div>
+            </div>
+            <div class="vendor-footer">
+                <span class="btn btn-primary">Browse Pooches →</span>
+            </div>
+        </a>
+    `;
+}
+</script>
+{% endblock %}

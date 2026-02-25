@@ -1,6 +1,7 @@
 import asyncio
 import os
 from datetime import datetime, time, timedelta
+from typing import TYPE_CHECKING
 from zoneinfo import ZoneInfo
 
 import discord
@@ -9,8 +10,9 @@ from game import get_event_channel, run_day_change
 from logger import get_logger
 
 from .ui.day_change_status import make_status_view
+from .webhooks import post_day_change_webhooks
 
-if discord.TYPE_CHECKING:
+if TYPE_CHECKING:
     from game.models import DayChangeSummary
 
 
@@ -67,6 +69,7 @@ async def day_change_runner(bot: discord.Client, stage: str, tz: str = "America/
         logger.info("Changing day...")
         summaries = await run_day_change(rng_seed=int.from_bytes(os.urandom(8)))
         await post_day_change_summaries(bot, summaries)
+        await post_day_change_webhooks(summaries)
 
     if stage == "dev":
         logger.info("Beginning day change loop as DEV...")

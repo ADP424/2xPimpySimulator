@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block title %}Mutations - Pooch Breeder{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>🧬 Genetic Mutations</h1>
+    <p>Browse all mutations that can affect your pooches</p>
+</div>
+
+<div class="filters-bar">
+    <input type="text" id="search-input" placeholder="Search mutations..." class="search-input">
+
+    <select id="rarity-filter" class="filter-select">
+        <option value="">All rarities</option>
+    </select>
+
+    <select id="health-filter" class="filter-select">
+        <option value="">All impacts</option>
+    </select>
+
+    <select id="category-filter" class="filter-select">
+        <option value="">All categories</option>
+    </select>
+
+    <select id="affects-filter" class="filter-select">
+        <option value="">Affects: Any</option>
+        <option value="both">Both</option>
+        <option value="male">Males</option>
+        <option value="female">Females</option>
+        <option value="none">None</option>
+    </select>
+</div>
+
+<div class="loading" id="loading">Loading mutations...</div>
+
+<div id="mutations-container" style="display: none;">
+    <div id="mutations-grid" class="mutations-grid"></div>
+    <div id="no-results" class="empty-state" style="display: none;">
+        <p>No mutations found matching your filters.</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let mutations = [];
+
+document.addEventListener('DOMContentLoaded', async function() {
+    try {
+        const response = await fetch('/api/mutations');
+        mutations = await response.json();
+
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('mutations-container').style.display = 'block';
+
+        setupFilters();
+        renderMutations(mutations);
+
+    } catch (error) {
+        document.getElementById('loading').textContent = 'Failed to load mutations';
+        console.error('Error:', error);
+    }
+});
+
+function setupFilters() {
+    const raritySet = new Set();
+    const impactSet = new Set();
+    const categorySet = new Set();
+
+    for (const m of mutations) {
+        if (m.rarity) raritySet.add(String(m.rarity));
+        if (m.health_impact) impactSet.add(String(m.health_impact));
+        if (m.category) categorySet.add(String(m.category));
+    }
+
+    populateSelect('rarity-filter', Array.from(raritySet).sort());
+    populateSelect('health-filter', Array.from(impactSet).sort());
+    populateSelect('category-filter', Array.from(categorySet).sort());
+
+    ['search-input', 'rarity-filter', 'health-filter', 'category-filter', 'affects-filter'].forEach(id => {
+        document.getElementById(id).addEventListener('input', applyFilters);
+        document.getElementById(id).addEventListener('change', applyFilters);
+    });
+}
+
+function populateSelect(selectId, values) {
+    const select = document.getElementById(selectId);
+    const first = select.querySelector('option');
+    select.innerHTML = '';
+    select.appendChild(first);
+
+    for (const v of values) {
+        const opt = document.createElement('option');
+        opt.value = v;
+        opt.textContent = (typeof App !== 'undefined') ? App.format.enumLabel(v) : v;
+        select.appendChild(opt);
+    }
+}
+
+function applyFilters() {
+    const search = document.getElementById('search-input').value.toLowerCase();
+    const rarity = document.getElementById('rarity-filter').value;
+    const impact = document.getElementById('health-filter').value;
+    const category = document.getElementById('category-filter').value;
+    const affects = document.getElementById('affects-filter').value;
+
+    const filtered = mutations.filter(mutation => {
+        if (search && !mutation.name.toLowerCase().includes(search) &&
+            !(mutation.description || '').toLowerCase().includes(search) &&
+            !(mutation.alt_name || '').toLowerCase().includes(search)) {
+            return false;
+        }
+
+        if (rarity && mutation.rarity !== rarity) return false;
+        if (impact && mutation.health_impact !== impact) return false;
+        if (category && mutation.category !== category) return false;
+
+        if (affects) {
+            const affectsFemales = Boolean(mutation.affects_females);
+            const affectsMales = Boolean(mutation.affects_males);
+
+            if (affects === 'both' && !(affectsFemales && affectsMales)) return false;
+            if (affects === 'female' && !(affectsFemales && !affectsMales)) return false;
+            if (affects === 'male' && !(affectsMales && !affectsFemales)) return false;
+            if (affects === 'none' && (affectsFemales || affectsMales)) return false;
+        }
+
+        return true;
+    });
+
+    renderMutations(filtered);
+}
+
+function renderMutations(mutationsToRender) {
+    const grid = document.getElementById('mutations-grid');
+    const noResults = document.getElementById('no-results');
+
+    if (mutationsToRender.length === 0) {
+        grid.innerHTML = '';
+        noResults.style.display = 'block';
+        return;
+    }
+
+    noResults.style.display = 'none';
+    grid.innerHTML = mutationsToRender.map(mutation => createMutationCard(mutation)).join('');
+}
+
+function createMutationCard(mutation) {
+    const rarity = (mutation.rarity || '').toLowerCase();
+    const rarityLabel = (typeof App !== 'undefined') ? App.format.enumLabel(mutation.rarity) : mutation.rarity;
+
+    const impactLabel = (typeof App !== 'undefined') ? App.format.enumLabel(mutation.health_impact) : mutation.health_impact;
+    const impactGroup = (typeof App !== 'undefined') ? App.healthImpactGroup(mutation.health_impact) : 'neutral';
+
+    const affects = [];
+    if (mutation.affects_females) affects.push('Females');
+    if (mutation.affects_males) affects.push('Males');
+
+    return `
+        <a href="/info/mutations/${mutation.id}" class="mutation-card health-${impactGroup}">
+            <div class="mutation-header">
+                <h3>${escapeHtml(mutation.name)}</h3>
+                <span class="rarity-badge rarity-${rarity}">${escapeHtml(rarityLabel)}</span>
+            </div>
+            <p class="mutation-description">${escapeHtml(mutation.description)}</p>
+            <div class="mutation-meta">
+                <span class="meta-item">🏥 ${escapeHtml(impactLabel)}</span>
+                <span class="meta-item">🎯 ${Math.round(mutation.heritability * 100)}%</span>
+                ${mutation.category ? `<span class="meta-item">📁 ${escapeHtml(mutation.category)}</span>` : ''}
+                <span class="meta-item">👥 ${affects.length ? affects.join(', ') : 'None'}</span>
+            </div>
+        </a>
+    `;
+}
+</script>
+{% endblock %}

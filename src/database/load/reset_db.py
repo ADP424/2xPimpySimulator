@@ -4,16 +4,14 @@ from pathlib import Path
 import psycopg
 from dotenv import load_dotenv
 
-load_dotenv()
-
 
 def _get_sync_dsn() -> str:
     return (
         f"dbname={os.environ['DATABASE']} "
-        f"user={os.environ['USER']} "
-        f"password={os.environ['PASSWORD']} "
-        f"host={os.environ['HOST']} "
-        f"port={os.environ.get('PORT', '5432')}"
+        f"user={os.environ['DB_USER']} "
+        f"password={os.environ['DB_PASSWORD']} "
+        f"host={os.environ['DB_HOST']} "
+        f"port={os.environ.get('DB_PORT', '5432')}"
     )
 
 
@@ -22,8 +20,9 @@ def _execute_sql_file(cur: psycopg.Cursor, path: Path):
 
 
 def main():
-    schema_directory = Path(__file__).parent.parent / "schema"
+    load_dotenv()
 
+    schema_directory = Path(__file__).parent.parent / "schema"
     with psycopg.connect(_get_sync_dsn(), autocommit=True) as conn:
         with conn.cursor() as cur:
             cur.execute("DROP SCHEMA public CASCADE; CREATE SCHEMA public;")

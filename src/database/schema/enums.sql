@@ -23,10 +23,10 @@ CREATE TABLE rarity_weights (
 );
 INSERT INTO rarity_weights VALUES
     ('common', 1000),
-    ('uncommon', 400),
-    ('novel', 200),
+    ('uncommon', 250),
+    ('novel', 100),
     ('rare', 50),
-    ('unprecedented', 20),
+    ('unprecedented', 25),
     ('remarkable', 10),
     ('extraordinary', 5),
     ('unique', 1)

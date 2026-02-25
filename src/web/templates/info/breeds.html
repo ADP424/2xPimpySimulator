@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}Breeds - Pooch Breeder{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>🐕 Dog Breeds</h1>
+    <p>Browse all available dog breeds</p>
+</div>
+
+<div class="filters-bar">
+    <input type="text" id="search-input" placeholder="Search breeds..." class="search-input">
+
+    <select id="rarity-filter" class="filter-select">
+        <option value="">All rarities</option>
+    </select>
+
+    <select id="category-filter" class="filter-select">
+        <option value="">All categories</option>
+    </select>
+</div>
+
+<div class="loading" id="loading">Loading breeds...</div>
+
+<div id="breeds-container" style="display: none;">
+    <div id="breeds-grid" class="breeds-grid"></div>
+    <div id="no-results" class="empty-state" style="display: none;">
+        <p>No breeds found matching your filters.</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let breeds = [];
+
+document.addEventListener('DOMContentLoaded', async function() {
+    try {
+        const response = await fetch('/api/breeds');
+        breeds = await response.json();
+
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('breeds-container').style.display = 'block';
+
+        setupFilters();
+        renderBreeds(breeds);
+
+    } catch (error) {
+        document.getElementById('loading').textContent = 'Failed to load breeds';
+        console.error('Error:', error);
+    }
+});
+
+function setupFilters() {
+    const raritySet = new Set();
+    const categorySet = new Set();
+
+    for (const b of breeds) {
+        if (b.rarity) raritySet.add(String(b.rarity));
+        if (b.category) categorySet.add(String(b.category));
+    }
+
+    populateSelect('rarity-filter', Array.from(raritySet).sort());
+    populateSelect('category-filter', Array.from(categorySet).sort());
+
+    ['search-input', 'rarity-filter', 'category-filter'].forEach(id => {
+        document.getElementById(id).addEventListener('input', applyFilters);
+        document.getElementById(id).addEventListener('change', applyFilters);
+    });
+}
+
+function populateSelect(selectId, values) {
+    const select = document.getElementById(selectId);
+    const first = select.querySelector('option');
+    select.innerHTML = '';
+    select.appendChild(first);
+
+    for (const v of values) {
+        const opt = document.createElement('option');
+        opt.value = v;
+        opt.textContent = (typeof App !== 'undefined') ? App.format.enumLabel(v) : v;
+        select.appendChild(opt);
+    }
+}
+
+function applyFilters() {
+    const search = document.getElementById('search-input').value.toLowerCase();
+    const rarity = document.getElementById('rarity-filter').value;
+    const category = document.getElementById('category-filter').value;
+
+    const filtered = breeds.filter(breed => {
+        if (search && !breed.name.toLowerCase().includes(search) &&
+            !(breed.description || '').toLowerCase().includes(search) &&
+            !(breed.alt_name || '').toLowerCase().includes(search)) {
+            return false;
+        }
+
+        if (rarity && breed.rarity !== rarity) return false;
+        if (category && breed.category !== category) return false;
+
+        return true;
+    });
+
+    renderBreeds(filtered);
+}
+
+function renderBreeds(breedsToRender) {
+    const grid = document.getElementById('breeds-grid');
+    const noResults = document.getElementById('no-results');
+
+    if (breedsToRender.length === 0) {
+        grid.innerHTML = '';
+        noResults.style.display = 'block';
+        return;
+    }
+
+    noResults.style.display = 'none';
+    grid.innerHTML = breedsToRender.map(breed => createBreedCard(breed)).join('');
+}
+
+function createBreedCard(breed) {
+    const rarity = (breed.rarity || '').toLowerCase();
+    const rarityLabel = (typeof App !== 'undefined') ? App.format.enumLabel(breed.rarity) : breed.rarity;
+
+    return `
+        <a href="/info/breeds/${breed.id}" class="breed-card">
+            <div class="breed-header">
+                <h3>${escapeHtml(breed.name)}</h3>
+                <span class="rarity-badge rarity-${rarity}">${escapeHtml(rarityLabel)}</span>
+            </div>
+            <p class="breed-description">${escapeHtml(breed.description)}</p>
+            <div class="breed-meta">
+                ${breed.category ? `<span class="meta-item">📁 ${escapeHtml(breed.category)}</span>` : ''}
+                ${breed.alt_name ? `<span class="meta-item">🔄 ${escapeHtml(breed.alt_name)}</span>` : ''}
+            </div>
+        </a>
+    `;
+}
+</script>
+{% endblock %}

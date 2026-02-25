@@ -126,7 +126,10 @@ async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeS
                         server=(await to_server(server)),
                         mother=(await to_pooch(mother)),
                         child=(await to_pooch(baby)),
-                        message="There wasn't enough space in the mother's kennel. Her baby was crushed.",
+                        message=(
+                            f"There wasn't enough space in {mother.name}'s kennel. "
+                            f"Her baby, {baby.name}, was crushed."
+                        ),
                     )
                 )
             continue
@@ -176,10 +179,10 @@ async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeS
                 total_health_impact = sum(negative_health_impacts)
                 death_cause: Mutation = (
                     numpy_rng.choice(
-                        pooch_mutations,
+                        negative_pooch_mutations,
                         p=[(health_impact / total_health_impact) for health_impact in negative_health_impacts],
                     )
-                    if pooch_mutations
+                    if negative_pooch_mutations
                     else None
                 )
                 death_message = death_cause.advanced_options.get("death_message", f"{pooch.name} died.").replace(

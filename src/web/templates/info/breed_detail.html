@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}Breed Info - Pooch Breeder{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <a href="{{ url_for('info.breeds_list') }}" class="btn btn-secondary">← Back to Breeds</a>
+    <h1 id="breed-name">Loading...</h1>
+</div>
+
+<div class="loading" id="loading">Loading breed details...</div>
+
+<div id="breed-container" style="display: none;">
+    <div class="detail-layout">
+        <div class="detail-main">
+            <div class="card">
+                <div class="card-header">
+                    <h2>📋 Description</h2>
+                </div>
+                <div class="card-body">
+                    <p id="breed-description"></p>
+                </div>
+            </div>
+        </div>
+
+        <div class="detail-sidebar">
+            <div class="card">
+                <div class="card-header">
+                    <h2>ℹ️ Quick Info</h2>
+                </div>
+                <div class="card-body">
+                    <div class="info-list">
+                        <div class="info-item">
+                            <span class="info-label">Rarity</span>
+                            <span class="info-value" id="breed-rarity"></span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Category</span>
+                            <span class="info-value" id="breed-category"></span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Also Known As</span>
+                            <span class="info-value" id="breed-alt-name"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const PAGE_DATA = {
+    breedId: {{ breed_id }}
+};
+
+document.addEventListener('DOMContentLoaded', async function() {
+    try {
+        const response = await fetch(`/api/breeds/${PAGE_DATA.breedId}`);
+        const breed = await response.json();
+
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('breed-container').style.display = 'block';
+
+        const rarityLabel = (typeof App !== 'undefined') ? App.format.enumLabel(breed.rarity) : breed.rarity;
+
+        document.getElementById('breed-name').innerHTML = `
+            ${escapeHtml(breed.name)}
+            <span class="rarity-badge rarity-${(breed.rarity || '').toLowerCase()}">${escapeHtml(rarityLabel)}</span>
+        `;
+
+        document.getElementById('breed-description').textContent = breed.description;
+        document.getElementById('breed-rarity').textContent = rarityLabel;
+        document.getElementById('breed-category').textContent = breed.category || '—';
+        document.getElementById('breed-alt-name').textContent = breed.alt_name || '—';
+
+    } catch (error) {
+        document.getElementById('loading').textContent = 'Failed to load breed details';
+        console.error('Error:', error);
+    }
+});
+</script>
+{% endblock %}

@@ -1,7 +1,7 @@
 import random
 from typing import Optional, TypeVar
 
-from sqlalchemy import bindparam, func, select
+from sqlalchemy import bindparam, func, not_, or_, select
 
 from .constants import (
     KENNEL_POOCH_LIMIT,
@@ -327,7 +327,12 @@ def _weighted_choice(rng: random.Random, items: list[tuple[T, int]]) -> Optional
 
 
 async def add_breed_to_pooch(
-    pooch_id: int, breed_id: Optional[int] = None, weight: float = 0.5, rng: Optional[random.Random] = None
+    pooch_id: int,
+    breed_id: Optional[int] = None,
+    weight: float = 0.5,
+    rng: Optional[random.Random] = None,
+    from_vendor: bool = False,
+    from_ritual: bool = False,
 ) -> Optional[PoochBreed]:
     """
     Add the breed with the given ID to the pooch with the given ID.
@@ -347,6 +352,14 @@ async def add_breed_to_pooch(
     rng: Random, optional
         The random generator to use to determine the random breed, if `breed_id` is left blank.
 
+    from_vendor: bool, default : False
+        Specify whether this breed is being added from a vendor or not.
+        This matters because some breeds can't show up on pooches sold by vendors.
+
+    from_ritual: bool, default : False
+        Specify whether this breed is being added from a bloodskull ritual or not.
+        This matters because some breeds can't show up on pooches created by sacrificial rituals.
+
     Returns
     -------
     PoochBreed, optional
@@ -364,12 +377,17 @@ async def add_breed_to_pooch(
                 .join(RarityWeight, RarityWeight.rarity == Breed.rarity)
                 .where(Breed.id.not_in(select(PoochBreed.breed_id).where(PoochBreed.pooch_id == pooch_id)))
             )
+            if from_vendor:
+                breed_query = breed_query.where(not_(Breed.advanced_options.contains({"sold_by_vendors": 0})))
+            if from_ritual:
+                breed_query = breed_query.where(not_(Breed.advanced_options.contains({"born_from_ritual": 0})))
+
             breed_response = await session.execute(breed_query)
-            rows = [(breed, weight) for breed, weight in breed_response.tuples().all()]
+            rows = [(breed, breed_weight) for breed, breed_weight in breed_response.tuples().all()]
             breed = _weighted_choice(rng, rows)
             breed_id = breed.id if breed is not None else None
 
-        # If the pooch somehow has every possible breed already
+        # If the pooch somehow has every possible breed it's eligible for already
         if breed_id is None:
             return None
 

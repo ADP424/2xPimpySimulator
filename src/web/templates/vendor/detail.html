@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block title %}Vendor - {{ server_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <a href="{{ url_for('vendor.vendors_list') }}" class="btn btn-secondary">← Back to Vendors</a>
+    <h1 id="vendor-name">Loading...</h1>
+</div>
+
+<div class="loading" id="loading">Loading vendor...</div>
+
+<div id="vendor-container" style="display: none;">
+    <div class="vendor-details" id="vendor-details"></div>
+
+    <h2>Available Pooches</h2>
+    <div id="pooches-grid" class="pooches-grid"></div>
+    <div id="no-pooches" class="empty-state" style="display: none;">
+        <p>This vendor has no pooches available.</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const PAGE_DATA = {
+    vendorId: {{ vendor_id }}
+};
+
+document.addEventListener('DOMContentLoaded', async function() {
+    try {
+        const response = await fetch(`/api/vendors/${PAGE_DATA.vendorId}`);
+        const vendor = await response.json();
+
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('vendor-container').style.display = 'block';
+
+        document.getElementById('vendor-name').textContent = `🏪 ${vendor.name}`;
+
+        // Vendor details
+        document.getElementById('vendor-details').innerHTML = `
+            <div class="vendor-stats">
+                <div class="stat">
+                    <span class="stat-label">Stock</span>
+                    <span class="stat-value">${vendor.stock_count ?? 0} pooches</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Price markup</span>
+                    <span class="stat-value">${formatMarkup(vendor.price_markup)}</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Stock</span>
+                    <span class="stat-value">${vendor.pooch_count} pooches</span>
+                </div>
+            </div>
+        `;
+
+        // Load pooches
+        const poochResponse = await fetch(`/api/vendors/${PAGE_DATA.vendorId}/pooches`);
+        const pooches = await poochResponse.json();
+
+        if (pooches.length === 0) {
+            document.getElementById('no-pooches').style.display = 'block';
+            return;
+        }
+
+        const grid = document.getElementById('pooches-grid');
+        grid.innerHTML = pooches.map(pooch => createPoochCard(pooch)).join('');
+
+    } catch (error) {
+        document.getElementById('loading').textContent = 'Failed to load vendor';
+        console.error('Error:', error);
+    }
+});
+
+function formatMarkup(markup) {
+    const pct = Math.round((markup - 1) * 100);
+    const sign = pct >= 0 ? '+' : '';
+    return `${sign}${pct}%`;
+}
+
+function createPoochCard(pooch) {
+    const sexEmoji = pooch.sex === 'female' ? '♀️' : '♂️';
+    const breedNames = pooch.breeds.map(b => b.breed.name).join(', ') || 'Unknown';
+
+    return `
+        <div class="pooch-card vendor-pooch">
+            <div class="pooch-header">
+                <span class="pooch-name">${escapeHtml(pooch.name)}</span>
+                <span class="pooch-sex">${sexEmoji}</span>
+            </div>
+            <div class="pooch-details">
+                <div class="detail">
+                    <span class="label">Age:</span>
+                    <span class="value">${pooch.age} days</span>
+                </div>
+                <div class="detail">
+                    <span class="label">Breeds:</span>
+                    <span class="value">${escapeHtml(breedNames)}</span>
+                </div>
+                <div class="detail">
+                    <span class="label">Price:</span>
+                    <span class="value price">${formatCurrency(pooch.buy_price)}</span>
+                </div>
+            </div>
+            ${pooch.mutations.length > 0 ? `
+            <div class="pooch-mutations">
+                ${pooch.mutations.map(m => `<span class="mutation-badge">${escapeHtml(m.name)}</span>`).join('')}
+            </div>
+            ` : ''}
+            <button class="btn btn-primary btn-full" onclick="buyPooch(${pooch.id})">Buy</button>
+        </div>
+    `;
+}
+
+async function buyPooch(poochId) {
+    if (!confirm('Buy this pooch?')) return;
+
+    try {
+        const response = await fetch(`/api/vendors/${PAGE_DATA.vendorId}/buy/${poochId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            App.showNotification('Purchase successful!', 'success');
+            window.location.href = '/kennel';
+        } else {
+            App.showNotification(result.error || 'Purchase failed', 'error');
+        }
+    } catch (error) {
+        App.showNotification('Purchase failed', 'error');
+        console.error('Error:', error);
+    }
+}
+</script>
+{% endblock %}

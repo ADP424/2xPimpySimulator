@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Pooch Breeder{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>📊 Dashboard</h1>
+</div>
+
+<div class="dashboard-layout">
+    <aside class="server-sidebar">
+        <h3>Your Servers</h3>
+        <ul class="server-list">
+            {% for server in servers %}
+            <li class="{% if server.id == current_server_id %}active{% endif %}">
+                <a href="#" onclick="event.preventDefault(); document.getElementById('server-form-{{ server.id }}').submit();">
+                    {{ server.name }}
+                </a>
+                <form id="server-form-{{ server.id }}" action="{{ url_for('main.set_server', server_id=server.id) }}" method="POST" style="display:none;"></form>
+            </li>
+            {% else %}
+            <li class="muted">No servers available</li>
+            {% endfor %}
+        </ul>
+    </aside>
+
+    <main class="dashboard-main">
+        <div class="status-bar" id="status-bar">
+            <div class="status-message" id="status-message">
+                <p class="muted">Welcome! Status messages will appear here.</p>
+            </div>
+        </div>
+
+        <div class="events-feed">
+            <h3>📢 Live Events</h3>
+            <div id="events-feed-content">
+                <p class="muted">Waiting for events... Events will appear here when the day changes.</p>
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const PAGE_DATA = {
+    servers: {{ servers | tojson }},
+    serverIds: {{ server_ids | tojson }}
+};
+
+let statusMessage = sessionStorage.getItem('statusMessage') || '';
+
+document.addEventListener('DOMContentLoaded', function() {
+    if (statusMessage) {
+        document.getElementById('status-message').innerHTML = `<p>${escapeHtml(statusMessage)}</p>`;
+    }
+
+    if (typeof App !== 'undefined') {
+        App.subscribeToServers(PAGE_DATA.serverIds, addEventToFeed);
+    }
+});
+
+function addEventToFeed(data) {
+    const feed = document.getElementById('events-feed-content');
+
+    const server = PAGE_DATA.servers.find(s => Number(s.id) === Number(data.server_discord_id));
+    const serverName = server ? server.name : 'Unknown Server';
+
+    let eventHtml = `<div class="event-block">`;
+    eventHtml += `<h4>Day Change - ${escapeHtml(serverName)}</h4>`;
+    eventHtml += `<time>${new Date().toLocaleTimeString()}</time>`;
+
+    if (data.births && data.births.length > 0) {
+        eventHtml += `<div class="births"><strong>🎉 Births:</strong><ul>`;
+        data.births.forEach(b => {
+            eventHtml += `<li><a href="/pooch/${b.child.id}">${escapeHtml(b.child.name)}</a> was born!</li>`;
+        });
+        eventHtml += `</ul></div>`;
+    }
+
+    if (data.deaths && data.deaths.length > 0) {
+        eventHtml += `<div class="deaths"><strong>💀 Deaths:</strong><ul>`;
+        data.deaths.forEach(d => {
+            eventHtml += `<li>${escapeHtml(d.pooch.name)} has passed away.</li>`;
+        });
+        eventHtml += `</ul></div>`;
+    }
+
+    eventHtml += `</div>`;
+
+    feed.innerHTML = eventHtml + feed.innerHTML;
+}
+
+function setStatusMessage(message) {
+    statusMessage = message;
+    sessionStorage.setItem('statusMessage', message);
+    document.getElementById('status-message').innerHTML = `<p>${escapeHtml(message)}</p>`;
+}
+</script>
+{% endblock %}

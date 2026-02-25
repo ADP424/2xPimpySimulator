@@ -3,8 +3,8 @@ from discord.ui import Button, Select, View
 
 from bot.constants import VIEW_TIMEOUT
 from bot.ui.util import (
-    mention,
     InteractionResponder,
+    mention,
 )
 from game import get_or_create_owner
 

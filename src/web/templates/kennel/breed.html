@@ -1,0 +1,284 @@
+{% extends "base.html" %}
+
+{% block title %}Breeding - Pooch Breeder{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>💕 Breeding</h1>
+    <a href="{{ url_for('kennel.kennel_detail', kennel_id=kennel_id) }}" class="btn btn-secondary">← Back to Kennel</a>
+</div>
+
+<div class="loading" id="loading">Loading pooches...</div>
+
+<div id="breeding-container" style="display: none;">
+    <div class="breeding-interface">
+        <div class="breeding-slot" id="slot-1">
+            <h3>First Parent</h3>
+            <div class="slot-content" id="slot-1-content">
+                <p class="placeholder">Select a pooch</p>
+            </div>
+        </div>
+        
+        <div class="breeding-middle">
+            <div id="incest-warning" class="incest-warning" style="display: none;">
+                ⚠️ Incest Level: <span id="incest-level"></span>
+            </div>
+            <button id="breed-btn" class="btn btn-primary btn-large" disabled>
+                💕 Breed
+            </button>
+            <div id="breed-result" style="display: none;"></div>
+        </div>
+        
+        <div class="breeding-slot" id="slot-2">
+            <h3>Second Parent</h3>
+            <div class="slot-content" id="slot-2-content">
+                <p class="placeholder">Select a pooch</p>
+            </div>
+        </div>
+    </div>
+    
+    <h2>Available Pooches</h2>
+    <div class="pooch-filters">
+        <button class="filter-btn active" data-filter="all">All</button>
+        <button class="filter-btn" data-filter="female">♀️ Female</button>
+        <button class="filter-btn" data-filter="male">♂️ Male</button>
+        <button class="filter-btn" data-filter="ready">Ready to Breed</button>
+    </div>
+    <div id="available-pooches" class="pooches-grid"></div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const PAGE_DATA = {
+    kennelId: {{ kennel_id }}
+};
+
+let pooches = [];
+let selectedSlot1 = null;
+let selectedSlot2 = null;
+let currentFilter = 'all';
+
+document.addEventListener('DOMContentLoaded', async function() {
+    try {
+        const response = await fetch(`/api/kennels/${PAGE_DATA.kennelId}/pooches`);
+        pooches = await response.json();
+        
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('breeding-container').style.display = 'block';
+        
+        renderPooches();
+        setupFilters();
+        setupBreedButton();
+        
+    } catch (error) {
+        document.getElementById('loading').textContent = 'Failed to load pooches';
+        console.error('Error:', error);
+    }
+});
+
+function renderPooches() {
+    const container = document.getElementById('available-pooches');
+    const filtered = filterPooches(pooches, currentFilter);
+    
+    container.innerHTML = filtered.map(pooch => {
+        const isSelected = (selectedSlot1 && selectedSlot1.id === pooch.id) || 
+                          (selectedSlot2 && selectedSlot2.id === pooch.id);
+        const canBreed = pooch.alive && pooch.breeding_cooldown === 0;
+        
+        return `
+            <div class="pooch-select-card ${isSelected ? 'selected' : ''} ${!canBreed ? 'disabled' : ''}"
+                 data-pooch-id="${pooch.id}"
+                 onclick="selectPooch(${pooch.id})">
+                <div class="pooch-header">
+                    <span class="pooch-name">${escapeHtml(pooch.name)}</span>
+                    <span class="pooch-sex">${pooch.sex === 'female' ? '♀️' : '♂️'}</span>
+                </div>
+                <div class="pooch-info">
+                    <span>Age: ${pooch.age}</span>
+                    ${pooch.breeding_cooldown > 0 ? `<span class="cooldown">⏳ ${pooch.breeding_cooldown}d</span>` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function filterPooches(pooches, filter) {
+    switch (filter) {
+        case 'female':
+            return pooches.filter(p => p.sex === 'female');
+        case 'male':
+            return pooches.filter(p => p.sex === 'male');
+        case 'ready':
+            return pooches.filter(p => p.alive && p.breeding_cooldown === 0);
+        default:
+            return pooches;
+    }
+}
+
+function setupFilters() {
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            currentFilter = this.dataset.filter;
+            renderPooches();
+        });
+    });
+}
+
+function selectPooch(poochId) {
+    const pooch = pooches.find(p => p.id === poochId);
+    if (!pooch || !pooch.alive || pooch.breeding_cooldown > 0) return;
+
+    // Clear previous breeding result when making a new selection
+    const breedResult = document.getElementById('breed-result');
+    if (breedResult && breedResult.dataset.persistent === '1') {
+        breedResult.dataset.persistent = '0';
+        breedResult.style.display = 'none';
+        breedResult.innerHTML = '';
+    }
+    
+    // If already selected, deselect
+    if (selectedSlot1 && selectedSlot1.id === poochId) {
+        selectedSlot1 = null;
+        updateSlot(1, null);
+    } else if (selectedSlot2 && selectedSlot2.id === poochId) {
+        selectedSlot2 = null;
+        updateSlot(2, null);
+    }
+    // Select into appropriate slot
+    else if (!selectedSlot1) {
+        selectedSlot1 = pooch;
+        updateSlot(1, pooch);
+    } else if (!selectedSlot2) {
+        selectedSlot2 = pooch;
+        updateSlot(2, pooch);
+    } else {
+        // Both slots full, replace slot 2
+        selectedSlot2 = pooch;
+        updateSlot(2, pooch);
+    }
+    
+    renderPooches();
+    updateBreedButton();
+    checkIncest();
+}
+
+function updateSlot(slotNum, pooch) {
+    const content = document.getElementById(`slot-${slotNum}-content`);
+    if (!pooch) {
+        content.innerHTML = '<p class="placeholder">Select a pooch</p>';
+    } else {
+        content.innerHTML = `
+            <div class="selected-pooch">
+                <strong>${escapeHtml(pooch.name)}</strong>
+                <span>${pooch.sex === 'female' ? '♀️' : '♂️'}</span>
+                <p>${pooch.breeds.map(b => b.breed.name).join(', ')}</p>
+            </div>
+        `;
+    }
+}
+
+function updateBreedButton() {
+    const btn = document.getElementById('breed-btn');
+    const canBreed = selectedSlot1 && selectedSlot2 && 
+                     selectedSlot1.sex !== selectedSlot2.sex;
+    btn.disabled = !canBreed;
+    
+    if (selectedSlot1 && selectedSlot2 && selectedSlot1.sex === selectedSlot2.sex) {
+        const resultDiv = document.getElementById('breed-result');
+        if (resultDiv) resultDiv.dataset.persistent = '0';
+        document.getElementById('breed-result').innerHTML = '<p class="error">Pooches must be different sexes!</p>';
+        document.getElementById('breed-result').style.display = 'block';
+    } else {
+        const resultDiv = document.getElementById('breed-result');
+        if (resultDiv && resultDiv.dataset.persistent === '1') return;
+        if (resultDiv) {
+            resultDiv.style.display = 'none';
+            resultDiv.innerHTML = '';
+        }
+    }
+}
+
+async function checkIncest() {
+    if (!selectedSlot1 || !selectedSlot2) {
+        document.getElementById('incest-warning').style.display = 'none';
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/incest-check?first_pooch_id=${selectedSlot1.id}&second_pooch_id=${selectedSlot2.id}`);
+        const data = await response.json();
+        
+        if (data.incest_level > 0) {
+            document.getElementById('incest-level').textContent = (data.incest_level * 100).toFixed(1) + '%';
+            document.getElementById('incest-warning').style.display = 'block';
+        } else {
+            document.getElementById('incest-warning').style.display = 'none';
+        }
+    } catch (error) {
+        console.error('Error checking incest:', error);
+    }
+}
+
+function setupBreedButton() {
+    document.getElementById('breed-btn').addEventListener('click', async function() {
+        if (!selectedSlot1 || !selectedSlot2) return;
+        
+        this.disabled = true;
+        this.textContent = 'Breeding...';
+        
+        try {
+            const response = await fetch('/api/breed', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    first_pooch_id: selectedSlot1.id,
+                    second_pooch_id: selectedSlot2.id
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                const resultDiv = document.getElementById('breed-result');
+                resultDiv.innerHTML = `
+                    <div class="success">
+                        <h4>🎉 Breeding Successful!</h4>
+                        <p>New puppies created:</p>
+                        ${result.new_pooches.map(p => `
+                            <a href="/pooch/${p.id}" class="new-puppy">${escapeHtml(p.name)}</a>
+                        `).join('')}
+                    </div>
+                `;
+                resultDiv.dataset.persistent = '1';
+                 resultDiv.style.display = 'block';
+                
+                // Refresh pooches
+                const poochResponse = await fetch(`/api/kennels/${PAGE_DATA.kennelId}/pooches`);
+                pooches = await poochResponse.json();
+                
+                // Reset selection
+                selectedSlot1 = null;
+                selectedSlot2 = null;
+                updateSlot(1, null);
+                updateSlot(2, null);
+                renderPooches();
+                
+            } else {
+                document.getElementById('breed-result').innerHTML = `<p class="error">${escapeHtml(result.error || result.message)}</p>`;
+                document.getElementById('breed-result').style.display = 'block';
+            }
+        } catch (error) {
+            document.getElementById('breed-result').innerHTML = `<p class="error">Breeding failed: ${error.message}</p>`;
+            document.getElementById('breed-result').style.display = 'block';
+        }
+        
+        this.disabled = false;
+        this.textContent = '💕 Breed';
+        updateBreedButton();
+    });
+}
+</script>
+{% endblock %}

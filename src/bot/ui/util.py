@@ -29,7 +29,7 @@ class InteractionResponder:
             if not self.interaction.response.is_done():
                 await self.interaction.response.defer(thinking=thinking, ephemeral=self.ephemeral)
                 self._did_defer = True
-        except (InteractionResponded, NotFound, discord.HTTPException):
+        except InteractionResponded, NotFound, discord.HTTPException:
             return
 
     async def ack_update(self) -> None:
@@ -63,7 +63,7 @@ class InteractionResponder:
             if not self.interaction.response.is_done():
                 await self.interaction.response.send_message(**kwargs, ephemeral=self.ephemeral)
                 return
-        except (InteractionResponded, NotFound, discord.HTTPException):
+        except InteractionResponded, NotFound, discord.HTTPException:
             pass
 
         try:
@@ -101,7 +101,7 @@ class InteractionResponder:
                 else:
                     await self.interaction.message.edit(**kwargs)
                 return
-            except (InteractionResponded, NotFound, discord.HTTPException):
+            except InteractionResponded, NotFound, discord.HTTPException:
                 pass
 
         try:
@@ -146,7 +146,7 @@ async def defer_interaction(
     try:
         if not interaction.response.is_done():
             await interaction.response.defer(thinking=thinking, ephemeral=ephemeral)
-    except (InteractionResponded, NotFound, discord.HTTPException):
+    except InteractionResponded, NotFound, discord.HTTPException:
         # Already responded, expired token, or other transient HTTP failure.
         return
 
@@ -189,7 +189,7 @@ async def edit_interaction(
             else:
                 await interaction.message.edit(**kwargs)
             return
-        except (InteractionResponded, NotFound, discord.HTTPException):
+        except InteractionResponded, NotFound, discord.HTTPException:
             pass
 
     # Slash command / context menu interactions typically have no `interaction.message`.
@@ -199,7 +199,7 @@ async def edit_interaction(
         else:
             await interaction.response.edit_message(**kwargs)
         return
-    except (InteractionResponded, NotFound, discord.HTTPException):
+    except InteractionResponded, NotFound, discord.HTTPException:
         pass
 
     # Last resort: if we have a message object, try editing it directly.
@@ -236,7 +236,6 @@ async def reply_to_interacted_message(
     if not has_visible_text and not has_visible_embed:
         await defer_interaction(interaction)
         return
-
 
     try:
         if interaction.response.is_done():

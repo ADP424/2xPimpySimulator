@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Select Server - Pooch Breeder{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Select a Server</h1>
+    <p>Choose which Discord server you want to play in.</p>
+</div>
+
+<div class="server-grid">
+    {% for server in servers %}
+    <div class="server-card {% if server.id == current_server_id %}active{% endif %}">
+        <div class="server-icon">
+            {% if server.icon_url %}
+            <img src="{{ server.icon_url }}" alt="{{ server.name }}">
+            {% else %}
+            <div class="server-icon-placeholder">{{ server.name[0] if server.name else '?' }}</div>
+            {% endif %}
+        </div>
+        <div class="server-info">
+            <h3>{{ server.name }}</h3>
+            {% if server.id == current_server_id %}
+            <span class="badge badge-success">Currently Selected</span>
+            {% endif %}
+        </div>
+        <form action="{{ url_for('main.set_server', server_id=server.id) }}" method="POST">
+            <button type="submit" class="btn {% if server.id == current_server_id %}btn-secondary{% else %}btn-primary{% endif %}">
+                {% if server.id == current_server_id %}
+                    Selected
+                {% else %}
+                    Enter Server
+                {% endif %}
+            </button>
+        </form>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p>No servers found. Make sure the Pooch Breeder bot has been added to a server you're in.</p>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

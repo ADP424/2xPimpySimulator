@@ -55,26 +55,26 @@ def _get_database_url() -> str:
     load_dotenv()
 
     database = os.environ.get("DATABASE")
-    user = os.environ.get("USER")
-    host = os.environ.get("HOST")
-    password = os.environ.get("PASSWORD")
-    port = os.environ.get("PORT", "5432")
+    user = os.environ.get("DB_USER")
+    host = os.environ.get("DB_HOST")
+    password = os.environ.get("DB_PASSWORD")
+    port = os.environ.get("DB_PORT", "5432")
 
     missing = [
         key
-        for key, value in [("DATABASE", database), ("USER", user), ("HOST", host), ("PASSWORD", password)]
+        for key, value in [("DATABASE", database), ("DB_USER", user), ("DB_HOST", host), ("DB_PASSWORD", password)]
         if not value
     ]
     if missing:
         raise RuntimeError(
             f"Missing required env var(s): {', '.join(missing)}. "
-            "Provide DATABASE/USER/HOST/PASSWORD(/PORT) in a .env in root."
+            "Provide DATABASE/DB_USER/DB_HOST/DB_PASSWORD(/DB_PORT) in a .env in root."
         )
 
-    user_q = quote_plus(str(user))
-    password_q = quote_plus(str(password))
+    user_quote = quote_plus(str(user))
+    password_quote = quote_plus(str(password))
 
-    return f"postgresql+asyncpg://{user_q}:{password_q}@{host}:{port}/{database}"
+    return f"postgresql+asyncpg://{user_quote}:{password_quote}@{host}:{port}/{database}"
 
 
 def _make_engine() -> AsyncEngine:

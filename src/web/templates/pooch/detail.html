@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+
+{% block title %}Pooch Details - Pooch Breeder{% endblock %}
+
+{% block content %}
+<div class="loading" id="loading">Loading pooch details...</div>
+
+<div id="pooch-container" style="display: none;">
+    <div class="page-header">
+        <h1 id="pooch-name">Loading...</h1>
+        <button onclick="history.back()" class="btn btn-secondary">← Back</button>
+    </div>
+    
+    <div class="pooch-detail-grid">
+        <!-- Main Info Card -->
+        <div class="card">
+            <div class="card-header">
+                <h2>Basic Info</h2>
+            </div>
+            <div class="card-body" id="basic-info"></div>
+        </div>
+        
+        <!-- Breeds Card -->
+        <div class="card">
+            <div class="card-header">
+                <h2>🐕 Breeds</h2>
+            </div>
+            <div class="card-body" id="breeds-info"></div>
+        </div>
+        
+        <!-- Mutations Card -->
+        <div class="card">
+            <div class="card-header">
+                <h2>🧬 Mutations</h2>
+            </div>
+            <div class="card-body" id="mutations-info"></div>
+        </div>
+        
+        <!-- Family Card -->
+        <div class="card">
+            <div class="card-header">
+                <h2>👨‍👩‍👧 Family</h2>
+            </div>
+            <div class="card-body" id="family-info"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const PAGE_DATA = {
+    poochId: {{ pooch_id }}
+};
+
+document.addEventListener('DOMContentLoaded', async function() {
+    try {
+        // Load pooch details
+        const poochResponse = await fetch(`/api/pooches/${PAGE_DATA.poochId}`);
+        const pooch = await poochResponse.json();
+        
+        // Load family
+        const familyResponse = await fetch(`/api/pooches/${PAGE_DATA.poochId}/family`);
+        const family = await familyResponse.json();
+        
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('pooch-container').style.display = 'block';
+        
+        renderPooch(pooch, family);
+        
+    } catch (error) {
+        document.getElementById('loading').textContent = 'Failed to load pooch details';
+        console.error('Error:', error);
+    }
+});
+
+function renderPooch(pooch, family) {
+    document.getElementById('pooch-name').textContent = `${pooch.sex === 'female' ? '♀️' : '♂️'} ${pooch.name}`;
+    
+    // Basic Info
+    const statusEmoji = {
+        'healthy': '💚 Healthy',
+        'sick': '🤒 Sick',
+        'old': '👴 Old',
+        'dead': '💀 Dead'
+    };
+    
+    document.getElementById('basic-info').innerHTML = `
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="label">Status</span>
+                <span class="value status-${pooch.status}">${statusEmoji[pooch.status]}</span>
+            </div>
+            <div class="info-item">
+                <span class="label">Sex</span>
+                <span class="value">${pooch.sex === 'female' ? '♀️ Female' : '♂️ Male'}</span>
+            </div>
+            <div class="info-item">
+                <span class="label">Age</span>
+                <span class="value">${pooch.age} days</span>
+            </div>
+            <div class="info-item">
+                <span class="label">Health</span>
+                <span class="value">${pooch.health} / ${pooch.base_health}</span>
+            </div>
+            <div class="info-item">
+                <span class="label">Breeding Cooldown</span>
+                <span class="value">${pooch.breeding_cooldown > 0 ? pooch.breeding_cooldown + ' days' : 'Ready!'}</span>
+            </div>
+            <div class="info-item">
+                <span class="label">Virgin</span>
+                <span class="value">${pooch.virgin ? 'Yes 💕' : 'No'}</span>
+            </div>
+            ${pooch.birthday ? `
+            <div class="info-item">
+                <span class="label">Birthday</span>
+                <span class="value">${new Date(pooch.birthday).toLocaleDateString()}</span>
+            </div>
+            ` : ''}
+        </div>
+    `;
+    
+    // Breeds
+    if (pooch.breeds && pooch.breeds.length > 0) {
+        document.getElementById('breeds-info').innerHTML = `
+            <div class="breeds-list">
+                ${pooch.breeds.map(bi => `
+                    <a href="/info/breeds/${bi.breed.id}" class="breed-item">
+                        <span class="breed-name">${escapeHtml(bi.breed.name)}</span>
+                        <span class="breed-weight">${(bi.relative_weight * 100).toFixed(0)}%</span>
+                        <span class="breed-rarity rarity-${(bi.breed.rarity || '').toLowerCase()}">${escapeHtml(App.format.enumLabel(bi.breed.rarity))}</span>
+                    </a>
+                `).join('')}
+            </div>
+        `;
+    } else {
+        document.getElementById('breeds-info').innerHTML = '<p class="muted">No breed information available.</p>';
+    }
+    
+    // Mutations
+    if (pooch.mutations && pooch.mutations.length > 0) {
+        document.getElementById('mutations-info').innerHTML = `
+            <div class="mutations-list">
+                ${pooch.mutations.map(m => `
+                    <a href="/info/mutations/${m.id}" class="mutation-item health-${App.healthImpactGroup(m.health_impact)}">
+                        <span class="mutation-name">${escapeHtml(m.name)}</span>
+                        <span class="mutation-impact">${escapeHtml(App.format.enumLabel(m.health_impact))}</span>
+                    </a>
+                `).join('')}
+            </div>
+        `;
+    } else {
+        document.getElementById('mutations-info').innerHTML = '<p class="muted">No mutations.</p>';
+    }
+    
+    // Family
+    let familyHtml = '';
+    
+    if (family.parents && family.parents.length > 0) {
+        familyHtml += `
+            <div class="family-section">
+                <h4>Parents</h4>
+                <div class="family-members">
+                    ${family.parents.map(p => createFamilyMemberLink(p)).join('')}
+                </div>
+            </div>
+        `;
+    }
+    
+    if (family.siblings && family.siblings.length > 0) {
+        familyHtml += `
+            <div class="family-section">
+                <h4>Siblings</h4>
+                <div class="family-members">
+                    ${family.siblings.map(p => createFamilyMemberLink(p)).join('')}
+                </div>
+            </div>
+        `;
+    }
+    
+    if (family.children && family.children.length > 0) {
+        familyHtml += `
+            <div class="family-section">
+                <h4>Children</h4>
+                <div class="family-members">
+                    ${family.children.map(p => createFamilyMemberLink(p)).join('')}
+                </div>
+            </div>
+        `;
+    }
+    
+    if (!familyHtml) {
+        familyHtml = '<p class="muted">No family members found.</p>';
+    }
+    
+    document.getElementById('family-info').innerHTML = familyHtml;
+}
+
+function createFamilyMemberLink(pooch) {
+    return `
+        <a href="/pooch/${pooch.id}" class="family-member">
+            <span class="member-sex">${pooch.sex === 'female' ? '♀️' : '♂️'}</span>
+            <span class="member-name">${escapeHtml(pooch.name)}</span>
+            <span class="member-status status-${pooch.status}">${pooch.alive ? '❤️' : '💀'}</span>
+        </a>
+    `;
+}
+</script>
+{% endblock %}

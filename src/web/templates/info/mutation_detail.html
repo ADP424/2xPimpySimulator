@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}Mutation Info - Pooch Breeder{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <a href="{{ url_for('info.mutations_list') }}" class="btn btn-secondary">← Back to Mutations</a>
+    <h1 id="mutation-name">Loading...</h1>
+</div>
+
+<div class="loading" id="loading">Loading mutation details...</div>
+
+<div id="mutation-container" style="display: none;">
+    <div class="detail-layout">
+        <div class="detail-main">
+            <div class="card">
+                <div class="card-header">
+                    <h2>📋 Description</h2>
+                </div>
+                <div class="card-body">
+                    <p id="mutation-description"></p>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2>📊 Stats</h2>
+                </div>
+                <div class="card-body">
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-label">Rarity</span>
+                            <span class="stat-value" id="mutation-rarity"></span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Health Impact</span>
+                            <span class="stat-value" id="mutation-health"></span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Heritability</span>
+                            <span class="stat-value" id="mutation-heritability"></span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Category</span>
+                            <span class="stat-value" id="mutation-category"></span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Affects</span>
+                            <span class="stat-value" id="mutation-affects"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="detail-sidebar">
+            <div class="card">
+                <div class="card-header">
+                    <h2>ℹ️ Quick Info</h2>
+                </div>
+                <div class="card-body">
+                    <div class="info-list">
+                        <div class="info-item">
+                            <span class="info-label">Also Known As</span>
+                            <span class="info-value" id="mutation-alt-name"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const PAGE_DATA = {
+    mutationId: {{ mutation_id }}
+};
+
+document.addEventListener('DOMContentLoaded', async function() {
+    try {
+        const response = await fetch(`/api/mutations/${PAGE_DATA.mutationId}`);
+        const mutation = await response.json();
+
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('mutation-container').style.display = 'block';
+
+        const rarityLabel = (typeof App !== 'undefined') ? App.format.enumLabel(mutation.rarity) : mutation.rarity;
+        const impactLabel = (typeof App !== 'undefined') ? App.format.enumLabel(mutation.health_impact) : mutation.health_impact;
+        const impactGroup = (typeof App !== 'undefined') ? App.healthImpactGroup(mutation.health_impact) : 'neutral';
+
+        document.getElementById('mutation-name').innerHTML = `
+            ${escapeHtml(mutation.name)}
+            <span class="rarity-badge rarity-${(mutation.rarity || '').toLowerCase()}">${escapeHtml(rarityLabel)}</span>
+        `;
+        document.getElementById('mutation-description').textContent = mutation.description;
+        document.getElementById('mutation-rarity').textContent = rarityLabel;
+        document.getElementById('mutation-health').innerHTML = `
+            <span class="health-impact health-${impactGroup}">${escapeHtml(impactLabel)}</span>
+        `;
+        document.getElementById('mutation-heritability').textContent = `${Math.round(mutation.heritability * 100)}%`;
+        document.getElementById('mutation-category').textContent = mutation.category || '—';
+        document.getElementById('mutation-alt-name').textContent = mutation.alt_name || '—';
+
+        const affects = [];
+        if (mutation.affects_females) affects.push('Females');
+        if (mutation.affects_males) affects.push('Males');
+        document.getElementById('mutation-affects').textContent = affects.length ? affects.join(', ') : 'None';
+
+    } catch (error) {
+        document.getElementById('loading').textContent = 'Failed to load mutation details';
+        console.error('Error:', error);
+    }
+});
+</script>
+{% endblock %}

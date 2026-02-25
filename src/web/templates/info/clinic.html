@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}Veterinary Clinic - {{ server_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>🏥 Veterinary Clinic</h1>
+    <p>Learn about dog breeds and genetic mutations</p>
+</div>
+
+<div class="clinic-grid">
+    <a href="{{ url_for('info.breeds_list') }}" class="clinic-section">
+        <span class="section-icon">🐕</span>
+        <h2>Dog Breeds</h2>
+        <p>Browse all available breeds and their characteristics</p>
+    </a>
+    
+    <a href="{{ url_for('info.mutations_list') }}" class="clinic-section">
+        <span class="section-icon">🧬</span>
+        <h2>Genetic Mutations</h2>
+        <p>Learn about mutations that can affect your pooches</p>
+    </a>
+</div>
+{% endblock %}

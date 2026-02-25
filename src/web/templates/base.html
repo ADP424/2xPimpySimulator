@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Pooch Breeder{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-brand">
+            <a href="{{ url_for('main.index') }}" class="logo">🐕 Pooch Breeder</a>
+        </div>
+        {% if session.get('discord_id') %}
+        <div class="navbar-menu">
+            <a href="{{ url_for('main.home') }}" class="nav-link">Home</a>
+            <a href="{{ url_for('kennel.kennels_list') }}" class="nav-link">My Kennels</a>
+            {% if session.get('current_server_id') %}
+            <a href="{{ url_for('main.town') }}" class="nav-link">Town</a>
+            <a href="{{ url_for('vendor.vendors_list') }}" class="nav-link">Vendors</a>
+            <a href="{{ url_for('info.veterinary_clinic') }}" class="nav-link">Vet Clinic</a>
+            {% endif %}
+            <a href="{{ url_for('main.select_server') }}" class="nav-link">
+                {% if session.get('current_server_name') %}
+                    {{ session.get('current_server_name') }} ▾
+                {% else %}
+                    Select Server
+                {% endif %}
+            </a>
+        </div>
+        <div class="navbar-user">
+            <img src="{{ session.get('discord_avatar_url') }}" alt="Avatar" class="avatar-small">
+            <span class="username">{{ session.get('discord_username') }}</span>
+            <a href="{{ url_for('auth.logout') }}" class="nav-link logout">Logout</a>
+        </div>
+        {% endif %}
+    </nav>
+
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+
+    <div id="notification-container"></div>
+
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

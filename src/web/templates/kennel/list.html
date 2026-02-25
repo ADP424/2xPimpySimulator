@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}My Kennels - Pooch Breeder{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>🏠 My Kennels</h1>
+</div>
+
+<div class="loading" id="loading">Loading your kennels...</div>
+
+<div id="kennels-container" style="display: none;">
+    <div id="kennels-grid" class="kennels-grid"></div>
+    <div id="no-kennels" class="empty-state" style="display: none;">
+        <p>You don't have any kennels yet.</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', async function() {
+    try {
+        const response = await fetch('/api/kennels');
+        const kennels = await response.json();
+        
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('kennels-container').style.display = 'block';
+        
+        if (kennels.length === 0) {
+            document.getElementById('no-kennels').style.display = 'block';
+            return;
+        }
+        
+        const grid = document.getElementById('kennels-grid');
+        
+        // Load pooch counts for each kennel
+        for (const kennel of kennels) {
+            const poochResponse = await fetch(`/api/kennels/${kennel.id}/pooches`);
+            const pooches = await poochResponse.json();
+            
+            grid.innerHTML += `
+                <a href="/kennel/${kennel.id}" class="kennel-card">
+                    <div class="kennel-header">
+                        <h3>${escapeHtml(kennel.name)}</h3>
+                    </div>
+                    <div class="kennel-stats">
+                        <div class="stat">
+                            <span class="stat-value">${pooches.length}</span>
+                            <span class="stat-label">/ ${kennel.pooch_limit} Pooches</span>
+                        </div>
+                    </div>
+                    <div class="kennel-preview">
+                        ${pooches.slice(0, 4).map(p => `
+                            <span class="pooch-mini ${p.status}">${getStatusEmoji(p.status)}</span>
+                        `).join('')}
+                        ${pooches.length > 4 ? `<span class="more">+${pooches.length - 4}</span>` : ''}
+                    </div>
+                </a>
+            `;
+        }
+    } catch (error) {
+        document.getElementById('loading').textContent = 'Failed to load kennels';
+        console.error('Error:', error);
+    }
+});
+
+function getStatusEmoji(status) {
+    const emojis = {
+        'healthy': '🐕',
+        'sick': '🤒',
+        'old': '👴',
+        'dead': '💀'
+    };
+    return emojis[status] || '🐕';
+}
+</script>
+{% endblock %}

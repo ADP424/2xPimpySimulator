@@ -1,6 +1,4 @@
-audioop-lts; python_version >= "3.13"
 asyncpg
-discord
 numpy
 psycopg
 python-dotenv

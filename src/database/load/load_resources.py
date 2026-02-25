@@ -27,6 +27,7 @@ async def load_breeds():
                         category=str(breed_category),
                         description=str(attributes.get("description", f"{str(breed).capitalize()} is a type of dog.")),
                         rarity=str(attributes.get("rarity", "common")).lower(),
+                        advanced_options=attributes.get("advanced_options", {}),
                     )
                 )
 
