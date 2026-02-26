@@ -129,6 +129,56 @@ The bot can post signed webhook payloads to a companion web app after each day c
 
 Set `WEBHOOK_URL` and `WEBHOOK_SECRET` in your environment to enable this.
 
+## Web Frontend
+
+A Flask + SocketIO web app lives in `src/web/` and provides a browser-based alternative to the Discord bot UI.
+
+### Additional dependencies
+
+```bash
+pip install -r src/web/requirements.txt
+```
+
+### Additional environment variables
+
+Add these to your `.env` file:
+
+```env
+# Flask session secret (change this in production)
+SECRET_KEY=your_secret_key
+
+# Discord OAuth2 app credentials
+DISCORD_CLIENT_ID=your_discord_client_id
+DISCORD_CLIENT_SECRET=your_discord_client_secret
+DISCORD_REDIRECT_URI=http://localhost:5000/auth/callback
+
+# Must match WEBHOOK_SECRET set on the bot side
+PIMPY_WEBHOOK_SECRET=your_hmac_secret
+
+# Port to serve on (default: 5000)
+WEB_PORT=5000
+
+# Set to "1" to enable Flask debug mode
+FLASK_DEBUG=0
+```
+
+### Run the web app
+
+```bash
+python -m web
+```
+
+The app will be available at `http://localhost:5000` (or whatever `WEB_PORT` is set to).
+
+### Bot ↔ web integration
+
+To receive day-change events on the web app, set the following on the **bot** side:
+
+```env
+WEBHOOK_URL=http://localhost:5000/webhook/day-change
+WEBHOOK_SECRET=your_hmac_secret   # must match PIMPY_WEBHOOK_SECRET above
+```
+
 ## Breeds & Mutations
 
 Breeds and mutations are defined in JSON files under `resources/`. See the [Breed Guide](Documentation/Breed%20Guide.md) and [Mutation Guide](Documentation/Mutation%20Guide.md) for the full schema, rarity tiers, and advanced options (heritability, on-death effects, value multipliers, etc.).
