@@ -16,10 +16,10 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    if args.reset_db:
+    if args.web_app:
+        run_web_app()
+    elif args.reset_db:
         reset_db()
         asyncio.run(load_resources())
-    elif args.web_app:
-        run_web_app()
     else:
         run_bot()
