@@ -1,3 +1,6 @@
+# Disclaimer
+README is subject to change and may quickly go out of date. Originally written on 2/25/2026.
+
 # Pimpy Simulator
 
 A Discord bot (with optional companion website) where players manage virtual dog kennels. Collect pooches, breed them, manage their health, and watch them live — and die — as days pass.
