@@ -64,9 +64,6 @@ class DiscordGuild:
             "id": self.id,
             "name": self.name,
             "icon": self.icon,
-            "icon_url": self.icon_url,
-            "owner": self.owner,
-            "permissions": self.permissions,
         }
 
 
@@ -96,7 +93,8 @@ def exchange_code(code: str) -> dict:
     headers = {"Content-Type": "application/x-www-form-urlencoded"}
 
     response = requests.post(DISCORD_OAUTH_TOKEN, data=data, headers=headers)
-    response.raise_for_status()
+    if not response.ok:
+        raise ValueError(f"Discord token exchange failed ({response.status_code}): {response.text}")
     return response.json()
 
 
