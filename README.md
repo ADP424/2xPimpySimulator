@@ -115,6 +115,16 @@ TZ=America/New_York
 
 ### Database
 
+Add the following to your `.env` file:
+
+```env
+DATABASE=foo
+DB_USER=foobar
+DB_HOST=localhost
+DB_PASSWORD=baz
+DB_PORT=5432
+```
+
 Apply the schema files in `src/database/schema/` to your PostgreSQL database, then load static data (breeds, mutations, name pools):
 
 ```bash
