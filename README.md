@@ -72,6 +72,33 @@ Documentation/
 └── Mutation Guide.md
 ```
 
+## Discord Application Setup
+
+Before running anything, configure your app in the [Discord Developer Portal](https://discord.com/developers/applications).
+
+### Bot token & intents
+
+1. Go to your app → **Bot**
+2. Copy your token for `DISCORD_TOKEN` in `.env`
+3. Under **Privileged Gateway Intents**, enable **Message Content Intent**
+
+### Invite the bot to your server
+
+Use the **OAuth2 → URL Generator**:
+
+- Scopes: `bot`, `applications.commands`
+- Bot permissions: `Send Messages`, `Embed Links`, `View Channels`
+
+### Web frontend OAuth2
+
+If using the web frontend, go to **OAuth2** and add the following under **Redirects**:
+
+```
+http://localhost:5000/auth/callback
+```
+
+Then copy your **Client ID** and **Client Secret** for `DISCORD_CLIENT_ID` and `DISCORD_CLIENT_SECRET` in `.env`.
+
 ## Setup
 
 ### Requirements
