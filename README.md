@@ -80,7 +80,9 @@ Documentation/
 - PostgreSQL
 
 ### Build modules
+
 Build the modules so imports work
+
 ```bash
 pip install -e .
 ```
@@ -109,10 +111,6 @@ STAGE=dev
 
 # Timezone for the daily day-change trigger (default: America/New_York)
 TZ=America/New_York
-
-# Optional: companion website webhook
-WEBHOOK_URL=https://your-site.example.com/webhook
-WEBHOOK_SECRET=your_hmac_secret
 ```
 
 ### Database
@@ -120,11 +118,9 @@ WEBHOOK_SECRET=your_hmac_secret
 Apply the schema files in `src/database/schema/` to your PostgreSQL database, then load static data (breeds, mutations, name pools):
 
 ```bash
-python .\src\database\load\load_resources.py
-```
-
-```bash
 python .\src\database\load\reset_db.py
+
+python .\src\database\load\load_resources.py
 ```
 
 ### Run the bot
