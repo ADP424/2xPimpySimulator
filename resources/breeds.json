@@ -35,7 +35,7 @@
         }
 	},
 	"Sheepdog":{
-		"Welsh Sheeodog": {
+		"Welsh Sheepdog": {
             "alt_name": "Ci Defaid Cymreig",
             "description": "Welsh Sheepdogs are normally bred for their herding abilities rather than appearance, and so they are generally somewhat variable in build, colour and size.",
             "rarity": "NOVEL"
@@ -68,7 +68,6 @@
 				"sold_by_vendors": 0
 			}
 		}
-		
 	},
 	"Mastiff": {
 		"Alpine Mastiff": {
@@ -102,7 +101,7 @@
 			"advanced_options": {
 				"sold_by_vendors": 0
 			}
-		},
+		}
 	},
 	"Husky": {
 		"Argentine Polar Dog": {
@@ -112,19 +111,17 @@
 			"advanced_options": {
 				"sold_by_vendors": 0
 			}
-		},
-		
+		}
 	},
 	"Terrier": {
 		"Black and Tan Terrier": {
-			"alt_name": "Rough Coated Black and Tan Terrier",
+			"alt_name": "Rough-coated Black and Tan Terrier",
 			"description": "The Black and Tan Terrier was a broad breed or type of terrier that was one of the earliest terrier breeds. Although it is now extinct, it is believed to be the ancestor of all modern Fell Terrier breeds and the Welsh Terrier.",
 			"rarity": "REMARKABLE",
 			"advanced_options": {
 				"sold_by_vendors": 0
 			}
-		},
-		
+		}
 	},
 	"Pointer": {
 		"Braque Dupuy": {
@@ -134,8 +131,7 @@
 			"advanced_options": {
 				"sold_by_vendors": 0
 			}
-		},
-		
+		}
 	},
 	"Scent Hound": {
 		"Buckhound": {
@@ -145,7 +141,6 @@
 			"advanced_options": {
 				"sold_by_vendors": 0
 			}
-		},
-		
-	},
+		}
+	}
 }
