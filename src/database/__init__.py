@@ -62,6 +62,8 @@ from .update import (
     set_pooch_virgin,
     transfer_pooch_to_owner,
 )
+from .load.reset_db import main as reset_db
+from .load.load_resources import main as load_resources
 
 __all__ = [
     # Get
@@ -123,4 +125,7 @@ __all__ = [
     "add_pooch_breeds",
     "set_pooch_breeding_cooldown",
     "set_pooch_virgin",
+    # Load commands
+    "reset_db",
+    "load_resources",
 ]

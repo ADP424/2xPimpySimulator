@@ -14,7 +14,7 @@
 | Add ability to buy more kennels (limit of 5 total kennels)                                                                    | 3      |
 | Horniness stat (higher horniness = can breed more often, more likely to unapproved breed)                                     | 5      |
 | Make breeding have a chance to involve a second member you didn't choose (affected by horniness)                              | 5      |
-| Add tiers of injury/disease beyond just death - pooches can be healed at the vet                                              | 8      |
+| Add tiers of injury beyond just death - pooches can be healed at the vet                                                      | 8      |
 | Add injure on_death as an advanced option to mutations                                                                        | 3      |
 | Add aggressiveness stat that makes dogs have a chance each day to fight another dog (causing injury or DEATH)                 | 8      |
 | Add stat increase/decrease advanced options that mutations have to breeds also                                                | 5      |
@@ -25,5 +25,24 @@
 | Let owners rename their kennels                                                                                               | 1      |
 | Let owners name pooches when they're born in their kennels                                                                    | 1      |
 | Let owners rename their pooches (for a price!)                                                                                | 3      |
+| Kennel cleanliness stat, which affects disease chance                                                                         | 3      |
+| Buy cleaning products to clean kennels                                                                                        | 5      |
+| Dogs have a randomized mess stat (affected by mutations and breeds via advanced options) - produces mess each day in kennel   | 8      |
+| Add diseases, the same way mutations and breeds are added                                                                     | 5      |
+| Each day, there's a chance for each pooch (kennels, strays) to contract a disease, affected by kennel messiness               | 8      |
+| Pooches have a chance each day to spread diseases to others in their kennel (like heritability chance in mutations)           | 5      |
+| Add constitution stat for pooches, which improves their chance of resisting diseases (both new and spread)                    | 5      |
+| Diseases have a recovery immunity period, meaning the pooch can't contract it for that number of days                         | 5      |
+| Diseases have a list of possible messages they say when a pooch gets it for ambiguity on what disease it is                   | 3      |
+| Diseases have a base recovery chance (0 means can't recover w/o medication, -1 means can't recover ever)                      | 3      |
+| STDS! STDS! STDS!                                                                                                             | 3      |
+| Add ability for diseases to be inherited, like mutations                                                                      | 3      |
+| Get breed population stats for server (add this info to the vet)                                                              | 3      |
+| Add ability for mutations to predispose a pooch to getting certain diseases more often                                        | 3      |
+| Add incompatible diseases to mutations                                                                                        | 3      |
 
 # Bug Fixes
+| Feature                                                                                                                       | Points |
+| ----------------------------------------------------------------------------------------------------------------------------- | ------ |
+| Male dogs contract female mutations???                                                                                        | 1      |
+| Dogs can have breeds with 0% weight                                                                                           | 1      |
