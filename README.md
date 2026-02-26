@@ -120,7 +120,7 @@ python -m database.load.load_resources
 ### Run the bot
 
 ```bash
-python -m bot
+python .\src\main.py
 ```
 
 ## Website Integration
@@ -165,7 +165,7 @@ FLASK_DEBUG=0
 ### Run the web app
 
 ```bash
-python -m web
+python .\src\main.py -w
 ```
 
 The app will be available at `http://localhost:5000` (or whatever `WEB_PORT` is set to).
