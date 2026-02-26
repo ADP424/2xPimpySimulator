@@ -12,14 +12,13 @@
 | Players can adopt strays by spending bones for a chance to attract one                                                        | 3      |
 | Add ability to upgrade kennel slots (5 starting, +5 each tier, 20 max)                                                        | 3      |
 | Add ability to buy more kennels (limit of 5 total kennels)                                                                    | 3      |
-| Horniness stat (higher horniness = can breed more often, more likely to unapproved breed)                                     | 5      |
-| Make breeding have a chance to involve a second member you didn't choose (affected by horniness)                              | 5      |
+| fertility stat (higher fertility = can breed more often, more likely to unapproved breed)                                     | 5      |
+| Make breeding have a chance to involve a second member you didn't choose (affected by fertility)                              | 5      |
 | Add tiers of injury beyond just death - pooches can be healed at the vet                                                      | 8      |
 | Add injure on_death as an advanced option to mutations                                                                        | 3      |
 | Add aggressiveness stat that makes dogs have a chance each day to fight another dog (causing injury or DEATH)                 | 8      |
 | Add stat increase/decrease advanced options that mutations have to breeds also                                                | 5      |
-| Add stat increase/decrease advanced options for horniness and aggressiveness                                                  | 3      |
-| Add resetting database schema and database resources to main entry point                                                      | 1      |
+| Add stat increase/decrease advanced options for fertility and aggressiveness                                                  | 3      |
 | Have per-server auction houses players can put their pooches in / players bid, highest bid by EOD gets the pooch              | 8      |
 | Create new breeds at runtime ???                                                                                              | ???    |
 | Let owners rename their kennels                                                                                               | 1      |
@@ -40,9 +39,13 @@
 | Get breed population stats for server (add this info to the vet)                                                              | 3      |
 | Add ability for mutations to predispose a pooch to getting certain diseases more often                                        | 3      |
 | Add incompatible diseases to mutations                                                                                        | 3      |
+| Add a strength stat which dictates how well a dog fights (and how likely they are to be injured/injure another in a fight)    | 3      |
+| Add a dog fighting ring in each server with gambling                                                                          | 8      |
+| Have pooch stats (fertility, aggressiveness, etc.) be partially inherited                                                     | 3      |
 
 # Bug Fixes
 | Feature                                                                                                                       | Points |
 | ----------------------------------------------------------------------------------------------------------------------------- | ------ |
-| Male dogs contract female mutations???                                                                                        | 1      |
+| Male dogs contract female mutations??? (and vice versa I imagine)                                                             | 1      |
 | Dogs can have breeds with 0% weight                                                                                           | 1      |
+| Websocket is borked                                                                                                           | 3      |
