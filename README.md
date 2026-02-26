@@ -79,6 +79,12 @@ Documentation/
 - Python 3.14+
 - PostgreSQL
 
+### Build modules
+Build the modules so imports work
+```bash
+pip install -e .
+```
+
 ### Install dependencies
 
 ```bash
@@ -114,7 +120,11 @@ WEBHOOK_SECRET=your_hmac_secret
 Apply the schema files in `src/database/schema/` to your PostgreSQL database, then load static data (breeds, mutations, name pools):
 
 ```bash
-python -m database.load.load_resources
+python .\src\database\load\load_resources.py
+```
+
+```bash
+python .\src\database\load\reset_db.py
 ```
 
 ### Run the bot
