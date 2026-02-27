@@ -17,37 +17,88 @@
 </div>
 
 <div id="graveyard-container" style="display: none;">
+    <div class="flex flex-wrap items-center gap-3 mb-6">
+        <label class="text-sm text-base-content/50">Buried from</label>
+        <input type="date" id="date-from" class="input input-sm input-bordered">
+        <label class="text-sm text-base-content/50">to</label>
+        <input type="date" id="date-to" class="input input-sm input-bordered">
+        <button id="clear-dates" class="btn btn-ghost btn-sm" style="display: none;">Clear</button>
+    </div>
     <div id="pooches-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
     <div id="no-pooches" class="text-center py-16 text-base-content/50" style="display: none;">
         <p class="text-4xl mb-4">🌿</p>
         <p>No pooches have been buried here.</p>
+    </div>
+    <div id="no-results" class="text-center py-16 text-base-content/50" style="display: none;">
+        <p class="text-4xl mb-4">🔍</p>
+        <p>No pooches buried in this date range.</p>
     </div>
 </div>
 {% endblock %}
 
 {% block extra_scripts %}
 <script>
+let allPooches = [];
+
 document.addEventListener('DOMContentLoaded', async function() {
     try {
         const response = await fetch('/api/graveyard');
-        const pooches = await response.json();
+        allPooches = await response.json();
 
         document.getElementById('loading').style.display = 'none';
         document.getElementById('graveyard-container').style.display = 'block';
 
-        if (pooches.length === 0) {
+        if (allPooches.length === 0) {
             document.getElementById('no-pooches').style.display = 'block';
             return;
         }
 
-        const grid = document.getElementById('pooches-grid');
-        grid.innerHTML = pooches.map(pooch => createGraveyardCard(pooch)).join('');
+        renderGrid(allPooches);
+
+        document.getElementById('date-from').addEventListener('change', applyFilter);
+        document.getElementById('date-to').addEventListener('change', applyFilter);
+        document.getElementById('clear-dates').addEventListener('click', function() {
+            document.getElementById('date-from').value = '';
+            document.getElementById('date-to').value = '';
+            applyFilter();
+        });
 
     } catch (error) {
         document.getElementById('loading').innerHTML = '<span class="text-error">Failed to load graveyard.</span>';
         console.error('Error:', error);
     }
 });
+
+function applyFilter() {
+    const from = document.getElementById('date-from').value;
+    const to = document.getElementById('date-to').value;
+    const hasFilter = from || to;
+
+    document.getElementById('clear-dates').style.display = hasFilter ? '' : 'none';
+
+    const filtered = allPooches.filter(pooch => {
+        if (!pooch.buried_at) return true;
+        const buried = pooch.buried_at.slice(0, 10); // YYYY-MM-DD
+        if (from && buried < from) return false;
+        if (to && buried > to) return false;
+        return true;
+    });
+
+    renderGrid(filtered);
+}
+
+function renderGrid(pooches) {
+    const grid = document.getElementById('pooches-grid');
+    const noResults = document.getElementById('no-results');
+
+    if (pooches.length === 0) {
+        grid.innerHTML = '';
+        noResults.style.display = 'block';
+    } else {
+        noResults.style.display = 'none';
+        grid.innerHTML = pooches.map(pooch => createGraveyardCard(pooch)).join('');
+    }
+}
 
 function createGraveyardCard(pooch) {
     const sexEmoji = pooch.sex === 'female' ? '♀️' : '♂️';
