@@ -1,47 +1,60 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Pooch Breeder{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     {% block extra_head %}{% endblock %}
 </head>
-<body>
-    <nav class="navbar">
-        <div class="navbar-brand">
-            <a href="{{ url_for('main.index') }}" class="logo">🐕 Pooch Breeder</a>
+<body class="min-h-screen bg-base-100 text-base-content">
+
+    <div class="navbar bg-base-300 shadow-lg sticky top-0 z-50">
+        <div class="navbar-start">
+            <a href="{{ url_for('main.index') }}" class="btn btn-ghost text-xl font-bold normal-case">🐕 Pooch Breeder</a>
         </div>
+
         {% if session.get('discord_id') %}
-        <div class="navbar-menu">
-            <a href="{{ url_for('main.home') }}" class="nav-link">Home</a>
-            <a href="{{ url_for('kennel.kennels_list') }}" class="nav-link">My Kennels</a>
-            {% if session.get('current_server_id') %}
-            <a href="{{ url_for('main.town') }}" class="nav-link">Town</a>
-            <a href="{{ url_for('vendor.vendors_list') }}" class="nav-link">Vendors</a>
-            <a href="{{ url_for('info.veterinary_clinic') }}" class="nav-link">Vet Clinic</a>
-            {% endif %}
-            <a href="{{ url_for('main.select_server') }}" class="nav-link">
+        <div class="navbar-center hidden lg:flex">
+            <ul class="menu menu-horizontal px-1 gap-1 text-sm">
+                <li><a href="{{ url_for('main.home') }}">Home</a></li>
+                <li><a href="{{ url_for('kennel.kennels_list') }}">My Kennels</a></li>
+                {% if session.get('current_server_id') %}
+                <li><a href="{{ url_for('main.town') }}">Town</a></li>
+                <li><a href="{{ url_for('vendor.vendors_list') }}">Vendors</a></li>
+                <li><a href="{{ url_for('info.veterinary_clinic') }}">Vet Clinic</a></li>
+                {% endif %}
+            </ul>
+        </div>
+
+        <div class="navbar-end gap-2">
+            <a href="{{ url_for('main.select_server') }}" class="btn btn-ghost btn-sm normal-case">
                 {% if session.get('current_server_name') %}
                     {{ session.get('current_server_name') }} ▾
                 {% else %}
                     Select Server
                 {% endif %}
             </a>
-        </div>
-        <div class="navbar-user">
-            <img src="{{ session.get('discord_avatar_url') }}" alt="Avatar" class="avatar-small">
-            <span class="username">{{ session.get('discord_username') }}</span>
-            <a href="{{ url_for('auth.logout') }}" class="nav-link logout">Logout</a>
+            <div class="flex items-center gap-2">
+                <div class="avatar">
+                    <div class="w-8 rounded-full ring ring-primary ring-offset-base-100 ring-offset-1">
+                        <img src="{{ session.get('discord_avatar_url') }}" alt="Avatar">
+                    </div>
+                </div>
+                <span class="font-medium text-sm hidden sm:block">{{ session.get('discord_username') }}</span>
+                <a href="{{ url_for('auth.logout') }}" class="btn btn-ghost btn-xs text-error">Logout</a>
+            </div>
         </div>
         {% endif %}
-    </nav>
+    </div>
 
-    <main class="container">
+    <main class="container mx-auto px-4 py-6 max-w-7xl">
         {% block content %}{% endblock %}
     </main>
 
-    <div id="notification-container"></div>
+    <div id="notification-container" class="toast toast-top toast-end z-[1500]"></div>
 
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>

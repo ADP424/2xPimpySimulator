@@ -3,6 +3,7 @@
 
 # caching
 __pycache__/
+.\src\web\.flask_session\
 
 # testing
 .pytest_cache/

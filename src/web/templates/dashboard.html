@@ -3,38 +3,45 @@
 {% block title %}Dashboard - Pooch Breeder{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1>📊 Dashboard</h1>
+<div class="flex justify-between items-center mb-6">
+    <h1 class="text-3xl font-bold">📊 Dashboard</h1>
 </div>
 
-<div class="dashboard-layout">
-    <aside class="server-sidebar">
-        <h3>Your Servers</h3>
-        <ul class="server-list">
-            {% for server in servers %}
-            <li class="{% if server.id == current_server_id %}active{% endif %}">
-                <a href="#" onclick="event.preventDefault(); document.getElementById('server-form-{{ server.id }}').submit();">
-                    {{ server.name }}
-                </a>
-                <form id="server-form-{{ server.id }}" action="{{ url_for('main.set_server', server_id=server.id) }}" method="POST" style="display:none;"></form>
-            </li>
-            {% else %}
-            <li class="muted">No servers available</li>
-            {% endfor %}
-        </ul>
+<div class="grid grid-cols-[250px_1fr] gap-6 min-h-[calc(100vh-200px)]">
+    <aside class="card bg-base-200 shadow-md h-fit">
+        <div class="card-body py-4">
+            <h3 class="card-title text-base border-b border-base-300 pb-3 mb-1">Your Servers</h3>
+            <ul class="menu menu-sm px-0 gap-1">
+                {% for server in servers %}
+                <li class="{% if server.id == current_server_id %}rounded-lg bg-primary/10{% endif %}">
+                    <a href="#" onclick="event.preventDefault(); document.getElementById('server-form-{{ server.id }}').submit();"
+                       class="{% if server.id == current_server_id %}text-primary font-semibold{% endif %}">
+                        {{ server.name }}
+                    </a>
+                    <form id="server-form-{{ server.id }}" action="{{ url_for('main.set_server', server_id=server.id) }}" method="POST" style="display:none;"></form>
+                </li>
+                {% else %}
+                <li class="px-3 py-2 text-base-content/50 text-sm">No servers available</li>
+                {% endfor %}
+            </ul>
+        </div>
     </aside>
 
-    <main class="dashboard-main">
-        <div class="status-bar" id="status-bar">
-            <div class="status-message" id="status-message">
-                <p class="muted">Welcome! Status messages will appear here.</p>
+    <main class="flex flex-col gap-6">
+        <div class="card bg-base-200 shadow-md" id="status-bar">
+            <div class="card-body py-4">
+                <div id="status-message">
+                    <p class="text-base-content/50 text-sm">Welcome! Status messages will appear here.</p>
+                </div>
             </div>
         </div>
 
-        <div class="events-feed">
-            <h3>📢 Live Events</h3>
-            <div id="events-feed-content">
-                <p class="muted">Waiting for events... Events will appear here when the day changes.</p>
+        <div class="card bg-base-200 shadow-md flex-1">
+            <div class="card-body">
+                <h3 class="card-title">📢 Live Events</h3>
+                <div id="events-feed-content">
+                    <p class="text-base-content/50 text-sm">Waiting for events... Events will appear here when the day changes.</p>
+                </div>
             </div>
         </div>
     </main>
@@ -52,7 +59,7 @@ let statusMessage = sessionStorage.getItem('statusMessage') || '';
 
 document.addEventListener('DOMContentLoaded', function() {
     if (statusMessage) {
-        document.getElementById('status-message').innerHTML = `<p>${escapeHtml(statusMessage)}</p>`;
+        document.getElementById('status-message').innerHTML = `<p class="text-sm">${escapeHtml(statusMessage)}</p>`;
     }
 
     if (typeof App !== 'undefined') {
@@ -66,20 +73,22 @@ function addEventToFeed(data) {
     const server = PAGE_DATA.servers.find(s => Number(s.id) === Number(data.server_discord_id));
     const serverName = server ? server.name : 'Unknown Server';
 
-    let eventHtml = `<div class="event-block">`;
-    eventHtml += `<h4>Day Change - ${escapeHtml(serverName)}</h4>`;
-    eventHtml += `<time>${new Date().toLocaleTimeString()}</time>`;
+    let eventHtml = `<div class="rounded-lg bg-base-300 p-4 mb-3">`;
+    eventHtml += `<div class="flex justify-between items-start mb-2">`;
+    eventHtml += `<h4 class="font-semibold">Day Change — ${escapeHtml(serverName)}</h4>`;
+    eventHtml += `<time class="text-xs text-base-content/40">${new Date().toLocaleTimeString()}</time>`;
+    eventHtml += `</div>`;
 
     if (data.births && data.births.length > 0) {
-        eventHtml += `<div class="births"><strong>🎉 Births:</strong><ul>`;
+        eventHtml += `<div class="births mb-2"><strong class="text-sm">🎉 Births:</strong><ul class="list-disc list-inside text-sm mt-1">`;
         data.births.forEach(b => {
-            eventHtml += `<li><a href="/pooch/${b.child.id}">${escapeHtml(b.child.name)}</a> was born!</li>`;
+            eventHtml += `<li><a href="/pooch/${b.child.id}" class="link link-primary">${escapeHtml(b.child.name)}</a> was born!</li>`;
         });
         eventHtml += `</ul></div>`;
     }
 
     if (data.deaths && data.deaths.length > 0) {
-        eventHtml += `<div class="deaths"><strong>💀 Deaths:</strong><ul>`;
+        eventHtml += `<div class="deaths mb-2"><strong class="text-sm">💀 Deaths:</strong><ul class="list-disc list-inside text-sm mt-1">`;
         data.deaths.forEach(d => {
             eventHtml += `<li>${escapeHtml(d.pooch.name)} has passed away.</li>`;
         });
@@ -94,7 +103,7 @@ function addEventToFeed(data) {
 function setStatusMessage(message) {
     statusMessage = message;
     sessionStorage.setItem('statusMessage', message);
-    document.getElementById('status-message').innerHTML = `<p>${escapeHtml(message)}</p>`;
+    document.getElementById('status-message').innerHTML = `<p class="text-sm">${escapeHtml(message)}</p>`;
 }
 </script>
 {% endblock %}

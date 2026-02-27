@@ -3,48 +3,55 @@
 {% block title %}Breeding - Pooch Breeder{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1>💕 Breeding</h1>
-    <a href="{{ url_for('kennel.kennel_detail', kennel_id=kennel_id) }}" class="btn btn-secondary">← Back to Kennel</a>
+<div class="flex justify-between items-center mb-6 flex-wrap gap-3">
+    <h1 class="text-3xl font-bold">💕 Breeding</h1>
+    <a href="{{ url_for('kennel.kennel_detail', kennel_id=kennel_id) }}" class="btn btn-ghost btn-sm">← Back to Kennel</a>
 </div>
 
-<div class="loading" id="loading">Loading pooches...</div>
+<div id="loading" class="flex items-center gap-3 text-base-content/50 py-8">
+    <span class="loading loading-spinner loading-md"></span>
+    <span>Loading pooches...</span>
+</div>
 
 <div id="breeding-container" style="display: none;">
     <div class="breeding-interface">
-        <div class="breeding-slot" id="slot-1">
-            <h3>First Parent</h3>
-            <div class="slot-content" id="slot-1-content">
-                <p class="placeholder">Select a pooch</p>
+        <div class="card bg-base-200 shadow-md" id="slot-1">
+            <div class="card-body">
+                <h3 class="card-title text-base">First Parent</h3>
+                <div class="slot-content" id="slot-1-content">
+                    <p class="text-base-content/40 text-sm text-center py-4">Select a pooch</p>
+                </div>
             </div>
         </div>
-        
+
         <div class="breeding-middle">
             <div id="incest-warning" class="incest-warning" style="display: none;">
                 ⚠️ Incest Level: <span id="incest-level"></span>
             </div>
-            <button id="breed-btn" class="btn btn-primary btn-large" disabled>
+            <button id="breed-btn" class="btn btn-primary btn-lg" disabled>
                 💕 Breed
             </button>
             <div id="breed-result" style="display: none;"></div>
         </div>
-        
-        <div class="breeding-slot" id="slot-2">
-            <h3>Second Parent</h3>
-            <div class="slot-content" id="slot-2-content">
-                <p class="placeholder">Select a pooch</p>
+
+        <div class="card bg-base-200 shadow-md" id="slot-2">
+            <div class="card-body">
+                <h3 class="card-title text-base">Second Parent</h3>
+                <div class="slot-content" id="slot-2-content">
+                    <p class="text-base-content/40 text-sm text-center py-4">Select a pooch</p>
+                </div>
             </div>
         </div>
     </div>
-    
-    <h2>Available Pooches</h2>
-    <div class="pooch-filters">
+
+    <h2 class="text-xl font-bold mb-3">Available Pooches</h2>
+    <div class="flex gap-2 mb-4 flex-wrap">
         <button class="filter-btn active" data-filter="all">All</button>
         <button class="filter-btn" data-filter="female">♀️ Female</button>
         <button class="filter-btn" data-filter="male">♂️ Male</button>
         <button class="filter-btn" data-filter="ready">Ready to Breed</button>
     </div>
-    <div id="available-pooches" class="pooches-grid"></div>
+    <div id="available-pooches" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3"></div>
 </div>
 {% endblock %}
 
@@ -63,16 +70,16 @@ document.addEventListener('DOMContentLoaded', async function() {
     try {
         const response = await fetch(`/api/kennels/${PAGE_DATA.kennelId}/pooches`);
         pooches = await response.json();
-        
+
         document.getElementById('loading').style.display = 'none';
         document.getElementById('breeding-container').style.display = 'block';
-        
+
         renderPooches();
         setupFilters();
         setupBreedButton();
-        
+
     } catch (error) {
-        document.getElementById('loading').textContent = 'Failed to load pooches';
+        document.getElementById('loading').innerHTML = '<span class="text-error">Failed to load pooches</span>';
         console.error('Error:', error);
     }
 });
@@ -80,23 +87,25 @@ document.addEventListener('DOMContentLoaded', async function() {
 function renderPooches() {
     const container = document.getElementById('available-pooches');
     const filtered = filterPooches(pooches, currentFilter);
-    
+
     container.innerHTML = filtered.map(pooch => {
-        const isSelected = (selectedSlot1 && selectedSlot1.id === pooch.id) || 
+        const isSelected = (selectedSlot1 && selectedSlot1.id === pooch.id) ||
                           (selectedSlot2 && selectedSlot2.id === pooch.id);
         const canBreed = pooch.alive && pooch.breeding_cooldown === 0;
-        
+
         return `
-            <div class="pooch-select-card ${isSelected ? 'selected' : ''} ${!canBreed ? 'disabled' : ''}"
+            <div class="card bg-base-200 shadow-sm pooch-select-card ${isSelected ? 'selected' : ''} ${!canBreed ? 'disabled' : ''}"
                  data-pooch-id="${pooch.id}"
                  onclick="selectPooch(${pooch.id})">
-                <div class="pooch-header">
-                    <span class="pooch-name">${escapeHtml(pooch.name)}</span>
-                    <span class="pooch-sex">${pooch.sex === 'female' ? '♀️' : '♂️'}</span>
-                </div>
-                <div class="pooch-info">
-                    <span>Age: ${pooch.age}</span>
-                    ${pooch.breeding_cooldown > 0 ? `<span class="cooldown">⏳ ${pooch.breeding_cooldown}d</span>` : ''}
+                <div class="card-body py-3 px-4 gap-1">
+                    <div class="flex justify-between items-center">
+                        <span class="font-semibold text-sm">${escapeHtml(pooch.name)}</span>
+                        <span>${pooch.sex === 'female' ? '♀️' : '♂️'}</span>
+                    </div>
+                    <div class="text-xs text-base-content/50 flex gap-3">
+                        <span>Age: ${pooch.age}</span>
+                        ${pooch.breeding_cooldown > 0 ? `<span class="text-warning">⏳ ${pooch.breeding_cooldown}d</span>` : ''}
+                    </div>
                 </div>
             </div>
         `;
@@ -138,7 +147,7 @@ function selectPooch(poochId) {
         breedResult.style.display = 'none';
         breedResult.innerHTML = '';
     }
-    
+
     // If already selected, deselect
     if (selectedSlot1 && selectedSlot1.id === poochId) {
         selectedSlot1 = null;
@@ -159,7 +168,7 @@ function selectPooch(poochId) {
         selectedSlot2 = pooch;
         updateSlot(2, pooch);
     }
-    
+
     renderPooches();
     updateBreedButton();
     checkIncest();
@@ -168,13 +177,12 @@ function selectPooch(poochId) {
 function updateSlot(slotNum, pooch) {
     const content = document.getElementById(`slot-${slotNum}-content`);
     if (!pooch) {
-        content.innerHTML = '<p class="placeholder">Select a pooch</p>';
+        content.innerHTML = '<p class="text-base-content/40 text-sm text-center py-4">Select a pooch</p>';
     } else {
         content.innerHTML = `
-            <div class="selected-pooch">
-                <strong>${escapeHtml(pooch.name)}</strong>
-                <span>${pooch.sex === 'female' ? '♀️' : '♂️'}</span>
-                <p>${pooch.breeds.map(b => b.breed.name).join(', ')}</p>
+            <div class="text-sm">
+                <p class="font-bold">${escapeHtml(pooch.name)} <span>${pooch.sex === 'female' ? '♀️' : '♂️'}</span></p>
+                <p class="text-base-content/50">${pooch.breeds.map(b => b.breed.name).join(', ')}</p>
             </div>
         `;
     }
@@ -182,14 +190,14 @@ function updateSlot(slotNum, pooch) {
 
 function updateBreedButton() {
     const btn = document.getElementById('breed-btn');
-    const canBreed = selectedSlot1 && selectedSlot2 && 
+    const canBreed = selectedSlot1 && selectedSlot2 &&
                      selectedSlot1.sex !== selectedSlot2.sex;
     btn.disabled = !canBreed;
-    
+
     if (selectedSlot1 && selectedSlot2 && selectedSlot1.sex === selectedSlot2.sex) {
         const resultDiv = document.getElementById('breed-result');
         if (resultDiv) resultDiv.dataset.persistent = '0';
-        document.getElementById('breed-result').innerHTML = '<p class="error">Pooches must be different sexes!</p>';
+        document.getElementById('breed-result').innerHTML = '<div role="alert" class="alert alert-error alert-sm text-sm"><span>Pooches must be different sexes!</span></div>';
         document.getElementById('breed-result').style.display = 'block';
     } else {
         const resultDiv = document.getElementById('breed-result');
@@ -206,11 +214,11 @@ async function checkIncest() {
         document.getElementById('incest-warning').style.display = 'none';
         return;
     }
-    
+
     try {
         const response = await fetch(`/api/incest-check?first_pooch_id=${selectedSlot1.id}&second_pooch_id=${selectedSlot2.id}`);
         const data = await response.json();
-        
+
         if (data.incest_level > 0) {
             document.getElementById('incest-level').textContent = (data.incest_level * 100).toFixed(1) + '%';
             document.getElementById('incest-warning').style.display = 'block';
@@ -225,10 +233,10 @@ async function checkIncest() {
 function setupBreedButton() {
     document.getElementById('breed-btn').addEventListener('click', async function() {
         if (!selectedSlot1 || !selectedSlot2) return;
-        
+
         this.disabled = true;
-        this.textContent = 'Breeding...';
-        
+        this.innerHTML = '<span class="loading loading-spinner loading-sm"></span> Breeding...';
+
         try {
             const response = await fetch('/api/breed', {
                 method: 'POST',
@@ -238,43 +246,47 @@ function setupBreedButton() {
                     second_pooch_id: selectedSlot2.id
                 })
             });
-            
+
             const result = await response.json();
-            
+
             if (result.success) {
                 const resultDiv = document.getElementById('breed-result');
                 resultDiv.innerHTML = `
-                    <div class="success">
-                        <h4>🎉 Breeding Successful!</h4>
-                        <p>New puppies created:</p>
-                        ${result.new_pooches.map(p => `
-                            <a href="/pooch/${p.id}" class="new-puppy">${escapeHtml(p.name)}</a>
-                        `).join('')}
+                    <div role="alert" class="alert alert-success">
+                        <div>
+                            <h4 class="font-bold">🎉 Breeding Successful!</h4>
+                            <p class="text-sm">New puppies created:</p>
+                            <div class="flex flex-wrap gap-2 mt-2">
+                                ${result.new_pooches.map(p => `
+                                    <a href="/pooch/${p.id}" class="badge badge-outline hover:badge-success">${escapeHtml(p.name)}</a>
+                                `).join('')}
+                            </div>
+                        </div>
                     </div>
                 `;
                 resultDiv.dataset.persistent = '1';
-                 resultDiv.style.display = 'block';
-                
+                resultDiv.style.display = 'block';
+
                 // Refresh pooches
                 const poochResponse = await fetch(`/api/kennels/${PAGE_DATA.kennelId}/pooches`);
                 pooches = await poochResponse.json();
-                
+
                 // Reset selection
                 selectedSlot1 = null;
                 selectedSlot2 = null;
                 updateSlot(1, null);
                 updateSlot(2, null);
                 renderPooches();
-                
+
             } else {
-                document.getElementById('breed-result').innerHTML = `<p class="error">${escapeHtml(result.error || result.message)}</p>`;
+                document.getElementById('breed-result').innerHTML = `<div role="alert" class="alert alert-error text-sm"><span>${escapeHtml(result.error || result.message)}</span></div>`;
                 document.getElementById('breed-result').style.display = 'block';
             }
         } catch (error) {
-            document.getElementById('breed-result').innerHTML = `<p class="error">Breeding failed: ${error.message}</p>`;
+            document.getElementById('breed-result').innerHTML = `<div role="alert" class="alert alert-error text-sm"><span>Breeding failed: ${error.message}</span></div>`;
             document.getElementById('breed-result').style.display = 'block';
         }
-        
+
         this.disabled = false;
         this.textContent = '💕 Breed';
         updateBreedButton();

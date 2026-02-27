@@ -3,22 +3,26 @@
 {% block title %}Veterinary Clinic - {{ server_name }}{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1>🏥 Veterinary Clinic</h1>
-    <p>Learn about dog breeds and genetic mutations</p>
+<div class="mb-8">
+    <h1 class="text-3xl font-bold">🏥 Veterinary Clinic</h1>
+    <p class="text-base-content/60 mt-1">Learn about dog breeds and genetic mutations</p>
 </div>
 
-<div class="clinic-grid">
-    <a href="{{ url_for('info.breeds_list') }}" class="clinic-section">
-        <span class="section-icon">🐕</span>
-        <h2>Dog Breeds</h2>
-        <p>Browse all available breeds and their characteristics</p>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-2xl">
+    <a href="{{ url_for('info.breeds_list') }}" class="card bg-base-200 shadow-md hover:-translate-y-1 hover:shadow-lg transition-all text-base-content no-underline">
+        <div class="card-body items-center text-center py-10">
+            <span class="text-6xl mb-4">🐕</span>
+            <h2 class="card-title">Dog Breeds</h2>
+            <p class="text-sm text-base-content/60">Browse all available breeds and their characteristics</p>
+        </div>
     </a>
-    
-    <a href="{{ url_for('info.mutations_list') }}" class="clinic-section">
-        <span class="section-icon">🧬</span>
-        <h2>Genetic Mutations</h2>
-        <p>Learn about mutations that can affect your pooches</p>
+
+    <a href="{{ url_for('info.mutations_list') }}" class="card bg-base-200 shadow-md hover:-translate-y-1 hover:shadow-lg transition-all text-base-content no-underline">
+        <div class="card-body items-center text-center py-10">
+            <span class="text-6xl mb-4">🧬</span>
+            <h2 class="card-title">Genetic Mutations</h2>
+            <p class="text-sm text-base-content/60">Learn about mutations that can affect your pooches</p>
+        </div>
     </a>
 </div>
 {% endblock %}
