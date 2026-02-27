@@ -12,8 +12,8 @@
     {% for server in servers %}
     <div class="server-card {% if server.id == current_server_id %}active{% endif %}">
         <div class="server-icon">
-            {% if server.icon_url %}
-            <img src="{{ server.icon_url }}" alt="{{ server.name }}">
+            {% if server.icon %}
+            <img src="https://cdn.discordapp.com/icons/{{ server.id }}/{{ server.icon }}.png" alt="{{ server.name }}">
             {% else %}
             <div class="server-icon-placeholder">{{ server.name[0] if server.name else '?' }}</div>
             {% endif %}
