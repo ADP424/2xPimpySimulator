@@ -3,15 +3,18 @@
 {% block title %}My Kennels - Pooch Breeder{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1>🏠 My Kennels</h1>
+<div class="flex justify-between items-center mb-6 flex-wrap gap-3">
+    <h1 class="text-3xl font-bold">🏠 My Kennels</h1>
 </div>
 
-<div class="loading" id="loading">Loading your kennels...</div>
+<div id="loading" class="flex items-center gap-3 text-base-content/50 py-8">
+    <span class="loading loading-spinner loading-md"></span>
+    <span>Loading your kennels...</span>
+</div>
 
 <div id="kennels-container" style="display: none;">
-    <div id="kennels-grid" class="kennels-grid"></div>
-    <div id="no-kennels" class="empty-state" style="display: none;">
+    <div id="kennels-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+    <div id="no-kennels" class="text-center py-12 text-base-content/50" style="display: none;">
         <p>You don't have any kennels yet.</p>
     </div>
 </div>
@@ -23,44 +26,42 @@ document.addEventListener('DOMContentLoaded', async function() {
     try {
         const response = await fetch('/api/kennels');
         const kennels = await response.json();
-        
+
         document.getElementById('loading').style.display = 'none';
         document.getElementById('kennels-container').style.display = 'block';
-        
+
         if (kennels.length === 0) {
             document.getElementById('no-kennels').style.display = 'block';
             return;
         }
-        
+
         const grid = document.getElementById('kennels-grid');
-        
+
         // Load pooch counts for each kennel
         for (const kennel of kennels) {
             const poochResponse = await fetch(`/api/kennels/${kennel.id}/pooches`);
             const pooches = await poochResponse.json();
-            
+
             grid.innerHTML += `
-                <a href="/kennel/${kennel.id}" class="kennel-card">
-                    <div class="kennel-header">
-                        <h3>${escapeHtml(kennel.name)}</h3>
-                    </div>
-                    <div class="kennel-stats">
-                        <div class="stat">
-                            <span class="stat-value">${pooches.length}</span>
-                            <span class="stat-label">/ ${kennel.pooch_limit} Pooches</span>
+                <a href="/kennel/${kennel.id}" class="card bg-base-200 shadow-md hover:-translate-y-1 hover:shadow-lg transition-all text-base-content no-underline">
+                    <div class="card-body">
+                        <h3 class="card-title text-lg">${escapeHtml(kennel.name)}</h3>
+                        <div class="flex items-baseline gap-1 mt-1">
+                            <span class="text-3xl font-black">${pooches.length}</span>
+                            <span class="text-base-content/50 text-sm">/ ${kennel.pooch_limit} Pooches</span>
                         </div>
-                    </div>
-                    <div class="kennel-preview">
-                        ${pooches.slice(0, 4).map(p => `
-                            <span class="pooch-mini ${p.status}">${getStatusEmoji(p.status)}</span>
-                        `).join('')}
-                        ${pooches.length > 4 ? `<span class="more">+${pooches.length - 4}</span>` : ''}
+                        <div class="flex flex-wrap gap-1 mt-3">
+                            ${pooches.slice(0, 4).map(p => `
+                                <span class="text-2xl">${getStatusEmoji(p.status)}</span>
+                            `).join('')}
+                            ${pooches.length > 4 ? `<span class="badge badge-ghost badge-sm self-center">+${pooches.length - 4}</span>` : ''}
+                        </div>
                     </div>
                 </a>
             `;
         }
     } catch (error) {
-        document.getElementById('loading').textContent = 'Failed to load kennels';
+        document.getElementById('loading').innerHTML = '<span class="text-error">Failed to load kennels</span>';
         console.error('Error:', error);
     }
 });

@@ -3,33 +3,32 @@
 {% block title %}Breed Info - Pooch Breeder{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <a href="{{ url_for('info.breeds_list') }}" class="btn btn-secondary">← Back to Breeds</a>
-    <h1 id="breed-name">Loading...</h1>
+<div class="mb-6">
+    <a href="{{ url_for('info.breeds_list') }}" class="btn btn-ghost btn-sm mb-3">← Back to Breeds</a>
+    <h1 class="text-3xl font-bold" id="breed-name">Loading...</h1>
 </div>
 
-<div class="loading" id="loading">Loading breed details...</div>
+<div id="loading" class="flex items-center gap-3 text-base-content/50 py-8">
+    <span class="loading loading-spinner loading-md"></span>
+    <span>Loading breed details...</span>
+</div>
 
 <div id="breed-container" style="display: none;">
     <div class="detail-layout">
         <div class="detail-main">
-            <div class="card">
-                <div class="card-header">
-                    <h2>📋 Description</h2>
-                </div>
+            <div class="card bg-base-200 shadow-md">
                 <div class="card-body">
-                    <p id="breed-description"></p>
+                    <h2 class="card-title">📋 Description</h2>
+                    <p id="breed-description" class="text-base-content/80 leading-relaxed"></p>
                 </div>
             </div>
         </div>
 
         <div class="detail-sidebar">
-            <div class="card">
-                <div class="card-header">
-                    <h2>ℹ️ Quick Info</h2>
-                </div>
+            <div class="card bg-base-200 shadow-md">
                 <div class="card-body">
-                    <div class="info-list">
+                    <h2 class="card-title text-base">ℹ️ Quick Info</h2>
+                    <div class="info-list mt-2">
                         <div class="info-item">
                             <span class="info-label">Rarity</span>
                             <span class="info-value" id="breed-rarity"></span>
@@ -72,12 +71,12 @@ document.addEventListener('DOMContentLoaded', async function() {
         `;
 
         document.getElementById('breed-description').textContent = breed.description;
-        document.getElementById('breed-rarity').textContent = rarityLabel;
+        document.getElementById('breed-rarity').innerHTML = `<span class="rarity-badge rarity-${(breed.rarity || '').toLowerCase()}">${escapeHtml(rarityLabel)}</span>`;
         document.getElementById('breed-category').textContent = breed.category || '—';
         document.getElementById('breed-alt-name').textContent = breed.alt_name || '—';
 
     } catch (error) {
-        document.getElementById('loading').textContent = 'Failed to load breed details';
+        document.getElementById('loading').innerHTML = '<span class="text-error">Failed to load breed details</span>';
         console.error('Error:', error);
     }
 });

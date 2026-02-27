@@ -3,26 +3,22 @@
 {% block title %}Mutations - Pooch Breeder{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1>🧬 Genetic Mutations</h1>
-    <p>Browse all mutations that can affect your pooches</p>
+<div class="flex justify-between items-center mb-6 flex-wrap gap-3">
+    <h1 class="text-3xl font-bold">🧬 Genetic Mutations</h1>
+    <p class="text-base-content/60">Browse all mutations that can affect your pooches</p>
 </div>
 
 <div class="filters-bar">
-    <input type="text" id="search-input" placeholder="Search mutations..." class="search-input">
-
+    <input type="text" id="search-input" placeholder="Search mutations..." class="search-input flex-1 min-w-[180px]">
     <select id="rarity-filter" class="filter-select">
         <option value="">All rarities</option>
     </select>
-
     <select id="health-filter" class="filter-select">
         <option value="">All impacts</option>
     </select>
-
     <select id="category-filter" class="filter-select">
         <option value="">All categories</option>
     </select>
-
     <select id="affects-filter" class="filter-select">
         <option value="">Affects: Any</option>
         <option value="both">Both</option>
@@ -32,11 +28,14 @@
     </select>
 </div>
 
-<div class="loading" id="loading">Loading mutations...</div>
+<div id="loading" class="flex items-center gap-3 text-base-content/50 py-8">
+    <span class="loading loading-spinner loading-md"></span>
+    <span>Loading mutations...</span>
+</div>
 
 <div id="mutations-container" style="display: none;">
-    <div id="mutations-grid" class="mutations-grid"></div>
-    <div id="no-results" class="empty-state" style="display: none;">
+    <div id="mutations-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+    <div id="no-results" class="text-center py-12 text-base-content/50" style="display: none;">
         <p>No mutations found matching your filters.</p>
     </div>
 </div>
@@ -58,7 +57,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         renderMutations(mutations);
 
     } catch (error) {
-        document.getElementById('loading').textContent = 'Failed to load mutations';
+        document.getElementById('loading').innerHTML = '<span class="text-error">Failed to load mutations</span>';
         console.error('Error:', error);
     }
 });
@@ -158,17 +157,19 @@ function createMutationCard(mutation) {
     if (mutation.affects_males) affects.push('Males');
 
     return `
-        <a href="/info/mutations/${mutation.id}" class="mutation-card health-${impactGroup}">
-            <div class="mutation-header">
-                <h3>${escapeHtml(mutation.name)}</h3>
-                <span class="rarity-badge rarity-${rarity}">${escapeHtml(rarityLabel)}</span>
-            </div>
-            <p class="mutation-description">${escapeHtml(mutation.description)}</p>
-            <div class="mutation-meta">
-                <span class="meta-item">🏥 ${escapeHtml(impactLabel)}</span>
-                <span class="meta-item">🎯 ${Math.round(mutation.heritability * 100)}%</span>
-                ${mutation.category ? `<span class="meta-item">📁 ${escapeHtml(mutation.category)}</span>` : ''}
-                <span class="meta-item">👥 ${affects.length ? affects.join(', ') : 'None'}</span>
+        <a href="/info/mutations/${mutation.id}" class="card bg-base-200 shadow-sm hover:-translate-y-1 hover:shadow-md transition-all text-base-content no-underline health-${impactGroup}">
+            <div class="card-body py-4 px-4 gap-2">
+                <div class="flex justify-between items-start gap-2">
+                    <h3 class="font-bold">${escapeHtml(mutation.name)}</h3>
+                    <span class="rarity-badge rarity-${rarity} shrink-0">${escapeHtml(rarityLabel)}</span>
+                </div>
+                <p class="text-sm text-base-content/60 line-clamp-2">${escapeHtml(mutation.description)}</p>
+                <div class="flex flex-wrap gap-2 mt-1">
+                    <span class="text-xs text-base-content/40">🏥 ${escapeHtml(impactLabel)}</span>
+                    <span class="text-xs text-base-content/40">🎯 ${Math.round(mutation.heritability * 100)}%</span>
+                    ${mutation.category ? `<span class="text-xs text-base-content/40">📁 ${escapeHtml(mutation.category)}</span>` : ''}
+                    <span class="text-xs text-base-content/40">👥 ${affects.length ? affects.join(', ') : 'None'}</span>
+                </div>
             </div>
         </a>
     `;

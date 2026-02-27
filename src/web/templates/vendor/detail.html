@@ -3,19 +3,26 @@
 {% block title %}Vendor - {{ server_name }}{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <a href="{{ url_for('vendor.vendors_list') }}" class="btn btn-secondary">← Back to Vendors</a>
-    <h1 id="vendor-name">Loading...</h1>
+<div class="flex justify-between items-center mb-6 flex-wrap gap-3">
+    <a href="{{ url_for('vendor.vendors_list') }}" class="btn btn-ghost btn-sm">← Back to Vendors</a>
+    <h1 class="text-3xl font-bold" id="vendor-name">Loading...</h1>
 </div>
 
-<div class="loading" id="loading">Loading vendor...</div>
+<div id="loading" class="flex items-center gap-3 text-base-content/50 py-8">
+    <span class="loading loading-spinner loading-md"></span>
+    <span>Loading vendor...</span>
+</div>
 
 <div id="vendor-container" style="display: none;">
-    <div class="vendor-details" id="vendor-details"></div>
+    <div class="card bg-base-200 shadow-md mb-6">
+        <div class="card-body py-4">
+            <div id="vendor-details"></div>
+        </div>
+    </div>
 
-    <h2>Available Pooches</h2>
-    <div id="pooches-grid" class="pooches-grid"></div>
-    <div id="no-pooches" class="empty-state" style="display: none;">
+    <h2 class="text-xl font-bold mb-4">Available Pooches</h2>
+    <div id="pooches-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
+    <div id="no-pooches" class="text-center py-12 text-base-content/50" style="display: none;">
         <p>This vendor has no pooches available.</p>
     </div>
 </div>
@@ -39,18 +46,15 @@ document.addEventListener('DOMContentLoaded', async function() {
 
         // Vendor details
         document.getElementById('vendor-details').innerHTML = `
-            <div class="vendor-stats">
-                <div class="stat">
-                    <span class="stat-label">Stock</span>
-                    <span class="stat-value">${vendor.stock_count ?? 0} pooches</span>
+            <div class="flex gap-8">
+                <div class="flex flex-col gap-0.5">
+                    <span class="text-xs text-base-content/50 uppercase tracking-wide">Stock</span>
+                    <span class="text-2xl font-black">${vendor.stock_count ?? 0}</span>
+                    <span class="text-xs text-base-content/50">pooches</span>
                 </div>
-                <div class="stat">
-                    <span class="stat-label">Price markup</span>
-                    <span class="stat-value">${formatMarkup(vendor.price_markup)}</span>
-                </div>
-                <div class="stat">
-                    <span class="stat-label">Stock</span>
-                    <span class="stat-value">${vendor.pooch_count} pooches</span>
+                <div class="flex flex-col gap-0.5">
+                    <span class="text-xs text-base-content/50 uppercase tracking-wide">Price Markup</span>
+                    <span class="text-2xl font-black">${formatMarkup(vendor.price_markup)}</span>
                 </div>
             </div>
         `;
@@ -68,7 +72,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         grid.innerHTML = pooches.map(pooch => createPoochCard(pooch)).join('');
 
     } catch (error) {
-        document.getElementById('loading').textContent = 'Failed to load vendor';
+        document.getElementById('loading').innerHTML = '<span class="text-error">Failed to load vendor</span>';
         console.error('Error:', error);
     }
 });
@@ -84,31 +88,32 @@ function createPoochCard(pooch) {
     const breedNames = pooch.breeds.map(b => b.breed.name).join(', ') || 'Unknown';
 
     return `
-        <div class="pooch-card vendor-pooch">
-            <div class="pooch-header">
-                <span class="pooch-name">${escapeHtml(pooch.name)}</span>
-                <span class="pooch-sex">${sexEmoji}</span>
-            </div>
-            <div class="pooch-details">
-                <div class="detail">
-                    <span class="label">Age:</span>
-                    <span class="value">${pooch.age} days</span>
+        <div class="card bg-base-200 shadow-sm">
+            <div class="card-body py-4 px-4 gap-2">
+                <div class="flex justify-between items-center">
+                    <span class="font-bold">${escapeHtml(pooch.name)}</span>
+                    <span>${sexEmoji}</span>
                 </div>
-                <div class="detail">
-                    <span class="label">Breeds:</span>
-                    <span class="value">${escapeHtml(breedNames)}</span>
+                <div class="text-xs text-base-content/50 flex flex-col gap-0.5">
+                    <div class="flex justify-between gap-2">
+                        <span class="shrink-0">Age:</span><span>${pooch.age} days</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <span class="shrink-0">Breeds:</span><span class="text-base-content/70">${escapeHtml(breedNames)}</span>
+                    </div>
                 </div>
-                <div class="detail">
-                    <span class="label">Price:</span>
-                    <span class="value price">${formatCurrency(pooch.buy_price)}</span>
+                ${pooch.mutations.length > 0 ? `
+                <div class="mt-1">
+                    <span class="text-xs text-base-content/50">Mutations: </span>${pooch.mutations.map((m, i) =>
+                        `<span class="text-xs rarity-text-${(m.rarity || '').toLowerCase()}">${escapeHtml(m.name)}${i < pooch.mutations.length - 1 ? ',' : ''}</span>`
+                    ).join(' ')}
                 </div>
+                ` : ''}
+                <div class="flex justify-between text-success font-semibold text-sm mt-2">
+                    <span>Price:</span><span>${formatCurrency(pooch.buy_price)}</span>
+                </div>
+                <button class="btn btn-primary btn-sm btn-block mt-2" onclick="buyPooch(${pooch.id})">Buy</button>
             </div>
-            ${pooch.mutations.length > 0 ? `
-            <div class="pooch-mutations">
-                ${pooch.mutations.map(m => `<span class="mutation-badge">${escapeHtml(m.name)}</span>`).join('')}
-            </div>
-            ` : ''}
-            <button class="btn btn-primary btn-full" onclick="buyPooch(${pooch.id})">Buy</button>
         </div>
     `;
 }
@@ -127,10 +132,10 @@ async function buyPooch(poochId) {
             App.showNotification('Purchase successful!', 'success');
             window.location.href = '/kennel';
         } else {
-            App.showNotification(result.error || 'Purchase failed', 'error');
+            App.showNotification(result.message || result.error || 'Purchase failed', 'error');
         }
     } catch (error) {
-        App.showNotification('Purchase failed', 'error');
+        App.showNotification('Something went wrong. Please try again.', 'error');
         console.error('Error:', error);
     }
 }

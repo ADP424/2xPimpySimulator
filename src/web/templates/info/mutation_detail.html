@@ -3,50 +3,49 @@
 {% block title %}Mutation Info - Pooch Breeder{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <a href="{{ url_for('info.mutations_list') }}" class="btn btn-secondary">← Back to Mutations</a>
-    <h1 id="mutation-name">Loading...</h1>
+<div class="mb-6">
+    <a href="{{ url_for('info.mutations_list') }}" class="btn btn-ghost btn-sm mb-3">← Back to Mutations</a>
+    <h1 class="text-3xl font-bold" id="mutation-name">Loading...</h1>
 </div>
 
-<div class="loading" id="loading">Loading mutation details...</div>
+<div id="loading" class="flex items-center gap-3 text-base-content/50 py-8">
+    <span class="loading loading-spinner loading-md"></span>
+    <span>Loading mutation details...</span>
+</div>
 
 <div id="mutation-container" style="display: none;">
     <div class="detail-layout">
         <div class="detail-main">
-            <div class="card">
-                <div class="card-header">
-                    <h2>📋 Description</h2>
-                </div>
+            <div class="card bg-base-200 shadow-md">
                 <div class="card-body">
-                    <p id="mutation-description"></p>
+                    <h2 class="card-title">📋 Description</h2>
+                    <p id="mutation-description" class="text-base-content/80 leading-relaxed"></p>
                 </div>
             </div>
 
-            <div class="card">
-                <div class="card-header">
-                    <h2>📊 Stats</h2>
-                </div>
+            <div class="card bg-base-200 shadow-md">
                 <div class="card-body">
-                    <div class="stats-grid">
+                    <h2 class="card-title">📊 Stats</h2>
+                    <div class="stats-grid mt-2">
                         <div class="stat-item">
                             <span class="stat-label">Rarity</span>
-                            <span class="stat-value" id="mutation-rarity"></span>
+                            <span class="stat-display-value" id="mutation-rarity"></span>
                         </div>
                         <div class="stat-item">
                             <span class="stat-label">Health Impact</span>
-                            <span class="stat-value" id="mutation-health"></span>
+                            <span class="stat-display-value" id="mutation-health"></span>
                         </div>
                         <div class="stat-item">
                             <span class="stat-label">Heritability</span>
-                            <span class="stat-value" id="mutation-heritability"></span>
+                            <span class="stat-display-value" id="mutation-heritability"></span>
                         </div>
                         <div class="stat-item">
                             <span class="stat-label">Category</span>
-                            <span class="stat-value" id="mutation-category"></span>
+                            <span class="stat-display-value" id="mutation-category"></span>
                         </div>
                         <div class="stat-item">
                             <span class="stat-label">Affects</span>
-                            <span class="stat-value" id="mutation-affects"></span>
+                            <span class="stat-display-value" id="mutation-affects"></span>
                         </div>
                     </div>
                 </div>
@@ -54,12 +53,10 @@
         </div>
 
         <div class="detail-sidebar">
-            <div class="card">
-                <div class="card-header">
-                    <h2>ℹ️ Quick Info</h2>
-                </div>
+            <div class="card bg-base-200 shadow-md">
                 <div class="card-body">
-                    <div class="info-list">
+                    <h2 class="card-title text-base">ℹ️ Quick Info</h2>
+                    <div class="info-list mt-2">
                         <div class="info-item">
                             <span class="info-label">Also Known As</span>
                             <span class="info-value" id="mutation-alt-name"></span>
@@ -95,9 +92,9 @@ document.addEventListener('DOMContentLoaded', async function() {
             <span class="rarity-badge rarity-${(mutation.rarity || '').toLowerCase()}">${escapeHtml(rarityLabel)}</span>
         `;
         document.getElementById('mutation-description').textContent = mutation.description;
-        document.getElementById('mutation-rarity').textContent = rarityLabel;
+        document.getElementById('mutation-rarity').innerHTML = `<span class="rarity-badge rarity-${(mutation.rarity || '').toLowerCase()}">${escapeHtml(rarityLabel)}</span>`;
         document.getElementById('mutation-health').innerHTML = `
-            <span class="health-impact health-${impactGroup}">${escapeHtml(impactLabel)}</span>
+            <span class="health-impact health-${impactGroup} font-medium">${escapeHtml(impactLabel)}</span>
         `;
         document.getElementById('mutation-heritability').textContent = `${Math.round(mutation.heritability * 100)}%`;
         document.getElementById('mutation-category').textContent = mutation.category || '—';
@@ -109,7 +106,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         document.getElementById('mutation-affects').textContent = affects.length ? affects.join(', ') : 'None';
 
     } catch (error) {
-        document.getElementById('loading').textContent = 'Failed to load mutation details';
+        document.getElementById('loading').innerHTML = '<span class="text-error">Failed to load mutation details</span>';
         console.error('Error:', error);
     }
 });
