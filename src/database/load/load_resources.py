@@ -9,7 +9,7 @@ from database.session import session_scope
 
 
 async def load_breeds():
-    with open("resources/breeds.json", "r") as breeds_json_file:
+    with open("resources/breeds.json", "r", encoding="utf8") as breeds_json_file:
         breeds_json: dict[str, dict[str, dict[str, str | Any]]] = json.loads(breeds_json_file.read().strip())
 
     async with session_scope() as session:
@@ -33,7 +33,7 @@ async def load_breeds():
 
 
 async def load_mutations():
-    with open("resources/mutations.json", "r") as mutations_json_file:
+    with open("resources/mutations.json", "r", encoding="utf8") as mutations_json_file:
         mutations_json: dict[str, dict[str, dict[str, str | Any]]] = json.loads(mutations_json_file.read().strip())
 
     async with session_scope() as session:
@@ -63,7 +63,7 @@ async def load_mutations():
 
 
 async def load_dog_names():
-    with open("resources/dog_names.txt", "r") as dog_names_file:
+    with open("resources/dog_names.txt", "r", encoding="utf8") as dog_names_file:
         dog_names = dog_names_file.readlines()
 
     async with session_scope() as session:
@@ -79,7 +79,7 @@ async def load_dog_names():
 
 
 async def load_vendor_first_names():
-    with open("resources/vendor_first_names.txt", "r") as vendor_first_names_file:
+    with open("resources/vendor_first_names.txt", "r", encoding="utf8") as vendor_first_names_file:
         vendor_first_names = vendor_first_names_file.readlines()
 
     async with session_scope() as session:
@@ -95,7 +95,7 @@ async def load_vendor_first_names():
 
 
 async def load_vendor_last_names():
-    with open("resources/vendor_last_names.txt", "r") as vendor_last_names_file:
+    with open("resources/vendor_last_names.txt", "r", encoding="utf8") as vendor_last_names_file:
         vendor_last_names = vendor_last_names_file.readlines()
 
     async with session_scope() as session:

@@ -3,39 +3,45 @@
 {% block title %}Select Server - Pooch Breeder{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1>Select a Server</h1>
-    <p>Choose which Discord server you want to play in.</p>
+<div class="flex justify-between items-center mb-2 flex-wrap gap-3">
+    <h1 class="text-3xl font-bold">Select a Server</h1>
+    <p class="text-base-content/60">Choose which Discord server you want to play in.</p>
 </div>
 
-<div class="server-grid">
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
     {% for server in servers %}
-    <div class="server-card {% if server.id == current_server_id %}active{% endif %}">
-        <div class="server-icon">
-            {% if server.icon_url %}
-            <img src="{{ server.icon_url }}" alt="{{ server.name }}">
-            {% else %}
-            <div class="server-icon-placeholder">{{ server.name[0] if server.name else '?' }}</div>
-            {% endif %}
-        </div>
-        <div class="server-info">
-            <h3>{{ server.name }}</h3>
-            {% if server.id == current_server_id %}
-            <span class="badge badge-success">Currently Selected</span>
-            {% endif %}
-        </div>
-        <form action="{{ url_for('main.set_server', server_id=server.id) }}" method="POST">
-            <button type="submit" class="btn {% if server.id == current_server_id %}btn-secondary{% else %}btn-primary{% endif %}">
+    <div class="card bg-base-200 shadow-md border-2 {% if server.id == current_server_id %}border-primary{% else %}border-transparent{% endif %} transition-colors">
+        <div class="card-body items-center text-center gap-4">
+            <div class="avatar">
+                <div class="w-16 rounded-full ring ring-base-300 ring-offset-base-100 ring-offset-2">
+                    {% if server.icon %}
+                    <img src="https://cdn.discordapp.com/icons/{{ server.id }}/{{ server.icon }}.png" alt="{{ server.name }}">
+                    {% else %}
+                    <div class="bg-primary text-primary-content flex items-center justify-center w-full h-full text-2xl font-bold">
+                        {{ server.name[0] if server.name else '?' }}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            <div>
+                <h3 class="font-bold text-lg">{{ server.name }}</h3>
                 {% if server.id == current_server_id %}
-                    Selected
-                {% else %}
-                    Enter Server
+                <span class="badge badge-success badge-sm mt-1">Currently Selected</span>
                 {% endif %}
-            </button>
-        </form>
+            </div>
+            <form action="{{ url_for('main.set_server', server_id=server.id) }}" method="POST" class="w-full">
+                <button type="submit" class="btn {% if server.id == current_server_id %}btn-ghost{% else %}btn-primary{% endif %} btn-block btn-sm">
+                    {% if server.id == current_server_id %}
+                        Selected
+                    {% else %}
+                        Enter Server
+                    {% endif %}
+                </button>
+            </form>
+        </div>
     </div>
     {% else %}
-    <div class="empty-state">
+    <div class="col-span-full text-center py-12 text-base-content/50">
         <p>No servers found. Make sure the Pooch Breeder bot has been added to a server you're in.</p>
     </div>
     {% endfor %}

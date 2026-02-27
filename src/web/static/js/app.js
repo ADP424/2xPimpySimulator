@@ -79,15 +79,18 @@ const App = {
         const container = document.getElementById('notification-container');
         if (!container) return;
 
+        const alertClass = { info: 'alert-info', success: 'alert-success', error: 'alert-error', warning: 'alert-warning' }[type] || 'alert-info';
+
         const notification = document.createElement('div');
-        notification.className = `notification ${type}`;
+        notification.role = 'alert';
+        notification.className = `alert ${alertClass} shadow-lg max-w-sm text-sm`;
         notification.textContent = message;
 
         container.appendChild(notification);
 
-        // Auto-remove after 5 seconds
         setTimeout(() => {
-            notification.style.animation = 'slideIn 0.3s ease reverse';
+            notification.style.transition = 'opacity 0.3s ease';
+            notification.style.opacity = '0';
             setTimeout(() => notification.remove(), 300);
         }, 5000);
     },

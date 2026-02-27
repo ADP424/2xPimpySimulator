@@ -21,6 +21,7 @@ from .get import (
 from .list import (
     list_all_breeds,
     list_all_mutations,
+    list_graveyard_pooches_for_owner,
     list_kennels_for_owner,
     list_living_pooches,
     list_owner_servers,
@@ -36,6 +37,8 @@ from .list import (
     list_vendor_pooch_stock,
     list_vendors,
 )
+from .load.load_resources import main as load_resources
+from .load.reset_db import main as reset_db
 from .set import (
     add_breed_to_pooch,
     add_mutation_to_pooch,
@@ -88,6 +91,7 @@ __all__ = [
     "list_pooch_mutations",
     "list_all_breeds",
     "list_all_mutations",
+    "list_graveyard_pooches_for_owner",
     "list_vendors",
     "list_vendor_pooch_stock",
     "list_servers_for_pooch",
@@ -123,4 +127,7 @@ __all__ = [
     "add_pooch_breeds",
     "set_pooch_breeding_cooldown",
     "set_pooch_virgin",
+    # Load commands
+    "reset_db",
+    "load_resources",
 ]

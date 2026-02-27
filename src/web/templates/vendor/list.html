@@ -3,16 +3,19 @@
 {% block title %}Vendors - {{ server_name }}{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1>🏪 Vendors</h1>
-    <p>Browse vendors selling pooches in {{ server_name }}</p>
+<div class="flex justify-between items-center mb-2 flex-wrap gap-3">
+    <h1 class="text-3xl font-bold">🏪 Vendors</h1>
+    <p class="text-base-content/60">Browse vendors selling pooches in {{ server_name }}</p>
 </div>
 
-<div class="loading" id="loading">Loading vendors...</div>
+<div id="loading" class="flex items-center gap-3 text-base-content/50 py-8 mt-4">
+    <span class="loading loading-spinner loading-md"></span>
+    <span>Loading vendors...</span>
+</div>
 
-<div id="vendors-container" style="display: none;">
-    <div id="vendors-grid" class="vendors-grid"></div>
-    <div id="no-vendors" class="empty-state" style="display: none;">
+<div id="vendors-container" style="display: none;" class="mt-4">
+    <div id="vendors-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+    <div id="no-vendors" class="text-center py-12 text-base-content/50" style="display: none;">
         <p>No vendors found in this server.</p>
     </div>
 </div>
@@ -41,7 +44,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         grid.innerHTML = vendors.map(vendor => createVendorCard(vendor)).join('');
 
     } catch (error) {
-        document.getElementById('loading').textContent = 'Failed to load vendors';
+        document.getElementById('loading').innerHTML = '<span class="text-error">Failed to load vendors</span>';
         console.error('Error:', error);
     }
 });
@@ -53,24 +56,29 @@ function formatMarkup(markup) {
 }
 
 function createVendorCard(vendor) {
+    const markupPct = Math.round((vendor.price_markup - 1) * 100);
+    const markupClass = markupPct > 20 ? 'text-error' : markupPct < 0 ? 'text-success' : '';
+
     return `
-        <a href="/vendor/${vendor.id}" class="vendor-card">
-            <div class="vendor-header">
-                <h3>🏪 ${escapeHtml(vendor.name)}</h3>
-                <span class="vendor-stock">${vendor.stock_count ?? 0} pooches</span>
-            </div>
-            <div class="vendor-info">
-                <div class="info-row">
-                    <span class="label">Stock:</span>
-                    <span class="value">${vendor.stock_count ?? 0} pooches</span>
+        <a href="/vendor/${vendor.id}" class="card bg-base-200 shadow-md hover:-translate-y-1 hover:shadow-lg transition-all text-base-content no-underline">
+            <div class="card-body gap-3">
+                <div class="flex justify-between items-start">
+                    <h3 class="card-title text-lg">🏪 ${escapeHtml(vendor.name)}</h3>
+                    <span class="badge badge-ghost badge-sm">${vendor.stock_count ?? 0} pooches</span>
                 </div>
-                <div class="info-row">
-                    <span class="label">Price markup:</span>
-                    <span class="value">${formatMarkup(vendor.price_markup)}</span>
+                <div class="flex gap-6 text-sm">
+                    <div class="flex flex-col gap-0.5">
+                        <span class="text-xs text-base-content/50 uppercase tracking-wide">Stock</span>
+                        <span class="font-semibold">${vendor.stock_count ?? 0}</span>
+                    </div>
+                    <div class="flex flex-col gap-0.5">
+                        <span class="text-xs text-base-content/50 uppercase tracking-wide">Markup</span>
+                        <span class="font-semibold ${markupClass}">${formatMarkup(vendor.price_markup)}</span>
+                    </div>
                 </div>
-            </div>
-            <div class="vendor-footer">
-                <span class="btn btn-primary">Browse Pooches →</span>
+                <div class="card-actions mt-2">
+                    <span class="btn btn-primary btn-sm btn-block">Browse Pooches →</span>
+                </div>
             </div>
         </a>
     `;

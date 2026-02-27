@@ -3,70 +3,68 @@
 {% block title %}Home - Pooch Breeder{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1>Welcome, {{ username }}!</h1>
+<div class="flex justify-between items-center mb-6 flex-wrap gap-3">
+    <h1 class="text-3xl font-bold">Welcome, {{ username }}!</h1>
 </div>
 
-<div class="dashboard-grid">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
     <!-- Owner Info Card -->
-    <div class="card" id="owner-info-card">
-        <div class="card-header">
-            <h2>Your Account</h2>
-        </div>
+    <div class="card bg-base-200 shadow-md" id="owner-info-card">
         <div class="card-body">
-            <div class="loading" id="owner-loading">Loading...</div>
+            <h2 class="card-title">Your Account</h2>
+            <div id="owner-loading" class="flex items-center gap-2 text-base-content/50 py-2">
+                <span class="loading loading-spinner loading-sm"></span> Loading...
+            </div>
             <div id="owner-info" style="display: none;">
-                <div class="stat-row">
-                    <span class="stat-label">💵 Dollars:</span>
-                    <span class="stat-value" id="owner-dollars">-</span>
+                <div class="flex justify-between items-center py-2 border-b border-base-300">
+                    <span class="text-base-content/60">💵 Dollars</span>
+                    <span class="font-bold" id="owner-dollars">-</span>
                 </div>
-                <div class="stat-row">
-                    <span class="stat-label">💀 Bloodskulls:</span>
-                    <span class="stat-value" id="owner-bloodskulls">-</span>
+                <div class="flex justify-between items-center py-2">
+                    <span class="text-base-content/60">💀 Bloodskulls</span>
+                    <span class="font-bold" id="owner-bloodskulls">-</span>
                 </div>
             </div>
-            <div id="no-server-message" style="display: none;">
-                <p>Select a server to view your balance.</p>
-                <a href="{{ url_for('main.select_server') }}" class="btn btn-secondary">Select Server</a>
+            <div id="no-server-message" style="display: none;" class="py-2">
+                <p class="text-base-content/60 mb-3">Select a server to view your balance.</p>
+                <a href="{{ url_for('main.select_server') }}" class="btn btn-secondary btn-sm">Select Server</a>
             </div>
         </div>
     </div>
 
     <!-- Kennels Overview Card -->
-    <div class="card" id="kennels-card">
-        <div class="card-header">
-            <h2>Your Kennels</h2>
-        </div>
+    <div class="card bg-base-200 shadow-md" id="kennels-card">
         <div class="card-body">
-            <div class="loading" id="kennels-loading">Loading...</div>
+            <h2 class="card-title">Your Kennels</h2>
+            <div id="kennels-loading" class="flex items-center gap-2 text-base-content/50 py-2">
+                <span class="loading loading-spinner loading-sm"></span> Loading...
+            </div>
             <div id="kennels-list"></div>
-            <div id="no-kennels" style="display: none;">
+            <div id="no-kennels" style="display: none;" class="py-2 text-base-content/60">
                 <p>You don't have any kennels yet.</p>
             </div>
-        </div>
-        <div class="card-footer">
-            <a href="{{ url_for('kennel.kennels_list') }}" class="btn btn-primary">View All Kennels</a>
+            <div class="card-actions mt-4">
+                <a href="{{ url_for('kennel.kennels_list') }}" class="btn btn-primary btn-sm">View All Kennels</a>
+            </div>
         </div>
     </div>
 
     <!-- Quick Actions Card -->
-    <div class="card">
-        <div class="card-header">
-            <h2>Quick Actions</h2>
-        </div>
+    <div class="card bg-base-200 shadow-md">
         <div class="card-body">
-            <div class="quick-actions">
-                <a href="{{ url_for('main.select_server') }}" class="action-btn">
-                    <span class="action-icon">🌐</span>
+            <h2 class="card-title">Quick Actions</h2>
+            <div class="flex flex-col gap-2 mt-1">
+                <a href="{{ url_for('main.select_server') }}" class="flex items-center gap-3 p-3 rounded-lg bg-base-300 hover:bg-base-100 transition-colors text-base-content no-underline">
+                    <span class="text-2xl">🌐</span>
                     <span>Switch Server</span>
                 </a>
                 {% if session.get('current_server_id') %}
-                <a href="{{ url_for('vendor.vendors_list') }}" class="action-btn">
-                    <span class="action-icon">🏪</span>
+                <a href="{{ url_for('vendor.vendors_list') }}" class="flex items-center gap-3 p-3 rounded-lg bg-base-300 hover:bg-base-100 transition-colors text-base-content no-underline">
+                    <span class="text-2xl">🏪</span>
                     <span>Visit Vendors</span>
                 </a>
-                <a href="{{ url_for('info.veterinary_clinic') }}" class="action-btn">
-                    <span class="action-icon">🏥</span>
+                <a href="{{ url_for('info.veterinary_clinic') }}" class="flex items-center gap-3 p-3 rounded-lg bg-base-300 hover:bg-base-100 transition-colors text-base-content no-underline">
+                    <span class="text-2xl">🏥</span>
                     <span>Vet Clinic</span>
                 </a>
                 {% endif %}
@@ -74,14 +72,12 @@
         </div>
     </div>
 
-    <!-- Day Change Notifications -->
-    <div class="card" id="notifications-card">
-        <div class="card-header">
-            <h2>Recent Events</h2>
-        </div>
+    <!-- Recent Events Card -->
+    <div class="card bg-base-200 shadow-md" id="notifications-card">
         <div class="card-body">
+            <h2 class="card-title">Recent Events</h2>
             <div id="events-list">
-                <p class="muted">No recent events. Events will appear here when the day changes.</p>
+                <p class="text-base-content/50 text-sm">No recent events. Events will appear here when the day changes.</p>
             </div>
         </div>
     </div>
@@ -146,9 +142,9 @@ async function loadKennels() {
 
         const listEl = document.getElementById('kennels-list');
         listEl.innerHTML = kennels.map(kennel => `
-            <a href="/kennel/${kennel.id}" class="kennel-item">
-                <span class="kennel-name">${escapeHtml(kennel.name)}</span>
-                <span class="kennel-capacity">Capacity: ${kennel.pooch_limit}</span>
+            <a href="/kennel/${kennel.id}" class="flex justify-between items-center p-3 rounded-lg bg-base-300 hover:bg-base-100 transition-colors text-base-content no-underline mb-2">
+                <span class="font-medium">${escapeHtml(kennel.name)}</span>
+                <span class="text-sm text-base-content/50">Capacity: ${kennel.pooch_limit}</span>
             </a>
         `).join('');
     } catch (error) {
@@ -163,32 +159,32 @@ function handleDayChange(data) {
     const guild = PAGE_DATA.guilds.find(g => Number(g.id) === Number(data.server_discord_id));
     const serverName = guild ? guild.name : `Server ${data.server_discord_id}`;
 
-    let html = '<div class="event-group">';
-    html += `<h4>Day Change - ${escapeHtml(serverName)}</h4>`;
+    let html = '<div class="rounded-lg bg-base-300 p-4 mb-3">';
+    html += `<h4 class="font-semibold mb-2">Day Change — ${escapeHtml(serverName)}</h4>`;
 
     if (data.births && data.births.length > 0) {
-        html += '<div class="event-section births">';
-        html += '<h5>🎉 Births</h5>';
+        html += '<div class="births mb-2">';
+        html += '<p class="text-sm font-medium">🎉 Births</p>';
         data.births.forEach(birth => {
-            html += `<p><a href="/pooch/${birth.child.id}">${escapeHtml(birth.child.name)}</a> was born! ${escapeHtml(birth.message)}</p>`;
+            html += `<p class="text-sm"><a href="/pooch/${birth.child.id}" class="link link-primary">${escapeHtml(birth.child.name)}</a> was born! ${escapeHtml(birth.message)}</p>`;
         });
         html += '</div>';
     }
 
     if (data.deaths && data.deaths.length > 0) {
-        html += '<div class="event-section deaths">';
-        html += '<h5>💀 Deaths</h5>';
+        html += '<div class="deaths mb-2">';
+        html += '<p class="text-sm font-medium">💀 Deaths</p>';
         data.deaths.forEach(death => {
-            html += `<p>${escapeHtml(death.pooch.name)} has passed away. ${escapeHtml(death.message)}</p>`;
+            html += `<p class="text-sm">${escapeHtml(death.pooch.name)} has passed away. ${escapeHtml(death.message)}</p>`;
         });
         html += '</div>';
     }
 
     if (data.other_events && data.other_events.length > 0) {
-        html += '<div class="event-section other">';
-        html += '<h5>📢 Other Events</h5>';
+        html += '<div class="other mb-2">';
+        html += '<p class="text-sm font-medium">📢 Other Events</p>';
         data.other_events.forEach(event => {
-            html += `<p><a href="/pooch/${event.pooch.id}">${escapeHtml(event.pooch.name)}</a>: ${escapeHtml(event.message)}</p>`;
+            html += `<p class="text-sm"><a href="/pooch/${event.pooch.id}" class="link link-primary">${escapeHtml(event.pooch.name)}</a>: ${escapeHtml(event.message)}</p>`;
         });
         html += '</div>';
     }

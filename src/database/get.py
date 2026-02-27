@@ -2,7 +2,6 @@ from typing import Optional
 
 from sqlalchemy import func, select
 
-# from .models import *  # loads all ORM models (via database/models/__init__.py)
 from .models import (
     HealthImpactWeight,
     Kennel,

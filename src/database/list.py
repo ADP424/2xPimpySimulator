@@ -1,10 +1,11 @@
+from datetime import datetime
+
 from sqlalchemy import func, or_, select
 
 from .get import get_pooch_parents
-
-# from .models import *  # loads all ORM models (via database/models/__init__.py)
 from .models import (
     Breed,
+    GraveyardPooch,
     HealthImpactWeight,
     Kennel,
     KennelPooch,
@@ -440,3 +441,30 @@ async def list_servers() -> list[Server]:
         response = await session.execute(query)
 
     return list(response.scalars().all())
+
+
+async def list_graveyard_pooches_for_owner(owner_discord_id: int) -> list[tuple[Pooch, datetime]]:
+    """
+    Fetch the list of deceased pooches buried by the owner with the given Discord ID.
+
+    Parameters
+    ----------
+    owner_discord_id: int
+        The Discord ID of the owner to fetch the buried pooches for.
+
+    Returns
+    -------
+    list[tuple[Pooch, datetime]]
+        A list of (Pooch ORM object, buried_at datetime) tuples, most recently buried first.
+    """
+
+    async with session_scope() as session:
+        query = (
+            select(Pooch, GraveyardPooch.buried_at)
+            .join(GraveyardPooch, GraveyardPooch.pooch_id == Pooch.id)
+            .where(GraveyardPooch.owner_discord_id == owner_discord_id)
+            .order_by(GraveyardPooch.buried_at.desc(), Pooch.id.desc())
+        )
+        response = await session.execute(query)
+
+    return [(pooch, buried_at) for pooch, buried_at in response.tuples().all()]

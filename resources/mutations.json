@@ -8,7 +8,8 @@
             "rarity": "UNCOMMON",
             "advanced_options": {
                 "incompatible_mutations": [
-                    "Schizophrenia"
+                    "Partial Blindness",
+                    "Total Blindness"
                 ]
             }
         },
@@ -21,7 +22,8 @@
             "advanced_options": {
                 "dollar_value_add": -25,
                 "incompatible_mutations": [
-                    "Schizophrenia"
+                    "Cataracts",
+                    "Total Blindness"
                 ]
             }
         },
@@ -34,6 +36,8 @@
             "advanced_options": {
                 "dollar_value_add": -50,
                 "incompatible_mutations": [
+                    "Cataracts",
+                    "Partial Blindness",
                     "Schizophrenia"
                 ]
             }
@@ -78,7 +82,7 @@
             "description": "This pooch is extremely infertile.",
             "heritability": 0.25,
             "health_impact": "NEUTRAL",
-            "rarity": "COMMON",
+            "rarity": "RARE",
             "affects_males": false,
             "advanced_options": {
                 "breeding_cooldown": 98,
@@ -98,14 +102,14 @@
             "rarity": "COMMON"
         },
         "Schizophrenia": {
-            "alt_name": "Schizo",
+            "alt_name": "Split Mind",
             "description": "This pooch barks when the mailman isn't there.",
             "heritability": 0.45,
             "health_impact": "HARMFUL",
             "rarity": "RARE",
             "advanced_options": {
                 "incompatible_mutations": [
-                    "Blindness"
+                    "Total Blindness"
                 ]
             }
         }
@@ -129,7 +133,7 @@
     "Skin Disorders": {
         "Full Body Prolapse": {
             "alt_name": "Canis Invertus",
-            "descripton": "This pooch is inside out.",
+            "descripton": "This pooch was born inside out.",
             "heritability": 0.5,
             "health_impact": "BRUTAL",
             "rarity": "EXTRAORDINARY"
@@ -139,7 +143,7 @@
             "descripton": "This pooch has certain reptillian qualities to it.",
             "heritability": 0.45,
             "health_impact": "NEUTRAL",
-            "rarity": "RARE",
+            "rarity": "UNPRECEDENTED",
             "advanced_options": {
                 "dollar_value_add": 50
             }

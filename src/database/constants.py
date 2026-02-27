@@ -8,6 +8,7 @@ They should not encode logic, only values.
 # Pooch Defaults
 POOCH_BASE_HEALTH = 10
 POOCH_HEALTH_LOSS_AGE = 0
+POOCH_HEALTH_LOSS_STARTING_AGE = 5
 POOCH_BREEDING_COOLDOWN = 2
 POOCH_FETAL_AGE = -1
 

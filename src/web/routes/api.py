@@ -224,6 +224,22 @@ def buy_pooch(vendor_id: int, pooch_id: int):
         return jsonify({"error": str(e)}), 500
 
 
+@api_bp.route("/graveyard")
+@login_required
+def get_graveyard():
+    """Get all deceased pooches buried by the current user."""
+    from game import list_graveyard_pooches
+
+    discord_id = get_current_user_id()
+    rows = run_async(list_graveyard_pooches(discord_id))
+    result = []
+    for pooch, buried_at in rows:
+        pooch_data = serialize_pooch(pooch)
+        pooch_data["buried_at"] = buried_at.isoformat() if buried_at else None
+        result.append(pooch_data)
+    return jsonify(result)
+
+
 @api_bp.route("/breeds")
 @login_required
 def get_breeds():
