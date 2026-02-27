@@ -2,12 +2,12 @@ from typing import Optional
 
 from sqlalchemy import select
 
-# from .models import *  # loads all ORM models (via database/models/__init__.py)
+from .constants import POOCH_HEALTH_LOSS_STARTING_AGE
 from .models import Owner, Pooch, Server
 from .session import session_scope
 
 
-async def age_pooch(pooch_id: int) -> Optional[Pooch]:
+async def age_pooch(pooch_id: int, health_loss_starting_age: int = POOCH_HEALTH_LOSS_STARTING_AGE) -> Optional[Pooch]:
     """
     Age the pooch with the given ID by 1, and increase its age health loss if it's old enough.
 
@@ -15,6 +15,10 @@ async def age_pooch(pooch_id: int) -> Optional[Pooch]:
     ----------
     pooch_id: int
         The ID of the pooch to age.
+
+    health_loss_starting_age: int
+        The minimum age a pooch needs to be to start losing health with age.
+        If this function ages the pooch beyond this number, it adds 1 to `health_loss_age`.
 
     Returns
     -------
@@ -30,7 +34,7 @@ async def age_pooch(pooch_id: int) -> Optional[Pooch]:
             return None
 
         pooch.age += 1
-        if pooch.age > 5:  # TODO
+        if pooch.age > health_loss_starting_age:
             pooch.health_loss_age += 1
 
     return pooch

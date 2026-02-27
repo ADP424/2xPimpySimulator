@@ -36,6 +36,8 @@ from .list import (
     list_vendor_pooch_stock,
     list_vendors,
 )
+from .load.load_resources import main as load_resources
+from .load.reset_db import main as reset_db
 from .set import (
     add_breed_to_pooch,
     add_mutation_to_pooch,
@@ -62,8 +64,6 @@ from .update import (
     set_pooch_virgin,
     transfer_pooch_to_owner,
 )
-from .load.reset_db import main as reset_db
-from .load.load_resources import main as load_resources
 
 __all__ = [
     # Get
