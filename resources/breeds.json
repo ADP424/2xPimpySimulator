@@ -1,5 +1,5 @@
 {
-    "Poodle": {
+    "Water Dog": {
         "Standard Poodle": {
             "alt_name": "Pudelin",
             "description": "The first and largest breed of poodle, first bred as hunting companions. They are thin with a curly coat of fur, at least 15 inches tall, and weigh 40-70 pounds on average.",
@@ -14,12 +14,36 @@
             "alt_name": "Duck Dog",
             "description": "The newest breed of poodle, developed in the 20th century. They weigh just 4-6 pounds and are under 10 inches tall. You frequently see them riding around in their owners' handbags.",
             "rarity": "COMMON"
-        }
+        },
+		"English Water Spaniel":{
+			"alt_name": "Water Rug",
+			"description": "The English Water Spaniel is a breed of dog that has been extinct since the first part of the 20th century, with the last specimen seen in the 1930s. It was best known for its use in hunting waterfowl and for being able to dive as well as a duck.",
+			"rarity": "EXTRAORDINARY",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+		}
     },
 	"Pre-Columbian Dog":{
 		"Salish Wool Dog":{
 			"alt_name": "Comox Dog",
 			"description": "An extinct breed of white, long-haired, Spitz-type dog that was developed and bred by the Coast Salish peoples of what is now Washington state and British Columbia for textile production.",
+			"rarity": "EXTRAORDINARY",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+		},
+		"Fuegian dog":{
+			"alt_name": "Patagonian dog",
+			"description": "The Fuegian dog is an extinct type of canine. The Fuegian dog was bred and domesticated from the South American culpeo, also known as the culpeo fox.",
+			"rarity": "EXTRAORDINARY",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+		},
+		"Hare Indian Dog":{
+			"alt_name": "Trap line dog",
+			"description": "The Hare Indian dog is an extinct domesticated canine; possibly a breed of domestic dog, coydog, or domesticated coyote; formerly found and originally bred in northern Canada by the Hare Indians for coursing.",
 			"rarity": "EXTRAORDINARY",
 			"advanced_options": {
 				"sold_by_vendors": 0
@@ -55,7 +79,15 @@
         },
 		"Cumberland Sheepdog": {
             "alt_name": "Cumber Collie",
-            "description": "The Cumberland sheepdog is an extinct dog breed related to the border collie and other old working collie types..",
+            "description": "The Cumberland sheepdog is an extinct dog breed related to the border collie and other old working collie types.",
+            "rarity": "REMARKABLE",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+        },
+		"Halls Heeler": {
+            "alt_name": "Hall's dogs",
+            "description": "The Halls Heeler is the presumed ancestor of two present-day dog breeds, the Australian cattle dog and the Australian stumpy tail cattle dog.",
             "rarity": "REMARKABLE",
 			"advanced_options": {
 				"sold_by_vendors": 0
@@ -115,6 +147,14 @@
 				"sold_by_vendors": 0
 			}
 		},
+		"Dogo Cubano": {
+			"alt_name": "Cuban Bullmastiff",
+			"description": "The Dogo Cubano, also called the Cuban Bloodhound or Cuban Bullmastiff, is an extinct Cuban breed of domestic dog. It was of the dogo sub-type of the bullmastiff dog type, which as a general class was used for bull-baiting and dog fighting.",
+			"rarity": "REMARKABLE",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+		},
 		"Cordoba Fighting Dog": {
 			"alt_name": "Cordoba dog",
 			"description": "They were purposely bred for the sport of dog fighting until the early 20th century. They became extinct after dog fighting became illegal in Argentina in 1954.",
@@ -123,6 +163,14 @@
 				"sold_by_vendors": 0
 			}
 		}
+		"Terceira Mastiff": {
+			"alt_name": "Rabo Torto",
+			"description": "The Terceira Mastiff came from the island of Terceira, located in the Azores, which is the only island where this dog has ever existed and where it was employed as a house guardian.",
+			"rarity": "REMARKABLE",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+		},
 	},
 	"Husky": {
 		"Argentine Polar Dog": {
@@ -138,6 +186,14 @@
 		"Black and Tan Terrier": {
 			"alt_name": "Rough-coated Black and Tan Terrier",
 			"description": "The Black and Tan Terrier was a broad breed or type of terrier that was one of the earliest terrier breeds. Although it is now extinct, it is believed to be the ancestor of all modern Fell Terrier breeds and the Welsh Terrier.",
+			"rarity": "REMARKABLE",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+		},
+		"English White Terrier": {
+			"alt_name": "Old English Terrier",
+			"description": "The English White Terrier is an extinct breed of dog. English White Terrier is the failed show ring name of a pricked-ear form of the white fox-working terriers that have existed in Great Britain since the late 18th century.",
 			"rarity": "REMARKABLE",
 			"advanced_options": {
 				"sold_by_vendors": 0
@@ -163,10 +219,71 @@
 				"sold_by_vendors": 0
 			}
 		},
+		"Grand Fauve de Bretagne": {
+			"alt_name": "FRENCHound",
+			"description": "The Grand Fauve de Bretagne was a breed of scenthound from Brittany used to hunt wolves and wild boar.",
+			"rarity": "REMARKABLE",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+		},
+		"King's White Hound": {
+			"alt_name": "Chien Blanc du Roi",
+			"description": "The King's White Hound, the Chien Blanc du Roi in French, was a breed of scent hound from France that is now extinct. The breed was said to be the favourite of the French kings from Louis XI to Louis XIV.",
+			"rarity": "REMARKABLE",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+		},
 		"Chien-gris": {
 			"alt_name": "Grey Saint Louis Hound",
 			"description": "The Chien-gris is an extinct breed of dog which originated in Medieval times. It was a scent hound, and formed part of the royal packs of France, which were composed, from about 1250 till 1470, exclusively of hounds of this type.",
 			"rarity": "REMARKABLE",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+		}
+	},
+	"Retriever": {
+		"Golden Retriever": {
+			"alt_name": "Flat-coated Retriever, Golden",
+			"description": "The Golden Retriever is a Scottish breed of retriever dog of medium-large size. It is characterised by a gentle and affectionate nature and a striking golden coat.",
+			"rarity": "COMMON"
+		}
+	},
+	"Guardian Dog": {
+		"Dalbo Dog": {
+			"alt_name": "Dalbo hound",
+			"description": "The Dalbo dog (Dalbohund) or Dalsland Mastiff is an extinct livestock guardian dog breed from Sweden.",
+			"rarity": "REMARKABLE",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+		}
+	},
+	"Polynesian Dog": {
+		"Hawaiian Poi Dog": {
+			"alt_name": "ʻĪlio mākuʻe",
+			"description": "The Hawaiian Poi Dog (Hawaiian: ʻīlio or ʻīlio mākuʻe) is an extinct breed of pariah dog from Hawaiʻi which was used by Native Hawaiians as a spiritual protector of children and as a source of food.",
+			"rarity": "EXTRAORDINARY",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+		},
+		"Kurī": {
+			"alt_name": "Māori Dog",
+			"description": "The Kurī is an extinct breed of Polynesian Dog kept by Māori people. It was introduced to New Zealand by the Polynesian ancestors of the Māori during their migration from East Polynesia in the 13th century AD. According to Māori tradition, the demigod Māui transformed his brother-in-law Irawaru into the first dog.",
+			"rarity": "EXTRAORDINARY",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+		}
+	},
+	"Foxhound": {
+		"Dumfriesshire hound": {
+			"alt_name": "Tan Foxhounds",
+			"description": "Dumfriesshire Black and Tan Foxhounds were a pack of foxhounds kennelled at Glenholm Kennels, Kettleholm, near Lockerbie until they were disbanded in 2001.",
+			"rarity": "EXTRAORDINARY",
 			"advanced_options": {
 				"sold_by_vendors": 0
 			}
