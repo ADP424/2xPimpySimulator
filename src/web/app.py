@@ -2,6 +2,7 @@ import atexit
 import os
 
 from flask import Flask
+from flask_session import Session
 from flask_socketio import SocketIO
 
 from web.async_utils import AsyncBridge
@@ -22,7 +23,12 @@ def create_app(config: dict | None = None) -> Flask:
         DISCORD_REDIRECT_URI=os.environ.get("DISCORD_REDIRECT_URI"),
         PIMPY_WEBHOOK_SECRET=os.environ.get("PIMPY_WEBHOOK_SECRET"),
         SESSION_COOKIE_NAME="pooch_breeder_session",
+        SESSION_TYPE="filesystem",
+        SESSION_FILE_DIR=os.path.join(os.path.dirname(__file__), ".flask_session"),
+        SESSION_PERMANENT=False,
     )
+
+    Session(app)
 
     if config:
         app.config.update(config)

@@ -1,7 +1,7 @@
 import random
 from typing import Optional, TypeVar
 
-from sqlalchemy import bindparam, func, not_, or_, select
+from sqlalchemy import bindparam, func, not_, select
 
 from .constants import (
     KENNEL_POOCH_LIMIT,
@@ -13,8 +13,6 @@ from .constants import (
     VENDOR_PRICE_MARKUP,
 )
 from .get import get_owner_by_discord_id, get_pooch_by_id, get_vendor_by_id
-
-# from .models import *  # loads all ORM models (via database/models/__init__.py)
 from .models import (
     Breed,
     DogName,
