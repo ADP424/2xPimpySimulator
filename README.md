@@ -1,5 +1,5 @@
 # Disclaimer
-README is subject to change and may quickly go out of date. Originally written on 2/25/2026.
+README updated as of 2/25/2026.
 
 # Pimpy Simulator
 
@@ -16,7 +16,8 @@ Players interact through Discord slash commands and button-driven menus. Each pl
 ### Pooches
 
 Each pooch has:
-- A name, sex, age, and base health
+- A name, sex, and age
+- Base health, and health loss from age
 - One or more **breeds** (e.g. Toy Poodle, German Shepherd)
 - Zero or more **mutations** that affect health and behavior
 - A breeding cooldown after reproducing
