@@ -51,9 +51,5 @@
 # Bug Fixes
 | Feature                                                                                                                       | Points |
 | ----------------------------------------------------------------------------------------------------------------------------- | ------ |
-| Don't build the image in session - store it on the bloody machine                                                             | 1      |
-| Male dogs contract female mutations??? (and vice versa I imagine)                                                             | 1      |
-| Dogs can have breeds with 0% weight                                                                                           | 1      |
 | Websocket is borked                                                                                                           | 3      |
 | Vendor stock in UI shows 0, even when they have dogs for sale                                                                 | 1      |
-| Adding babies to kennels is breaking (Pooch ID not found error)                                                               | 3      |

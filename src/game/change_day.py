@@ -326,7 +326,7 @@ async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeS
                 )
                 num_breeds = rng.randint(NUM_BREEDS_PER_VENDOR_POOCH_RANGE[0], NUM_BREEDS_PER_VENDOR_POOCH_RANGE[1])
                 for _ in range(num_breeds):
-                    await add_breed_to_pooch(vendor_pooch.id, weight=(1.0 / num_breeds))
+                    await add_breed_to_pooch(vendor_pooch.id, weight=(1.0 / num_breeds), from_vendor=True)
                 for _ in range(
                     rng.randint(NUM_MUTATIONS_PER_VENDOR_POOCH_RANGE[0], NUM_MUTATIONS_PER_VENDOR_POOCH_RANGE[1])
                 ):

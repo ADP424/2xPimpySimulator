@@ -69,7 +69,7 @@ async def add_pooch_to_kennel(kennel_id: int, pooch_id: int) -> bool:
     if kennel is None:
         raise KennelNotFound(kennel_id)
 
-    pooch = await get_pooch_by_id(kennel_id)
+    pooch = await get_pooch_by_id(pooch_id)
     if pooch is None:
         raise PoochNotFound(pooch_id)
 
