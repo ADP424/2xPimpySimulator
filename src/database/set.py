@@ -1,7 +1,7 @@
 import random
 from typing import Optional, TypeVar
 
-from sqlalchemy import bindparam, func, not_, or_, select
+from sqlalchemy import and_, bindparam, delete, func, not_, or_, select
 
 from .constants import (
     KENNEL_POOCH_LIMIT,
@@ -13,8 +13,6 @@ from .constants import (
     VENDOR_PRICE_MARKUP,
 )
 from .get import get_owner_by_discord_id, get_pooch_by_id, get_vendor_by_id
-
-# from .models import *  # loads all ORM models (via database/models/__init__.py)
 from .models import (
     Breed,
     DogName,
@@ -400,15 +398,23 @@ async def add_breed_to_pooch(
         if existing_pooch_breed is not None:
             return existing_pooch_breed
 
-        query = (
-            select(RarityWeight.weight)
-            .join(Breed, Breed.rarity == RarityWeight.rarity)
-            .join(PoochBreed, PoochBreed.breed_id == Breed.id)
-            .where(PoochBreed.pooch_id == pooch_id)
-        )
+        if weight >= 1.0:
+            await session.execute(delete(PoochBreed).where(PoochBreed.pooch_id == pooch_id))
+            pooch_breed = PoochBreed(
+                pooch_id=pooch_id,
+                breed_id=breed_id,
+                weight=1,
+            )
+            session.add(pooch_breed)
+            await session.flush()
+            return pooch_breed
+
+        query = select(PoochBreed.weight).where(PoochBreed.pooch_id == pooch_id)
         response = await session.execute(query)
         total_weight = sum(response.scalars().all())
-        pooch_breed = PoochBreed(pooch_id=pooch_id, breed_id=breed_id, weight=max(round(2 * weight * total_weight), 1))
+        pooch_breed = PoochBreed(
+            pooch_id=pooch_id, breed_id=breed_id, weight=max(round((weight / (1.0 - weight)) * total_weight), 1)
+        )
         session.add(pooch_breed)
         await session.flush()
 
@@ -448,7 +454,16 @@ async def add_mutation_to_pooch(
             mutation_query = (
                 select(Mutation, RarityWeight.weight)
                 .join(RarityWeight, RarityWeight.rarity == Mutation.rarity)
-                .where(Mutation.id.not_in(select(PoochMutation.mutation_id).where(PoochMutation.pooch_id == pooch_id)))
+                .join(Pooch, Pooch.id == pooch_id)
+                .where(
+                    and_(
+                        Mutation.id.not_in(select(PoochMutation.mutation_id).where(PoochMutation.pooch_id == pooch_id)),
+                        or_(
+                            and_(Pooch.sex == "male", Mutation.affects_males.is_(True)),
+                            and_(Pooch.sex == "female", Mutation.affects_females.is_(True)),
+                        ),
+                    )
+                )
             )
             mutation_response = await session.execute(mutation_query)
             rows = [(mutation, weight) for mutation, weight in mutation_response.tuples().all()]

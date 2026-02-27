@@ -3,7 +3,8 @@
 | Feature                                                                                                                       | Points |
 | ----------------------------------------------------------------------------------------------------------------------------- | ------ |
 | Refresh one vendor at random per day                                                                                          | 1      |
-| Implement random events                                                                                                       | 21     |
+| Implement random events (player-specific)                                                                                     | 21     |
+| Implement random events (server-specific) that last for a day or days                                                         | 21     |
 | Vendors desire specific breeds (at least one of each rarity)                                                                  | 5      |
 | Sacrifice for bloodskulls (and random bones)                                                                                  | 3      |
 | Spend bloodskulls to summon pooches (more bloodskulls = more rerolls for cool breeds)                                         | 3      |
@@ -42,10 +43,13 @@
 | Add a strength stat which dictates how well a dog fights (and how likely they are to be injured/injure another in a fight)    | 3      |
 | Add a dog fighting ring in each server with gambling                                                                          | 8      |
 | Have pooch stats (fertility, aggressiveness, etc.) be partially inherited                                                     | 3      |
+| Add consumption stat that determines food need per day for a pooch (affected by mutations/breeds/diseases)                    | 1      |
+| Add starvation counter, which affects fertility/strength/health/etc. the worse it gets                                        | 3      |
+| Add sorting to the lists on the website, as well as filtering and searching                                                   | 1      |
+| Stillbirths/miscarriages                                                                                                      | 3      |
 
 # Bug Fixes
 | Feature                                                                                                                       | Points |
 | ----------------------------------------------------------------------------------------------------------------------------- | ------ |
-| Male dogs contract female mutations??? (and vice versa I imagine)                                                             | 1      |
-| Dogs can have breeds with 0% weight                                                                                           | 1      |
 | Websocket is borked                                                                                                           | 3      |
+| Vendor stock in UI shows 0, even when they have dogs for sale                                                                 | 1      |

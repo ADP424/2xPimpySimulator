@@ -3,8 +3,6 @@ from datetime import datetime
 from sqlalchemy import func, or_, select
 
 from .get import get_pooch_parents
-
-# from .models import *  # loads all ORM models (via database/models/__init__.py)
 from .models import (
     Breed,
     GraveyardPooch,
