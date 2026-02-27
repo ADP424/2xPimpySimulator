@@ -40,9 +40,30 @@
             "description": "Welsh Sheepdogs are normally bred for their herding abilities rather than appearance, and so they are generally somewhat variable in build, colour and size.",
             "rarity": "NOVEL"
         },
+		"Border Collie": {
+            "alt_name": "Collieing The Sheep",
+            "description": "The Border Collie is a breed of British herding dog of the collie type of medium size. It originates in the region of the Anglo-Scottish border, and descends from the traditional sheepdogs once found all over the British Isles..",
+            "rarity": "COMMON"
+        },
 		"Welsh Hillman": {
             "alt_name": "Pudelin",
             "description": "The Welsh Hillman was thought to have been descended from ancient Welsh herding dogs. It was possibly the oldest Welsh sheepdog, and may have been the descendant of the old gellgi or Welsh wolfhounds used around 1,000 years ago.",
+            "rarity": "REMARKABLE",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+        },
+		"Cumberland Sheepdog": {
+            "alt_name": "Cumber Collie",
+            "description": "The Cumberland sheepdog is an extinct dog breed related to the border collie and other old working collie types..",
+            "rarity": "REMARKABLE",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+        },
+		"Cur": {
+            "alt_name": "Drover's Dog",
+            "description": "The cur, also called the drover's dog, was a distinct breed of dog used by cattle drovers; they are now extinct.",
             "rarity": "REMARKABLE",
 			"advanced_options": {
 				"sold_by_vendors": 0
@@ -137,6 +158,14 @@
 		"Buckhound": {
 			"alt_name": "FUCKhound",
 			"description": "The Buckhound was a breed of scent hound from England; they were used to hunt fallow deer in packs.",
+			"rarity": "REMARKABLE",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+		},
+		"Chien-gris": {
+			"alt_name": "Grey Saint Louis Hound",
+			"description": "The Chien-gris is an extinct breed of dog which originated in Medieval times. It was a scent hound, and formed part of the royal packs of France, which were composed, from about 1250 till 1470, exclusively of hounds of this type.",
 			"rarity": "REMARKABLE",
 			"advanced_options": {
 				"sold_by_vendors": 0
