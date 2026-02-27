@@ -132,10 +132,10 @@ async function buyPooch(poochId) {
             App.showNotification('Purchase successful!', 'success');
             window.location.href = '/kennel';
         } else {
-            App.showNotification(result.error || 'Purchase failed', 'error');
+            App.showNotification(result.message || result.error || 'Purchase failed', 'error');
         }
     } catch (error) {
-        App.showNotification('Purchase failed', 'error');
+        App.showNotification('Something went wrong. Please try again.', 'error');
         console.error('Error:', error);
     }
 }

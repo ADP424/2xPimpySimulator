@@ -2,6 +2,9 @@ from .breeding import (
     breed_pooches,
     calculate_incest_level,
 )
+from .manage_graveyard import (
+    list_graveyard_pooches,
+)
 from .change_day import (
     run_day_change,
 )
@@ -61,4 +64,6 @@ __all__ = [
     "list_all_mutations",
     "breed_pooches",
     "calculate_incest_level",
+    # Graveyard commands
+    "list_graveyard_pooches",
 ]
