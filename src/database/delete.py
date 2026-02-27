@@ -3,8 +3,6 @@ from typing import Optional
 from sqlalchemy import delete, select
 
 from .get import Vendor, get_pooch_by_id, get_vendor_by_id
-
-# from .models import *  # loads all ORM models (via database/models/__init__.py)
 from .models import KennelPooch, Pooch, PoochPregnancy, VendorPoochForSale
 from .session import session_scope
 

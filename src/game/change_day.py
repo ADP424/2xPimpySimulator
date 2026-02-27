@@ -39,6 +39,7 @@ from .constants import (
     NUM_VENDORS_PER_SERVER,
     POOCH_BASE_HEALTH_RANGE,
     POOCH_BREEDING_COOLDOWN,
+    POOCH_HEALTH_LOSS_STARTING_AGE,
     VENDOR_MARKUP_RANGE,
     VENDOR_POOCH_AGE_RANGE,
     VENDOR_POOCH_STOCK_COUNT_RANGE,
@@ -158,7 +159,7 @@ async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeS
     pooches = await list_living_pooches()
     for pooch in pooches:
         pooch = await decrement_pooch_breeding_cooldown(pooch.id)
-        pooch = await age_pooch(pooch.id)
+        pooch = await age_pooch(pooch.id, POOCH_HEALTH_LOSS_STARTING_AGE)
         total_health: int = await get_pooch_health(pooch.id)
 
         if not pooch.alive:
@@ -325,7 +326,7 @@ async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeS
                 )
                 num_breeds = rng.randint(NUM_BREEDS_PER_VENDOR_POOCH_RANGE[0], NUM_BREEDS_PER_VENDOR_POOCH_RANGE[1])
                 for _ in range(num_breeds):
-                    await add_breed_to_pooch(vendor_pooch.id, weight=(1.0 / num_breeds))
+                    await add_breed_to_pooch(vendor_pooch.id, weight=(1.0 / num_breeds), from_vendor=True)
                 for _ in range(
                     rng.randint(NUM_MUTATIONS_PER_VENDOR_POOCH_RANGE[0], NUM_MUTATIONS_PER_VENDOR_POOCH_RANGE[1])
                 ):

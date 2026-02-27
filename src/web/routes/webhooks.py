@@ -164,7 +164,7 @@ class WebhookEnvelope:
 def day_change_webhook():
     """Receive day-change summaries from the bot and push to connected web clients."""
 
-    secret = current_app.config.get("PIMPY_WEBHOOK_SECRET")
+    secret = current_app.config.get("WEBHOOK_SECRET")
     if not secret:
         abort(503, description="Webhook secret not configured")
 

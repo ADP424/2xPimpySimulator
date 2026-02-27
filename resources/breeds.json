@@ -15,5 +15,161 @@
             "description": "The newest breed of poodle, developed in the 20th century. They weigh just 4-6 pounds and are under 10 inches tall. You frequently see them riding around in their owners' handbags.",
             "rarity": "COMMON"
         }
-    }
+    },
+	"Pre-Columbian Dog":{
+		"Salish Wool Dog":{
+			"alt_name": "Comox Dog",
+			"description": "An extinct breed of white, long-haired, Spitz-type dog that was developed and bred by the Coast Salish peoples of what is now Washington state and British Columbia for textile production.",
+			"rarity": "EXTRAORDINARY",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+		},
+		"Chiribaya Dog": {
+            "alt_name": "Peruvian Shepherd Dog",
+            "description": "The Chiribaya Dog is an ancient pre-Columbian breed of dog from the southwest of Peru. It has been established that it is a llama herding dog.",
+            "rarity": "EXTRAORDINARY",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+        }
+	},
+	"Sheepdog":{
+		"Welsh Sheepdog": {
+            "alt_name": "Ci Defaid Cymreig",
+            "description": "Welsh Sheepdogs are normally bred for their herding abilities rather than appearance, and so they are generally somewhat variable in build, colour and size.",
+            "rarity": "NOVEL"
+        },
+		"Border Collie": {
+            "alt_name": "Collieing The Sheep",
+            "description": "The Border Collie is a breed of British herding dog of the collie type of medium size. It originates in the region of the Anglo-Scottish border, and descends from the traditional sheepdogs once found all over the British Isles..",
+            "rarity": "COMMON"
+        },
+		"Welsh Hillman": {
+            "alt_name": "Pudelin",
+            "description": "The Welsh Hillman was thought to have been descended from ancient Welsh herding dogs. It was possibly the oldest Welsh sheepdog, and may have been the descendant of the old gellgi or Welsh wolfhounds used around 1,000 years ago.",
+            "rarity": "REMARKABLE",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+        },
+		"Cumberland Sheepdog": {
+            "alt_name": "Cumber Collie",
+            "description": "The Cumberland sheepdog is an extinct dog breed related to the border collie and other old working collie types..",
+            "rarity": "REMARKABLE",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+        },
+		"Cur": {
+            "alt_name": "Drover's Dog",
+            "description": "The cur, also called the drover's dog, was a distinct breed of dog used by cattle drovers; they are now extinct.",
+            "rarity": "REMARKABLE",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+        }
+	},
+	"Hairless Dog":{
+		"African Hairless Dog":{
+			"alt_name": "Abyssinian Sand Terrier",
+			"description": "African hairless dogs were hairless dogs from Africa. It is unknown if any examples still exist.",
+			"rarity": "REMARKABLE",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+		}
+	},
+	"Other Extinct": {
+		"Alaunt": {
+			"alt_name": "Alangu",
+			"description": "This type of dog may have been developed by the Alans, and was renowned primarily for its quality as a large-game catch dog, and as a war dog and guard dog.",
+			"rarity": "EXTRAORDINARY",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+		}
+	},
+	"Mastiff": {
+		"Alpine Mastiff": {
+			"alt_name": "Alpenmastiff",
+			"description": "The Alpine mastiff was a type of molosser, or flock-guardian phenotype with the same or similar ancestral origins as the Saint Bernard.",
+			"rarity": "REMARKABLE",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+		},
+		"Belgian Mastiff": {
+			"alt_name": "Belgian Draught Dog",
+			"description": "The Belgian Mastiff was a breed of mastiff-type dog from the Low Countries that was used as a draught dog.",
+			"rarity": "REMARKABLE",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+		},
+		"Bullenbeisser": {
+			"alt_name": "German Bulldog",
+			"description": "An extinct breed of dog known for its strength and agility. It is an ancestor of both the modern Boxer and the English bulldog.",
+			"rarity": "REMARKABLE",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+		},
+		"Cordoba Fighting Dog": {
+			"alt_name": "Cordoba dog",
+			"description": "They were purposely bred for the sport of dog fighting until the early 20th century. They became extinct after dog fighting became illegal in Argentina in 1954.",
+			"rarity": "REMARKABLE",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+		}
+	},
+	"Husky": {
+		"Argentine Polar Dog": {
+			"alt_name": "Antarctican Husky",
+			"description": "The Argentine polar dog is an extinct breed of dog. It was created by the Argentine Army to haul freight around its bases in Antarctica.",
+			"rarity": "UNIQUE",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+		}
+	},
+	"Terrier": {
+		"Black and Tan Terrier": {
+			"alt_name": "Rough-coated Black and Tan Terrier",
+			"description": "The Black and Tan Terrier was a broad breed or type of terrier that was one of the earliest terrier breeds. Although it is now extinct, it is believed to be the ancestor of all modern Fell Terrier breeds and the Welsh Terrier.",
+			"rarity": "REMARKABLE",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+		}
+	},
+	"Pointer": {
+		"Braque Dupuy": {
+			"alt_name": "Dupuy Pointer",
+			"description": "The Braque Dupuy, also known as the Dupuy Pointer, was a breed of pointer from the Poitou region of France. It is believed to be extinct.",
+			"rarity": "REMARKABLE",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+		}
+	},
+	"Scent Hound": {
+		"Buckhound": {
+			"alt_name": "FUCKhound",
+			"description": "The Buckhound was a breed of scent hound from England; they were used to hunt fallow deer in packs.",
+			"rarity": "REMARKABLE",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+		},
+		"Chien-gris": {
+			"alt_name": "Grey Saint Louis Hound",
+			"description": "The Chien-gris is an extinct breed of dog which originated in Medieval times. It was a scent hound, and formed part of the royal packs of France, which were composed, from about 1250 till 1470, exclusively of hounds of this type.",
+			"rarity": "REMARKABLE",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+		}
+	}
 }

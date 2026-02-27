@@ -78,7 +78,7 @@
             "description": "This pooch is extremely infertile.",
             "heritability": 0.25,
             "health_impact": "NEUTRAL",
-            "rarity": "COMMON",
+            "rarity": "UNCOMMON",
             "affects_males": false,
             "advanced_options": {
                 "breeding_cooldown": 98,

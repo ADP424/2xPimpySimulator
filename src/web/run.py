@@ -13,7 +13,7 @@ def run():
 
     socketio.run(
         app,
-        host="127.0.0.1",
+        host="localhost",
         port=port,
         debug=debug,
         use_reloader=False,

@@ -1,5 +1,6 @@
 asyncpg
 numpy
-psycopg[binary]
+psycopg
+psycopg-binary
 python-dotenv
 sqlalchemy
