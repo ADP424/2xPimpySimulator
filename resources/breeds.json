@@ -162,7 +162,7 @@
 			"advanced_options": {
 				"sold_by_vendors": 0
 			}
-		}
+		},
 		"Terceira Mastiff": {
 			"alt_name": "Rabo Torto",
 			"description": "The Terceira Mastiff came from the island of Terceira, located in the Azores, which is the only island where this dog has ever existed and where it was employed as a house guardian.",
@@ -170,7 +170,7 @@
 			"advanced_options": {
 				"sold_by_vendors": 0
 			}
-		},
+		}
 	},
 	"Husky": {
 		"Argentine Polar Dog": {
@@ -214,7 +214,7 @@
 		"Basset Hound": {
 			"alt_name": "Based Hound",
 			"description": "The Basset Hound is a short-legged breed of scent hound. The Basset Hound was developed in Great Britain from several now-extinct strains of French basset breeds.",
-			"rarity": "UNCOMMON",
+			"rarity": "UNCOMMON"
 		},
 		"Buckhound": {
 			"alt_name": "FUCKhound",
@@ -275,19 +275,19 @@
 		"Chow Chow": {
 			"alt_name": "Chow",
 			"description": "The Chow Chow is a spitz-type of dog breed originally from Northern China. The Chow Chow is a sturdily built dog, square in profile, with a broad skull and small, triangular, erect ears with rounded tips.",
-			"rarity": "UNCOMMON",
+			"rarity": "UNCOMMON"
 		}
 	},
 	"Hunting Dog": {
 		"Cretan Hound": {
 			"alt_name": "Kritikos Lagonikos",
 			"description": "The Kritikos Lagonikos is a breed of hunting dog from the Greek island of Crete.",
-			"rarity": "RARE",
+			"rarity": "RARE"
 		},
 		"Zerdava": {
 			"alt_name": "Black Sea Spitz",
 			"description": "The Zerdava is an aboriginal laika dog breed native to the Black Sea region of Turkey and Georgia. Zerdava are traditionally used as guard and hunting dogs and are especially prized for boar hunting.",
-			"rarity": "UNPRECEDENTED",
+			"rarity": "UNPRECEDENTED"
 		}
 	},
 	"Polynesian Dog": {
@@ -322,17 +322,17 @@
 		"Mecahound": {
 			"alt_name": "Robot",
 			"description": "This dog is built out of steel and titanium.",
-			"rarity": "EXTRAORDINARY",
+			"rarity": "EXTRAORDINARY"
 		},
 		"Martian Dog": {
 			"alt_name": "Red Dog",
 			"description": "Martain dogs are from Mars. Duh!",
-			"rarity": "EXTRAORDINARY",
+			"rarity": "EXTRAORDINARY"
 		},
 		"5D Retriever": {
 			"alt_name": "REDACTED",
-			"description": "Retrieves game from the 4th and 5th dimension",
-			"rarity": "UNIQUE",
+			"description": "Retrieves game from the 4th and 5th dimensions.",
+			"rarity": "UNIQUE"
 		}
 	}
 }
