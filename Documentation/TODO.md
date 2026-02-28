@@ -7,8 +7,9 @@
 | Create new breeds at runtime ???                                                                                              | ???    |
 | Let owners rename their pooches (for a price!)                                                                                | 3      |
 | Get breed population stats for server (add this info to the vet)                                                              | 3      |
+| Get income by begging at the church each day (if low enough on cash (< $50))                                                  | 3      |
 
-## UI Changes
+## UI
 | Feature                                                                                                                       | Points |
 | ----------------------------------------------------------------------------------------------------------------------------- | ------ |
 | Show where breeds can be obtained from (altar, vendor, etc.) on the breed page                                                | 2      |
@@ -24,6 +25,7 @@
 | Implement random events (player-specific)                                                                                     | 21     |
 | Implement random events for an entire server (one per week)                                                                   | 21     |
 | Add a dog fighting ring in each server with gambling (winner gets skulls of dead pooches as bloodskulls)                      | 8      |
+| Dog show where you want to match closest to breed, mutations, and stats                                                       | 13     |
 
 ## Blood Magic
 | Feature                                                                                                                       | Points |
@@ -71,8 +73,8 @@
 ## Vendors
 | Feature                                                                                                                       | Points |
 | ----------------------------------------------------------------------------------------------------------------------------- | ------ |
-| Refresh one vendor at random per day                                                                                          | 1      |
 | Vendors desire specific breeds (at least one of each rarity)                                                                  | 5      |
+| Add ability to sell pooches to vendors                                                                                        | 3      |
 
 ## Kennel Management
 | Feature                                                                                                                       | Points |
@@ -98,8 +100,9 @@
 ## Food
 | Feature                                                                                                                       | Points |
 | ----------------------------------------------------------------------------------------------------------------------------- | ------ |
-| Add consumption stat that determines food need per day for a pooch (affected by mutations/breeds/diseases)                    | 1      |
+| Add consumption stat that determines food need per day for a pooch (affected by mutations/breeds/diseases)                    | 2      |
 | Add starvation counter, which affects fertility/strength/health/etc. the worse it gets                                        | 3      |
+| Cannibalism (debuffs pooches when they do it unless they have the cannibalism mutations)                                      | 5      |
 
 
 # Bug Fixes

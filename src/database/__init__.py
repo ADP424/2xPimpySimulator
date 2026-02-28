@@ -1,4 +1,5 @@
 from .delete import (
+    delete_random_vendor,
     clear_vendor_pooch_stock,
     delete_pregnancy,
     remove_pooch_from_kennel,
@@ -97,6 +98,7 @@ __all__ = [
     "list_servers_for_pooch",
     "list_owner_servers",
     "list_servers",
+    "list_pooch_breed_weights",
     # Set
     "create_pooch",
     "create_owner",
@@ -109,6 +111,9 @@ __all__ = [
     "add_owner_to_server",
     "add_pooch_to_vendor_stock",
     "bury_pooch",
+    "create_pooch_pregnancy",
+    "set_pooch_parentage",
+    "add_pooch_breeds",
     # Update
     "age_pooch",
     "decrement_pooch_breeding_cooldown",
@@ -116,17 +121,14 @@ __all__ = [
     "give_money_to_owner",
     "transfer_pooch_to_owner",
     "set_event_channel_discord_id",
+    "set_pooch_breeding_cooldown",
+    "set_pooch_virgin",
     # Delete
+    "delete_random_vendor",
     "remove_pooch_from_kennel",
     "remove_pooch_from_vendor_stock",
     "clear_vendor_pooch_stock",
     "delete_pregnancy",
-    "list_pooch_breed_weights",
-    "create_pooch_pregnancy",
-    "set_pooch_parentage",
-    "add_pooch_breeds",
-    "set_pooch_breeding_cooldown",
-    "set_pooch_virgin",
     # Load commands
     "reset_db",
     "load_resources",

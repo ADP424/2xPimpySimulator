@@ -26,6 +26,7 @@ from database import (
     list_vendors,
     remove_pooch_from_kennel,
     set_pooch_dead,
+    delete_random_vendor,
 )
 from database.models import Mutation, Pooch
 from database.update import set_pooch_breeding_cooldown
@@ -304,16 +305,16 @@ async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeS
 
     servers = await list_servers()
 
-    # vendor restock
+    # vendor restock (replace one vendor per server, then replace the stock of all vendors)
     logger.info("Restocking vendors for the day...")
     for server in servers:
+        await delete_random_vendor(server.discord_id)
         vendors = await list_vendors(server.discord_id)
-        if len(vendors) < NUM_VENDORS_PER_SERVER:
-            for _ in range(NUM_VENDORS_PER_SERVER - len(vendors)):
-                vendor = await create_vendor(
-                    server.discord_id, price_markup=rng.uniform(VENDOR_MARKUP_RANGE[0], VENDOR_MARKUP_RANGE[1]), rng=rng
-                )
-                vendors.append(vendor)
+        for _ in range(NUM_VENDORS_PER_SERVER - len(vendors)):
+            vendor = await create_vendor(
+                server.discord_id, price_markup=rng.uniform(VENDOR_MARKUP_RANGE[0], VENDOR_MARKUP_RANGE[1]), rng=rng
+            )
+            vendors.append(vendor)
         for vendor in vendors:
             await clear_vendor_pooch_stock(vendor.id, delete_pooches=True)
             stock_count = rng.randint(VENDOR_POOCH_STOCK_COUNT_RANGE[0], VENDOR_POOCH_STOCK_COUNT_RANGE[1])

@@ -2,11 +2,11 @@ from .breeding import (
     breed_pooches,
     calculate_incest_level,
 )
-from .manage_graveyard import (
-    list_graveyard_pooches,
-)
 from .change_day import (
     run_day_change,
+)
+from .manage_graveyard import (
+    list_graveyard_pooches,
 )
 from .manage_kennels import (
     list_kennel_pooches,

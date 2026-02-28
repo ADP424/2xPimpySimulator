@@ -1,10 +1,42 @@
 from typing import Optional
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 
 from .get import Vendor, get_pooch_by_id, get_vendor_by_id
 from .models import KennelPooch, Pooch, PoochPregnancy, VendorPoochForSale
 from .session import session_scope
+
+
+async def delete_random_vendor(server_discord_id: int) -> Optional[Vendor]:
+    """
+    Delete a random vendor from the server with the given Discord ID.
+
+    Parameters
+    ----------
+    server_discord_id: int
+        The ID of the server to randomly remove a vendor from.
+
+    Returns
+    -------
+    Vendor, optional
+        The Vendor ORM object removed, or None if the server has no vendors.
+    """
+
+    async with session_scope() as session:
+        vendor = await session.scalar(
+            select(Vendor)
+            .where(Vendor.server_discord_id == server_discord_id)
+            .order_by(func.random())
+            .limit(1)
+        )
+
+        if vendor is None:
+            return None
+
+        await session.delete(vendor)
+        await session.flush()
+
+        return vendor
 
 
 async def remove_pooch_from_kennel(pooch_id: int) -> Pooch:
