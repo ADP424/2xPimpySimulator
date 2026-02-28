@@ -65,6 +65,22 @@
 				"sold_by_vendors": 0
 			}
 		},
+		"Tahltan Bear Dog":{
+			"alt_name": "Chien d'ours de Tahltan",
+			"description": "The Tahltan Bear Dog was a breed of dog that came to Canada in early migrations and acclimatised to the environment.",
+			"rarity": "EXTRAORDINARY",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+		},
+		"Techichi":{
+			"alt_name": "Prechihuahua",
+			"description": "The Techichi is an extinct breed of small dog bred by the Toltec culture in the 9th century C.E. It is thought to be an ancestor of the modern Chihuahua.",
+			"rarity": "EXTRAORDINARY",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+		},
 		"Chiribaya Dog": {
             "alt_name": "Peruvian Shepherd Dog",
             "description": "The Chiribaya Dog is an ancient pre-Columbian breed of dog from the southwest of Peru. It has been established that it is a llama herding dog.",
@@ -117,6 +133,14 @@
 				"sold_by_vendors": 0
 			}
         },
+		"Old Welsh Grey Sheepdog": {
+            "alt_name": "Old Welsh Grey",
+            "description": "Welsh Greys were shaggy, long-haired dogs, similar in appearance to working strains of the Scottish Bearded Collie or to the ancestors of the Old English Sheepdog, and the breeds probably have a common heritage.",
+            "rarity": "REMARKABLE",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+        },
 		"Cur": {
             "alt_name": "Drover's Dog",
             "description": "The cur, also called the drover's dog, was a distinct breed of dog used by cattle drovers; they are now extinct.",
@@ -141,6 +165,30 @@
 			"alt_name": "Alangu",
 			"description": "This type of dog may have been developed by the Alans, and was renowned primarily for its quality as a large-game catch dog, and as a war dog and guard dog.",
 			"rarity": "EXTRAORDINARY",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+		},
+		"Toy Trawler Spaniel": {
+			"alt_name": "Miniature Trawler Spaniel",
+			"description": "The Toy Trawler Spaniel is an extinct breed of Spaniel which physically was similar to the King Charles Spaniel of the 16th century. It is considered to have descended from the original King Charles Spaniel, and the older variety of the Sussex Spaniel. It was employed as a sports dog first before becoming a toy and show dog.",
+			"rarity": "REMARKABLE",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+		},
+		"Turnspit dog": {
+			"alt_name": "Turnespete",
+			"description": "The turnspit dog was a short-legged, long-bodied dog bred to run on a wheel, called a turnspit or dog wheel, to turn meat.",
+			"rarity": "REMARKABLE",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+		},
+		"St. John's Water Dog": {
+			"alt_name": "Lesser Newfoundland",
+			"description": "The St. John's water dog is an extinct landrace of domestic dog from Newfoundland. Little is known of the types that went into its genetic makeup, although it was probably a random-bred mix of old English, Irish and Portuguese working dogs.",
+			"rarity": "REMARKABLE",
 			"advanced_options": {
 				"sold_by_vendors": 0
 			}
@@ -203,6 +251,14 @@
 				"sold_by_vendors": 0
 			}
 		},
+		"Toy Bulldog": {
+			"alt_name": "Ald Anglash Balldag",
+			"description": "The toy bulldog was a British type of miniature or toy bulldog in the nineteenth and early twentieth centuries. It was a miniature version of the Old English Bulldog, and derived from it either when natural small-sized sports were whelped from full-sized parents, or through systematic selective breeding for small size.",
+			"rarity": "REMARKABLE",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+		},
 		"Terceira Mastiff": {
 			"alt_name": "Rabo Torto",
 			"description": "The Terceira Mastiff came from the island of Terceira, located in the Azores, which is the only island where this dog has ever existed and where it was employed as a house guardian.",
@@ -226,6 +282,14 @@
 		"Black and Tan Terrier": {
 			"alt_name": "Rough-coated Black and Tan Terrier",
 			"description": "The Black and Tan Terrier was a broad breed or type of terrier that was one of the earliest terrier breeds. Although it is now extinct, it is believed to be the ancestor of all modern Fell Terrier breeds and the Welsh Terrier.",
+			"rarity": "REMARKABLE",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+		},
+		"Paisley Terrier": {
+			"alt_name": "	Clydesdale Terrier",
+			"description": "The Paisley Terrier was a breed of terrier-type dog that is now extinct. Originating in Scotland, the Paisley Terrier was bred primarily as a pet and showdog version of the Skye Terrier, and was the progenitor of today's Yorkshire Terrier.",
 			"rarity": "REMARKABLE",
 			"advanced_options": {
 				"sold_by_vendors": 0
@@ -320,6 +384,43 @@
 				"sold_by_vendors": 0
 			}
 		},
+		"Rastreador Brasileiro": {
+			"alt_name": "Urrador Americano",
+			"description": "The Rastreador Brasileiro is a mid- to large-sized breed of dog—specifically a scent hound—from Brazil. in 1967, by 1973, an outbreak of disease and an overdose of insecticides, effectively eliminated the breed's entire population. However, efforts were made to reproduce the Rastreador Brasileiro through mixing and controlled breeding projects involving several other hound breeds, resulting in today's Rastreador Brasileiro.",
+			"rarity": "UNPRECEDENTED",
+		},
+		"Rache": {
+			"alt_name": "racch",
+			"description": "Rache also spelled racch, rach, and ratch, from Old English ræcc, linked to Old Norse rakkí, is an obsolete name for a type of hunting dog used in Great Britain in the Middle Ages. It was a scenthound used in a pack to run down and kill game, or bring it to bay.",
+			"rarity": "REMARKABLE",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+		},
+		"Sleuth hound": {
+			"alt_name": "Scottish Bloodhound",
+			"description": "The sleuth hound was a breed of dog. Broadly, it was a Scottish term for what in England was called the Bloodhound, although it seems that there were slight differences between them.",
+			"rarity": "REMARKABLE",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+		},
+		"Southern Hound": {
+			"alt_name": "Sodder Hound",
+			"description": "The Southern Hound was a tall, heavy dog with a square head, and long ears. It had a deep chest, a long bony body and a deep melodious voice. It was a slow dog, but with excellent scenting abilities and was employed to follow the trail of the quarry during a hunt.",
+			"rarity": "REMARKABLE",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+		},
+		"Staghound": {
+			"alt_name": "English Staghound",
+			"description": "The Staghound, sometimes referred to as the English Staghound, is an extinct breed of scent hound from England. A pack hound, the breed was used to hunt red deer and became extinct in the 19th century when the last pack was sold.",
+			"rarity": "REMARKABLE",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+		},
 		"Chien-gris": {
 			"alt_name": "Grey Saint Louis Hound",
 			"description": "The Chien-gris is an extinct breed of dog which originated in Medieval times. It was a scent hound, and formed part of the royal packs of France, which were composed, from about 1250 till 1470, exclusively of hounds of this type.",
@@ -334,6 +435,14 @@
 			"alt_name": "Flat-coated Retriever, Golden",
 			"description": "The Golden Retriever is a Scottish breed of retriever dog of medium-large size. It is characterised by a gentle and affectionate nature and a striking golden coat.",
 			"rarity": "COMMON"
+		},
+		"Tweed Water Spaniel": {
+			"alt_name": "Ladykirk Spaniel",
+			"description": "The Tweed Water Spaniel, or Tweed Spaniel, is a breed of dog extinct since the 19th century. It is best known for being involved in the early development of the modern Curly Coated Retriever and Golden Retriever breeds of dogs. They were described as generally brown, athletic dogs from the area around Berwick-upon-Tweed near the River Tweed and close to the Scottish Borders.",
+			"rarity": "REMARKABLE",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
 		},
 		"Labrador Retriever": {
 			"alt_name": "Labrador",
@@ -372,6 +481,22 @@
 				"sold_by_vendors": 0
 			}
 		},
+		"Talbot": {
+			"alt_name": "Talliibot",
+			"description": "The Talbot (also known as the St. Hubert Hound) was a type of hunting hound common in England during the Middle Ages. It is depicted in art of the period as small to medium-sized, white in colour, with short legs, large powerful feet, a deep chest with a slender waist, long drooping ears, and a very long curled tail.",
+			"rarity": "REMARKABLE",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+		},
+		"Tesem": {
+			"alt_name": "ṯzm",
+			"description": "esem was the ancient Egyptian name for hunting dog. In popular literature it denotes the prick-eared, leggy dog with a curled tail from the early Egyptian age, but it was also used with reference to the lop-eared Saluki/Sloughi type.",
+			"rarity": "REMARKABLE",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+		},
 		"Zerdava": {
 			"alt_name": "Black Sea Spitz",
 			"description": "The Zerdava is an aboriginal laika dog breed native to the Black Sea region of Turkey and Georgia. Zerdava are traditionally used as guard and hunting dogs and are especially prized for boar hunting.",
@@ -390,6 +515,14 @@
 		"Marquesan Dog": {
 			"alt_name": "Marquesas Islands Dog",
 			"description": "The Marquesan Dog is an extinct breed of dog from the Marquesas Islands.",
+			"rarity": "EXTRAORDINARY",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+		},
+		"Tahitian Dog": {
+			"alt_name": "Otaheite Dog",
+			"description": "The Tahitian Dog is an extinct breed of dog from Tahiti and the Society Islands.",
 			"rarity": "EXTRAORDINARY",
 			"advanced_options": {
 				"sold_by_vendors": 0
