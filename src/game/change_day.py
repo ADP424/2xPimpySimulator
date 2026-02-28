@@ -26,6 +26,7 @@ from database import (
     list_servers_for_pooch,
     list_vendors,
     remove_pooch_from_kennel,
+    reset_begged_today,
     set_pooch_dead,
 )
 from database.models import Mutation, Pooch
@@ -88,6 +89,9 @@ async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeS
 
     rng = random.Random(rng_seed)
     numpy_rng = numpy.random.default_rng(rng_seed)
+
+    # reset daily owner actions
+    await reset_begged_today()
 
     births_by_server: dict[int, list[BirthEvent]] = {}
     deaths_by_server: dict[int, list[DeathEvent]] = {}

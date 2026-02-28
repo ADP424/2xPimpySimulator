@@ -187,6 +187,26 @@ async def rename_pooch(pooch_id: int, name: str) -> Optional[Pooch]:
     return pooch
 
 
+async def reset_begged_today() -> int:
+    """
+    Reset every owner's `begged_today` flag to False.
+
+    Returns
+    -------
+    int
+        The number of owners whose `begged_today` flag was reset.
+    """
+
+    async with session_scope() as session:
+        query = select(Owner)
+        owners = (await session.execute(query)).scalars().all()
+
+        for owner in owners:
+            owner.begged_today = False
+
+        return len(owners)
+
+
 async def set_event_channel_discord_id(server_discord_id: int, channel_discord_id: int) -> Optional[Server]:
     """
     Set the channel for automated events to be sent to for the server with the given Discord ID.
@@ -212,6 +232,36 @@ async def set_event_channel_discord_id(server_discord_id: int, channel_discord_i
             server.event_channel_discord_id = channel_discord_id
 
     return server
+
+
+async def set_owner_begged_today(owner_discord_id: int, begged_today: bool = True) -> Optional[Owner]:
+    """
+    Set the `begged_today` flag for the owner with the given Discord ID.
+
+    Parameters
+    ----------
+    owner_discord_id: int
+        The Discord ID of the owner to update.
+
+    begged_today: bool, default : True
+        The value to set `begged_today` to.
+
+    Returns
+    -------
+    Owner, optional
+        The Owner ORM object that was updated, or None if no owner with the given Discord ID was found.
+    """
+
+    async with session_scope() as session:
+        query = select(Owner).where(Owner.discord_id == owner_discord_id)
+        owner = (await session.execute(query)).scalar_one_or_none()
+
+        if owner is None:
+            return None
+
+        owner.begged_today = begged_today
+
+    return owner
 
 
 async def set_pooch_breeding_cooldown(pooch_id: int, cooldown: int) -> Optional[Pooch]:

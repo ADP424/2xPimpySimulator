@@ -11,6 +11,7 @@ CREATE TABLE owners (
     discord_id      BIGINT NOT NULL PRIMARY KEY,
     dollars         INTEGER NOT NULL DEFAULT 100,
     bloodskulls     INTEGER NOT NULL DEFAULT 0,
+    begged_today    BOOLEAN NOT NULL DEFAULT TRUE,
     joined_at       TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

@@ -8,6 +8,7 @@ from discord.ui import Button, Select, View
 from bot.constants import VIEW_TIMEOUT
 from bot.ui.util import InteractionResponder
 from game import (
+    beg_for_money,
     get_or_create_server,
     get_pooch_bloodskull_value,
     get_summon_pooch_price,
@@ -34,6 +35,7 @@ class ChurchView(View):
         self.server_discord_id = server_discord_id
         self.owner_discord_id = owner_discord_id
 
+        self.add_item(_BegButton(server_discord_id=server_discord_id, owner_discord_id=owner_discord_id))
         self.add_item(_BasementButton(server_discord_id=server_discord_id, owner_discord_id=owner_discord_id))
         self.add_item(_TownButton())
 
@@ -50,6 +52,29 @@ class _TownButton(Button):
         from .town import TownView  # local import to dodge circular dependencies
 
         await r.reply(content="**Welcome to the Town**", view=TownView())
+
+
+class _BegButton(Button):
+    def __init__(self, server_discord_id: int, owner_discord_id: int):
+        super().__init__(label="Beg for Money", style=discord.ButtonStyle.secondary, row=0)
+        self.server_discord_id = server_discord_id
+        self.owner_discord_id = owner_discord_id
+
+    async def callback(self, interaction: discord.Interaction):
+        r = InteractionResponder(interaction)
+
+        amount, message = await beg_for_money(
+            server_discord_id=self.server_discord_id, owner_discord_id=self.owner_discord_id
+        )
+        if message is None:
+            await r.reply(
+                content=f"You kneel at the altar and beg. The parishioners toss you **${amount}**.",
+            )
+            return
+
+        await r.reply(
+            content=message,
+        )
 
 
 class _BasementButton(Button):

@@ -21,6 +21,7 @@ from .manage_kennels import (
 )
 from .manage_owners import (
     add_money,
+    beg_for_money,
     get_or_create_owner,
     list_owner_kennels,
 )
@@ -67,6 +68,7 @@ __all__ = [
     "rename_kennel",
     # Owner commands
     "add_money",
+    "beg_for_money",
     "get_or_create_owner",
     "list_owner_kennels",
     # Pooch commands

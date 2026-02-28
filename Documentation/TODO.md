@@ -5,7 +5,6 @@
 | ----------------------------------------------------------------------------------------------------------------------------- | ------ |
 | Have per-server auction houses players can put their pooches in / players bid, highest bid by EOD gets the pooch              | 8      |
 | Create new breeds at runtime ???                                                                                              | ???    |
-| Let owners rename their pooches (for a price!)                                                                                | 3      |
 | Get breed population stats for server (add this info to the vet)                                                              | 3      |
 | Get income by begging at the church each day (if low enough on cash (< $50))                                                  | 3      |
 
@@ -79,8 +78,6 @@
 | ----------------------------------------------------------------------------------------------------------------------------- | ------ |
 | Add ability to upgrade kennel slots (5 starting, +5 each tier, 20 max)                                                        | 3      |
 | Add ability to buy more kennels (limit of 5 total kennels)                                                                    | 3      |
-| Let owners rename their kennels                                                                                               | 1      |
-| Let owners name pooches when they're born in their kennels                                                                    | 1      |
 
 ## Strays
 | Feature                                                                                                                       | Points |
