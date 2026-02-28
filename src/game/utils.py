@@ -1,7 +1,9 @@
 from database import list_pooch_mutations
 
 
-async def get_pooch_mutation_advanced_option_total(pooch_id: int, advanced_option: str, sum=True) -> int | float:
+async def get_pooch_mutation_advanced_option_total(
+    pooch_id: int, advanced_option: str, sum: bool = True
+) -> int | float:
     """
     Return the total for a given summable/multiplicable advanced option for mutations (like `dollar_value_add`).
 

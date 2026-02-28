@@ -32,38 +32,41 @@ from .manage_static import (
 from .manage_vendors import (
     buy_pooch,
     get_pooch_buy_price,
+    get_pooch_sell_price,
     get_vendor_by_id,
     list_server_vendors,
     list_vendor_pooches,
 )
 
 __all__ = [
+    # Breeding commands
+    "breed_pooches",
+    "calculate_incest_level",
     # Day change commands
     "run_day_change",
+    # Graveyard commands
+    "list_graveyard_pooches",
     # Kennel commands
     "list_kennel_pooches",
     # Owner commands
+    "add_money",
     "get_or_create_owner",
     "list_owner_kennels",
-    "add_money",
     # Pooch commands
     "get_pooch_by_id",
     "get_pooch_family",
     # Server commands
-    "get_or_create_server",
     "get_event_channel",
+    "get_or_create_server",
     "set_event_channel",
-    # Vendor commands
-    "get_vendor_by_id",
-    "list_server_vendors",
-    "list_vendor_pooches",
-    "buy_pooch",
-    "get_pooch_buy_price",
     # Static listing commands
     "list_all_breeds",
     "list_all_mutations",
-    "breed_pooches",
-    "calculate_incest_level",
-    # Graveyard commands
-    "list_graveyard_pooches",
+    # Vendor commands
+    "buy_pooch",
+    "get_pooch_buy_price",
+    "get_pooch_sell_price",
+    "get_vendor_by_id",
+    "list_server_vendors",
+    "list_vendor_pooches",
 ]

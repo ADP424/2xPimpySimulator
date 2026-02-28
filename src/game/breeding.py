@@ -41,94 +41,6 @@ def _combine_puppy_name(father_name: str, mother_name: str) -> str:
     return name
 
 
-async def calculate_incest_level(first_pooch_id: int, second_pooch_id: int, max_depth: int = 8) -> float:
-    """
-    Calculate the level of incest between two pooches based on family distance.
-
-    Parameters
-    ----------
-    first_pooch_id: int
-        The ID of the starting pooch.
-
-    second_pooch_id: int
-        The ID of the ending pooch.
-
-    Returns
-    -------
-    float
-        The relative incest between the two pooches.
-
-    Notes
-    -----
-    Distance is computed as the shortest number of "jumps" where a jump is:
-      - child <-> parent
-      - full sibling <-> full sibling
-
-    Examples:
-      - parent/child or full siblings   => 1 jump => 0.5
-      - aunt/uncle <-> niece/nephew     => 2 jumps => 0.25
-      - first cousins                   => 3 jumps => 0.125
-    """
-
-    if first_pooch_id == second_pooch_id:
-        return 0.5
-
-    # Bape-First-Search
-    parents_cache: dict[int, tuple[Optional[int], Optional[int]]] = {}
-    children_cache: dict[int, list[int]] = {}
-    siblings_cache: dict[int, list[int]] = {}
-
-    async def neighbors(node_id: int) -> list[int]:
-        out: list[int] = []
-
-        if node_id not in parents_cache:
-            father, mother = await database_get_parents(node_id)
-            parents_cache[node_id] = (father, mother)
-        father, mother = parents_cache[node_id]
-        if father is not None:
-            out.append(father)
-        if mother is not None:
-            out.append(mother)
-
-        if node_id not in children_cache:
-            children_cache[node_id] = [child.id for child in await list_pooch_children(node_id)]
-        out.extend(children_cache[node_id])
-
-        if node_id not in siblings_cache:
-            siblings_cache[node_id] = [sibling.id for sibling in await list_pooch_siblings(node_id)]
-        out.extend(siblings_cache[node_id])
-
-        seen: set[int] = set()
-        deduped: list[int] = []
-        for pooch_id in out:
-            if pooch_id not in seen:
-                seen.add(pooch_id)
-                deduped.append(pooch_id)
-
-        return deduped
-
-    async def database_get_parents(child_id: int) -> tuple[Optional[int], Optional[int]]:
-        father, mother = await get_pooch_parents(child_id)
-        return (father.id if father is not None else None, mother.id if mother is not None else None)
-
-    queue = deque([(first_pooch_id, 0)])
-    visited: set[int] = {first_pooch_id}
-
-    while queue:
-        node, depth = queue.popleft()
-        if depth >= max_depth:
-            continue
-        for neighbor in await neighbors(node):
-            if neighbor == second_pooch_id:
-                jumps = depth + 1
-                return 0.5**jumps
-            if neighbor not in visited:
-                visited.add(neighbor)
-                queue.append((neighbor, depth + 1))
-
-    return 0.0
-
-
 async def breed_pooches(first_pooch_id: int, second_pooch_id: int, rng_seed: Optional[int] = None) -> list[int]:
     """
     Breed two pooches and create a fetus in the mother.
@@ -268,3 +180,91 @@ async def breed_pooches(first_pooch_id: int, second_pooch_id: int, rng_seed: Opt
         puppies.append(puppy.id)
 
     return puppies
+
+
+async def calculate_incest_level(first_pooch_id: int, second_pooch_id: int, max_depth: int = 8) -> float:
+    """
+    Calculate the level of incest between two pooches based on family distance.
+
+    Parameters
+    ----------
+    first_pooch_id: int
+        The ID of the starting pooch.
+
+    second_pooch_id: int
+        The ID of the ending pooch.
+
+    Returns
+    -------
+    float
+        The relative incest between the two pooches.
+
+    Notes
+    -----
+    Distance is computed as the shortest number of "jumps" where a jump is:
+      - child <-> parent
+      - full sibling <-> full sibling
+
+    Examples:
+      - parent/child or full siblings   => 1 jump => 0.5
+      - aunt/uncle <-> niece/nephew     => 2 jumps => 0.25
+      - first cousins                   => 3 jumps => 0.125
+    """
+
+    if first_pooch_id == second_pooch_id:
+        return 0.5
+
+    # Bape-First-Search
+    parents_cache: dict[int, tuple[Optional[int], Optional[int]]] = {}
+    children_cache: dict[int, list[int]] = {}
+    siblings_cache: dict[int, list[int]] = {}
+
+    async def neighbors(node_id: int) -> list[int]:
+        out: list[int] = []
+
+        if node_id not in parents_cache:
+            father, mother = await database_get_parents(node_id)
+            parents_cache[node_id] = (father, mother)
+        father, mother = parents_cache[node_id]
+        if father is not None:
+            out.append(father)
+        if mother is not None:
+            out.append(mother)
+
+        if node_id not in children_cache:
+            children_cache[node_id] = [child.id for child in await list_pooch_children(node_id)]
+        out.extend(children_cache[node_id])
+
+        if node_id not in siblings_cache:
+            siblings_cache[node_id] = [sibling.id for sibling in await list_pooch_siblings(node_id)]
+        out.extend(siblings_cache[node_id])
+
+        seen: set[int] = set()
+        deduped: list[int] = []
+        for pooch_id in out:
+            if pooch_id not in seen:
+                seen.add(pooch_id)
+                deduped.append(pooch_id)
+
+        return deduped
+
+    async def database_get_parents(child_id: int) -> tuple[Optional[int], Optional[int]]:
+        father, mother = await get_pooch_parents(child_id)
+        return (father.id if father is not None else None, mother.id if mother is not None else None)
+
+    queue = deque([(first_pooch_id, 0)])
+    visited: set[int] = {first_pooch_id}
+
+    while queue:
+        node, depth = queue.popleft()
+        if depth >= max_depth:
+            continue
+        for neighbor in await neighbors(node):
+            if neighbor == second_pooch_id:
+                jumps = depth + 1
+                return 0.5**jumps
+            if neighbor not in visited:
+                visited.add(neighbor)
+                queue.append((neighbor, depth + 1))
+
+    return 0.0

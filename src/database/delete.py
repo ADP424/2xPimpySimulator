@@ -2,7 +2,7 @@ from typing import Optional
 
 from sqlalchemy import delete, func, select
 
-from .models import KennelPooch, Pooch, PoochPregnancy, VendorPoochForSale, Vendor
+from .models import KennelPooch, Pooch, PoochPregnancy, Vendor, VendorPoochForSale
 from .session import session_scope
 
 
