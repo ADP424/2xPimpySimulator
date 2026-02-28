@@ -1,5 +1,6 @@
 from .delete import (
     clear_vendor_pooch_stock,
+    delete_pooch,
     delete_pregnancy,
     delete_random_vendor,
     remove_pooch_from_kennel,
@@ -56,22 +57,26 @@ from .set import (
     create_pooch_pregnancy,
     create_server,
     create_vendor,
+    damn_pooch,
     set_pooch_parentage,
 )
 from .update import (
     age_pooch,
     decrement_pooch_breeding_cooldown,
+    give_bloodskulls_to_owner,
     give_money_to_owner,
     set_event_channel_discord_id,
     set_pooch_breeding_cooldown,
     set_pooch_dead,
     set_pooch_virgin,
     transfer_pooch_to_owner,
+    transfer_pooch_to_vendor,
 )
 
 __all__ = [
     # Delete
     "clear_vendor_pooch_stock",
+    "delete_pooch",
     "delete_pregnancy",
     "delete_random_vendor",
     "remove_pooch_from_kennel",
@@ -126,14 +131,17 @@ __all__ = [
     "create_pooch_pregnancy",
     "create_server",
     "create_vendor",
+    "damn_pooch",
     "set_pooch_parentage",
     # Update
     "age_pooch",
     "decrement_pooch_breeding_cooldown",
     "give_money_to_owner",
+    "give_bloodskulls_to_owner",
     "set_event_channel_discord_id",
     "set_pooch_breeding_cooldown",
     "set_pooch_dead",
     "set_pooch_virgin",
     "transfer_pooch_to_owner",
+    "transfer_pooch_to_vendor",
 ]

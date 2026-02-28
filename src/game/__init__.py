@@ -8,6 +8,13 @@ from .change_day import (
 from .manage_graveyard import (
     list_graveyard_pooches,
 )
+from .manage_hell import (
+    get_pooch_bloodskull_value,
+    get_summon_pooch_price,
+    list_hell_pooches,
+    sacrifice_pooch,
+    summon_pooch,
+)
 from .manage_kennels import (
     list_kennel_pooches,
 )
@@ -36,6 +43,7 @@ from .manage_vendors import (
     get_vendor_by_id,
     list_server_vendors,
     list_vendor_pooches,
+    sell_pooch,
 )
 
 __all__ = [
@@ -46,6 +54,12 @@ __all__ = [
     "run_day_change",
     # Graveyard commands
     "list_graveyard_pooches",
+    # Hell / ritual commands
+    "get_pooch_bloodskull_value",
+    "get_summon_pooch_price",
+    "list_hell_pooches",
+    "sacrifice_pooch",
+    "summon_pooch",
     # Kennel commands
     "list_kennel_pooches",
     # Owner commands
@@ -69,4 +83,5 @@ __all__ = [
     "get_vendor_by_id",
     "list_server_vendors",
     "list_vendor_pooches",
+    "sell_pooch",
 ]

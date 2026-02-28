@@ -30,8 +30,7 @@
 ## Blood Magic
 | Feature                                                                                                                       | Points |
 | ----------------------------------------------------------------------------------------------------------------------------- | ------ |
-| Sacrifice for bloodskulls (and random bones)                                                                                  | 3      |
-| Spend bloodskulls to summon pooches (more bloodskulls = more rerolls for cool breeds)                                         | 3      |
+| Make sacrificing pooches give bones (which can be used to tame strays)                                                        | 3      |
 | Clone your pooches by spending bloodskulls (better breeds = more expensive)                                                   | 5      |
 | Spend bloodskulls to reset pooch age (but at some EVIL cost)                                                                  | 5      |
 | Spend a LOT of bloodskulls to make your pooch IMMORTAL (but infertile, like a vampire, also can't go out at night)            | 5      |
@@ -74,7 +73,6 @@
 | Feature                                                                                                                       | Points |
 | ----------------------------------------------------------------------------------------------------------------------------- | ------ |
 | Vendors desire specific breeds (at least one of each rarity)                                                                  | 5      |
-| Add ability to sell pooches to vendors                                                                                        | 3      |
 
 ## Kennel Management
 | Feature                                                                                                                       | Points |

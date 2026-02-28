@@ -42,6 +42,32 @@ async def clear_vendor_pooch_stock(vendor_id: int, delete_pooches: bool = False)
     return vendor
 
 
+async def delete_pooch(pooch_id: int) -> Optional[Pooch]:
+    """
+    Delete a pooch ORM object completely from the database.
+
+    Parameters
+    ----------
+    pooch_id: int
+        The ID of the pooch object to delete.
+
+    Returns
+    -------
+    Pooch, optional
+        The Pooch ORM object that was just permanently deleted, or None if the pooch wasn't found.
+    """
+
+    async with session_scope() as session:
+        response = await session.execute(select(Pooch).where(Pooch.id == pooch_id))
+        pooch = response.scalar_one_or_none()
+        if pooch is None:
+            return None
+
+        await session.execute(delete(Pooch).where(Pooch.id == pooch_id))
+
+    return pooch
+
+
 async def delete_pregnancy(mother_id: int, fetus_id: int) -> Optional[Pooch]:
     """
     Delete a pooch pregnancy instance.

@@ -67,6 +67,36 @@ async def decrement_pooch_breeding_cooldown(pooch_id: int) -> Optional[Pooch]:
     return pooch
 
 
+async def give_bloodskulls_to_owner(owner_discord_id: int, bloodskulls: int) -> Optional[Owner]:
+    """
+    Add a number to the given owner's `bloodskulls`.
+
+    Parameters
+    ----------
+    owner_discord_id: int
+        The Discord ID of the owner to give the bloodskulls to.
+
+    bloodskulls: int
+        The number of bloodskulls to give to the owner.
+
+    Returns
+    -------
+    Owner, optional
+        The Owner ORM object the bloodskulls were added to, or None if no owner with the given Discord ID was found.
+    """
+
+    async with session_scope() as session:
+        query = select(Owner).where(Owner.discord_id == owner_discord_id)
+        owner = (await session.execute(query)).scalar_one_or_none()
+
+        if owner is None:
+            return None
+
+        owner.bloodskulls += bloodskulls
+
+    return owner
+
+
 async def give_money_to_owner(owner_discord_id: int, dollars: int) -> Optional[Owner]:
     """
     Add an amount of money to the given owner's `dollars`.
@@ -235,5 +265,36 @@ async def transfer_pooch_to_owner(pooch_id: int, owner_discord_id: int) -> Optio
 
         pooch.owner_discord_id = owner_discord_id
         pooch.vendor_id = None
+
+    return pooch
+
+
+async def transfer_pooch_to_vendor(pooch_id: int, vendor_id: int) -> Optional[Pooch]:
+    """
+    Transfer a pooch to a new vendor, clearing any owner association.
+
+    Parameters
+    ----------
+    pooch_id: int
+        The ID of the pooch to transfer.
+
+    vendor_id: int
+        The ID of the vendor to own the pooch.
+
+    Returns
+    -------
+    Pooch, optional
+        The updated Pooch ORM object, or None if the pooch wasn't found.
+    """
+
+    async with session_scope() as session:
+        query = select(Pooch).where(Pooch.id == pooch_id)
+        pooch = (await session.execute(query)).scalar_one_or_none()
+
+        if pooch is None:
+            return None
+
+        pooch.vendor_id = vendor_id
+        pooch.owner_discord_id = None
 
     return pooch

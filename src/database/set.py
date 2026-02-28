@@ -17,6 +17,7 @@ from .models import (
     Breed,
     DogName,
     GraveyardPooch,
+    HellPooch,
     Kennel,
     KennelPooch,
     Mutation,
@@ -665,6 +666,33 @@ async def create_vendor(
         await session.flush()
 
     return vendor
+
+
+async def damn_pooch(pooch_id: int) -> Optional[HellPooch]:
+    """
+    Move the given pooch to Hell.
+
+    Parameters
+    ----------
+    pooch_id: int
+        The ID of the pooch to damn.
+
+    Returns
+    -------
+    HellPooch, optional
+        The HellPooch ORM object that was just created, or None if the pooch wasn't found.
+    """
+
+    pooch = await get_pooch_by_id(pooch_id)
+    if pooch is None:
+        return None
+
+    async with session_scope() as session:
+        hell_pooch = HellPooch(pooch_id=pooch.id)
+        session.add(hell_pooch)
+        await session.flush()
+
+    return hell_pooch
 
 
 async def set_pooch_parentage(child_id: int, father_id: int | None, mother_id: int | None) -> PoochParentage:

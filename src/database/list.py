@@ -104,7 +104,8 @@ async def list_hell_pooches() -> list[Pooch]:
         )
         response = await session.execute(query)
 
-    return [(pooch, buried_at) for pooch, buried_at in response.tuples().all()]
+    # This query selects only the Pooch ORM model, so return the scalar results.
+    return list(response.scalars().all())
 
 
 async def list_kennels_for_owner(owner_discord_id: int) -> list[Kennel]:

@@ -9,6 +9,7 @@ from bot.ui.util import (
 from game import get_or_create_owner
 
 from .components.paginator import PaginatorView
+from .graveyard import GraveyardPageSource
 from .kennels import KennelsPageSource
 
 
@@ -43,6 +44,7 @@ class HomeNavigationSelect(Select):
             placeholder="Navigate your home",
             options=[
                 discord.SelectOption(label="Kennels", value="kennels"),
+                discord.SelectOption(label="Graveyard", value="graveyard"),
             ],
             row=0,
         )
@@ -62,6 +64,16 @@ class HomeNavigationSelect(Select):
             content, embed = await view.build_first_page()
             await r.reply(
                 content=content if content is not None else "Your kennels:",
+                embed=embed,
+                view=view,
+            )
+
+        if self.values[0] == "graveyard":
+            source = GraveyardPageSource(server_discord_id=interaction.guild_id, owner_discord_id=interaction.user.id)
+            view = PaginatorView(source, owner_discord_id=interaction.user.id)
+            content, embed = await view.build_first_page()
+            await r.reply(
+                content=content if content is not None else "**Your Graveyard**",
                 embed=embed,
                 view=view,
             )
