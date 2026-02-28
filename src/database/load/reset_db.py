@@ -4,6 +4,10 @@ from pathlib import Path
 import psycopg
 from dotenv import load_dotenv
 
+from logger import get_logger
+
+logger = get_logger("database/load/reset_db")
+
 
 def _get_sync_dsn() -> str:
     return (
@@ -24,11 +28,15 @@ def main():
 
     schema_directory = Path(__file__).parent.parent / "schema"
     with psycopg.connect(_get_sync_dsn(), autocommit=True) as conn:
+        logger.info("Wiping database and loading the schema file...")
+
         with conn.cursor() as cur:
             cur.execute("DROP SCHEMA public CASCADE; CREATE SCHEMA public;")
             _execute_sql_file(cur, schema_directory / "enums.sql")
             _execute_sql_file(cur, schema_directory / "static.sql")
             _execute_sql_file(cur, schema_directory / "main.sql")
+
+        logger.info("Finished wiping database and loading the schema file.")
 
 
 if __name__ == "__main__":

@@ -36,12 +36,12 @@ async def to_vendor(vendor: VendorORM) -> Vendor:
         ),
         desired_mutation_2=(
             await to_mutation(await get_mutation_by_id(vendor.desired_mutation_2))
-            if vendor.desired_mutation_1 is not None
+            if vendor.desired_mutation_2 is not None
             else None
         ),
         desired_mutation_3=(
             await to_mutation(await get_mutation_by_id(vendor.desired_mutation_3))
-            if vendor.desired_mutation_1 is not None
+            if vendor.desired_mutation_3 is not None
             else None
         ),
         server=(

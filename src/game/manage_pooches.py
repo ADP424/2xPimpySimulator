@@ -4,6 +4,7 @@ from database import (
     list_pooch_children,
     list_pooch_siblings,
 )
+from database.update import rename_pooch as db_rename_pooch
 
 from .exceptions.pooch_not_found import PoochNotFound
 from .models import Pooch, to_pooch
@@ -64,3 +65,39 @@ async def get_pooch_family(pooch_id: int) -> dict[str, list[Pooch]]:
         "children": children,
         "siblings": siblings,
     }
+
+
+async def rename_pooch(pooch_id: int, name: str, max_name_length: int) -> bool:
+    """
+    Rename the pooch with the given ID.
+
+    Parameters
+    ----------
+    pooch_id: int
+        The ID of the pooch to rename.
+
+    name: str
+        The new name to give the pooch.
+
+    max_name_length: int
+        Maximum allowed name length.
+
+    Returns
+    -------
+    bool
+        True if renamed, False if the name is too long.
+
+    Raises
+    ------
+    PoochNotFound
+        When a Pooch with `pooch_id` is not found.
+    """
+
+    name = name.strip()
+    if len(name) > max_name_length:
+        return False
+
+    pooch = await db_rename_pooch(pooch_id, name)
+    if pooch is None:
+        raise PoochNotFound(pooch_id)
+    return True

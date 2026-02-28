@@ -18,6 +18,7 @@ from game import (
 from game.models import Kennel, Pooch, Vendor
 from logger import get_logger
 
+from .components.mutation_dropdown import build_mutation_info_embed
 from .components.paginator import PageSource, PaginatorView
 from .pooch_info import PoochInfoView
 from .util import InteractionResponder
@@ -55,6 +56,14 @@ class VendorsPageSource(PageSource):
 
         embed = discord.Embed(title=vendor.name, description=f"{len(pooches)} pooches for sale")
 
+        desired = [vendor.desired_mutation_1, vendor.desired_mutation_2, vendor.desired_mutation_3]
+        desired_names = [m.name for m in desired if m is not None]
+        embed.add_field(
+            name="Desired Mutations",
+            value=("\n".join([f"• {n}" for n in desired_names]) if desired_names else "—"),
+            inline=False,
+        )
+
         prices_by_pooch_id: dict[int, int] = {}
         for pooch in pooches:
             prices_by_pooch_id[pooch.id] = await get_pooch_buy_price(pooch.id, vendor.id)
@@ -84,6 +93,23 @@ class VendorPageControls:
         self.vendor = vendor
         self.pooches = pooches
         self.selected_pooch: Optional[Pooch] = None
+
+        desired = [vendor.desired_mutation_1, vendor.desired_mutation_2, vendor.desired_mutation_3]
+        self._desired_mutations = [m for m in desired if m is not None]
+        if not self._desired_mutations:
+            mutation_options = [discord.SelectOption(label="No desired mutations", value="__none__")]
+        else:
+            mutation_options = [discord.SelectOption(label=m.name, value=str(m.id)) for m in self._desired_mutations]
+
+        # A select-only control (no extra buttons) so it can coexist with the pooch select.
+        self.mutation_select = Select(
+            placeholder="Vendor desired mutation…",
+            options=mutation_options,
+            disabled=not bool(self._desired_mutations),
+            min_values=1,
+            max_values=1,
+        )
+        self.mutation_select.callback = self._on_mutation_select  # type: ignore
 
         if not pooches:
             options = [discord.SelectOption(label="No pooches for sale", value="__none__")]
@@ -116,15 +142,36 @@ class VendorPageControls:
             self.buy_button.disabled = True
 
     def attach(self, view: View):
-        self.select.row = 1
-        self.info_button.row = 2
-        self.buy_button.row = 2
-        self.sell_button.row = 3
+        # Row 0 is reserved for paginator nav buttons.
+        self.mutation_select.row = 1
 
+        self.select.row = 2
+        self.info_button.row = 3
+        self.buy_button.row = 3
+        self.sell_button.row = 4
+
+        view.add_item(self.mutation_select)
         view.add_item(self.select)
         view.add_item(self.info_button)
         view.add_item(self.buy_button)
         view.add_item(self.sell_button)
+
+    async def _on_mutation_select(self, interaction: discord.Interaction):
+        r = InteractionResponder(interaction)
+        value = self.mutation_select.values[0]
+        if value == "__none__":
+            return
+        mutation_id = int(value)
+        mutation = next((m for m in self._desired_mutations if m.id == mutation_id), None)
+        if mutation is None:
+            return
+
+        # Persist selection.
+        for opt in self.mutation_select.options:
+            opt.default = opt.value == value
+
+        await r.edit(view=self.mutation_select.view)
+        await r.reply(embed=build_mutation_info_embed(mutation))
 
     async def _on_select(self, interaction: discord.Interaction):
         r = InteractionResponder(interaction)

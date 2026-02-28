@@ -3,7 +3,7 @@ from typing import Optional
 from sqlalchemy import select
 
 from .constants import POOCH_HEALTH_LOSS_STARTING_AGE
-from .models import Owner, Pooch, Server
+from .models import Kennel, Owner, Pooch, Server
 from .session import session_scope
 
 
@@ -125,6 +125,66 @@ async def give_money_to_owner(owner_discord_id: int, dollars: int) -> Optional[O
         owner.dollars += dollars
 
     return owner
+
+
+async def rename_kennel(kennel_id: int, name: str) -> Optional[Kennel]:
+    """
+    Replace the name of the kennel with the given ID with a new one.
+
+    Parameters
+    ----------
+    kennel_id: int
+        The ID of the kennel to rename.
+
+    name: str
+        The new name to give the kennel.
+
+    Returns
+    -------
+    Kennel, optional
+        The Kennel ORM object that was renamed, or None if the kennel wasn't found.
+    """
+
+    async with session_scope() as session:
+        query = select(Kennel).where(Kennel.id == kennel_id)
+        kennel = (await session.execute(query)).scalar_one_or_none()
+
+        if kennel is None:
+            return None
+
+        kennel.name = name
+
+    return kennel
+
+
+async def rename_pooch(pooch_id: int, name: str) -> Optional[Pooch]:
+    """
+    Replace the name of the pooch with the given ID with a new one.
+
+    Parameters
+    ----------
+    pooch_id: int
+        The ID of the pooch to rename.
+
+    name: str
+        The new name to give the pooch.
+
+    Returns
+    -------
+    Pooch, optional
+        The Pooch ORM object that was renamed, or None if the pooch wasn't found.
+    """
+
+    async with session_scope() as session:
+        query = select(Pooch).where(Pooch.id == pooch_id)
+        pooch = (await session.execute(query)).scalar_one_or_none()
+
+        if pooch is None:
+            return None
+
+        pooch.name = name
+
+    return pooch
 
 
 async def set_event_channel_discord_id(server_discord_id: int, channel_discord_id: int) -> Optional[Server]:

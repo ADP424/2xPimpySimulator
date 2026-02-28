@@ -15,3 +15,8 @@ VIEW_TIMEOUT = 300
 
 # Pagination / Layout
 ITEMS_PER_PAGE = 10
+
+# Text / naming limits
+# Discord embed titles are limited to 256 characters, which is also a sensible upper bound
+# for user-supplied names that will be shown prominently in UI.
+MAX_NAME_LENGTH = 256

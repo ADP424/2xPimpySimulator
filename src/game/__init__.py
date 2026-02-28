@@ -17,6 +17,7 @@ from .manage_hell import (
 )
 from .manage_kennels import (
     list_kennel_pooches,
+    rename_kennel,
 )
 from .manage_owners import (
     add_money,
@@ -26,6 +27,7 @@ from .manage_owners import (
 from .manage_pooches import (
     get_pooch_by_id,
     get_pooch_family,
+    rename_pooch,
 )
 from .manage_servers import (
     get_event_channel,
@@ -62,6 +64,7 @@ __all__ = [
     "summon_pooch",
     # Kennel commands
     "list_kennel_pooches",
+    "rename_kennel",
     # Owner commands
     "add_money",
     "get_or_create_owner",
@@ -69,6 +72,7 @@ __all__ = [
     # Pooch commands
     "get_pooch_by_id",
     "get_pooch_family",
+    "rename_pooch",
     # Server commands
     "get_event_channel",
     "get_or_create_server",

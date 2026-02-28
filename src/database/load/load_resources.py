@@ -6,9 +6,14 @@ from sqlalchemy import delete
 
 from database.models import Breed, DogName, Mutation, VendorFirstName, VendorLastName
 from database.session import session_scope
+from logger import get_logger
+
+logger = get_logger("database/load/load_resources")
 
 
 async def load_breeds():
+    logger.info("Loading breeds from 'breeds.json' into the database...")
+
     with open("resources/breeds.json", "r", encoding="utf8") as breeds_json_file:
         breeds_json: dict[str, dict[str, dict[str, str | Any]]] = json.loads(breeds_json_file.read().strip())
 
@@ -31,8 +36,12 @@ async def load_breeds():
                     )
                 )
 
+    logger.info("Finished loading breeds.")
+
 
 async def load_mutations():
+    logger.info("Loading mutations from 'mutations.json' into the database...")
+
     with open("resources/mutations.json", "r", encoding="utf8") as mutations_json_file:
         mutations_json: dict[str, dict[str, dict[str, str | Any]]] = json.loads(mutations_json_file.read().strip())
 
@@ -61,8 +70,12 @@ async def load_mutations():
                     )
                 )
 
+    logger.info("Finished loading mutations.")
+
 
 async def load_dog_names():
+    logger.info("Loading dog names from 'dog_names.txt' into the database...")
+
     with open("resources/dog_names.txt", "r", encoding="utf8") as dog_names_file:
         dog_names = dog_names_file.readlines()
 
@@ -77,8 +90,12 @@ async def load_dog_names():
             if dog_name:
                 session.add(DogName(name=dog_name))
 
+    logger.info("Finished loading dog names.")
+
 
 async def load_vendor_first_names():
+    logger.info("Loading vendor first names from 'vendor_first_names.txt' into the database...")
+
     with open("resources/vendor_first_names.txt", "r", encoding="utf8") as vendor_first_names_file:
         vendor_first_names = vendor_first_names_file.readlines()
 
@@ -93,8 +110,12 @@ async def load_vendor_first_names():
             if vendor_first_name:
                 session.add(VendorFirstName(name=vendor_first_name))
 
+    logger.info("Finished loading vendor first names.")
+
 
 async def load_vendor_last_names():
+    logger.info("Loading vendor last names from 'vendor_last_names.txt' into the database...")
+
     with open("resources/vendor_last_names.txt", "r", encoding="utf8") as vendor_last_names_file:
         vendor_last_names = vendor_last_names_file.readlines()
 
@@ -109,13 +130,19 @@ async def load_vendor_last_names():
             if vendor_last_name:
                 session.add(VendorLastName(name=vendor_last_name))
 
+    logger.info("Finished loading vendor last names.")
+
 
 async def main():
+    logger.info("Loading resources into database...")
+
     await load_breeds()
     await load_mutations()
     await load_dog_names()
     await load_vendor_first_names()
     await load_vendor_last_names()
+
+    logger.info("Finished loading resources into database.")
 
 
 if __name__ == "__main__":
