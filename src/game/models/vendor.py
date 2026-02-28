@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Optional
 
-from database import get_mutation_by_id, get_server_by_discord_id
+from database import get_mutation_by_id, get_server_by_discord_id, list_vendor_pooch_stock
 from database.models import Vendor as VendorORM
 
 from .mutation import Mutation, to_mutation
@@ -15,6 +15,7 @@ class Vendor:
 
     name: str
     price_markup: float
+    stock_count: int
 
     desired_mutation_1: Optional[Mutation]
     desired_mutation_2: Optional[Mutation]
@@ -29,6 +30,7 @@ async def to_vendor(vendor: VendorORM) -> Vendor:
         server_discord_id=vendor.server_discord_id,
         name=vendor.name,
         price_markup=vendor.price_markup,
+        stock_count=len(await list_vendor_pooch_stock(vendor.id)),
         desired_mutation_1=(
             await to_mutation(await get_mutation_by_id(vendor.desired_mutation_1))
             if vendor.desired_mutation_1 is not None

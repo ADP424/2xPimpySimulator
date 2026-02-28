@@ -50,7 +50,7 @@ def create_app(config: dict | None = None) -> Flask:
     app.register_blueprint(auth_bp, url_prefix="/auth")
     app.register_blueprint(main_bp)
     app.register_blueprint(api_bp, url_prefix="/api")
-    app.register_blueprint(graveyard_bp, url_prefix="/graveyard")
+    app.register_blueprint(graveyard_bp, url_prefix="/church")
     app.register_blueprint(kennel_bp, url_prefix="/kennel")
     app.register_blueprint(pooch_bp, url_prefix="/pooch")
     app.register_blueprint(vendor_bp, url_prefix="/vendor")
