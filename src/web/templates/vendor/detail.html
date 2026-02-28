@@ -133,7 +133,7 @@ async function buyPooch(poochId) {
 
         if (result.success) {
             App.showNotification('Purchase successful!', 'success');
-            window.location.href = '/kennel';
+            window.location.reload();
         } else {
             App.showNotification(result.message || result.error || 'Purchase failed', 'error');
         }
