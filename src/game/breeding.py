@@ -190,8 +190,8 @@ async def breed_pooches(first_pooch_id: int, second_pooch_id: int, rng_seed: Opt
             POOCH_BREEDING_COOLDOWN + await get_pooch_mutation_advanced_option_total(mother.id, "breeding_cooldown"), 0
         ),
     )
-    await set_pooch_virgin(father.id)
-    await set_pooch_virgin(mother.id)
+    await set_pooch_virgin(father.id, False)
+    await set_pooch_virgin(mother.id, False)
 
     roll = rng.random()
     litter_size = 3 if roll < TRIPLETS_CHANCE else (2 if roll < TWINS_CHANCE else 1)

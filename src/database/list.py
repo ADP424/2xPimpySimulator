@@ -7,6 +7,7 @@ from .models import (
     Breed,
     GraveyardPooch,
     HealthImpactWeight,
+    HellPooch,
     Kennel,
     KennelPooch,
     Mutation,
@@ -24,31 +25,86 @@ from .models import (
 from .session import session_scope
 
 
-async def list_pooches_for_kennel(kennel_id: int) -> list[Pooch]:
+async def list_all_breeds() -> list[Breed]:
     """
-    Fetch the list of Pooches in the kennel with the given ID.
+    Fetch every breed in alphabetical order by category, then by name.
+
+    Returns
+    -------
+    list[Breed]
+        Every ORM Breed object in the static breed table.
+    """
+
+    async with session_scope() as session:
+        response = await session.execute(select(Breed).order_by(Breed.category.asc(), Breed.name.asc(), Breed.id.asc()))
+
+    return list(response.scalars().all())
+
+
+async def list_all_mutations() -> list[Mutation]:
+    """
+    Fetch every mutation in alphabetical order by category, then by name.
+
+    Returns
+    -------
+    list[Mutation]
+        Every ORM Mutation object in the static mutation table.
+    """
+
+    async with session_scope() as session:
+        response = await session.execute(
+            select(Mutation).order_by(Mutation.category.asc(), Mutation.name.asc(), Mutation.id.asc())
+        )
+
+    return list(response.scalars().all())
+
+
+async def list_graveyard_pooches_for_owner(owner_discord_id: int) -> list[tuple[Pooch, datetime]]:
+    """
+    Fetch the list of deceased pooches buried by the owner with the given Discord ID.
 
     Parameters
     ----------
-    kennel_id: int
-        The ID of the kennel to fetch the pooches from.
+    owner_discord_id: int
+        The Discord ID of the owner to fetch the buried pooches for.
+
+    Returns
+    -------
+    list[tuple[Pooch, datetime]]
+        A list of (Pooch ORM object, buried_at datetime) tuples, most recently buried first.
+    """
+
+    async with session_scope() as session:
+        query = (
+            select(Pooch, GraveyardPooch.buried_at)
+            .join(GraveyardPooch, GraveyardPooch.pooch_id == Pooch.id)
+            .where(GraveyardPooch.owner_discord_id == owner_discord_id)
+            .order_by(GraveyardPooch.buried_at.desc(), Pooch.id.desc())
+        )
+        response = await session.execute(query)
+
+    return [(pooch, buried_at) for pooch, buried_at in response.tuples().all()]
+
+
+async def list_hell_pooches() -> list[Pooch]:
+    """
+    Fetch the list of pooches sacrificed to Hell. This is global between servers.
 
     Returns
     -------
     list[Pooch]
-        The list of Pooch ORM objects in the kennel.
+        A list of Pooch ORM objects representing all the pooches in Hell, most recently damned first.
     """
 
     async with session_scope() as session:
         query = (
             select(Pooch)
-            .join(KennelPooch, KennelPooch.pooch_id == Pooch.id)
-            .where(KennelPooch.kennel_id == kennel_id)
-            .order_by(Pooch.created_at.asc(), Pooch.id.asc())
+            .join(HellPooch, HellPooch.pooch_id == Pooch.id)
+            .order_by(HellPooch.damned_at.desc(), Pooch.id.desc())
         )
         response = await session.execute(query)
 
-    return list(response.scalars().all())
+    return [(pooch, buried_at) for pooch, buried_at in response.tuples().all()]
 
 
 async def list_kennels_for_owner(owner_discord_id: int) -> list[Kennel]:
@@ -98,83 +154,56 @@ async def list_living_pooches() -> list[Pooch]:
     return list(response.scalars().all())
 
 
-async def list_pooch_children(pooch_id: int) -> list[Pooch]:
+async def list_owner_servers(owner_discord_id: int) -> list[Server]:
     """
-    Fetch the children of the pooch with the given ID.
+    Fetch a list of all the servers the owner with the given Discord ID is in.
 
     Parameters
     ----------
-    pooch_id: int
-        The ID of the pooch to fetch the children of.
+    owner_discord_id: int
+        The Discord ID of the owner to get the servers for.
 
     Returns
     -------
-    list[Pooch]
-        A list of Pooch ORM objects representing the pooch's children.
+    list[Server]
+        The list of Server ORM objects the given owner belongs to.
     """
 
     async with session_scope() as session:
         query = (
-            select(Pooch)
-            .join(PoochParentage, PoochParentage.child_id == Pooch.id)
-            .where(or_(PoochParentage.father_id == pooch_id, PoochParentage.mother_id == pooch_id))
-            .order_by(Pooch.created_at.asc(), Pooch.id.asc())
+            select(Server)
+            .join(OwnerServer, OwnerServer.server_discord_id == Server.discord_id)
+            .where(OwnerServer.owner_discord_id == owner_discord_id)
+            .order_by(Server.joined_at.asc(), Server.discord_id.asc())
         )
-        children = list((await session.execute(query)).scalars().all())
-
-    return children
-
-
-async def list_pooch_siblings(pooch_id: int) -> list[Pooch]:
-    """
-    Fetch the full siblings of the pooch with the given ID.
-
-    Parameters
-    ----------
-    pooch_id: int
-        The ID of the pooch to fetch the full siblings of.
-
-    Returns
-    -------
-    list[Pooch]
-        A list of Pooch ORM objects representing the pooch's full siblings (sharing both a mother and father).
-    """
-
-    father, mother = await get_pooch_parents(pooch_id)
-
-    if not father or not mother:
-        return []
-
-    async with session_scope() as session:
-        query = (
-            select(Pooch)
-            .join(PoochParentage, PoochParentage.child_id == Pooch.id)
-            .where(
-                Pooch.id != pooch_id,
-                PoochParentage.father_id == father.id,
-                PoochParentage.mother_id == mother.id,
-            )
-            .order_by(Pooch.created_at.asc(), Pooch.id.asc())
-        )
-        siblings = list((await session.execute(query)).scalars().all())
-
-    return siblings
-
-
-async def list_pooch_pregnancies() -> list[PoochPregnancy]:
-    """
-    Fetch a list of every all pooch pregnancy instances.
-
-    Returns
-    -------
-    list[PoochPregnancy]
-        The list of PoochPregnancy ORM relationship objects across all servers.
-    """
-
-    async with session_scope() as session:
-        response = await session.execute(select(PoochPregnancy).order_by(PoochPregnancy.fetus_id.asc()))
+        response = await session.execute(query)
 
     return list(response.scalars().all())
+
+
+async def list_pooch_breed_weights(pooch_id: int) -> list[tuple[int, int]]:
+    """
+    Fetch the list of breed weights the given pooch has.
+    Returns the integer weights stored in the `pooch_breeds` relationship table. Useful for
+    deterministic calculations (like inheritance) where you want the underlying weights rather
+    than the normalized relative weights returned by `list_pooch_breeds`.
+
+    Parameters
+    ----------
+    pooch_id: int
+        The ID of the pooch to get the breeds of.
+
+    Returns
+    -------
+    list[tuple[int, int]]
+        A list of `(breed_id, weight)` pairs.
+    """
+
+    async with session_scope() as session:
+        query = select(PoochBreed.breed_id, PoochBreed.weight).where(PoochBreed.pooch_id == pooch_id)
+        response = await session.execute(query)
+
+    return [(breed_id, weight) for breed_id, weight in response.tuples().all()]
 
 
 async def list_pooch_breeds(pooch_id: int) -> list[tuple[Breed, float]]:
@@ -206,29 +235,31 @@ async def list_pooch_breeds(pooch_id: int) -> list[tuple[Breed, float]]:
     return [(breed, float(weight)) for breed, weight in list(response.tuples().all())]
 
 
-async def list_pooch_breed_weights(pooch_id: int) -> list[tuple[int, int]]:
+async def list_pooch_children(pooch_id: int) -> list[Pooch]:
     """
-    Fetch the list of breed weights the given pooch has.
-    Returns the integer weights stored in the `pooch_breeds` relationship table. Useful for
-    deterministic calculations (like inheritance) where you want the underlying weights rather
-    than the normalized relative weights returned by `list_pooch_breeds`.
+    Fetch the children of the pooch with the given ID.
 
     Parameters
     ----------
     pooch_id: int
-        The ID of the pooch to get the breeds of.
+        The ID of the pooch to fetch the children of.
 
     Returns
     -------
-    list[tuple[int, int]]
-        A list of `(breed_id, weight)` pairs.
+    list[Pooch]
+        A list of Pooch ORM objects representing the pooch's children.
     """
 
     async with session_scope() as session:
-        query = select(PoochBreed.breed_id, PoochBreed.weight).where(PoochBreed.pooch_id == pooch_id)
-        response = await session.execute(query)
+        query = (
+            select(Pooch)
+            .join(PoochParentage, PoochParentage.child_id == Pooch.id)
+            .where(or_(PoochParentage.father_id == pooch_id, PoochParentage.mother_id == pooch_id))
+            .order_by(Pooch.created_at.asc(), Pooch.id.asc())
+        )
+        children = list((await session.execute(query)).scalars().all())
 
-    return [(breed_id, weight) for breed_id, weight in response.tuples().all()]
+    return children
 
 
 async def list_pooch_mutations(
@@ -282,87 +313,97 @@ async def list_pooch_mutations(
     return list(response.scalars().all())
 
 
-async def list_all_breeds() -> list[Breed]:
+async def list_pooch_pregnancies() -> list[PoochPregnancy]:
     """
-    Fetch every breed in alphabetical order by category, then by name.
+    Fetch a list of every all pooch pregnancy instances.
 
     Returns
     -------
-    list[Breed]
-        Every ORM Breed object in the static breed table.
+    list[PoochPregnancy]
+        The list of PoochPregnancy ORM relationship objects across all servers.
     """
 
     async with session_scope() as session:
-        response = await session.execute(select(Breed).order_by(Breed.category.asc(), Breed.name.asc(), Breed.id.asc()))
+        response = await session.execute(select(PoochPregnancy).order_by(PoochPregnancy.fetus_id.asc()))
 
     return list(response.scalars().all())
 
 
-async def list_all_mutations() -> list[Mutation]:
+async def list_pooch_siblings(pooch_id: int) -> list[Pooch]:
     """
-    Fetch every mutation in alphabetical order by category, then by name.
-
-    Returns
-    -------
-    list[Mutation]
-        Every ORM Mutation object in the static mutation table.
-    """
-
-    async with session_scope() as session:
-        response = await session.execute(
-            select(Mutation).order_by(Mutation.category.asc(), Mutation.name.asc(), Mutation.id.asc())
-        )
-
-    return list(response.scalars().all())
-
-
-async def list_vendors(server_discord_id: int) -> list[Vendor]:
-    """
-    Fetch the list of vendors for a given server.
+    Fetch the full siblings of the pooch with the given ID.
 
     Parameters
     ----------
-    server_discord_id: int
-        The Discord ID of the server to fetch the vendors of.
-
-    Returns
-    -------
-    list[Vendor]
-        The list of Vendor ORM objects belonging to the given server.
-    """
-
-    async with session_scope() as session:
-        response = await session.execute(
-            select(Vendor)
-            .where(Vendor.server_discord_id == server_discord_id)
-            .order_by(Vendor.name.asc(), Vendor.id.asc())
-        )
-
-    return list(response.scalars().all())
-
-
-async def list_vendor_pooch_stock(vendor_id: int) -> list[Pooch]:
-    """
-    Fetch a list of every pooch a given vendor has for sale.
-
-    Parameters
-    ----------
-    vendor_id: int
-        The ID of the vendor to fetch the pooches from.
+    pooch_id: int
+        The ID of the pooch to fetch the full siblings of.
 
     Returns
     -------
     list[Pooch]
-        The list of Pooch ORM objects representing the pooches the given vendor has for sale.
+        A list of Pooch ORM objects representing the pooch's full siblings (sharing both a mother and father).
+    """
+
+    father, mother = await get_pooch_parents(pooch_id)
+
+    if not father or not mother:
+        return []
+
+    async with session_scope() as session:
+        query = (
+            select(Pooch)
+            .join(PoochParentage, PoochParentage.child_id == Pooch.id)
+            .where(
+                Pooch.id != pooch_id,
+                PoochParentage.father_id == father.id,
+                PoochParentage.mother_id == mother.id,
+            )
+            .order_by(Pooch.created_at.asc(), Pooch.id.asc())
+        )
+        siblings = list((await session.execute(query)).scalars().all())
+
+    return siblings
+
+
+async def list_pooches_for_kennel(kennel_id: int) -> list[Pooch]:
+    """
+    Fetch the list of Pooches in the kennel with the given ID.
+
+    Parameters
+    ----------
+    kennel_id: int
+        The ID of the kennel to fetch the pooches from.
+
+    Returns
+    -------
+    list[Pooch]
+        The list of Pooch ORM objects in the kennel.
     """
 
     async with session_scope() as session:
         query = (
             select(Pooch)
-            .join(VendorPoochForSale, VendorPoochForSale.pooch_id == Pooch.id)
-            .where(VendorPoochForSale.vendor_id == vendor_id)
+            .join(KennelPooch, KennelPooch.pooch_id == Pooch.id)
+            .where(KennelPooch.kennel_id == kennel_id)
             .order_by(Pooch.created_at.asc(), Pooch.id.asc())
         )
+        response = await session.execute(query)
+
+    return list(response.scalars().all())
+
+
+async def list_servers() -> list[Server]:
+    """
+    Fetch a list of all servers in the database.
+
+    Returns
+    -------
+    list[Server]
+        The list of all Server ORM objects in the database.
+    """
+
+    async with session_scope() as session:
+        query = select(Server).order_by(Server.joined_at.asc(), Server.discord_id.asc())
         response = await session.execute(query)
 
     return list(response.scalars().all())
@@ -399,72 +440,53 @@ async def list_servers_for_pooch(pooch_id: int) -> list[Server]:
     return list(response.scalars().all())
 
 
-async def list_owner_servers(owner_discord_id: int) -> list[Server]:
+async def list_vendor_pooch_stock(vendor_id: int) -> list[Pooch]:
     """
-    Fetch a list of all the servers the owner with the given Discord ID is in.
+    Fetch a list of every pooch a given vendor has for sale.
 
     Parameters
     ----------
-    owner_discord_id: int
-        The Discord ID of the owner to get the servers for.
+    vendor_id: int
+        The ID of the vendor to fetch the pooches from.
 
     Returns
     -------
-    list[Server]
-        The list of Server ORM objects the given owner belongs to.
+    list[Pooch]
+        The list of Pooch ORM objects representing the pooches the given vendor has for sale.
     """
 
     async with session_scope() as session:
         query = (
-            select(Server)
-            .join(OwnerServer, OwnerServer.server_discord_id == Server.discord_id)
-            .where(OwnerServer.owner_discord_id == owner_discord_id)
-            .order_by(Server.joined_at.asc(), Server.discord_id.asc())
+            select(Pooch)
+            .join(VendorPoochForSale, VendorPoochForSale.pooch_id == Pooch.id)
+            .where(VendorPoochForSale.vendor_id == vendor_id)
+            .order_by(Pooch.created_at.asc(), Pooch.id.asc())
         )
         response = await session.execute(query)
 
     return list(response.scalars().all())
 
 
-async def list_servers() -> list[Server]:
+async def list_vendors(server_discord_id: int) -> list[Vendor]:
     """
-    Fetch a list of all servers in the database.
-
-    Returns
-    -------
-    list[Server]
-        The list of all Server ORM objects in the database.
-    """
-
-    async with session_scope() as session:
-        query = select(Server).order_by(Server.joined_at.asc(), Server.discord_id.asc())
-        response = await session.execute(query)
-
-    return list(response.scalars().all())
-
-
-async def list_graveyard_pooches_for_owner(owner_discord_id: int) -> list[tuple[Pooch, datetime]]:
-    """
-    Fetch the list of deceased pooches buried by the owner with the given Discord ID.
+    Fetch the list of vendors for a given server.
 
     Parameters
     ----------
-    owner_discord_id: int
-        The Discord ID of the owner to fetch the buried pooches for.
+    server_discord_id: int
+        The Discord ID of the server to fetch the vendors of.
 
     Returns
     -------
-    list[tuple[Pooch, datetime]]
-        A list of (Pooch ORM object, buried_at datetime) tuples, most recently buried first.
+    list[Vendor]
+        The list of Vendor ORM objects belonging to the given server.
     """
 
     async with session_scope() as session:
-        query = (
-            select(Pooch, GraveyardPooch.buried_at)
-            .join(GraveyardPooch, GraveyardPooch.pooch_id == Pooch.id)
-            .where(GraveyardPooch.owner_discord_id == owner_discord_id)
-            .order_by(GraveyardPooch.buried_at.desc(), Pooch.id.desc())
+        response = await session.execute(
+            select(Vendor)
+            .where(Vendor.server_discord_id == server_discord_id)
+            .order_by(Vendor.name.asc(), Vendor.id.asc())
         )
-        response = await session.execute(query)
 
-    return [(pooch, buried_at) for pooch, buried_at in response.tuples().all()]
+    return list(response.scalars().all())

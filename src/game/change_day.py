@@ -14,6 +14,7 @@ from database import (
     create_vendor,
     decrement_pooch_breeding_cooldown,
     delete_pregnancy,
+    delete_random_vendor,
     get_mutation_health_impact,
     get_pooch_health,
     get_pooch_kennel,
@@ -26,7 +27,6 @@ from database import (
     list_vendors,
     remove_pooch_from_kennel,
     set_pooch_dead,
-    delete_random_vendor,
 )
 from database.models import Mutation, Pooch
 from database.update import set_pooch_breeding_cooldown

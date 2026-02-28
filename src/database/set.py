@@ -39,277 +39,6 @@ from .session import session_scope
 T = TypeVar("T")
 
 
-async def create_pooch(
-    owner_discord_id: Optional[int] = None,
-    vendor_id: Optional[int] = None,
-    name: Optional[str] = None,
-    sex: Optional[str] = None,
-    age: int = POOCH_FETAL_AGE,
-    base_health: int = POOCH_BASE_HEALTH,
-    breeding_cooldown: int = POOCH_BREEDING_COOLDOWN,
-    rng: Optional[random.Random] = None,
-) -> Pooch:
-    """
-    Create a pooch.
-
-    Parameters
-    ----------
-    owner_discord_id: int, optional
-        The Discord ID of the owner to own the new pooch, if any.
-
-    vendor_id: int, optional
-        The ID of the vendor to own the new pooch, if any.
-
-    name: str, optional
-        The name to give the pooch. Chooses a random one if not given.
-
-    sex: str, optional
-        The sex to give the pooch. Chooses a random one if not given.
-
-    age: int, default : `POOCH_FETAL_AGE`
-        The age to make the pooch. Defaults to the fetal age.
-
-    base_health: int, default : `POOCH_BASE_HEALTH`
-        The base health to give the pooch. Defaults to the base average pooch health.
-
-    breeding_cooldown: int, default : `POOCH_BREEDING_COOLDOWN`
-        The breeding cooldown to start the pooch off with. Defaults to the base breeding cooldown.
-
-    rng: Random, optional
-        The random generator to determine randomness, if any pooch traits are left to chance (name, sex).
-
-    Returns
-    -------
-    Pooch
-        The Pooch ORM object that was just created.
-    """
-
-    rng = rng if rng is not None else random.Random()
-
-    async def _get_random_pooch_name() -> str:
-        statement = select(DogName).order_by(func.hashtextextended(DogName.name, bindparam("seed"))).limit(1)
-        response = await session.execute(statement, {"seed": rng.randint(0, RANDOM_SEED_SIZE_LIMIT)})
-        dog_name = response.scalar_one_or_none()
-        return dog_name.name if dog_name is not None else "Dog"
-
-    async def _get_random_sex():
-        return "female" if rng.randint(0, 1) == 0 else "male"
-
-    if owner_discord_id is not None:
-        owner = await get_owner_by_discord_id(owner_discord_id)
-        if owner is None:
-            owner_discord_id = None
-
-    if vendor_id is not None:
-        vendor = await get_vendor_by_id(vendor_id)
-        if vendor is None:
-            vendor_id = None
-
-    # if both owner and vendor are provided, prioritize owner
-    if owner_discord_id is not None and vendor_id is not None:
-        vendor_id = None
-
-    async with session_scope() as session:
-        pooch = Pooch(
-            owner_discord_id=owner_discord_id,
-            vendor_id=vendor_id,
-            name=name or await _get_random_pooch_name(),
-            sex=sex or await _get_random_sex(),
-            age=age,
-            base_health=base_health,
-            health_loss_age=POOCH_HEALTH_LOSS_AGE,
-            breeding_cooldown=breeding_cooldown,
-            alive=True,
-            virgin=True,
-        )
-        session.add(pooch)
-        await session.flush()
-
-    return pooch
-
-
-async def create_owner(owner_discord_id: int) -> Owner:
-    """
-    Create an owner with the given Discord ID.
-
-    Parameters
-    ----------
-    owner_discord_id: int
-        The Discord ID of the owner to create.
-
-    Returns
-    -------
-    Owner
-        The Owner ORM object just created.
-    """
-
-    async with session_scope() as session:
-        owner = Owner(discord_id=owner_discord_id)
-        session.add(owner)
-        await session.flush()
-
-    return owner
-
-
-async def create_kennel(
-    owner_discord_id: int, name: str = "Kennel", pooch_limit: int = KENNEL_POOCH_LIMIT
-) -> Optional[Kennel]:
-    """
-    Create a kennel for the given owner.
-
-    Parameters
-    ----------
-    owner_discord_id: int
-        The discord ID of the owner to create the kennel for.
-
-    name: str, default : "Kennel"
-        The name to give the new kennel.
-
-    pooch_limit: int, default : `KENNEL_POOCH_LIMIT`
-        The size limit to give the new kennel.
-
-    Returns
-    -------
-    Kennel, optional
-        The newly created Kennel, or None if the owner with the given Discord ID couldn't be found.
-    """
-
-    owner = await get_owner_by_discord_id(owner_discord_id)
-
-    if owner is None:
-        return None
-
-    async with session_scope() as session:
-        kennel = Kennel(
-            owner_discord_id=owner.discord_id,
-            name=name,
-            pooch_limit=pooch_limit,
-        )
-        session.add(kennel)
-        await session.flush()
-
-    return kennel
-
-
-async def create_vendor(
-    server_discord_id: int,
-    name: Optional[str] = None,
-    price_markup: float = VENDOR_PRICE_MARKUP,
-    rng: Optional[random.Random] = None,
-) -> Optional[Vendor]:
-    """
-    Create a vendor in the given server.
-
-    Parameters
-    ----------
-    server_discord_id: int
-        The Discord ID of the server to create the vendor in.
-
-    name: str, optional
-        The name to give the new vendor. Chooses a random one if not given.
-
-    price_markup: float, default : `VENDOR_PRICE_MARKUP`
-        The markup to multiply the buying price of any pooches the vendor is selling by.
-
-    rng: Random, optional
-        The random generator to determine randomness, if any vendor traits are left to chance (name, desired mutations).
-
-    Returns
-    -------
-    Vendor, optional
-        The Vendor ORM object that was just created, or None if the server with the given ID wasn't found.
-    """
-
-    rng = rng if rng is not None else random.Random()
-
-    async def _get_random_vendor_name() -> str:
-        statement = (
-            select(VendorFirstName).order_by(func.hashtextextended(VendorFirstName.name, bindparam("seed"))).limit(1)
-        )
-        response = await session.execute(statement, {"seed": rng.randint(0, RANDOM_SEED_SIZE_LIMIT)})
-        first_name = response.scalar_one_or_none()
-
-        statement = (
-            select(VendorLastName).order_by(func.hashtextextended(VendorLastName.name, bindparam("seed"))).limit(1)
-        )
-        response = await session.execute(statement, {"seed": rng.randint(0, RANDOM_SEED_SIZE_LIMIT)})
-        last_name = response.scalar_one_or_none()
-
-        return (
-            f"{(first_name.name + ' ') if first_name is not None else ''}"
-            f"{last_name.name if last_name is not None else ''}"
-        )
-
-    async def _get_random_mutation_id() -> Optional[int]:
-        statement = select(Mutation.id).order_by(func.hashtextextended(Mutation.name, bindparam("seed"))).limit(1)
-        response = await session.execute(statement, {"seed": rng.randint(0, RANDOM_SEED_SIZE_LIMIT)})
-        mutation = response.scalar_one_or_none()
-        return mutation
-
-    async with session_scope() as session:
-        vendor = Vendor(
-            server_discord_id=server_discord_id,
-            name=name or await _get_random_vendor_name(),
-            price_markup=price_markup,
-            desired_mutation_1=(await _get_random_mutation_id()),
-            desired_mutation_2=(await _get_random_mutation_id()),
-            desired_mutation_3=(await _get_random_mutation_id()),
-        )
-        session.add(vendor)
-        await session.flush()
-
-    return vendor
-
-
-async def create_server(server_discord_id: int) -> Server:
-    """
-    Create a server with the given Discord ID.
-
-    Parameters
-    ----------
-    server_discord_id: int
-        The Discord ID of the server to create.
-
-    Returns
-    -------
-    Server
-        The Server ORM object just created.
-    """
-
-    async with session_scope() as session:
-        server = Server(discord_id=server_discord_id)
-        session.add(server)
-        await session.flush()
-
-    return server
-
-
-async def add_pooch_to_kennel(kennel_id: int, pooch_id: int) -> KennelPooch:
-    """
-    Add the pooch with the given ID to the kennel with the given ID.
-
-    Parameters
-    ----------
-    kennel_id: int
-        The ID of the kennel to add the pooch to.
-
-    pooch_id: int
-        The ID of the pooch to add to the kennel.
-
-    Returns
-    -------
-    KennelPooch
-        The KennelPooch relationship ORM object just created.
-    """
-
-    async with session_scope() as session:
-        kennel_pooch = KennelPooch(kennel_id=kennel_id, pooch_id=pooch_id)
-        session.add(kennel_pooch)
-        await session.flush()
-
-    return kennel_pooch
-
-
 def _weighted_choice(rng: random.Random, items: list[tuple[T, int]]) -> Optional[T]:
     if len(items) == 0:
         return None
@@ -546,6 +275,64 @@ async def add_owner_to_server(server_discord_id: int, owner_discord_id: int) -> 
     return owner_server
 
 
+async def add_pooch_breeds(pooch_id: int, breed_weights: dict[int, int]) -> list[PoochBreed]:
+    """
+    Bulk-set breeds for a pooch by inserting one PoochBreed row per breed id.
+    Inteded for freshly created pooches. Does **not** delete existing breeds.
+
+    Parameters
+    ----------
+    pooch_id: int
+        The ID of the pooch.
+
+    breed_weights: dict[int, int]
+        Mapping of breed_id -> integer weight. Any non-positive weights are ignored.
+
+    Returns
+    -------
+    list[PoochBreed]
+        The created PoochBreed relationship rows.
+    """
+
+    rows: list[PoochBreed] = []
+    async with session_scope() as session:
+        for breed_id, weight in breed_weights.items():
+            if weight is None or int(weight) <= 0:
+                continue
+            row = PoochBreed(pooch_id=pooch_id, breed_id=int(breed_id), weight=int(weight))
+            session.add(row)
+            rows.append(row)
+        await session.flush()
+
+    return rows
+
+
+async def add_pooch_to_kennel(kennel_id: int, pooch_id: int) -> KennelPooch:
+    """
+    Add the pooch with the given ID to the kennel with the given ID.
+
+    Parameters
+    ----------
+    kennel_id: int
+        The ID of the kennel to add the pooch to.
+
+    pooch_id: int
+        The ID of the pooch to add to the kennel.
+
+    Returns
+    -------
+    KennelPooch
+        The KennelPooch relationship ORM object just created.
+    """
+
+    async with session_scope() as session:
+        kennel_pooch = KennelPooch(kennel_id=kennel_id, pooch_id=pooch_id)
+        session.add(kennel_pooch)
+        await session.flush()
+
+    return kennel_pooch
+
+
 async def add_pooch_to_vendor_stock(vendor_id: int, pooch_id: int) -> Optional[VendorPoochForSale]:
     """
     Add the pooch with the given ID to the given vendor's stock.
@@ -609,6 +396,158 @@ async def bury_pooch(owner_discord_id: int, pooch_id: int) -> Optional[Graveyard
     return graveyard_pooch
 
 
+async def create_kennel(
+    owner_discord_id: int, name: str = "Kennel", pooch_limit: int = KENNEL_POOCH_LIMIT
+) -> Optional[Kennel]:
+    """
+    Create a kennel for the given owner.
+
+    Parameters
+    ----------
+    owner_discord_id: int
+        The discord ID of the owner to create the kennel for.
+
+    name: str, default : "Kennel"
+        The name to give the new kennel.
+
+    pooch_limit: int, default : `KENNEL_POOCH_LIMIT`
+        The size limit to give the new kennel.
+
+    Returns
+    -------
+    Kennel, optional
+        The newly created Kennel, or None if the owner with the given Discord ID couldn't be found.
+    """
+
+    owner = await get_owner_by_discord_id(owner_discord_id)
+
+    if owner is None:
+        return None
+
+    async with session_scope() as session:
+        kennel = Kennel(
+            owner_discord_id=owner.discord_id,
+            name=name,
+            pooch_limit=pooch_limit,
+        )
+        session.add(kennel)
+        await session.flush()
+
+    return kennel
+
+
+async def create_owner(owner_discord_id: int) -> Owner:
+    """
+    Create an owner with the given Discord ID.
+
+    Parameters
+    ----------
+    owner_discord_id: int
+        The Discord ID of the owner to create.
+
+    Returns
+    -------
+    Owner
+        The Owner ORM object just created.
+    """
+
+    async with session_scope() as session:
+        owner = Owner(discord_id=owner_discord_id)
+        session.add(owner)
+        await session.flush()
+
+    return owner
+
+
+async def create_pooch(
+    owner_discord_id: Optional[int] = None,
+    vendor_id: Optional[int] = None,
+    name: Optional[str] = None,
+    sex: Optional[str] = None,
+    age: int = POOCH_FETAL_AGE,
+    base_health: int = POOCH_BASE_HEALTH,
+    breeding_cooldown: int = POOCH_BREEDING_COOLDOWN,
+    rng: Optional[random.Random] = None,
+) -> Pooch:
+    """
+    Create a pooch.
+
+    Parameters
+    ----------
+    owner_discord_id: int, optional
+        The Discord ID of the owner to own the new pooch, if any.
+
+    vendor_id: int, optional
+        The ID of the vendor to own the new pooch, if any.
+
+    name: str, optional
+        The name to give the pooch. Chooses a random one if not given.
+
+    sex: str, optional
+        The sex to give the pooch. Chooses a random one if not given.
+
+    age: int, default : `POOCH_FETAL_AGE`
+        The age to make the pooch. Defaults to the fetal age.
+
+    base_health: int, default : `POOCH_BASE_HEALTH`
+        The base health to give the pooch. Defaults to the base average pooch health.
+
+    breeding_cooldown: int, default : `POOCH_BREEDING_COOLDOWN`
+        The breeding cooldown to start the pooch off with. Defaults to the base breeding cooldown.
+
+    rng: Random, optional
+        The random generator to determine randomness, if any pooch traits are left to chance (name, sex).
+
+    Returns
+    -------
+    Pooch
+        The Pooch ORM object that was just created.
+    """
+
+    rng = rng if rng is not None else random.Random()
+
+    async def _get_random_pooch_name() -> str:
+        statement = select(DogName).order_by(func.hashtextextended(DogName.name, bindparam("seed"))).limit(1)
+        response = await session.execute(statement, {"seed": rng.randint(0, RANDOM_SEED_SIZE_LIMIT)})
+        dog_name = response.scalar_one_or_none()
+        return dog_name.name if dog_name is not None else "Dog"
+
+    async def _get_random_sex():
+        return "female" if rng.randint(0, 1) == 0 else "male"
+
+    if owner_discord_id is not None:
+        owner = await get_owner_by_discord_id(owner_discord_id)
+        if owner is None:
+            owner_discord_id = None
+
+    if vendor_id is not None:
+        vendor = await get_vendor_by_id(vendor_id)
+        if vendor is None:
+            vendor_id = None
+
+    # if both owner and vendor are provided, prioritize owner
+    if owner_discord_id is not None and vendor_id is not None:
+        vendor_id = None
+
+    async with session_scope() as session:
+        pooch = Pooch(
+            owner_discord_id=owner_discord_id,
+            vendor_id=vendor_id,
+            name=name or await _get_random_pooch_name(),
+            sex=sex or await _get_random_sex(),
+            age=age,
+            base_health=base_health,
+            health_loss_age=POOCH_HEALTH_LOSS_AGE,
+            breeding_cooldown=breeding_cooldown,
+            alive=True,
+            virgin=True,
+        )
+        session.add(pooch)
+        await session.flush()
+
+    return pooch
+
+
 async def create_pooch_pregnancy(mother_id: int, fetus_id: int) -> PoochPregnancy:
     """
     Create a pregnancy relationship between a mother and fetus.
@@ -633,6 +572,99 @@ async def create_pooch_pregnancy(mother_id: int, fetus_id: int) -> PoochPregnanc
         await session.flush()
 
     return pregnancy
+
+
+async def create_server(server_discord_id: int) -> Server:
+    """
+    Create a server with the given Discord ID.
+
+    Parameters
+    ----------
+    server_discord_id: int
+        The Discord ID of the server to create.
+
+    Returns
+    -------
+    Server
+        The Server ORM object just created.
+    """
+
+    async with session_scope() as session:
+        server = Server(discord_id=server_discord_id)
+        session.add(server)
+        await session.flush()
+
+    return server
+
+
+async def create_vendor(
+    server_discord_id: int,
+    name: Optional[str] = None,
+    price_markup: float = VENDOR_PRICE_MARKUP,
+    rng: Optional[random.Random] = None,
+) -> Optional[Vendor]:
+    """
+    Create a vendor in the given server.
+
+    Parameters
+    ----------
+    server_discord_id: int
+        The Discord ID of the server to create the vendor in.
+
+    name: str, optional
+        The name to give the new vendor. Chooses a random one if not given.
+
+    price_markup: float, default : `VENDOR_PRICE_MARKUP`
+        The markup to multiply the buying price of any pooches the vendor is selling by.
+
+    rng: Random, optional
+        The random generator to determine randomness, if any vendor traits are left to chance (name, desired mutations).
+
+    Returns
+    -------
+    Vendor, optional
+        The Vendor ORM object that was just created, or None if the server with the given ID wasn't found.
+    """
+
+    rng = rng if rng is not None else random.Random()
+
+    async def _get_random_vendor_name() -> str:
+        statement = (
+            select(VendorFirstName).order_by(func.hashtextextended(VendorFirstName.name, bindparam("seed"))).limit(1)
+        )
+        response = await session.execute(statement, {"seed": rng.randint(0, RANDOM_SEED_SIZE_LIMIT)})
+        first_name = response.scalar_one_or_none()
+
+        statement = (
+            select(VendorLastName).order_by(func.hashtextextended(VendorLastName.name, bindparam("seed"))).limit(1)
+        )
+        response = await session.execute(statement, {"seed": rng.randint(0, RANDOM_SEED_SIZE_LIMIT)})
+        last_name = response.scalar_one_or_none()
+
+        return (
+            f"{(first_name.name + ' ') if first_name is not None else ''}"
+            f"{last_name.name if last_name is not None else ''}"
+        )
+
+    async def _get_random_mutation_id() -> Optional[int]:
+        statement = select(Mutation.id).order_by(func.hashtextextended(Mutation.name, bindparam("seed"))).limit(1)
+        response = await session.execute(statement, {"seed": rng.randint(0, RANDOM_SEED_SIZE_LIMIT)})
+        mutation = response.scalar_one_or_none()
+        return mutation
+
+    async with session_scope() as session:
+        vendor = Vendor(
+            server_discord_id=server_discord_id,
+            name=name or await _get_random_vendor_name(),
+            price_markup=price_markup,
+            desired_mutation_1=(await _get_random_mutation_id()),
+            desired_mutation_2=(await _get_random_mutation_id()),
+            desired_mutation_3=(await _get_random_mutation_id()),
+        )
+        session.add(vendor)
+        await session.flush()
+
+    return vendor
 
 
 async def set_pooch_parentage(child_id: int, father_id: int | None, mother_id: int | None) -> PoochParentage:
@@ -662,35 +694,3 @@ async def set_pooch_parentage(child_id: int, father_id: int | None, mother_id: i
         await session.flush()
 
     return parentage
-
-
-async def add_pooch_breeds(pooch_id: int, breed_weights: dict[int, int]) -> list[PoochBreed]:
-    """
-    Bulk-set breeds for a pooch by inserting one PoochBreed row per breed id.
-    Inteded for freshly created pooches. Does **not** delete existing breeds.
-
-    Parameters
-    ----------
-    pooch_id: int
-        The ID of the pooch.
-
-    breed_weights: dict[int, int]
-        Mapping of breed_id -> integer weight. Any non-positive weights are ignored.
-
-    Returns
-    -------
-    list[PoochBreed]
-        The created PoochBreed relationship rows.
-    """
-
-    rows: list[PoochBreed] = []
-    async with session_scope() as session:
-        for breed_id, weight in breed_weights.items():
-            if weight is None or int(weight) <= 0:
-                continue
-            row = PoochBreed(pooch_id=pooch_id, breed_id=int(breed_id), weight=int(weight))
-            session.add(row)
-            rows.append(row)
-        await session.flush()
-
-    return rows

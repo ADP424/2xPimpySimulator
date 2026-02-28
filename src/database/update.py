@@ -67,34 +67,6 @@ async def decrement_pooch_breeding_cooldown(pooch_id: int) -> Optional[Pooch]:
     return pooch
 
 
-async def set_pooch_dead(pooch_id: int) -> Optional[Pooch]:
-    """
-    Set the pooch with the given ID to dead.
-    Doesn't move the pooch to a graveyard. Call `bury_pooch` to do that.
-
-    Parameters
-    ----------
-    pooch_id: int
-        The ID of the pooch to kill.
-
-    Returns
-    -------
-    Pooch, optional
-        The Pooch ORM object that was just killed, or None if the pooch wasn't found.
-    """
-
-    async with session_scope() as session:
-        query = select(Pooch).where(Pooch.id == pooch_id)
-        pooch = (await session.execute(query)).scalar_one_or_none()
-
-        if pooch is None:
-            return None
-
-        pooch.alive = False
-
-    return pooch
-
-
 async def give_money_to_owner(owner_discord_id: int, dollars: int) -> Optional[Owner]:
     """
     Add an amount of money to the given owner's `dollars`.
@@ -123,37 +95,6 @@ async def give_money_to_owner(owner_discord_id: int, dollars: int) -> Optional[O
         owner.dollars += dollars
 
     return owner
-
-
-async def transfer_pooch_to_owner(pooch_id: int, owner_discord_id: int) -> Optional[Pooch]:
-    """
-    Transfer a pooch to a new owner, clearing any vendor association.
-
-    Parameters
-    ----------
-    pooch_id: int
-        The ID of the pooch to transfer.
-
-    owner_discord_id: int
-        The Discord ID of the new owner.
-
-    Returns
-    -------
-    Pooch, optional
-        The updated Pooch ORM object, or None if the pooch wasn't found.
-    """
-
-    async with session_scope() as session:
-        query = select(Pooch).where(Pooch.id == pooch_id)
-        pooch = (await session.execute(query)).scalar_one_or_none()
-
-        if pooch is None:
-            return None
-
-        pooch.owner_discord_id = owner_discord_id
-        pooch.vendor_id = None
-
-    return pooch
 
 
 async def set_event_channel_discord_id(server_discord_id: int, channel_discord_id: int) -> Optional[Server]:
@@ -211,16 +152,44 @@ async def set_pooch_breeding_cooldown(pooch_id: int, cooldown: int) -> Optional[
     return pooch
 
 
-async def set_pooch_virgin(pooch_id: int, virgin: bool = False) -> Optional[Pooch]:
+async def set_pooch_dead(pooch_id: int) -> Optional[Pooch]:
     """
-    Set the virgin flag of a pooch, false by default.
+    Set the pooch with the given ID to dead.
+    Doesn't move the pooch to a graveyard. Call `bury_pooch` to do that.
+
+    Parameters
+    ----------
+    pooch_id: int
+        The ID of the pooch to kill.
+
+    Returns
+    -------
+    Pooch, optional
+        The Pooch ORM object that was just killed, or None if the pooch wasn't found.
+    """
+
+    async with session_scope() as session:
+        query = select(Pooch).where(Pooch.id == pooch_id)
+        pooch = (await session.execute(query)).scalar_one_or_none()
+
+        if pooch is None:
+            return None
+
+        pooch.alive = False
+
+    return pooch
+
+
+async def set_pooch_virgin(pooch_id: int, virgin: bool = True) -> Optional[Pooch]:
+    """
+    Set the virgin flag of a pooch, True by default.
 
     Parameters
     ----------
     pooch_id: int
         The ID of the pooch to update the virginity status of.
 
-    virgin: bool, default : False
+    virgin: bool, default : True
         `True` to set the pooch to a virgin, `False` to lose their virginity.
 
     Returns
@@ -235,5 +204,36 @@ async def set_pooch_virgin(pooch_id: int, virgin: bool = False) -> Optional[Pooc
         if pooch is None:
             return None
         pooch.virgin = virgin
+
+    return pooch
+
+
+async def transfer_pooch_to_owner(pooch_id: int, owner_discord_id: int) -> Optional[Pooch]:
+    """
+    Transfer a pooch to a new owner, clearing any vendor association.
+
+    Parameters
+    ----------
+    pooch_id: int
+        The ID of the pooch to transfer.
+
+    owner_discord_id: int
+        The Discord ID of the new owner.
+
+    Returns
+    -------
+    Pooch, optional
+        The updated Pooch ORM object, or None if the pooch wasn't found.
+    """
+
+    async with session_scope() as session:
+        query = select(Pooch).where(Pooch.id == pooch_id)
+        pooch = (await session.execute(query)).scalar_one_or_none()
+
+        if pooch is None:
+            return None
+
+        pooch.owner_discord_id = owner_discord_id
+        pooch.vendor_id = None
 
     return pooch

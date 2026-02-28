@@ -2,9 +2,78 @@ from typing import Optional
 
 from sqlalchemy import delete, func, select
 
-from .get import Vendor, get_pooch_by_id, get_vendor_by_id
-from .models import KennelPooch, Pooch, PoochPregnancy, VendorPoochForSale
+from .models import KennelPooch, Pooch, PoochPregnancy, VendorPoochForSale, Vendor
 from .session import session_scope
+
+
+async def clear_vendor_pooch_stock(vendor_id: int, delete_pooches: bool = False) -> Optional[Vendor]:
+    """
+    Clear the pooch stock of the vendor with the given ID.
+
+    Parameters
+    ----------
+    vendor_id: int
+        The ID of the vendor to clear the stock of.
+
+    delete_pooches: bool, default : False
+        Whether to delete the Pooch ORM objects as well as removing them from the vendor.
+
+    Returns
+    -------
+    Vendor, optional
+        The Vendor ORM object whose stock was just cleared, or None if the vendor wasn't found.
+    """
+
+    async with session_scope() as session:
+        response = await session.execute(select(Vendor).where(Vendor.id == vendor_id))
+        vendor = response.scalar_one_or_none()
+        if vendor is None:
+            return None
+
+        if delete_pooches:
+            await session.execute(
+                delete(Pooch)
+                .where(VendorPoochForSale.pooch_id == Pooch.id)
+                .where(VendorPoochForSale.vendor_id == vendor_id)
+            )
+        else:
+            await session.execute(delete(VendorPoochForSale).where(VendorPoochForSale.vendor_id == vendor_id))
+
+    return vendor
+
+
+async def delete_pregnancy(mother_id: int, fetus_id: int) -> Optional[Pooch]:
+    """
+    Delete a pooch pregnancy instance.
+
+    Parameters
+    ----------
+    mother_id: int
+        The ID of the mother pooch.
+
+    fetus_id: int
+        The ID of the fetal pooch.
+
+    Returns
+    -------
+    Pooch, optional
+        The Pooch ORM object representing the fetus from the pregnancy that just ended.
+    """
+
+    async with session_scope() as session:
+        response = await session.execute(select(Pooch).where(Pooch.id == fetus_id))
+        fetus = response.scalar_one_or_none()
+        if fetus is None:
+            return None
+
+        await session.execute(
+            delete(PoochPregnancy).where(
+                PoochPregnancy.mother_id == mother_id,
+                PoochPregnancy.fetus_id == fetus_id,
+            )
+        )
+
+    return fetus
 
 
 async def delete_random_vendor(server_discord_id: int) -> Optional[Vendor]:
@@ -24,10 +93,7 @@ async def delete_random_vendor(server_discord_id: int) -> Optional[Vendor]:
 
     async with session_scope() as session:
         vendor = await session.scalar(
-            select(Vendor)
-            .where(Vendor.server_discord_id == server_discord_id)
-            .order_by(func.random())
-            .limit(1)
+            select(Vendor).where(Vendor.server_discord_id == server_discord_id).order_by(func.random()).limit(1)
         )
 
         if vendor is None:
@@ -117,73 +183,3 @@ async def remove_pooch_from_vendor_stock(vendor_id: int, pooch_id: int) -> Optio
         )
 
     return pooch
-
-
-async def clear_vendor_pooch_stock(vendor_id: int, delete_pooches: bool = False) -> Optional[Vendor]:
-    """
-    Clear the pooch stock of the vendor with the given ID.
-
-    Parameters
-    ----------
-    vendor_id: int
-        The ID of the vendor to clear the stock of.
-
-    delete_pooches: bool, default : False
-        Whether to delete the Pooch ORM objects as well as removing them from the vendor.
-
-    Returns
-    -------
-    Vendor, optional
-        The Vendor ORM object whose stock was just cleared, or None if the vendor wasn't found.
-    """
-
-    vendor = await get_vendor_by_id(vendor_id)
-
-    if vendor is None:
-        return None
-
-    async with session_scope() as session:
-        if delete_pooches:
-            await session.execute(
-                delete(Pooch)
-                .where(VendorPoochForSale.pooch_id == Pooch.id)
-                .where(VendorPoochForSale.vendor_id == vendor_id)
-            )
-        else:
-            await session.execute(delete(VendorPoochForSale).where(VendorPoochForSale.vendor_id == vendor_id))
-
-    return vendor
-
-
-async def delete_pregnancy(mother_id: int, fetus_id: int) -> Optional[Pooch]:
-    """
-    Delete a pooch pregnancy instance.
-
-    Parameters
-    ----------
-    mother_id: int
-        The ID of the mother pooch.
-
-    fetus_id: int
-        The ID of the fetal pooch.
-
-    Returns
-    -------
-    Pooch, optional
-        The Pooch ORM object representing the fetus from the pregnancy that just ended.
-    """
-
-    fetus = await get_pooch_by_id(fetus_id)
-
-    if fetus is None:
-        return None
-
-    async with session_scope() as session:
-        await session.execute(
-            delete(PoochPregnancy).where(
-                PoochPregnancy.mother_id == mother_id,
-                PoochPregnancy.fetus_id == fetus_id,
-            )
-        )
-
-    return fetus

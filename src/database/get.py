@@ -18,23 +18,70 @@ from .models import (
 from .session import session_scope
 
 
-async def get_pooch_by_id(pooch_id: int) -> Optional[Pooch]:
+async def get_kennel_by_id(kennel_id: int) -> Optional[Kennel]:
     """
-    Fetch the pooch with the given ID.
+    Fetch the kennel with the given ID.
 
     Parameters
     ----------
-    pooch_id: int
-        The ID of the pooch to fetch.
+    kennel_id: int
+        The ID of the kennel to fetch.
 
     Returns
     -------
-    Option[Pooch]
-        The Pooch ORM object with the given ID, or None if no Pooch with that ID exists.
+    Kennel, optional
+        The Kennel ORM object with the given ID, or None if no kennel with the given ID was found.
     """
 
     async with session_scope() as session:
-        query = select(Pooch).where(Pooch.id == pooch_id)
+        response = await session.execute(select(Kennel).where(Kennel.id == kennel_id))
+
+    return response.scalar_one_or_none()
+
+
+async def get_mutation_by_id(mutation_id: int) -> Optional[Mutation]:
+    """
+    Fetch a mutation by its ID.
+
+    Parameters
+    ----------
+    mutation_id: int
+        The ID of the mutation to fetch.
+
+    Returns
+    -------
+    Mutation, optional
+        The Mutation ORM object, or None if no mutation with the given ID exists.
+    """
+
+    async with session_scope() as session:
+        query = select(Mutation).where(Mutation.id == mutation_id)
+        response = await session.execute(query)
+
+    return response.scalar_one_or_none()
+
+
+async def get_mutation_health_impact(mutation_id: int) -> Optional[int]:
+    """
+    Get the health impact for the mutation with the given ID as an integer.
+
+    Parameters
+    ----------
+    mutation_id: int
+        The ID of the mutation to get the numerical health impact of.
+
+    Returns
+    -------
+    int, optional
+        The health impact of the given mutation, or None if the mutation wasn't found.
+    """
+
+    async with session_scope() as session:
+        query = (
+            select(HealthImpactWeight.weight)
+            .join(Mutation, Mutation.health_impact == HealthImpactWeight.health_impact)
+            .where(Mutation.id == mutation_id)
+        )
         response = await session.execute(query)
 
     return response.scalar_one_or_none()
@@ -62,88 +109,79 @@ async def get_owner_by_discord_id(owner_discord_id: int) -> Optional[Owner]:
     return response.scalar_one_or_none()
 
 
-async def get_kennel_by_id(kennel_id: int) -> Optional[Kennel]:
+async def get_owner_server(server_discord_id: int, owner_discord_id: int) -> Optional[OwnerServer]:
     """
-    Fetch the kennel with the given ID.
-
-    Parameters
-    ----------
-    kennel_id: int
-        The ID of the kennel to fetch.
-
-    Returns
-    -------
-    Kennel, optional
-        The Kennel ORM object with the given ID, or None if no kennel with the given ID was found.
-    """
-
-    async with session_scope() as session:
-        response = await session.execute(select(Kennel).where(Kennel.id == kennel_id))
-
-    return response.scalar_one_or_none()
-
-
-async def get_vendor_by_id(vendor_id: int) -> Optional[Vendor]:
-    """
-    Fetch the vendor with the given ID.
-
-    Parameters
-    ----------
-    vendor_id: int
-        The ID of the vendor to fetch.
-
-    Returns
-    -------
-    Vendor, optional
-        The Vendor ORM object with the given ID, or None if no vendor with that ID was found.
-    """
-
-    async with session_scope() as session:
-        response = await session.execute(select(Vendor).where(Vendor.id == vendor_id))
-
-    vendor = response.scalar_one_or_none()
-    return vendor
-
-
-async def get_server_by_discord_id(server_discord_id: int) -> Optional[Server]:
-    """
-    Fetch a server by its Discord ID.
+    Get the owner-server relationship with the given server and owner Discord IDs.
 
     Parameters
     ----------
     server_discord_id: int
-        The Discord ID of the server to fetch.
+        The Discord ID of the server in the owner-server relationship.
+
+    owner_discord_id: int
+        The Discord ID of the owner in the owner-server relationship.
 
     Returns
     -------
-    Server, optional
-        The Server ORM object, or None if no server with the given ID exists.
+    OwnerServer, optional
+        The OwnerServer ORM relationship object with the given ID pair, or None if it doesn't exist.
     """
 
     async with session_scope() as session:
-        query = select(Server).where(Server.discord_id == server_discord_id)
+        query = select(OwnerServer).where(
+            OwnerServer.server_discord_id == server_discord_id and OwnerServer.owner_discord_id == owner_discord_id
+        )
         response = await session.execute(query)
 
     return response.scalar_one_or_none()
 
 
-async def get_mutation_by_id(mutation_id: int) -> Optional[Mutation]:
+async def get_pooch_by_id(pooch_id: int) -> Optional[Pooch]:
     """
-    Fetch a mutation by its ID.
+    Fetch the pooch with the given ID.
 
     Parameters
     ----------
-    mutation_id: int
-        The ID of the mutation to fetch.
+    pooch_id: int
+        The ID of the pooch to fetch.
 
     Returns
     -------
-    Mutation, optional
-        The Mutation ORM object, or None if no mutation with the given ID exists.
+    Option[Pooch]
+        The Pooch ORM object with the given ID, or None if no Pooch with that ID exists.
     """
 
     async with session_scope() as session:
-        query = select(Mutation).where(Mutation.id == mutation_id)
+        query = select(Pooch).where(Pooch.id == pooch_id)
+        response = await session.execute(query)
+
+    return response.scalar_one_or_none()
+
+
+async def get_pooch_health(pooch_id: int) -> Optional[int]:
+    """
+    Get the current health of the given pooch, taking into account age and mutations.
+
+    Parameters
+    ----------
+    pooch_id: int
+        The ID of the pooch to get the health of.
+
+    Returns
+    -------
+    int, optional
+        The current health of the pooch, or None if the pooch wasn't found.
+    """
+
+    async with session_scope() as session:
+        query = (
+            select(Pooch.base_health - Pooch.health_loss_age + func.coalesce(func.sum(HealthImpactWeight.weight), 0))
+            .outerjoin(PoochMutation, PoochMutation.pooch_id == Pooch.id)
+            .outerjoin(Mutation, Mutation.id == PoochMutation.mutation_id)
+            .outerjoin(HealthImpactWeight, HealthImpactWeight.health_impact == Mutation.health_impact)
+            .where(Pooch.id == pooch_id)
+            .group_by(Pooch.id, Pooch.base_health, Pooch.health_loss_age)
+        )
         response = await session.execute(query)
 
     return response.scalar_one_or_none()
@@ -207,6 +245,72 @@ async def get_pooch_parents(pooch_id: int) -> tuple[Optional[Pooch], Optional[Po
     return (father, mother)
 
 
+async def get_pooch_virginity_status(pooch_id: int) -> Optional[bool]:
+    """
+    Get whether the pooch with the given ID is a virgin or not.
+
+    Parameters
+    ----------
+    pooch_id: int
+        The ID of the pooch to get the virginity status of.
+
+    Returns
+    -------
+    bool, optional
+        Whether the pooch is a virgin or not, or None if the pooch wasn't found.
+    """
+
+    async with session_scope() as session:
+        query = select(Pooch.virgin).where(Pooch.id == pooch_id)
+        response = await session.execute(query)
+
+    return response.scalar_one_or_none()
+
+
+async def get_server_by_discord_id(server_discord_id: int) -> Optional[Server]:
+    """
+    Fetch a server by its Discord ID.
+
+    Parameters
+    ----------
+    server_discord_id: int
+        The Discord ID of the server to fetch.
+
+    Returns
+    -------
+    Server, optional
+        The Server ORM object, or None if no server with the given ID exists.
+    """
+
+    async with session_scope() as session:
+        query = select(Server).where(Server.discord_id == server_discord_id)
+        response = await session.execute(query)
+
+    return response.scalar_one_or_none()
+
+
+async def get_vendor_by_id(vendor_id: int) -> Optional[Vendor]:
+    """
+    Fetch the vendor with the given ID.
+
+    Parameters
+    ----------
+    vendor_id: int
+        The ID of the vendor to fetch.
+
+    Returns
+    -------
+    Vendor, optional
+        The Vendor ORM object with the given ID, or None if no vendor with that ID was found.
+    """
+
+    async with session_scope() as session:
+        response = await session.execute(select(Vendor).where(Vendor.id == vendor_id))
+
+    vendor = response.scalar_one_or_none()
+    return vendor
+
+
 async def get_vendor_server(vendor_id: int) -> Optional[Server]:
     """
     Get the server the vendor with the given ID belongs to.
@@ -224,88 +328,6 @@ async def get_vendor_server(vendor_id: int) -> Optional[Server]:
 
     async with session_scope() as session:
         query = select(Server).join(Vendor, Vendor.server_discord_id == Server.discord_id).where(Vendor.id == vendor_id)
-        response = await session.execute(query)
-
-    return response.scalar_one_or_none()
-
-
-async def get_owner_server(server_discord_id: int, owner_discord_id: int) -> Optional[OwnerServer]:
-    """
-    Get the owner-server relationship with the given server and owner Discord IDs.
-
-    Parameters
-    ----------
-    server_discord_id: int
-        The Discord ID of the server in the owner-server relationship.
-
-    owner_discord_id: int
-        The Discord ID of the owner in the owner-server relationship.
-
-    Returns
-    -------
-    OwnerServer, optional
-        The OwnerServer ORM relationship object with the given ID pair, or None if it doesn't exist.
-    """
-
-    async with session_scope() as session:
-        query = select(OwnerServer).where(
-            OwnerServer.server_discord_id == server_discord_id and OwnerServer.owner_discord_id == owner_discord_id
-        )
-        response = await session.execute(query)
-
-    return response.scalar_one_or_none()
-
-
-async def get_pooch_health(pooch_id: int) -> Optional[int]:
-    """
-    Get the current health of the given pooch, taking into account age and mutations.
-
-    Parameters
-    ----------
-    pooch_id: int
-        The ID of the pooch to get the health of.
-
-    Returns
-    -------
-    int, optional
-        The current health of the pooch, or None if the pooch wasn't found.
-    """
-
-    async with session_scope() as session:
-        query = (
-            select(Pooch.base_health - Pooch.health_loss_age + func.coalesce(func.sum(HealthImpactWeight.weight), 0))
-            .outerjoin(PoochMutation, PoochMutation.pooch_id == Pooch.id)
-            .outerjoin(Mutation, Mutation.id == PoochMutation.mutation_id)
-            .outerjoin(HealthImpactWeight, HealthImpactWeight.health_impact == Mutation.health_impact)
-            .where(Pooch.id == pooch_id)
-            .group_by(Pooch.id, Pooch.base_health, Pooch.health_loss_age)
-        )
-        response = await session.execute(query)
-
-    return response.scalar_one_or_none()
-
-
-async def get_mutation_health_impact(mutation_id: int) -> Optional[int]:
-    """
-    Get the health impact for the mutation with the given ID as an integer.
-
-    Parameters
-    ----------
-    mutation_id: int
-        The ID of the mutation to get the numerical health impact of.
-
-    Returns
-    -------
-    int, optional
-        The health impact of the given mutation, or None if the mutation wasn't found.
-    """
-
-    async with session_scope() as session:
-        query = (
-            select(HealthImpactWeight.weight)
-            .join(Mutation, Mutation.health_impact == HealthImpactWeight.health_impact)
-            .where(Mutation.id == mutation_id)
-        )
         response = await session.execute(query)
 
     return response.scalar_one_or_none()
