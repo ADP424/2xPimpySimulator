@@ -22,6 +22,14 @@
 			"advanced_options": {
 				"sold_by_vendors": 0
 			}
+		},
+		"Moscow Water Dog":{
+			"alt_name": "Moscow Retriever",
+			"description": "The Moscow Water Dog was produced only by the Red Star Kennels, the state-operated organization chartered to provide working dogs for the armed services of the Soviet Union.",
+			"rarity": "UNIQUE",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
 		}
     },
 	"Pre-Columbian Dog":{
@@ -34,7 +42,7 @@
 			}
 		},
 		"Fuegian dog":{
-			"alt_name": "Patagonian dog",
+			"alt_name": "Patagonian Dog",
 			"description": "The Fuegian dog is an extinct type of canine. The Fuegian dog was bred and domesticated from the South American culpeo, also known as the culpeo fox.",
 			"rarity": "EXTRAORDINARY",
 			"advanced_options": {
@@ -42,8 +50,16 @@
 			}
 		},
 		"Hare Indian Dog":{
-			"alt_name": "Trap line dog",
+			"alt_name": "Trap Line Dog",
 			"description": "The Hare Indian dog is an extinct domesticated canine; possibly a breed of domestic dog, coydog, or domesticated coyote; formerly found and originally bred in northern Canada by the Hare Indians for coursing.",
+			"rarity": "EXTRAORDINARY",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+		},
+		"Mexican lapdog":{
+			"alt_name": "Ytzcuinte Potzotli",
+			"description": "he Mexican lapdog is an extinct breed of lap dog originating in Mexico. Noted for its small size, it was the smallest known dog breed.",
 			"rarity": "EXTRAORDINARY",
 			"advanced_options": {
 				"sold_by_vendors": 0
@@ -88,6 +104,14 @@
 		"Halls Heeler": {
             "alt_name": "Hall's dogs",
             "description": "The Halls Heeler is the presumed ancestor of two present-day dog breeds, the Australian cattle dog and the Australian stumpy tail cattle dog.",
+            "rarity": "REMARKABLE",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+        },
+		"Lapponian Shepherd": {
+            "alt_name": "Cockhill's Finnish Lapphound",
+            "description": "The Lapponian Shepherd  is an extinct dog breed originating from Finland. Despite its name, it did not come from Lapland, but from the southern parts of the country.",
             "rarity": "REMARKABLE",
 			"advanced_options": {
 				"sold_by_vendors": 0
@@ -162,7 +186,23 @@
 			"advanced_options": {
 				"sold_by_vendors": 0
 			}
-		}
+		},
+		"Molossian Hound": {
+			"alt_name": "Epirus Mastiff",
+			"description": "The Molossus is an extinct dog breed from Ancient Greece.",
+			"rarity": "EXTRAORDINARY",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+		},
+		"Old English Bulldog": {
+			"alt_name": "Ald Anglash Balldag",
+			"description": "The Old English Bulldog is an extinct breed of dog.",
+			"rarity": "REMARKABLE",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+		},
 		"Terceira Mastiff": {
 			"alt_name": "Rabo Torto",
 			"description": "The Terceira Mastiff came from the island of Terceira, located in the Azores, which is the only island where this dog has ever existed and where it was employed as a house guardian.",
@@ -170,7 +210,7 @@
 			"advanced_options": {
 				"sold_by_vendors": 0
 			}
-		},
+		}
 	},
 	"Husky": {
 		"Argentine Polar Dog": {
@@ -209,6 +249,14 @@
 				"sold_by_vendors": 0
 			}
 		}
+		"Old Spanish Pointer": {
+			"alt_name": "Perro de Punta Español",
+			"description": "The Old Spanish Pointer is an extinct breed of Spanish pointing dogs known from the Early Modern Period; it is considered the first of its type from which all modern pointing dog breeds descend.",
+			"rarity": "EXTRAORDINARY",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+		}
 	},
 	"Scent Hound": {
 		"Basset Hound": {
@@ -235,6 +283,38 @@
 		"King's White Hound": {
 			"alt_name": "Chien Blanc du Roi",
 			"description": "The King's White Hound, the Chien Blanc du Roi in French, was a breed of scent hound from France that is now extinct. The breed was said to be the favourite of the French kings from Louis XI to Louis XIV.",
+			"rarity": "REMARKABLE",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+		},
+		"Laconian": {
+			"alt_name": "Spartan",
+			"description": "The Laconian is an extinct dog breed from ancient Laconia, in Greece. In antiquity, it was famous for its swiftness and keen sense of smell, and typically used for hunting.",
+			"rarity": "EXTRAORDINARY",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+		},
+		"Limer": {
+			"alt_name": "Lymer",
+			"description": "A limer was a kind of dog, a scenthound, used on a leash in medieval times to find large game before it was hunted down by the pack.",
+			"rarity": "REMARKABLE",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+		},
+		"Norman Hound": {
+			"alt_name": "No Hound",
+			"description": "The Norman Hound was said to have excellent scenting abilities, great stamina and a magnificent voice, but was extremely slow; a pack usually took between six and eight hours to hunt a stag.",
+			"rarity": "REMARKABLE",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+		},
+		"North Country Beagle": {
+			"alt_name": "Northern Beagle",
+			"description": "The North Country Beagle was a large, bony hound with a square head and long trailing ears.",
 			"rarity": "REMARKABLE",
 			"advanced_options": {
 				"sold_by_vendors": 0
@@ -284,6 +364,14 @@
 			"description": "The Kritikos Lagonikos is a breed of hunting dog from the Greek island of Crete.",
 			"rarity": "RARE",
 		},
+		"Norfolk Spaniel": {
+			"alt_name": "Shropshire Spaniel",
+			"description": "The Norfolk Spaniel is a breed of dog which has been extinct since the early 20th century. It was originally thought to have originated from the work of one of the Dukes of Norfolk, but this theory was disproven after being in doubt during the later part of the 19th century.",
+			"rarity": "REMARKABLE",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+		},
 		"Zerdava": {
 			"alt_name": "Black Sea Spitz",
 			"description": "The Zerdava is an aboriginal laika dog breed native to the Black Sea region of Turkey and Georgia. Zerdava are traditionally used as guard and hunting dogs and are especially prized for boar hunting.",
@@ -294,6 +382,14 @@
 		"Hawaiian Poi Dog": {
 			"alt_name": "ʻĪlio mākuʻe",
 			"description": "The Hawaiian Poi Dog (Hawaiian: ʻīlio or ʻīlio mākuʻe) is an extinct breed of pariah dog from Hawaiʻi which was used by Native Hawaiians as a spiritual protector of children and as a source of food.",
+			"rarity": "EXTRAORDINARY",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+		},
+		"Marquesan Dog": {
+			"alt_name": "Marquesas Islands Dog",
+			"description": "The Marquesan Dog is an extinct breed of dog from the Marquesas Islands.",
 			"rarity": "EXTRAORDINARY",
 			"advanced_options": {
 				"sold_by_vendors": 0
@@ -318,6 +414,16 @@
 			}
 		}
 	},
+	"Sighthound": {
+		"Old Croatian Sighthound": {
+			"alt_name": "Old Bosnian Sighthound",
+			"description": "The Old Croatian Sighthound is an extinct breed of sighthound from the countries of Croatia and Bosnia and Herzegovina.",
+			"rarity": "REMARKABLE",
+			"advanced_options": {
+				"sold_by_vendors": 0
+			}
+		}
+	},
 	"Fantasy": {
 		"Mecahound": {
 			"alt_name": "Robot",
@@ -331,7 +437,7 @@
 		},
 		"5D Retriever": {
 			"alt_name": "REDACTED",
-			"description": "Retrieves game from the 4th and 5th dimension",
+			"description": "Retrieves game from the 4th and 5th dimensions.",
 			"rarity": "UNIQUE",
 		}
 	}
