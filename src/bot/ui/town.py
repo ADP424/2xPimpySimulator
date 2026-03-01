@@ -4,6 +4,7 @@ from discord.ui import Button, Select, View
 from bot.constants import VIEW_TIMEOUT
 from bot.ui.util import InteractionResponder
 
+from .church import ChurchView
 from .components.paginator import PaginatorView
 from .vendors import VendorsPageSource
 from .vet_clinic import VetClinicView
@@ -23,6 +24,7 @@ class TownNavigationSelect(Select):
             options=[
                 discord.SelectOption(label="Vendors", value="vendors"),
                 discord.SelectOption(label="Veterinary Clinic", value="vet"),
+                discord.SelectOption(label="Church", value="church"),
             ],
             row=0,
         )
@@ -46,6 +48,10 @@ class TownNavigationSelect(Select):
         if self.values[0] == "vet":
             view = VetClinicView(owner_discord_id=interaction.user.id)
             await r.reply(content="Welcome to the town vet!", view=view)
+
+        if self.values[0] == "church":
+            view = ChurchView(server_discord_id=interaction.guild_id, owner_discord_id=interaction.user.id)
+            await r.reply(content="**Welcome to the Church**", view=view)
 
 
 class HomeButton(Button):

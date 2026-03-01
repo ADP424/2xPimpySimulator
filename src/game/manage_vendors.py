@@ -20,13 +20,15 @@ from database import (
 )
 from database import list_vendors as db_list_vendors
 from database import (
+    remove_pooch_from_kennel,
     remove_pooch_from_vendor_stock,
     transfer_pooch_to_owner,
+    transfer_pooch_to_vendor,
 )
 
 from .constants import (
     BASE_POOCH_DOLLAR_VALUE,
-    BREED_RARITY_TO_DOLLAR_VALUE_MULT,
+    BREED_RARITY_TO_POOCH_VALUE_MULT,
     POOCH_BASE_HEALTH_RANGE,
     POOCH_DOLLAR_VALUE_LOSS_BY_AGE,
     POOCH_DOLLAR_VALUE_LOSS_BY_HEALTH_BELOW_AVERAGE,
@@ -37,30 +39,69 @@ from .exceptions.vendor_not_found import VendorNotFound
 from .models import Pooch, Vendor, to_pooch, to_vendor
 
 
-async def get_vendor_by_id(vendor_id: int) -> Vendor:
+async def buy_pooch(
+    owner_discord_id: int,
+    vendor_id: int,
+    pooch_id: int,
+) -> tuple[bool, str]:
     """
-    Return a vendor with the given ID.
+    Have the given owner purchase the given pooch from the given vendor.
+    Fails with a specific error message if:
+    - The owner doesn't exist.
+    - The owner can't afford the pooch.
+    - The pooch doesn't exist.
+    - The owner doesn't have space in any of their kennels.
+    - The pooch isn't in the vendor's stock.
 
     Parameters
     ----------
+    owner_discord_id: int
+        The Discord ID of the owner making the purchase.
+
     vendor_id: int
-        The ID of the vendor to return.
+        The ID of the vendor that owns the pooch being bought.
+
+    pooch_id: int
+        The ID of the pooch being bought.
 
     Returns
     -------
-    Vendor
-        The vendor with the given ID.
-
-    Raises
-    ------
-    VendorNotFound
-        When a Vendor with `vendor_id` is not found.
+    tuple[bool, str]
+        A tuple in the form `(success?, message)`.
     """
 
-    vendor = await db_get_vendor_by_id(vendor_id)
-    if vendor is None:
-        raise VendorNotFound(vendor_id)
-    return await to_vendor(vendor)
+    price = await get_pooch_buy_price(pooch_id, vendor_id)
+
+    owner = await get_owner_by_discord_id(owner_discord_id)
+    if owner is None:
+        return (False, "You need to visit /home first to set up your account.")
+    if owner.dollars < price:
+        return (False, f"You need ${price} but only have ${owner.dollars}.")
+
+    pooch = await db_get_pooch_by_id(pooch_id)
+    if pooch is None:
+        return (False, "That pooch doesn't exist.")
+
+    kennels = await list_kennels_for_owner(owner_discord_id)
+    target_kennel = None
+    for kennel in kennels:
+        kennel_pooches = await list_pooches_for_kennel(kennel.id)
+        if len(kennel_pooches) < kennel.pooch_limit:
+            target_kennel = kennel
+            break
+
+    if target_kennel is None:
+        return (False, "You don't have any kennel space available.")
+
+    removed = await remove_pooch_from_vendor_stock(vendor_id, pooch_id)
+    if removed is None:
+        return (False, "That pooch is no longer available from this vendor.")
+
+    await give_money_to_owner(owner_discord_id, -price)
+    await transfer_pooch_to_owner(pooch_id, owner_discord_id)
+    await add_pooch_to_kennel(target_kennel.id, pooch_id)
+
+    return (True, f"You purchased {pooch.name} for ${price}!")
 
 
 async def _get_pooch_base_price(pooch_id: int) -> int:
@@ -90,10 +131,10 @@ async def _get_pooch_base_price(pooch_id: int) -> int:
     pooch_breeds = await list_pooch_breeds(pooch.id)
     breed_price_mult = 0
     for breed, weight in pooch_breeds:
-        breed_price_mult += weight * BREED_RARITY_TO_DOLLAR_VALUE_MULT[breed.rarity]
+        breed_price_mult += weight * BREED_RARITY_TO_POOCH_VALUE_MULT[breed.rarity]
     price *= breed_price_mult
 
-    return round(price)
+    return max(round(price), 0)
 
 
 async def get_pooch_buy_price(pooch_id: int, vendor_id: Optional[int] = None) -> int:
@@ -164,6 +205,32 @@ async def get_pooch_sell_price(pooch_id: int, vendor_id: Optional[int] = None) -
     return round(price)
 
 
+async def get_vendor_by_id(vendor_id: int) -> Vendor:
+    """
+    Return a vendor with the given ID.
+
+    Parameters
+    ----------
+    vendor_id: int
+        The ID of the vendor to return.
+
+    Returns
+    -------
+    Vendor
+        The vendor with the given ID.
+
+    Raises
+    ------
+    VendorNotFound
+        When a Vendor with `vendor_id` is not found.
+    """
+
+    vendor = await db_get_vendor_by_id(vendor_id)
+    if vendor is None:
+        raise VendorNotFound(vendor_id)
+    return await to_vendor(vendor)
+
+
 async def list_server_vendors(server_discord_id: int) -> list[Vendor]:
     """
     Get a list of every vendor on the given server.
@@ -202,30 +269,25 @@ async def list_vendor_pooches(vendor_id: int) -> list[Pooch]:
     return [(await to_pooch(pooch)) for pooch in pooches]
 
 
-async def buy_pooch(
-    owner_discord_id: int,
-    vendor_id: int,
-    pooch_id: int,
-) -> tuple[bool, str]:
+async def sell_pooch(owner_discord_id: int, vendor_id: int, pooch_id: int) -> tuple[bool, str]:
     """
-    Have the given owner purchase the given pooch from the given vendor.
+    Have the given owner sell the given pooch to the given vendor.
     Fails with a specific error message if:
     - The owner doesn't exist.
-    - The owner can't afford the pooch.
     - The pooch doesn't exist.
-    - The owner doesn't have space in any of their kennels.
-    - The pooch isn't in the vendor's stock.
+    - The owner doesn't own the pooch.
+    - The pooch is dead.
 
     Parameters
     ----------
     owner_discord_id: int
-        The Discord ID of the owner making the purchase.
+        The Discord ID of the owner selling the pooch.
 
     vendor_id: int
-        The ID of the vendor that owns the pooch being bought.
+        The ID of the vendor to sell the pooch to.
 
     pooch_id: int
-        The ID of the pooch being bought.
+        The ID of the pooch being sold.
 
     Returns
     -------
@@ -233,35 +295,22 @@ async def buy_pooch(
         A tuple in the form `(success?, message)`.
     """
 
-    price = await get_pooch_buy_price(pooch_id)
+    price = await get_pooch_sell_price(pooch_id, vendor_id)
 
     owner = await get_owner_by_discord_id(owner_discord_id)
     if owner is None:
         return (False, "You need to visit /home first to set up your account.")
-    if owner.dollars < price:
-        return (False, f"You need ${price} but only have ${owner.dollars}.")
 
     pooch = await db_get_pooch_by_id(pooch_id)
     if pooch is None:
         return (False, "That pooch doesn't exist.")
+    if pooch.owner_discord_id != owner.discord_id:
+        return (False, "You don't own that pooch.")
+    if not pooch.alive:
+        return (False, "That pooch is dead.")
 
-    kennels = await list_kennels_for_owner(owner_discord_id)
-    target_kennel = None
-    for kennel in kennels:
-        kennel_pooches = await list_pooches_for_kennel(kennel.id)
-        if len(kennel_pooches) < kennel.pooch_limit:
-            target_kennel = kennel
-            break
+    await give_money_to_owner(owner_discord_id, price)
+    await transfer_pooch_to_vendor(pooch.id, vendor_id)
+    await remove_pooch_from_kennel(pooch.id)
 
-    if target_kennel is None:
-        return (False, "You don't have any kennel space available.")
-
-    removed = await remove_pooch_from_vendor_stock(vendor_id, pooch_id)
-    if removed is None:
-        return (False, "That pooch is no longer available from this vendor.")
-
-    await give_money_to_owner(owner_discord_id, -price)
-    await transfer_pooch_to_owner(pooch_id, owner_discord_id)
-    await add_pooch_to_kennel(target_kennel.id, pooch_id)
-
-    return (True, f"You purchased {pooch.name} for ${price}!")
+    return (True, f"You sold {pooch.name} for ${price}!")

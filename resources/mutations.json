@@ -50,6 +50,13 @@
             "heritability": 0.2,
             "health_impact": "SEVERE",
             "rarity": "NOVEL"
+        },
+        "Sickle Cell Anemia": {
+            "alt_name": "Sickle Cell Disease",
+            "description": "This pooch has the moon in its blood.",
+            "heritability": 0.35,
+            "health_impact": "SEVERE",
+            "rarity": "UNCOMMON"
         }
     },
     "Bone Disorders": {
@@ -59,6 +66,106 @@
             "heritability": 0.2,
             "health_impact": "SEVERE",
             "rarity": "NOVEL"
+        }
+    },
+    "Cardiomyopathy": {
+        "Arrhythmogenic Cardiomyopathy": {
+            "alt_name": "ACM",
+            "description": "This pooch has a fat heart.",
+            "heritability": 0.25,
+            "health_impact": "UNHEALTHY",
+            "rarity": "NOVEL"
+        },
+        "Dilated Cardiomyopathy": {
+            "alt_name": "DCM",
+            "description": "This pooch has a big heart.",
+            "heritability": 0.25,
+            "health_impact": "UNHEALTHY",
+            "rarity": "COMMON"
+        },
+        "Hypertrophic Cardiomyopathy": {
+            "alt_name": "HCM",
+            "description": "This pooch has a thicc heart.",
+            "heritability": 0.45,
+            "health_impact": "UNHEALTHY",
+            "rarity": "UNCOMMON"
+        }
+    },
+    "Compulsive Disorders": {
+        "Acral Lick Dermatitis": {
+            "alt_name": "Lick Granuloma",
+            "description": "This pooch can't stop licking itself.",
+            "heritability": 0.05,
+            "health_impact": "HARMFUL",
+            "rarity": "UNCOMMON"
+        },
+        "Compulsive Spinning": {
+            "alt_name": "Compulsive Tail Chasing",
+            "description": "This pooch spins around like a Beyblade™.",
+            "heritability": 0.05,
+            "health_impact": "NEUTRAL",
+            "rarity": "UNCOMMON"
+        },
+        "Compulsive Flank Sucking": {
+            "alt_name": "Canine Flank Sucking",
+            "description": "This pooch can't stop sucking its own ass.",
+            "heritability": 0.05,
+            "health_impact": "HARMFUL",
+            "rarity": "UNCOMMON"
+        }
+    },
+    "Deafness": {
+        "Partial Deafness": {
+            "alt_name": "Auditory Impairment",
+            "description": "This pooch only responds to shouting.",
+            "heritability": 0.2,
+            "health_impact": "NEUTRAL",
+            "rarity": "UNCOMMON",
+            "advanced_options": {
+                "dollar_value_add": -15,
+                "incompatible_mutations": [
+                    "Total Deafness"
+                ]
+            }
+        },
+        "Total Deafness": {
+            "alt_name": "Congenital Hearing Loss",
+            "description": "This pooch is not afraid of thunder.",
+            "heritability": 0.25,
+            "health_impact": "NEUTRAL",
+            "rarity": "NOVEL",
+            "advanced_options": {
+                "dollar_value_add": -30,
+                "incompatible_mutations": [
+                    "Partial Deafness"
+                ]
+            }
+        }
+    },
+    "Growth Deficiencies": {
+        "Dwarfism": {
+            "alt_name": "Achondroplasia",
+            "description": "This pooch is tiny wee.",
+            "heritability": 0.45,
+            "health_impact": "NEUTRAL",
+            "rarity": "RARE",
+            "advanced_options": {
+                "incompatible_mutations": [
+                    "Gigantism"
+                ]
+            }
+        },
+        "Gigantism": {
+            "alt_name": "Acromegaly",
+            "description": "This pooch is mega huge.",
+            "heritability": 0.45,
+            "health_impact": "UNHEALTHY",
+            "rarity": "RARE",
+            "advanced_options": {
+                "incompatible_mutations": [
+                    "Dwarfism"
+                ]
+            }
         }
     },
     "Hormonal Disorders": {
@@ -93,18 +200,92 @@
             }
         }
     },
+    "Immuno-Deficiencies": {
+        "Cancer Syndrome": {
+            "alt_name": "Crabs (Not Those Crabs)",
+            "description": "This pooch is visited by crabs.",
+            "heritability": 0.4,
+            "health_impact": "UNHEALTHY",
+            "rarity": "COMMON"
+        },
+        "Combined Immunodeficiency Disease": {
+            "alt_name": "LAD",
+            "description": "This pooch is hopeless against disease.",
+            "heritability": 0.2,
+            "health_impact": "BRUTAL",
+            "rarity": "RARE"
+        },
+        "Immunoglobulin Deficiency": {
+            "alt_name": "Antibody Deficiency",
+            "description": "This pooch's antibodies are off duty.",
+            "heritability": 0.25,
+            "health_impact": "UNHEALTHY",
+            "rarity": "RARE"
+        },
+        "Leukocyte Adhesion Deficiency": {
+            "alt_name": "LAD",
+            "description": "This pooch's white blood cells are sleeping.",
+            "heritability": 0.2,
+            "health_impact": "SEVERE",
+            "rarity": "RARE"
+        }
+    },
+    "Limb Deformities": {
+        "Clubfoot": {
+            "alt_name": "Talipes Equinovarus",
+            "description": "This pooch walks funny.",
+            "heritability": 0.1,
+            "health_impact": "HARMFUL",
+            "rarity": "UNCOMMON",
+            "advanced_options": {
+                "incompatible_mutations": [
+                    "Extreme Phocomelia"
+                ]
+            }
+        },
+        "Extreme Phocomelia": {
+            "alt_name": "Nugget Syndrome",
+            "description": "Every one of this pooch's legs are severely shortened or missing.",
+            "heritability": 0.1,
+            "health_impact": "UNHEALTHY",
+            "rarity": "UNPRECEDENTED",
+            "advanced_options": {
+                "dollar_value_mult": 0.5,
+                "incompatible_mutations": [
+                    "Clubfoot",
+                    "Phocomelia"
+                ]
+            }
+        },
+        "Phocomelia": {
+            "alt_name": "Missing Leg Syndrome",
+            "description": "This pooch has a severely shortened or missing leg.",
+            "heritability": 0.1,
+            "health_impact": "HARMFUL",
+            "rarity": "NOVEL",
+            "advanced_options": {
+                "incompatible_mutations": [
+                    "Extreme Phocomelia"
+                ]
+            }
+        }
+    },
     "Neurodevelopmental Conditions": {
         "Autism": {
             "alt_name": "Autism Spectrum Disorder",
             "description": "This pooch enjoys trains a little too much.",
             "heritability": 0.35,
             "health_impact": "NEUTRAL",
-            "rarity": "COMMON"
+            "rarity": "COMMON",
+            "advanced_options": {
+                "breeding_cooldown": 1,
+                "dollar_value_mult": 0.9
+            }
         },
         "Schizophrenia": {
             "alt_name": "Split Mind",
             "description": "This pooch barks when the mailman isn't there.",
-            "heritability": 0.45,
+            "heritability": 0.4,
             "health_impact": "HARMFUL",
             "rarity": "RARE",
             "advanced_options": {
@@ -135,13 +316,13 @@
             "alt_name": "Canis Invertus",
             "descripton": "This pooch was born inside out.",
             "heritability": 0.5,
-            "health_impact": "BRUTAL",
+            "health_impact": "FATAL",
             "rarity": "EXTRAORDINARY"
         },
         "Ichthyosis": {
             "alt_name": "Scale Disease",
             "descripton": "This pooch has certain reptillian qualities to it.",
-            "heritability": 0.45,
+            "heritability": 0.4,
             "health_impact": "NEUTRAL",
             "rarity": "UNPRECEDENTED",
             "advanced_options": {
@@ -176,7 +357,7 @@
         "God Syndrome": {
             "alt_name": "Jesus Poochicus",
             "description": "This pooch can't die, on Dog.",
-            "heritability": 1.0,
+            "heritability": 0.0,
             "health_impact": "IMMORTALITY",
             "rarity": "UNIQUE",
             "advanced_options": {

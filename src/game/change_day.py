@@ -14,6 +14,7 @@ from database import (
     create_vendor,
     decrement_pooch_breeding_cooldown,
     delete_pregnancy,
+    delete_random_vendor,
     get_mutation_health_impact,
     get_pooch_health,
     get_pooch_kennel,
@@ -25,6 +26,7 @@ from database import (
     list_servers_for_pooch,
     list_vendors,
     remove_pooch_from_kennel,
+    reset_begged_today,
     set_pooch_dead,
 )
 from database.models import Mutation, Pooch
@@ -87,6 +89,9 @@ async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeS
 
     rng = random.Random(rng_seed)
     numpy_rng = numpy.random.default_rng(rng_seed)
+
+    # reset daily owner actions
+    await reset_begged_today()
 
     births_by_server: dict[int, list[BirthEvent]] = {}
     deaths_by_server: dict[int, list[DeathEvent]] = {}
@@ -304,16 +309,16 @@ async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeS
 
     servers = await list_servers()
 
-    # vendor restock
+    # vendor restock (replace one vendor per server, then replace the stock of all vendors)
     logger.info("Restocking vendors for the day...")
     for server in servers:
+        await delete_random_vendor(server.discord_id)
         vendors = await list_vendors(server.discord_id)
-        if len(vendors) < NUM_VENDORS_PER_SERVER:
-            for _ in range(NUM_VENDORS_PER_SERVER - len(vendors)):
-                vendor = await create_vendor(
-                    server.discord_id, price_markup=rng.uniform(VENDOR_MARKUP_RANGE[0], VENDOR_MARKUP_RANGE[1]), rng=rng
-                )
-                vendors.append(vendor)
+        for _ in range(NUM_VENDORS_PER_SERVER - len(vendors)):
+            vendor = await create_vendor(
+                server.discord_id, price_markup=rng.uniform(VENDOR_MARKUP_RANGE[0], VENDOR_MARKUP_RANGE[1]), rng=rng
+            )
+            vendors.append(vendor)
         for vendor in vendors:
             await clear_vendor_pooch_stock(vendor.id, delete_pooches=True)
             stock_count = rng.randint(VENDOR_POOCH_STOCK_COUNT_RANGE[0], VENDOR_POOCH_STOCK_COUNT_RANGE[1])

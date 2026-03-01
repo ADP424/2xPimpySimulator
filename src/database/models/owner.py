@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import BigInteger, DateTime, Integer, text
+from sqlalchemy import BigInteger, Boolean, DateTime, Integer, text
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -21,6 +21,7 @@ class Owner(Base):
 
     dollars: Mapped[int] = mapped_column(Integer, default=100)
     bloodskulls: Mapped[int] = mapped_column(Integer, default=0)
+    begged_today: Mapped[bool] = mapped_column(Boolean, default=True)
     joined_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=text("now()"))
 
     owned_pooches: Mapped[list[Pooch]] = relationship(

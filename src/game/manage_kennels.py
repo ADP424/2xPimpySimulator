@@ -4,6 +4,7 @@ from database import (
     get_pooch_by_id,
     list_pooches_for_kennel,
 )
+from database.update import rename_kennel as db_rename_kennel
 
 from .exceptions.kennel_not_found import KennelNotFound
 from .exceptions.pooch_not_found import PoochNotFound
@@ -78,3 +79,39 @@ async def add_pooch_to_kennel(kennel_id: int, pooch_id: int) -> bool:
         return False
 
     await db_add_pooch_to_kennel(kennel_id, pooch_id)
+
+
+async def rename_kennel(kennel_id: int, name: str, max_name_length: int) -> bool:
+    """
+    Rename the kennel with a given ID.
+
+    Parameters
+    ----------
+    kennel_id: int
+        The ID of the kennel to rename.
+
+    name: str
+        The new name to give the kennel.
+
+    max_name_length: int
+        Maximum allowed name length.
+
+    Returns
+    -------
+    bool
+        True if renamed, False if the name is too long.
+
+    Raises
+    ------
+    KennelNotFound
+        When the kennel with the given ID isn't found in the database.
+    """
+
+    name = name.strip()
+    if len(name) > max_name_length:
+        return False
+
+    kennel = await db_rename_kennel(kennel_id, name)
+    if kennel is None:
+        raise KennelNotFound(kennel_id)
+    return True

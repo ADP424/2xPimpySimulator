@@ -5,10 +5,9 @@
 | ----------------------------------------------------------------------------------------------------------------------------- | ------ |
 | Have per-server auction houses players can put their pooches in / players bid, highest bid by EOD gets the pooch              | 8      |
 | Create new breeds at runtime ???                                                                                              | ???    |
-| Let owners rename their pooches (for a price!)                                                                                | 3      |
 | Get breed population stats for server (add this info to the vet)                                                              | 3      |
 
-## UI Changes
+## UI
 | Feature                                                                                                                       | Points |
 | ----------------------------------------------------------------------------------------------------------------------------- | ------ |
 | Show where breeds can be obtained from (altar, vendor, etc.) on the breed page                                                | 2      |
@@ -25,12 +24,12 @@
 | Implement random events (player-specific)                                                                                     | 21     |
 | Implement random events for an entire server (one per week)                                                                   | 21     |
 | Add a dog fighting ring in each server with gambling (winner gets skulls of dead pooches as bloodskulls)                      | 8      |
+| Dog show where you want to match closest to breed, mutations, and stats                                                       | 13     |
 
 ## Blood Magic
 | Feature                                                                                                                       | Points |
 | ----------------------------------------------------------------------------------------------------------------------------- | ------ |
-| Sacrifice for bloodskulls (and random bones)                                                                                  | 3      |
-| Spend bloodskulls to summon pooches (more bloodskulls = more rerolls for cool breeds)                                         | 3      |
+| Make sacrificing pooches give bones (which can be used to tame strays)                                                        | 3      |
 | Clone your pooches by spending bloodskulls (better breeds = more expensive)                                                   | 5      |
 | Spend bloodskulls to reset pooch age (but at some EVIL cost)                                                                  | 5      |
 | Spend a LOT of bloodskulls to make your pooch IMMORTAL (but infertile, like a vampire, also can't go out at night)            | 5      |
@@ -72,7 +71,6 @@
 ## Vendors
 | Feature                                                                                                                       | Points |
 | ----------------------------------------------------------------------------------------------------------------------------- | ------ |
-| Refresh one vendor at random per day                                                                                          | 1      |
 | Vendors desire specific breeds (at least one of each rarity)                                                                  | 5      |
 
 ## Kennel Management
@@ -80,8 +78,6 @@
 | ----------------------------------------------------------------------------------------------------------------------------- | ------ |
 | Add ability to upgrade kennel slots (5 starting, +5 each tier, 20 max)                                                        | 3      |
 | Add ability to buy more kennels (limit of 5 total kennels)                                                                    | 3      |
-| Let owners rename their kennels                                                                                               | 1      |
-| Let owners name pooches when they're born in their kennels                                                                    | 1      |
 
 ## Strays
 | Feature                                                                                                                       | Points |
@@ -99,8 +95,9 @@
 ## Food
 | Feature                                                                                                                       | Points |
 | ----------------------------------------------------------------------------------------------------------------------------- | ------ |
-| Add consumption stat that determines food need per day for a pooch (affected by mutations/breeds/diseases)                    | 1      |
+| Add consumption stat that determines food need per day for a pooch (affected by mutations/breeds/diseases)                    | 2      |
 | Add starvation counter, which affects fertility/strength/health/etc. the worse it gets                                        | 3      |
+| Cannibalism (debuffs pooches when they do it unless they have the cannibalism mutations)                                      | 5      |
 
 
 # Bug Fixes
