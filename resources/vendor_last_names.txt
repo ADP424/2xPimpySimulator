@@ -98,3 +98,5 @@ Pupperly
 Barkworth
 Dogforth
 Woofley
+Blackwood
+Gear

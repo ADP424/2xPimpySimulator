@@ -98,7 +98,7 @@ def serialize_vendor(vendor: Any) -> dict:
         "server_discord_id": vendor.server_discord_id,
         "name": vendor.name,
         "price_markup": vendor.price_markup,
-        "stock_count": len(getattr(vendor, "pooches_for_sale", []) or []),
+        "stock_count": vendor.stock_count,
         "desired_mutations": [],
     }
 

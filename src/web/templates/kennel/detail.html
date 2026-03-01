@@ -118,6 +118,11 @@ function createPoochCard(pooch) {
 
     const sexEmoji = pooch.sex === 'female' ? '♀️' : '♂️';
     const breedNames = pooch.breeds.map(b => b.breed.name).join(', ') || 'Unknown';
+    const mutationsHtml = pooch.mutations.length > 0
+        ? pooch.mutations.map((m, i) =>
+            `<span class="rarity-text-${(m.rarity || '').toLowerCase()}">${escapeHtml(m.name)}${i < pooch.mutations.length - 1 ? ',' : ''}</span>`
+          ).join(' ')
+        : `<span>None</span>`;
 
     return `
         <a href="/pooch/${pooch.id}" class="card bg-base-200 shadow-sm hover:-translate-y-1 hover:shadow-md transition-all text-base-content no-underline pooch-card status-${pooch.status}">
@@ -130,23 +135,21 @@ function createPoochCard(pooch) {
                     ${statusEmoji[pooch.status] || '❓'} ${pooch.status}
                 </div>
                 <div class="text-xs text-base-content/50 flex flex-col gap-0.5">
-                    <div class="flex justify-between">
-                        <span>Age:</span><span>${pooch.age} days</span>
+                    <div class="flex gap-2">
+                        <span class="shrink-0">Age:</span><span>${pooch.age} days</span>
                     </div>
-                    <div class="flex justify-between">
-                        <span>Breeds:</span><span class="text-right max-w-[120px] truncate">${escapeHtml(breedNames)}</span>
+                    <div class="flex gap-2">
+                        <span class="shrink-0">Breeds:</span><span class="text-base-content/70">${escapeHtml(breedNames)}</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <span class="shrink-0">Mutations:</span><span class="text-base-content/70">${mutationsHtml}</span>
                     </div>
                     ${pooch.breeding_cooldown > 0 ? `
-                    <div class="flex justify-between text-warning">
-                        <span>Cooldown:</span><span>${pooch.breeding_cooldown} days</span>
+                    <div class="flex gap-2 text-warning">
+                        <span class="shrink-0">Cooldown:</span><span>${pooch.breeding_cooldown} days</span>
                     </div>
                     ` : ''}
                 </div>
-                ${pooch.mutations.length > 0 ? `
-                <div class="flex flex-wrap gap-1 mt-1">
-                    ${pooch.mutations.map(m => `<span class="badge badge-ghost badge-xs">${escapeHtml(m.name)}</span>`).join('')}
-                </div>
-                ` : ''}
             </div>
         </a>
     `;

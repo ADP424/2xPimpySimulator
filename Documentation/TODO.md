@@ -17,6 +17,7 @@
 | Always display your dollars and bloodskulls in the web header                                                                 | 3      |
 | Add sorting to the lists on the website, as well as filtering and searching                                                   | 1      |
 | Have timeline per pooch showing birthday / other significant events (like being bought) / death using cool timeline comp      | 5      |
+| Obfuscate mutations (so they don't tell you exactly what a pooch has unless you get it checked at vet)                        | 8      |
 
 ## Random Events
 | Feature                                                                                                                       | Points |
