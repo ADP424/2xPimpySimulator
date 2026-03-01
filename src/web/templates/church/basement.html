@@ -19,8 +19,8 @@
             <h2 class="card-title text-error">🩸 Sacrifice</h2>
             <p class="text-sm text-base-content/60 mb-4">Offer a pooch to Hell in exchange for bloodskulls.</p>
 
-            <label class="label"><span class="label-text">Choose a pooch to sacrifice</span></label>
-            <select id="sacrifice-select" class="select select-bordered w-full" onchange="onSacrificeSelect()">
+            <label class="text-sm" for="sacrifice-select">Choose a pooch to sacrifice</label>
+            <select id="sacrifice-select" class="select w-full" onchange="onSacrificeSelect()">
                 <option value="">— select a pooch —</option>
             </select>
 
@@ -42,12 +42,12 @@
             <h2 class="card-title text-secondary">𖤐 Summon</h2>
             <p class="text-sm text-base-content/60 mb-4">Spend bloodskulls to summon a pooch from Hell. More rolls = better outcome kept.</p>
 
-            <label class="label"><span class="label-text">Number of rolls</span></label>
+            <label class="text-sm">Number of rolls</label>
             <div class="flex gap-2 mb-3">
                 <button class="btn btn-outline btn-sm roll-btn" onclick="setRolls(1)">1</button>
                 <button class="btn btn-outline btn-sm roll-btn" onclick="setRolls(5)">5</button>
                 <button class="btn btn-outline btn-sm roll-btn" onclick="setRolls(10)">10</button>
-                <input id="rolls-input" type="number" min="1" class="input input-bordered input-sm w-20" value="1" oninput="onRollsInput()">
+                <input id="rolls-input" type="number" min="1" class="input input-sm w-20" value="1" oninput="onRollsInput()">
             </div>
 
             <div class="text-sm text-base-content/60 mb-4">
