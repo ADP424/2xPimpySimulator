@@ -288,7 +288,7 @@
 			}
 		},
 		"Paisley Terrier": {
-			"alt_name": "	Clydesdale Terrier",
+			"alt_name": "Clydesdale Terrier",
 			"description": "The Paisley Terrier was a breed of terrier-type dog that is now extinct. Originating in Scotland, the Paisley Terrier was bred primarily as a pet and showdog version of the Skye Terrier, and was the progenitor of today's Yorkshire Terrier.",
 			"rarity": "REMARKABLE",
 			"advanced_options": {
@@ -387,7 +387,7 @@
 		"Rastreador Brasileiro": {
 			"alt_name": "Urrador Americano",
 			"description": "The Rastreador Brasileiro is a mid- to large-sized breed of dog—specifically a scent hound—from Brazil. in 1967, by 1973, an outbreak of disease and an overdose of insecticides, effectively eliminated the breed's entire population. However, efforts were made to reproduce the Rastreador Brasileiro through mixing and controlled breeding projects involving several other hound breeds, resulting in today's Rastreador Brasileiro.",
-			"rarity": "UNPRECEDENTED",
+			"rarity": "UNPRECEDENTED"
 		},
 		"Rache": {
 			"alt_name": "racch",

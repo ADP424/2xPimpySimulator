@@ -237,17 +237,29 @@ async def reply_to_interacted_message(
         await defer_interaction(interaction)
         return
 
+    # IMPORTANT:
+    # Do **not** defer here.
+    # Deferring a component interaction creates a "thinking" state that must be
+    # resolved via followup/edit_original_response. If we instead fall back to
+    # replying to the underlying message (interaction.message.reply), the defer
+    # never resolves and you get the stuck first reply.
     try:
-        if interaction.response.is_done():
-            await interaction.followup.send(**kwargs, ephemeral=False)
+        if not interaction.response.is_done():
+            await interaction.response.send_message(**kwargs, ephemeral=False)
             return
+    except InteractionResponded:
+        pass
     except NotFound:
-        # Token expired, fall back with defer
+        # Token expired; fall back to message/channel send.
         pass
     except discord.HTTPException:
         pass
 
-    await defer_interaction(interaction)
+    try:
+        await interaction.followup.send(**kwargs, ephemeral=False)
+        return
+    except Exception:
+        pass
 
     if interaction.message is not None:
         try:
@@ -262,8 +274,3 @@ async def reply_to_interacted_message(
             return
         except discord.HTTPException:
             pass
-
-    try:
-        await interaction.followup.send(**kwargs)
-    except Exception:
-        return
