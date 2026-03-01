@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block title %}Sell Pooches - Pooch Breeder{% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-6 flex-wrap gap-3">
+    <div>
+        <h1 class="text-3xl font-bold" id="vendor-name">Loading...</h1>
+        <p class="text-base-content/60 mt-1" id="vendor-subtitle"></p>
+    </div>
+    <a href="{{ url_for('vendor.vendor_detail', vendor_id=vendor_id) }}" class="btn btn-ghost btn-sm">← Back to Vendor</a>
+</div>
+
+<div id="loading" class="flex items-center gap-3 text-base-content/50 py-8">
+    <span class="loading loading-spinner loading-md"></span>
+    <span>Loading...</span>
+</div>
+
+<div id="sell-container" style="display: none;">
+
+    <!-- Desired Mutations panel -->
+    <div id="desired-mutations-panel" class="card bg-base-200 shadow-md mb-6" style="display: none;">
+        <div class="card-body py-4">
+            <h2 class="card-title text-sm uppercase tracking-wide text-base-content/50">✨ Desired Mutations</h2>
+            <p class="text-xs text-base-content/50 mb-3">This vendor pays a bonus for pooches with these mutations.</p>
+            <div id="desired-mutations-list" class="flex flex-wrap gap-3"></div>
+        </div>
+    </div>
+
+    <!-- Pooch grid -->
+    <h2 class="text-xl font-bold mb-4">Your Pooches</h2>
+    <div id="pooches-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
+    <div id="no-pooches" class="text-center py-12 text-base-content/50" style="display: none;">
+        <p>You have no living pooches to sell.</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const PAGE_DATA = {
+    vendorId: {{ vendor_id }}
+};
+
+let vendor = null;
+let desiredMutationIds = new Set();
+
+document.addEventListener('DOMContentLoaded', async function() {
+    try {
+        // Load vendor and pooches in parallel
+        const [vendorResp, kennelsResp] = await Promise.all([
+            fetch(`/api/vendors/${PAGE_DATA.vendorId}`),
+            fetch('/api/kennels'),
+        ]);
+
+        vendor = await vendorResp.json();
+        const kennels = await kennelsResp.json();
+
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('sell-container').style.display = 'block';
+
+        document.getElementById('vendor-name').textContent = `💰 Sell to ${vendor.name}`;
+        document.getElementById('vendor-subtitle').textContent = `Price markup: ${formatMarkup(vendor.price_markup)}`;
+
+        // Desired mutations
+        if (vendor.desired_mutations && vendor.desired_mutations.length > 0) {
+            desiredMutationIds = new Set(vendor.desired_mutations.map(m => m.id));
+            const panel = document.getElementById('desired-mutations-panel');
+            const list = document.getElementById('desired-mutations-list');
+            panel.style.display = '';
+            list.innerHTML = vendor.desired_mutations.map(m => `
+                <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-base-300 health-${App.healthImpactGroup(m.health_impact)}">
+                    <span class="font-medium text-sm">${escapeHtml(m.name)}</span>
+                    <span class="rarity-badge rarity-${(m.rarity || '').toLowerCase()}">${escapeHtml(App.format.enumLabel(m.rarity))}</span>
+                </div>
+            `).join('');
+        }
+
+        // Load all living pooches from all kennels
+        const poochPromises = kennels.map(k => fetch(`/api/kennels/${k.id}/pooches`).then(r => r.json()));
+        const poochLists = await Promise.all(poochPromises);
+        const allPooches = poochLists.flat().filter(p => p.alive);
+
+        if (allPooches.length === 0) {
+            document.getElementById('no-pooches').style.display = 'block';
+            return;
+        }
+
+        // Fetch sell prices in parallel
+        const pricePromises = allPooches.map(p =>
+            fetch(`/api/pooches/${p.id}/sell-price?vendor_id=${PAGE_DATA.vendorId}`)
+                .then(r => r.json())
+                .then(d => ({ poochId: p.id, price: d.price ?? 0 }))
+                .catch(() => ({ poochId: p.id, price: 0 }))
+        );
+        const prices = await Promise.all(pricePromises);
+        const priceMap = Object.fromEntries(prices.map(p => [p.poochId, p.price]));
+
+        const grid = document.getElementById('pooches-grid');
+        grid.innerHTML = allPooches.map(p => createSellCard(p, priceMap[p.id] ?? 0)).join('');
+
+    } catch (error) {
+        document.getElementById('loading').innerHTML = '<span class="text-error">Failed to load.</span>';
+        console.error('Error:', error);
+    }
+});
+
+function formatMarkup(markup) {
+    const pct = Math.round((markup - 1) * 100);
+    const sign = pct >= 0 ? '+' : '';
+    return `${sign}${pct}%`;
+}
+
+function createSellCard(pooch, price) {
+    const sexEmoji = pooch.sex === 'female' ? '♀️' : '♂️';
+    const breedNames = (pooch.breeds || []).map(b => b.breed.name).join(', ') || 'Unknown';
+
+    const mutationsHtml = (pooch.mutations || []).length > 0
+        ? pooch.mutations.map(m => {
+            const isDesired = desiredMutationIds.has(m.id);
+            return `<span class="badge badge-xs ${isDesired ? 'badge-warning font-bold' : 'badge-ghost'}">${isDesired ? '✨ ' : ''}${escapeHtml(m.name)}</span>`;
+        }).join('')
+        : '';
+
+    const hasDesired = (pooch.mutations || []).some(m => desiredMutationIds.has(m.id));
+    const bonusIndicator = hasDesired ? '<span class="badge badge-warning badge-xs ml-1">bonus!</span>' : '';
+
+    return `
+        <div class="card bg-base-200 shadow-sm">
+            <div class="card-body py-4 px-4 gap-2">
+                <div class="flex justify-between items-center">
+                    <span class="font-bold">${escapeHtml(pooch.name)}</span>
+                    <span>${sexEmoji}</span>
+                </div>
+                <div class="text-xs text-base-content/50 flex flex-col gap-0.5">
+                    <div class="flex justify-between gap-2">
+                        <span class="shrink-0">Age:</span><span>${pooch.age} days</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <span class="shrink-0">Breeds:</span><span class="text-base-content/70">${escapeHtml(breedNames)}</span>
+                    </div>
+                </div>
+                ${mutationsHtml ? `<div class="flex flex-wrap gap-1 mt-1">${mutationsHtml}</div>` : ''}
+                <div class="flex justify-between items-center text-success font-semibold text-sm mt-2">
+                    <span>Sell price:</span>
+                    <span>${formatCurrency(price)}${bonusIndicator}</span>
+                </div>
+                <button class="btn btn-sm btn-outline btn-success btn-block mt-1" onclick="sellPooch(${pooch.id}, '${escapeHtml(pooch.name).replace(/'/g, "\\'")}', ${price})">Sell</button>
+            </div>
+        </div>
+    `;
+}
+
+async function sellPooch(poochId, name, price) {
+    if (!confirm(`Sell ${name} for ${formatCurrency(price)}?`)) return;
+
+    try {
+        const resp = await fetch(`/api/vendors/${PAGE_DATA.vendorId}/sell/${poochId}`, { method: 'POST' });
+        const result = await resp.json();
+        if (result.success) {
+            App.showNotification(result.message, 'success');
+            window.location.href = `/vendor/${PAGE_DATA.vendorId}`;
+        } else {
+            App.showNotification(result.message || result.error || 'Sale failed', 'error');
+        }
+    } catch (e) {
+        App.showNotification('Something went wrong. Please try again.', 'error');
+        console.error('Error:', e);
+    }
+}
+</script>
+{% endblock %}

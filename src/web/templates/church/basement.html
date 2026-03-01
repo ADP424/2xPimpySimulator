@@ -1,0 +1,284 @@
+{% extends "base.html" %}
+
+{% block title %}Church Basement - Pooch Breeder{% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-8 flex-wrap gap-3">
+    <div>
+        <h1 class="text-3xl font-bold">⛰️ Basement</h1>
+        <p class="text-base-content/60 mt-1">A dark place of power.</p>
+    </div>
+    <a href="{{ url_for('church.church_hub') }}" class="btn btn-ghost btn-sm">← Back to Church</a>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+
+    <!-- Sacrifice -->
+    <div class="card bg-base-200 shadow-md">
+        <div class="card-body">
+            <h2 class="card-title text-error">🩸 Sacrifice</h2>
+            <p class="text-sm text-base-content/60 mb-4">Offer a pooch to Hell in exchange for bloodskulls.</p>
+
+            <label class="label"><span class="label-text">Choose a pooch to sacrifice</span></label>
+            <select id="sacrifice-select" class="select select-bordered w-full" onchange="onSacrificeSelect()">
+                <option value="">— select a pooch —</option>
+            </select>
+
+            <div id="sacrifice-value" class="mt-3 text-sm text-base-content/60" style="display: none;">
+                Value: <span id="sacrifice-value-amount" class="font-bold text-warning">—</span> bloodskulls
+            </div>
+
+            <div class="card-actions mt-4">
+                <button id="sacrifice-btn" class="btn btn-error btn-sm" onclick="confirmSacrifice()" disabled>
+                    Sacrifice 𖤐
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summon -->
+    <div class="card bg-base-200 shadow-md">
+        <div class="card-body">
+            <h2 class="card-title text-secondary">𖤐 Summon</h2>
+            <p class="text-sm text-base-content/60 mb-4">Spend bloodskulls to summon a pooch from Hell. More rolls = better outcome kept.</p>
+
+            <label class="label"><span class="label-text">Number of rolls</span></label>
+            <div class="flex gap-2 mb-3">
+                <button class="btn btn-outline btn-sm roll-btn" onclick="setRolls(1)">1</button>
+                <button class="btn btn-outline btn-sm roll-btn" onclick="setRolls(5)">5</button>
+                <button class="btn btn-outline btn-sm roll-btn" onclick="setRolls(10)">10</button>
+                <input id="rolls-input" type="number" min="1" class="input input-bordered input-sm w-20" value="1" oninput="onRollsInput()">
+            </div>
+
+            <div class="text-sm text-base-content/60 mb-4">
+                Cost: <span id="summon-cost" class="font-bold text-warning">—</span> bloodskulls
+            </div>
+
+            <div class="card-actions">
+                <button id="summon-btn" class="btn btn-secondary btn-sm" onclick="confirmSummon()">
+                    Summon 𖤐
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Gaze into Hell -->
+<div class="card bg-base-200 shadow-md">
+    <div class="card-body">
+        <h2 class="card-title">👁️ Gaze into Hell</h2>
+        <p class="text-sm text-base-content/60 mb-4">The damned pooches, sacrificed to the void.</p>
+
+        <div id="hell-loading" class="flex items-center gap-3 text-base-content/50 py-4">
+            <span class="loading loading-spinner loading-sm"></span>
+            <span>Loading...</span>
+        </div>
+        <div id="hell-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" style="display: none;"></div>
+        <div id="hell-empty" class="text-center py-8 text-base-content/50" style="display: none;">
+            <p class="text-3xl mb-3">🔥</p>
+            <p>Hell is empty. For now.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let allPooches = [];
+let selectedPoochId = null;
+let currentRolls = 1;
+
+document.addEventListener('DOMContentLoaded', async function() {
+    await Promise.all([
+        loadMyPooches(),
+        loadHell(),
+        updateSummonCost(),
+    ]);
+});
+
+// ---- Sacrifice ----
+
+async function loadMyPooches() {
+    try {
+        const kennelsResp = await fetch('/api/kennels');
+        const kennels = await kennelsResp.json();
+
+        const poochPromises = kennels.map(k => fetch(`/api/kennels/${k.id}/pooches`).then(r => r.json()));
+        const poochLists = await Promise.all(poochPromises);
+
+        allPooches = poochLists.flat().filter(p => p.alive);
+
+        const select = document.getElementById('sacrifice-select');
+        if (allPooches.length === 0) {
+            select.innerHTML = '<option value="">— no living pooches —</option>';
+            return;
+        }
+
+        select.innerHTML = '<option value="">— select a pooch —</option>' +
+            allPooches.map(p => {
+                const sex = p.sex === 'female' ? '♀️' : '♂️';
+                const breedNames = (p.breeds || []).map(b => b.breed.name).join(', ') || 'Unknown';
+                return `<option value="${p.id}">${sex} ${escapeHtml(p.name)} — ${escapeHtml(breedNames)}</option>`;
+            }).join('');
+    } catch (e) {
+        console.error('Failed to load pooches:', e);
+    }
+}
+
+async function onSacrificeSelect() {
+    const select = document.getElementById('sacrifice-select');
+    selectedPoochId = select.value ? parseInt(select.value) : null;
+    const valueEl = document.getElementById('sacrifice-value');
+    const btn = document.getElementById('sacrifice-btn');
+
+    if (!selectedPoochId) {
+        valueEl.style.display = 'none';
+        btn.disabled = true;
+        return;
+    }
+
+    try {
+        const resp = await fetch(`/api/pooches/${selectedPoochId}/bloodskull-value`);
+        const data = await resp.json();
+        document.getElementById('sacrifice-value-amount').textContent = data.value;
+        valueEl.style.display = '';
+        btn.disabled = false;
+    } catch (e) {
+        console.error('Failed to get bloodskull value:', e);
+    }
+}
+
+async function confirmSacrifice() {
+    if (!selectedPoochId) return;
+    const pooch = allPooches.find(p => p.id === selectedPoochId);
+    const name = pooch ? pooch.name : 'this pooch';
+    if (!confirm(`Sacrifice ${name} to Hell? This cannot be undone.`)) return;
+
+    try {
+        const resp = await fetch(`/api/pooches/${selectedPoochId}/sacrifice`, { method: 'POST' });
+        const result = await resp.json();
+        if (result.success) {
+            App.showNotification(result.message, 'success');
+            document.getElementById('sacrifice-select').value = '';
+            document.getElementById('sacrifice-value').style.display = 'none';
+            document.getElementById('sacrifice-btn').disabled = true;
+            selectedPoochId = null;
+            await Promise.all([loadMyPooches(), loadHell()]);
+        } else {
+            App.showNotification(result.message || result.error || 'Sacrifice failed', 'error');
+        }
+    } catch (e) {
+        App.showNotification('Something went wrong. Please try again.', 'error');
+        console.error('Error:', e);
+    }
+}
+
+// ---- Summon ----
+
+function setRolls(n) {
+    currentRolls = n;
+    document.getElementById('rolls-input').value = n;
+    updateSummonCost();
+}
+
+function onRollsInput() {
+    const val = parseInt(document.getElementById('rolls-input').value);
+    if (val >= 1) {
+        currentRolls = val;
+        updateSummonCost();
+    }
+}
+
+async function updateSummonCost() {
+    try {
+        const resp = await fetch(`/api/hell/summon-price?rolls=${currentRolls}`);
+        const data = await resp.json();
+        document.getElementById('summon-cost').textContent = data.price;
+    } catch (e) {
+        console.error('Failed to get summon price:', e);
+    }
+}
+
+async function confirmSummon() {
+    if (!confirm(`Summon a pooch with ${currentRolls} roll(s)?`)) return;
+
+    document.getElementById('summon-btn').disabled = true;
+    try {
+        const resp = await fetch('/api/hell/summon', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ num_rolls: currentRolls }),
+        });
+        const result = await resp.json();
+        if (result.success) {
+            App.showNotification(result.message, 'success');
+            await loadMyPooches();
+        } else {
+            App.showNotification(result.message || result.error || 'Summon failed', 'error');
+        }
+    } catch (e) {
+        App.showNotification('Something went wrong. Please try again.', 'error');
+        console.error('Error:', e);
+    } finally {
+        document.getElementById('summon-btn').disabled = false;
+    }
+}
+
+// ---- Hell viewer ----
+
+async function loadHell() {
+    try {
+        const resp = await fetch('/api/hell');
+        const pooches = await resp.json();
+
+        document.getElementById('hell-loading').style.display = 'none';
+
+        if (pooches.length === 0) {
+            document.getElementById('hell-empty').style.display = 'block';
+            return;
+        }
+
+        const grid = document.getElementById('hell-grid');
+        grid.innerHTML = pooches.map(createHellCard).join('');
+        grid.style.display = '';
+    } catch (e) {
+        document.getElementById('hell-loading').innerHTML = '<span class="text-error">Failed to load.</span>';
+        console.error('Error:', e);
+    }
+}
+
+function createHellCard(pooch) {
+    const sexEmoji = pooch.sex === 'female' ? '♀️' : '♂️';
+    const breedNames = (pooch.breeds || []).map(b => b.breed.name).join(', ') || 'Unknown';
+
+    const mutationsHtml = (pooch.mutations || []).length > 0
+        ? `<div class="flex flex-wrap gap-1 mt-1">
+               ${pooch.mutations.map(m =>
+                   `<span class="badge badge-ghost badge-xs rarity-text-${(m.rarity || '').toLowerCase()}">${escapeHtml(m.name)}</span>`
+               ).join('')}
+           </div>`
+        : '';
+
+    return `
+        <div class="card bg-base-300 shadow-sm border border-error/20">
+            <div class="card-body py-4 px-4 gap-2">
+                <div class="flex justify-between items-center">
+                    <span class="font-bold text-error/80">${escapeHtml(pooch.name)}</span>
+                    <span class="text-lg">${sexEmoji}</span>
+                </div>
+                <div class="text-xs text-base-content/50 flex flex-col gap-0.5">
+                    <div class="flex gap-2">
+                        <span class="shrink-0">Breeds:</span>
+                        <span class="text-base-content/70">${escapeHtml(breedNames)}</span>
+                    </div>
+                    <div class="flex justify-between gap-2">
+                        <span>Age:</span><span>${pooch.age} days</span>
+                    </div>
+                </div>
+                ${mutationsHtml}
+            </div>
+        </div>
+    `;
+}
+</script>
+{% endblock %}
