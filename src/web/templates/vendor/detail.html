@@ -6,6 +6,7 @@
 <div class="flex justify-between items-center mb-6 flex-wrap gap-3">
     <a href="{{ url_for('vendor.vendors_list') }}" class="btn btn-ghost btn-sm">← Back to Vendors</a>
     <h1 class="text-3xl font-bold" id="vendor-name">Loading...</h1>
+    <a href="{{ url_for('vendor.vendor_sell', vendor_id=vendor_id) }}" class="btn btn-outline btn-sm">💰 Sell to this Vendor →</a>
 </div>
 
 <div id="loading" class="flex items-center gap-3 text-base-content/50 py-8">

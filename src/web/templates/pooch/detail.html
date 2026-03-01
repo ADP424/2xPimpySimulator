@@ -10,9 +10,25 @@
 
 <div id="pooch-container" style="display: none;">
     <div class="flex justify-between items-center mb-6 flex-wrap gap-3">
-        <h1 class="text-3xl font-bold" id="pooch-name">Loading...</h1>
+        <div class="flex items-center gap-2">
+            <h1 class="text-3xl font-bold" id="pooch-name">Loading...</h1>
+            <button class="btn btn-ghost btn-xs" onclick="document.getElementById('rename-pooch-modal').showModal()" title="Rename">✏️</button>
+        </div>
         <button onclick="history.back()" class="btn btn-ghost btn-sm">← Back</button>
     </div>
+
+    <!-- Rename modal -->
+    <dialog id="rename-pooch-modal" class="modal">
+        <div class="modal-box">
+            <h3 class="font-bold text-lg mb-4">Rename Pooch</h3>
+            <input id="rename-pooch-input" type="text" maxlength="256" class="input input-bordered w-full" placeholder="New name...">
+            <div class="modal-action">
+                <form method="dialog"><button class="btn btn-ghost btn-sm">Cancel</button></form>
+                <button class="btn btn-primary btn-sm" onclick="submitRenamePooch()">Rename</button>
+            </div>
+        </div>
+        <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    </dialog>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <!-- Basic Info Card -->
@@ -77,8 +93,32 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 });
 
+async function submitRenamePooch() {
+    const name = document.getElementById('rename-pooch-input').value.trim();
+    if (!name) return;
+
+    try {
+        const resp = await fetch(`/api/pooches/${PAGE_DATA.poochId}/rename`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name }),
+        });
+        const result = await resp.json();
+        if (result.success) {
+            App.showNotification('Pooch renamed!', 'success');
+            window.location.reload();
+        } else {
+            App.showNotification(result.error || 'Rename failed', 'error');
+        }
+    } catch (e) {
+        App.showNotification('Something went wrong.', 'error');
+        console.error('Error:', e);
+    }
+}
+
 function renderPooch(pooch, family) {
     document.getElementById('pooch-name').textContent = `${pooch.sex === 'female' ? '♀️' : '♂️'} ${pooch.name}`;
+    document.getElementById('rename-pooch-input').value = pooch.name;
 
     // Basic Info
     const statusEmoji = {

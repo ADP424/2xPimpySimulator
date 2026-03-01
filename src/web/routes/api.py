@@ -224,6 +224,87 @@ def buy_pooch(vendor_id: int, pooch_id: int):
         return jsonify({"error": str(e)}), 500
 
 
+@api_bp.route("/vendors/<int:vendor_id>/sell/<int:pooch_id>", methods=["POST"])
+@login_required
+def sell_pooch_to_vendor(vendor_id: int, pooch_id: int):
+    """Sell a pooch to a vendor."""
+    from game import sell_pooch
+
+    discord_id = get_current_user_id()
+
+    try:
+        success, message = run_async(sell_pooch(discord_id, vendor_id, pooch_id))
+        return jsonify({"success": success, "message": message})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@api_bp.route("/hell")
+@login_required
+def get_hell_pooches():
+    """List all pooches damned to Hell."""
+    from game import list_hell_pooches
+
+    pooches = run_async(list_hell_pooches())
+    return jsonify([serialize_pooch(p) for p in pooches])
+
+
+@api_bp.route("/hell/summon-price")
+@login_required
+def get_hell_summon_price():
+    """Get the bloodskull cost to summon with the given number of rolls."""
+    from game import get_summon_pooch_price
+
+    rolls = request.args.get("rolls", 1, type=int)
+    price = get_summon_pooch_price(max(rolls, 1))
+    return jsonify({"price": price})
+
+
+@api_bp.route("/hell/summon", methods=["POST"])
+@login_required
+def summon_hell_pooch():
+    """Summon a pooch from Hell."""
+    from game import summon_pooch
+
+    discord_id = get_current_user_id()
+    data = request.json or {}
+    num_rolls = max(int(data.get("num_rolls", 1)), 1)
+
+    try:
+        success, message = run_async(summon_pooch(discord_id, num_rolls))
+        return jsonify({"success": success, "message": message})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@api_bp.route("/pooches/<int:pooch_id>/bloodskull-value")
+@login_required
+def get_bloodskull_value(pooch_id: int):
+    """Get the bloodskull sacrifice value of a pooch."""
+    from game import get_pooch_bloodskull_value
+
+    try:
+        value = run_async(get_pooch_bloodskull_value(pooch_id))
+        return jsonify({"value": value})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 404
+
+
+@api_bp.route("/pooches/<int:pooch_id>/sacrifice", methods=["POST"])
+@login_required
+def sacrifice_pooch_route(pooch_id: int):
+    """Sacrifice a pooch to Hell for bloodskulls."""
+    from game import sacrifice_pooch
+
+    discord_id = get_current_user_id()
+
+    try:
+        success, message = run_async(sacrifice_pooch(discord_id, pooch_id))
+        return jsonify({"success": success, "message": message})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @api_bp.route("/graveyard")
 @login_required
 def get_graveyard():
@@ -238,6 +319,46 @@ def get_graveyard():
         pooch_data["buried_at"] = buried_at.isoformat() if buried_at else None
         result.append(pooch_data)
     return jsonify(result)
+
+
+@api_bp.route("/pooches/<int:pooch_id>/rename", methods=["POST"])
+@login_required
+def rename_pooch_route(pooch_id: int):
+    """Rename a pooch."""
+    from game import rename_pooch
+
+    data = request.json or {}
+    name = data.get("name", "").strip()
+    if not name:
+        return jsonify({"error": "Name is required"}), 400
+
+    try:
+        ok = run_async(rename_pooch(pooch_id, name, 256))
+        if ok:
+            return jsonify({"success": True})
+        return jsonify({"error": "Name is too long (max 256 characters)"}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 404
+
+
+@api_bp.route("/kennels/<int:kennel_id>/rename", methods=["POST"])
+@login_required
+def rename_kennel_route(kennel_id: int):
+    """Rename a kennel."""
+    from game import rename_kennel
+
+    data = request.json or {}
+    name = data.get("name", "").strip()
+    if not name:
+        return jsonify({"error": "Name is required"}), 400
+
+    try:
+        ok = run_async(rename_kennel(kennel_id, name, 256))
+        if ok:
+            return jsonify({"success": True})
+        return jsonify({"error": "Name is too long (max 256 characters)"}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 404
 
 
 @api_bp.route("/breeds")
