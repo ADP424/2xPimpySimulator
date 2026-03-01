@@ -112,7 +112,7 @@ class _StatusControls:
             ),
             disabled=not bool(birthed_pooches),
         )
-        self.born_select.callback = self._on_born_select  # type: ignore
+        self.born_select.callback = self._on_born_select
 
         self.dead_select = Select(
             placeholder="Newly dead pooches",
@@ -123,7 +123,7 @@ class _StatusControls:
             ),
             disabled=not bool(dead_pooches),
         )
-        self.dead_select.callback = self._on_dead_select  # type: ignore
+        self.dead_select.callback = self._on_dead_select
 
         self.other_select = Select(
             placeholder="Miscellaneous pooches",
@@ -134,10 +134,10 @@ class _StatusControls:
             ),
             disabled=not bool(other_pooches),
         )
-        self.other_select.callback = self._on_other_select  # type: ignore
+        self.other_select.callback = self._on_other_select
 
         self.info_button = Button(label="Info", style=discord.ButtonStyle.primary, disabled=True)
-        self.info_button.callback = self._on_info  # type: ignore
+        self.info_button.callback = self._on_info
 
     def attach(self, view: View):
         self.born_select.row = 1

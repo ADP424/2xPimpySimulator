@@ -1,7 +1,11 @@
 from dataclasses import dataclass
 from typing import Optional
 
-from database import get_mutation_by_id, get_server_by_discord_id, list_vendor_pooch_stock
+from database import (
+    get_mutation_by_id,
+    get_server_by_discord_id,
+    list_vendor_pooch_stock,
+)
 from database.models import Vendor as VendorORM
 
 from .mutation import Mutation, to_mutation

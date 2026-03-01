@@ -60,10 +60,10 @@ class MutationDropdownControls:
             min_values=1,
             max_values=1,
         )
-        self.select.callback = self._on_select  # type: ignore
+        self.select.callback = self._on_select
 
         self.info_button = Button(label="Info", style=discord.ButtonStyle.primary, disabled=True)
-        self.info_button.callback = self._on_info  # type: ignore
+        self.info_button.callback = self._on_info
 
         if not mutations:
             self.info_button.disabled = True

@@ -72,7 +72,7 @@ class _GraveyardControls:
             options=options or [discord.SelectOption(label="No pooches", value="__none__")],
             disabled=not bool(options),
         )
-        self.select.callback = self._on_select  # type: ignore
+        self.select.callback = self._on_select
 
     def attach(self, view: View):
         self.select.row = 1

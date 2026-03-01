@@ -19,6 +19,47 @@ if TYPE_CHECKING:
 logger = get_logger("bot/day_change_loop")
 
 
+def _ensure_controls(bot: discord.Client):
+    paused_event = getattr(bot, "_day_change_paused_event", None)
+    if not isinstance(paused_event, asyncio.Event):
+        paused_event = asyncio.Event()
+        paused_event.set()
+        bot._day_change_paused_event = paused_event
+
+    manual_queue = getattr(bot, "_day_change_manual_queue", None)
+    if not isinstance(manual_queue, asyncio.Queue):
+        manual_queue = asyncio.Queue()
+        bot._day_change_manual_queue = manual_queue
+
+    run_lock = getattr(bot, "_day_change_run_lock", None)
+    if not isinstance(run_lock, asyncio.Lock):
+        run_lock = asyncio.Lock()
+        bot._day_change_run_lock = run_lock
+
+    return paused_event, manual_queue, run_lock
+
+
+def is_day_change_paused(bot: discord.Client) -> bool:
+    paused_event, _, _ = _ensure_controls(bot)
+    return not paused_event.is_set()
+
+
+async def set_day_change_paused(bot: discord.Client, paused: bool) -> bool:
+    """Set pause state. Returns the new paused state."""
+    paused_event, _, _ = _ensure_controls(bot)
+    if paused:
+        paused_event.clear()
+    else:
+        paused_event.set()
+    return not paused_event.is_set()
+
+
+async def trigger_manual_day_change(bot: discord.Client):
+    """Trigger one immediate day change (even if paused)."""
+    _, manual_queue, _ = _ensure_controls(bot)
+    manual_queue.put_nowait(1)
+
+
 async def post_day_change_summaries(bot: discord.Client, summaries: dict[int, DayChangeSummary]):
     for server_discord_id, summary in summaries.items():
         channel_id = await get_event_channel(server_discord_id)
@@ -51,19 +92,20 @@ async def post_day_change_summaries(bot: discord.Client, summaries: dict[int, Da
             description=description,
         )
 
-        await view._source.load()  # type: ignore
-        view._page = 0  # type: ignore
-        view._update_nav_disabled()  # type: ignore
-        content, embed = await view._source.render(view, 0)  # type: ignore
+        await view._source.load()
+        view._page = 0
+        view._update_nav_disabled()
+        content, embed = await view._source.render(view, 0)
 
         send_kwargs: dict[str, object] = {"embed": embed, "view": view}
         if content is not None:
             send_kwargs["content"] = content
-        await channel.send(**send_kwargs)  # type: ignore
+        await channel.send(**send_kwargs)
 
 
 async def day_change_runner(bot: discord.Client, stage: str, tz: str = "America/New_York"):
     zone = ZoneInfo(tz)
+    paused_event, manual_queue, run_lock = _ensure_controls(bot)
 
     async def run_once():
         logger.info("Changing day...")
@@ -71,17 +113,47 @@ async def day_change_runner(bot: discord.Client, stage: str, tz: str = "America/
         await post_day_change_summaries(bot, summaries)
         await post_day_change_webhooks(summaries)
 
-    if stage == "dev":
-        logger.info("Beginning day change loop as DEV...")
-        while True:
-            await run_once()
-            await asyncio.sleep(60)
-    else:
-        logger.info("Beginning day change loop as PROD...")
-        while True:
-            now = datetime.now(tz=zone)
-            tomorrow = (now + timedelta(days=1)).date()
-            midnight = datetime.combine(tomorrow, time(0, 0), tzinfo=zone)
-            sleep_seconds = max((midnight - now).total_seconds(), 1.0)
-            await asyncio.sleep(sleep_seconds)
-            await run_once()
+    bot._day_change_run_once = run_once
+
+    logger.info(f"Beginning day change loop as {stage.upper()}...")
+    while True:
+        manual_task = asyncio.create_task(manual_queue.get())
+
+        timer_task = None
+        resume_task = None
+
+        if paused_event.is_set():
+            if stage == "dev":
+                sleep_seconds = 60.0
+            else:
+                now = datetime.now(tz=zone)
+                tomorrow = (now + timedelta(days=1)).date()
+                midnight = datetime.combine(tomorrow, time(0, 0), tzinfo=zone)
+                sleep_seconds = max((midnight - now).total_seconds(), 1.0)
+            timer_task = asyncio.create_task(asyncio.sleep(sleep_seconds))
+            wait_tasks = {manual_task, timer_task}
+        else:
+            resume_task = asyncio.create_task(paused_event.wait())
+            wait_tasks = {manual_task, resume_task}
+
+        done, pending = await asyncio.wait(wait_tasks, return_when=asyncio.FIRST_COMPLETED)
+
+        for task in pending:
+            task.cancel()
+
+        if manual_task in done:
+            async with run_lock:
+                try:
+                    await run_once()
+                except Exception:
+                    logger.exception("Manual day change failed")
+            continue
+
+        if not paused_event.is_set():
+            continue
+
+        async with run_lock:
+            try:
+                await run_once()
+            except Exception:
+                logger.exception("Scheduled day change failed")

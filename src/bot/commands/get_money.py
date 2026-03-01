@@ -1,10 +1,11 @@
 from discord import Interaction, app_commands
 
+from bot.constants import GUILDS
 from game import add_money
 
 
 def register_get_money_command(tree: app_commands.CommandTree):
-    @tree.command(name="get_money", description="(DEV) Give yourself money")
+    @tree.command(name="get_money", description="(DEV) Give yourself money", guilds=GUILDS)
     @app_commands.describe(amount="How many dollars to add")
     async def get_money(interaction: Interaction, amount: int):
         if interaction.guild_id is None:

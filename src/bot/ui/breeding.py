@@ -21,7 +21,7 @@ class BreedMateView(View):
             min_values=1,
             max_values=1,
         )
-        self.select.callback = self._on_select  # type: ignore
+        self.select.callback = self._on_select
         self.add_item(self.select)
 
     async def _on_select(self, interaction: discord.Interaction):
@@ -31,7 +31,6 @@ class BreedMateView(View):
         if mate is None:
             return
 
-        # Disable after selection to prevent double-submits
         self.select.disabled = True
         await r.edit(view=self)
 

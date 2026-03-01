@@ -109,7 +109,7 @@ class VendorPageControls:
             min_values=1,
             max_values=1,
         )
-        self.mutation_select.callback = self._on_mutation_select  # type: ignore
+        self.mutation_select.callback = self._on_mutation_select
 
         if not pooches:
             options = [discord.SelectOption(label="No pooches for sale", value="__none__")]
@@ -127,15 +127,15 @@ class VendorPageControls:
             options=options,
             disabled=not bool(pooches),
         )
-        self.select.callback = self._on_select  # type: ignore
+        self.select.callback = self._on_select
 
         self.info_button = Button(label="Info", style=discord.ButtonStyle.primary, disabled=True)
         self.buy_button = Button(label="Buy", style=discord.ButtonStyle.success, disabled=True)
         self.sell_button = Button(label="Sell Pooch", style=discord.ButtonStyle.secondary)
 
-        self.info_button.callback = self._on_info  # type: ignore
-        self.buy_button.callback = self._on_buy  # type: ignore
-        self.sell_button.callback = self._on_sell  # type: ignore
+        self.info_button.callback = self._on_info
+        self.buy_button.callback = self._on_buy
+        self.sell_button.callback = self._on_sell
 
         if not pooches:
             self.info_button.disabled = True
@@ -318,13 +318,13 @@ class _SellKennelControls:
             ]
 
         self.select = Select(placeholder="Select a pooch to sell", options=options, disabled=not bool(pooches))
-        self.select.callback = self._on_select  # type: ignore
+        self.select.callback = self._on_select
 
         self.info_button = Button(label="Info", style=discord.ButtonStyle.primary, disabled=True)
         self.sell_button = Button(label="Sell", style=discord.ButtonStyle.danger, disabled=True)
 
-        self.info_button.callback = self._on_info  # type: ignore
-        self.sell_button.callback = self._on_sell  # type: ignore
+        self.info_button.callback = self._on_info
+        self.sell_button.callback = self._on_sell
 
     def attach(self, view: View):
         self.select.row = 1
