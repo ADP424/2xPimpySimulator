@@ -6,7 +6,6 @@
 | Have per-server auction houses players can put their pooches in / players bid, highest bid by EOD gets the pooch              | 8      |
 | Create new breeds at runtime ???                                                                                              | ???    |
 | Get breed population stats for server (add this info to the vet)                                                              | 3      |
-| Get income by begging at the church each day (if low enough on cash (< $50))                                                  | 3      |
 
 ## UI
 | Feature                                                                                                                       | Points |
