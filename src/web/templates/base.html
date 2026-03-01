@@ -62,11 +62,7 @@
                 {% endif %}
             </a>
             <div class="flex items-center gap-2">
-                <div class="avatar">
-                    <div class="w-8 rounded-full ring ring-primary ring-offset-base-100 ring-offset-1">
-                        <img src="{{ session.get('discord_avatar_url') }}" alt="Avatar">
-                    </div>
-                </div>
+                <img src="{{ session.get('discord_avatar_url') }}" alt="Avatar" class="w-8 h-8 rounded-full border-2 border-primary">
                 <span class="font-medium text-sm hidden sm:block">{{ session.get('discord_username') }}</span>
                 <a href="{{ url_for('auth.logout') }}" class="btn btn-ghost btn-xs text-error hidden lg:flex">Logout</a>
             </div>

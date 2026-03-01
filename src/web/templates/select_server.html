@@ -13,7 +13,7 @@
     <div class="card bg-base-200 shadow-md border-2 {% if server.id == current_server_id %}border-primary{% else %}border-transparent{% endif %} transition-colors">
         <div class="card-body items-center text-center gap-4">
             <div class="avatar">
-                <div class="w-16 rounded-full ring ring-base-300 ring-offset-base-100 ring-offset-2">
+                <div class="w-16 rounded-full outline outline-2 outline-offset-2 outline-base-300">
                     {% if server.icon %}
                     <img src="https://cdn.discordapp.com/icons/{{ server.id }}/{{ server.icon }}.png" alt="{{ server.name }}">
                     {% else %}
