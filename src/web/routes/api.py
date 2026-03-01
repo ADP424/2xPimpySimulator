@@ -361,6 +361,24 @@ def rename_kennel_route(kennel_id: int):
         return jsonify({"error": str(e)}), 404
 
 
+@api_bp.route("/beg", methods=["POST"])
+@server_required
+def beg_route():
+    """Beg for money at the church."""
+    from game import beg_for_money
+
+    discord_id = get_current_user_id()
+    server_id = get_current_server_id()
+
+    try:
+        amount, error = run_async(beg_for_money(server_id, discord_id))
+        if error:
+            return jsonify({"success": False, "amount": 0, "message": error})
+        return jsonify({"success": True, "amount": amount, "message": f"You received ${amount}!"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @api_bp.route("/breeds")
 @login_required
 def get_breeds():
