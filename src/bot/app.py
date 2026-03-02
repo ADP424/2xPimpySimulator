@@ -6,6 +6,8 @@ from discord import app_commands
 from dotenv import load_dotenv
 
 from bot.commands.get_money import register_get_money_command
+from bot.commands.increment_day import register_increment_day_command
+from bot.commands.pause_day_loop import register_pause_day_loop_command
 from game import get_or_create_server
 from logger import get_logger
 
@@ -37,12 +39,17 @@ def run():
     # dev only commands
     if stage == "dev":
         register_get_money_command(tree)
+        register_pause_day_loop_command(tree)
+        register_increment_day_command(tree)
 
     @bot.event
     async def on_ready():
-        await tree.sync()
+        if stage == "dev":
+            for guild in GUILDS:
+                await tree.sync(guild=guild)
+        else:
+            await tree.sync()
         for guild in GUILDS:
-            await tree.sync(guild=guild)
             server = await get_or_create_server(guild.id)
             logger.info(f"Initialized Server with ID '{server.discord_id}'.")
         logger.info(f"Bot ready as {bot.user} ({stage})")

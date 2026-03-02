@@ -361,7 +361,7 @@ class _HellControls:
         self.server_discord_id = server_discord_id
         self.pooch = pooch
         self.info_button = Button(label="Info", style=discord.ButtonStyle.primary, row=1)
-        self.info_button.callback = self._on_info  # type: ignore
+        self.info_button.callback = self._on_info
 
     def attach(self, view: View):
         view.add_item(self.info_button)
@@ -451,13 +451,13 @@ class _SacrificeControls:
             ]
 
         self.select = Select(placeholder="Select an offering", options=options, disabled=not bool(pooches))
-        self.select.callback = self._on_select  # type: ignore
+        self.select.callback = self._on_select
 
         self.info_button = Button(label="Info", style=discord.ButtonStyle.primary, disabled=True)
         self.sacrifice_button = Button(label="SACRIFICE", style=discord.ButtonStyle.danger, disabled=True)
 
-        self.info_button.callback = self._on_info  # type: ignore
-        self.sacrifice_button.callback = self._on_sacrifice  # type: ignore
+        self.info_button.callback = self._on_info
+        self.sacrifice_button.callback = self._on_sacrifice
 
     def attach(self, view: View):
         self.select.row = 1
