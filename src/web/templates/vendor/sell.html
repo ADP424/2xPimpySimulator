@@ -116,36 +116,39 @@ function createSellCard(pooch, price) {
     const breedNames = (pooch.breeds || []).map(b => b.breed.name).join(', ') || 'Unknown';
 
     const mutationsHtml = (pooch.mutations || []).length > 0
-        ? pooch.mutations.map(m => {
+        ? pooch.mutations.map((m, i) => {
             const isDesired = desiredMutationIds.has(m.id);
-            return `<span class="badge badge-xs ${isDesired ? 'badge-warning font-bold' : 'badge-ghost'}">${isDesired ? '✨ ' : ''}${escapeHtml(m.name)}</span>`;
-        }).join('')
-        : '';
+            return `<span class="rarity-text-${(m.rarity || '').toLowerCase()}">${isDesired ? '✨' : ''}${escapeHtml(m.name)}${i < pooch.mutations.length - 1 ? ',' : ''}</span>`;
+        }).join(' ')
+        : `<span>None</span>`;
 
     const hasDesired = (pooch.mutations || []).some(m => desiredMutationIds.has(m.id));
     const bonusIndicator = hasDesired ? '<span class="badge badge-warning badge-xs ml-1">bonus!</span>' : '';
 
     return `
-        <div class="card bg-base-200 shadow-sm">
+        <div class="card bg-base-200 shadow-sm h-full">
             <div class="card-body py-4 px-4 gap-2">
                 <div class="flex justify-between items-center">
                     <span class="font-bold">${escapeHtml(pooch.name)}</span>
                     <span>${sexEmoji}</span>
                 </div>
                 <div class="text-xs text-base-content/50 flex flex-col gap-0.5">
-                    <div class="flex justify-between gap-2">
+                    <div class="flex gap-2">
                         <span class="shrink-0">Age:</span><span>${pooch.age} days</span>
                     </div>
                     <div class="flex gap-2">
                         <span class="shrink-0">Breeds:</span><span class="text-base-content/70">${escapeHtml(breedNames)}</span>
                     </div>
+                    <div class="flex gap-2">
+                        <span class="shrink-0">Mutations:</span><span class="text-base-content/70">${mutationsHtml}</span>
+                    </div>
                 </div>
-                ${mutationsHtml ? `<div class="flex flex-wrap gap-1 mt-1">${mutationsHtml}</div>` : ''}
-                <div class="flex justify-between items-center text-success font-semibold text-sm mt-2">
-                    <span>Sell price:</span>
-                    <span>${formatCurrency(price)}${bonusIndicator}</span>
+                <div class="mt-auto flex flex-col gap-2">
+                    <div class="flex gap-2 text-success font-semibold text-sm">
+                        <span>Sell price:</span><span>${formatCurrency(price)}${bonusIndicator}</span>
+                    </div>
+                    <button class="btn btn-sm btn-outline btn-success btn-block" onclick="sellPooch(${pooch.id}, '${escapeHtml(pooch.name).replace(/'/g, "\\'")}', ${price})">Sell</button>
                 </div>
-                <button class="btn btn-sm btn-outline btn-success btn-block mt-1" onclick="sellPooch(${pooch.id}, '${escapeHtml(pooch.name).replace(/'/g, "\\'")}', ${price})">Sell</button>
             </div>
         </div>
     `;
