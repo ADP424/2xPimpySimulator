@@ -110,7 +110,7 @@ async def list_hell_pooches() -> list[Pooch]:
     """
 
     rows = await db_list_hell_pooches()
-    return [to_pooch(pooch) for pooch in rows]
+    return [await to_pooch(pooch) for pooch in rows]
 
 
 async def sacrifice_pooch(owner_discord_id: int, pooch_id: int) -> tuple[bool, str]:
@@ -153,7 +153,7 @@ async def sacrifice_pooch(owner_discord_id: int, pooch_id: int) -> tuple[bool, s
     await give_bloodskulls_to_owner(owner_discord_id, value)
     await set_pooch_dead(pooch.id)
     await remove_pooch_from_kennel(pooch.id)
-    await damn_pooch(pooch_id, owner_discord_id)
+    await damn_pooch(pooch_id)
 
     return (True, f"You sacrificed {pooch.name} for {value} bloodskulls... 𖤐")
 
