@@ -309,6 +309,13 @@
             "heritability": 0.3,
             "health_impact": "NEUTRAL",
             "rarity": "UNCOMMON"
+        },
+        "Dissociative Identity Disorder": {
+            "alt_name": "Multiple Personality Disorder",
+            "descripton": "This pooch is buy one get one free.",
+            "heritability": 0.0,
+            "health_impact": "NEUTRAL",
+            "rarity": "UNCOMMON"
         }
     },
     "Skin Disorders": {
@@ -352,6 +359,16 @@
                 "on_death_targets": "all",
                 "death_message": "[pooch] exploded all over the walls.",
                 "impact_message": "[victim] was killed in [pooch]'s explosion."
+            }
+        },
+        "Blood Pact": {
+            "alt_name": "Sanguis Contractus",
+            "description": "This pooch has mystical powers, and a scar on its paw.",
+            "heritability": 0.0,
+            "health_impact": "HEALTHY",
+            "rarity": "REMARKABLE",
+            "advanced_options": {
+                "bloodskull_value_mult": 3
             }
         },
         "God Syndrome": {
