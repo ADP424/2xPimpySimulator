@@ -121,8 +121,8 @@ async def get_or_create_owner(server_discord_id: int, owner_discord_id: int) -> 
         # TODO pass random
         female_pooch = await create_pooch(owner_discord_id=owner_discord_id, sex="female", age=1, breeding_cooldown=0)
         male_pooch = await create_pooch(owner_discord_id=owner_discord_id, sex="male", age=1, breeding_cooldown=0)
-        await add_breed_to_pooch(female_pooch.id)
-        await add_breed_to_pooch(male_pooch.id)
+        await add_breed_to_pooch(female_pooch.id, from_vendor=True)
+        await add_breed_to_pooch(male_pooch.id, from_vendor=True)
         await add_pooch_to_kennel(kennel.id, female_pooch.id)
         await add_pooch_to_kennel(kennel.id, male_pooch.id)
 

@@ -336,7 +336,7 @@ def rename_pooch_route(pooch_id: int):
         ok = run_async(rename_pooch(pooch_id, name))
         if ok:
             return jsonify({"success": True})
-        return jsonify({"error": f"Name is too long"}), 400
+        return jsonify({"error": "Name is too long"}), 400
     except Exception as e:
         return jsonify({"error": str(e)}), 404
 
