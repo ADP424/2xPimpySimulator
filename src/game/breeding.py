@@ -150,9 +150,11 @@ async def breed_pooches(first_pooch_id: int, second_pooch_id: int, rng_seed: Opt
             for breed_id, weight in mother_breeds.items():
                 merged[breed_id] = merged.get(breed_id, 0.0) + (0.5 * (weight / mother_total) * budget)
 
+        scalar = 1 / min(merged.values())
+
         int_weights: dict[int, int] = {}
         for breed_id, weight in merged.items():
-            int_weight = round(weight)
+            int_weight = round(scalar * weight)
             if int_weight <= 0 and weight > 0:
                 int_weight = 1
             if int_weight > 0:

@@ -327,8 +327,18 @@ async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeS
                     vendor_id=vendor.id,
                     age=rng.randint(VENDOR_POOCH_AGE_RANGE[0], VENDOR_POOCH_AGE_RANGE[1]),
                     base_health=rng.randint(POOCH_BASE_HEALTH_RANGE[0], POOCH_BASE_HEALTH_RANGE[1]),
-                    breeding_cooldown=POOCH_BREEDING_COOLDOWN // 2,
                     rng=rng,
+                )
+                await set_pooch_breeding_cooldown(
+                    vendor_pooch.id,
+                    (
+                        max(
+                            POOCH_BREEDING_COOLDOWN
+                            + await get_pooch_mutation_advanced_option_total(vendor_pooch.id, "breeding_cooldown"),
+                            0,
+                        )
+                    )
+                    // 2,  # Make the breeding cooldown half to start with for vendor pooches
                 )
                 num_breeds = rng.randint(NUM_BREEDS_PER_VENDOR_POOCH_RANGE[0], NUM_BREEDS_PER_VENDOR_POOCH_RANGE[1])
                 for _ in range(num_breeds):
@@ -337,14 +347,6 @@ async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeS
                     rng.randint(NUM_MUTATIONS_PER_VENDOR_POOCH_RANGE[0], NUM_MUTATIONS_PER_VENDOR_POOCH_RANGE[1])
                 ):
                     await add_mutation_to_pooch(vendor_pooch.id)
-                await set_pooch_breeding_cooldown(
-                    vendor_pooch.id,
-                    max(
-                        POOCH_BREEDING_COOLDOWN
-                        + await get_pooch_mutation_advanced_option_total(vendor_pooch.id, "breeding_cooldown"),
-                        0,
-                    ),
-                )
                 await add_pooch_to_vendor_stock(vendor.id, vendor_pooch.id)
     logger.info("Completed daily vendor restock.")
 
