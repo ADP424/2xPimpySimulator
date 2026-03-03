@@ -117,7 +117,11 @@ function createPoochCard(pooch) {
     };
 
     const sexEmoji = pooch.sex === 'female' ? '♀️' : '♂️';
-    const breedNames = pooch.breeds.map(b => b.breed.name).join(', ') || 'Unknown';
+    const breedsHtml = pooch.breeds.length > 0
+        ? pooch.breeds.map((b, i) =>
+            `<span class="rarity-text-${(b.breed.rarity || '').toLowerCase()}">${escapeHtml(b.breed.name)}${i < pooch.breeds.length - 1 ? ',' : ''}</span>`
+          ).join(' ')
+        : `<span>Unknown</span>`;
     const mutationsHtml = pooch.mutations.length > 0
         ? pooch.mutations.map((m, i) =>
             `<span class="rarity-text-${(m.rarity || '').toLowerCase()}">${escapeHtml(m.name)}${i < pooch.mutations.length - 1 ? ',' : ''}</span>`
@@ -139,7 +143,7 @@ function createPoochCard(pooch) {
                         <span class="shrink-0">Age:</span><span>${pooch.age} days</span>
                     </div>
                     <div class="flex gap-2">
-                        <span class="shrink-0">Breeds:</span><span class="text-base-content/70">${escapeHtml(breedNames)}</span>
+                        <span class="shrink-0">Breeds:</span><span class="text-base-content/70">${breedsHtml}</span>
                     </div>
                     <div class="flex gap-2">
                         <span class="shrink-0">Mutations:</span><span class="text-base-content/70">${mutationsHtml}</span>

@@ -179,10 +179,15 @@ function updateSlot(slotNum, pooch) {
     if (!pooch) {
         content.innerHTML = '<p class="text-base-content/40 text-sm text-center py-4">Select a pooch</p>';
     } else {
+        const breedsHtml = pooch.breeds.length > 0
+            ? pooch.breeds.map((b, i) =>
+                `<span class="rarity-text-${(b.breed.rarity || '').toLowerCase()}">${escapeHtml(b.breed.name)}${i < pooch.breeds.length - 1 ? ',' : ''}</span>`
+              ).join(' ')
+            : 'Unknown';
         content.innerHTML = `
             <div class="text-sm">
                 <p class="font-bold">${escapeHtml(pooch.name)} <span>${pooch.sex === 'female' ? '♀️' : '♂️'}</span></p>
-                <p class="text-base-content/50">${pooch.breeds.map(b => b.breed.name).join(', ')}</p>
+                <p class="text-base-content/50">${breedsHtml}</p>
             </div>
         `;
     }
