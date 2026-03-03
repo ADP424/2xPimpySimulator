@@ -99,18 +99,18 @@
             "health_impact": "HARMFUL",
             "rarity": "UNCOMMON"
         },
-        "Compulsive Spinning": {
-            "alt_name": "Compulsive Tail Chasing",
-            "description": "This pooch spins around like a Beyblade™.",
-            "heritability": 0.05,
-            "health_impact": "NEUTRAL",
-            "rarity": "UNCOMMON"
-        },
         "Compulsive Flank Sucking": {
             "alt_name": "Canine Flank Sucking",
             "description": "This pooch can't stop sucking its own ass.",
             "heritability": 0.05,
             "health_impact": "HARMFUL",
+            "rarity": "UNCOMMON"
+        },
+        "Compulsive Spinning": {
+            "alt_name": "Compulsive Tail Chasing",
+            "description": "This pooch spins around like a Beyblade™.",
+            "heritability": 0.05,
+            "health_impact": "NEUTRAL",
             "rarity": "UNCOMMON"
         }
     },
@@ -303,17 +303,17 @@
             "health_impact": "HEALTHY",
             "rarity": "REMARKABLE"
         },
-        "Psychopathy": {
-            "alt_name": "Antisocial Personality Disorder",
-            "descripton": "This pooch is good with the stock market.",
-            "heritability": 0.3,
-            "health_impact": "NEUTRAL",
-            "rarity": "UNCOMMON"
-        },
         "Dissociative Identity Disorder": {
             "alt_name": "Multiple Personality Disorder",
             "descripton": "This pooch is buy one get one free.",
             "heritability": 0.0,
+            "health_impact": "NEUTRAL",
+            "rarity": "UNCOMMON"
+        },
+        "Psychopathy": {
+            "alt_name": "Antisocial Personality Disorder",
+            "descripton": "This pooch is good with the stock market.",
+            "heritability": 0.3,
             "health_impact": "NEUTRAL",
             "rarity": "UNCOMMON"
         }
@@ -338,11 +338,11 @@
         }
     },
     "Supernatural Disorders": {
-        "Mild Possession": {
-            "alt_name": "Mitis Possessio",
-            "description": "This pooch has been possessed by a mischievious spirit.",
+        "Blood Pact": {
+            "alt_name": "Sanguis Contractus",
+            "description": "This pooch has mystical powers, and a scar on its paw.",
             "heritability": 0.0,
-            "health_impact": "HARMFUL",
+            "health_impact": "HEALTHY",
             "rarity": "REMARKABLE",
             "advanced_options": {
                 "bloodskull_value_mult": 3
@@ -361,16 +361,6 @@
                 "impact_message": "[victim] was killed in [pooch]'s explosion."
             }
         },
-        "Blood Pact": {
-            "alt_name": "Sanguis Contractus",
-            "description": "This pooch has mystical powers, and a scar on its paw.",
-            "heritability": 0.0,
-            "health_impact": "HEALTHY",
-            "rarity": "REMARKABLE",
-            "advanced_options": {
-                "bloodskull_value_mult": 3
-            }
-        },
         "God Syndrome": {
             "alt_name": "Jesus Poochicus",
             "description": "This pooch can't die, on Dog.",
@@ -381,6 +371,16 @@
                 "on_death": "spread",
                 "on_death_targets": "random",
                 "always_on_death": 1
+            }
+        },
+        "Mild Possession": {
+            "alt_name": "Mitis Possessio",
+            "description": "This pooch has been possessed by a mischievious spirit.",
+            "heritability": 0.0,
+            "health_impact": "HARMFUL",
+            "rarity": "REMARKABLE",
+            "advanced_options": {
+                "bloodskull_value_mult": 3
             }
         }
     }
