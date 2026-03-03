@@ -298,21 +298,21 @@
     "Psychological Disorders": {
         "Cannibalism": {
             "alt_name": "Canis Canem",
-            "descripton": "This pooch is on a very strict diet.",
+            "description": "This pooch is on a very strict diet.",
             "heritability": 0.1,
             "health_impact": "HEALTHY",
             "rarity": "REMARKABLE"
         },
         "Dissociative Identity Disorder": {
             "alt_name": "Multiple Personality Disorder",
-            "descripton": "This pooch is buy one get one free.",
+            "description": "This pooch is buy one get one free.",
             "heritability": 0.0,
             "health_impact": "NEUTRAL",
             "rarity": "UNCOMMON"
         },
         "Psychopathy": {
             "alt_name": "Antisocial Personality Disorder",
-            "descripton": "This pooch is good with the stock market.",
+            "description": "This pooch is good with the stock market.",
             "heritability": 0.3,
             "health_impact": "NEUTRAL",
             "rarity": "UNCOMMON"
@@ -321,14 +321,14 @@
     "Skin Disorders": {
         "Full Body Prolapse": {
             "alt_name": "Canis Invertus",
-            "descripton": "This pooch was born inside out.",
+            "description": "This pooch was born inside out.",
             "heritability": 0.5,
             "health_impact": "FATAL",
             "rarity": "EXTRAORDINARY"
         },
         "Ichthyosis": {
             "alt_name": "Scale Disease",
-            "descripton": "This pooch has certain reptillian qualities to it.",
+            "description": "This pooch has certain reptillian qualities to it.",
             "heritability": 0.4,
             "health_impact": "NEUTRAL",
             "rarity": "UNPRECEDENTED",

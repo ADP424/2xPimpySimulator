@@ -2,6 +2,7 @@ import random
 from typing import Optional
 
 from database import (
+    add_breed_to_pooch,
     add_owner_to_server,
     add_pooch_to_kennel,
     create_kennel,
@@ -112,21 +113,25 @@ async def get_or_create_owner(server_discord_id: int, owner_discord_id: int) -> 
         The Owner with the given Discord ID in the server with the given Discord ID.
     """
 
+    async def _create_owner_starting_objects(owner_discord_id: int):
+        """Add the owner to the sever and give them their starting items."""
+
+        await add_owner_to_server(server_discord_id, owner_discord_id)
+        kennel = await create_kennel(owner_discord_id)
+        # TODO pass random
+        female_pooch = await create_pooch(owner_discord_id=owner_discord_id, sex="female", age=1, breeding_cooldown=0)
+        male_pooch = await create_pooch(owner_discord_id=owner_discord_id, sex="male", age=1, breeding_cooldown=0)
+        await add_breed_to_pooch(female_pooch.id)
+        await add_breed_to_pooch(male_pooch.id)
+        await add_pooch_to_kennel(kennel.id, female_pooch.id)
+        await add_pooch_to_kennel(kennel.id, male_pooch.id)
+
     await get_or_create_server(server_discord_id)
 
     owner = await get_owner_by_discord_id(owner_discord_id)
     if owner is None:
         owner = await create_owner(owner_discord_id)
-        await add_owner_to_server(server_discord_id, owner_discord_id)
-        kennel = await create_kennel(owner_discord_id)
-        female_pooch = await create_pooch(
-            owner_discord_id=owner_discord_id, sex="female", age=1, breeding_cooldown=0
-        )  # TODO pass random
-        male_pooch = await create_pooch(
-            owner_discord_id=owner_discord_id, sex="male", age=1, breeding_cooldown=0
-        )  # TODO pass random
-        await add_pooch_to_kennel(kennel.id, female_pooch.id)
-        await add_pooch_to_kennel(kennel.id, male_pooch.id)
+        _create_owner_starting_objects(owner.discord_id)
     else:
         owner_server = await get_owner_server(server_discord_id, owner_discord_id)
         if owner_server is None:
