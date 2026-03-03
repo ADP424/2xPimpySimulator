@@ -131,7 +131,7 @@ async def get_or_create_owner(server_discord_id: int, owner_discord_id: int) -> 
     owner = await get_owner_by_discord_id(owner_discord_id)
     if owner is None:
         owner = await create_owner(owner_discord_id)
-        _create_owner_starting_objects(owner.discord_id)
+        await _create_owner_starting_objects(owner.discord_id)
     else:
         owner_server = await get_owner_server(server_discord_id, owner_discord_id)
         if owner_server is None:
