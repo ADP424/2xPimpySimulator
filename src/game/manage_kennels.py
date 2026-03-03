@@ -6,6 +6,7 @@ from database import (
 )
 from database.update import rename_kennel as db_rename_kennel
 
+from .constants import MAX_NAME_LENGTH
 from .exceptions.kennel_not_found import KennelNotFound
 from .exceptions.pooch_not_found import PoochNotFound
 from .models import Pooch, to_pooch
@@ -81,7 +82,7 @@ async def add_pooch_to_kennel(kennel_id: int, pooch_id: int) -> bool:
     await db_add_pooch_to_kennel(kennel_id, pooch_id)
 
 
-async def rename_kennel(kennel_id: int, name: str, max_name_length: int) -> bool:
+async def rename_kennel(kennel_id: int, name: str) -> bool:
     """
     Rename the kennel with a given ID.
 
@@ -92,9 +93,6 @@ async def rename_kennel(kennel_id: int, name: str, max_name_length: int) -> bool
 
     name: str
         The new name to give the kennel.
-
-    max_name_length: int
-        Maximum allowed name length.
 
     Returns
     -------
@@ -108,7 +106,7 @@ async def rename_kennel(kennel_id: int, name: str, max_name_length: int) -> bool
     """
 
     name = name.strip()
-    if len(name) > max_name_length:
+    if len(name) > MAX_NAME_LENGTH:
         return False
 
     kennel = await db_rename_kennel(kennel_id, name)

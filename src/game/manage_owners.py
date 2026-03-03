@@ -3,15 +3,15 @@ from typing import Optional
 
 from database import (
     add_owner_to_server,
+    add_pooch_to_kennel,
     create_kennel,
     create_owner,
+    create_pooch,
     get_owner_by_discord_id,
     get_owner_server,
     give_money_to_owner,
     list_kennels_for_owner,
     set_owner_begged_today,
-    add_pooch_to_kennel,
-    create_pooch
 )
 
 from .constants import BEG_DOLLARS_RANGE, BEG_MAX_DOLLARS
@@ -119,8 +119,12 @@ async def get_or_create_owner(server_discord_id: int, owner_discord_id: int) -> 
         owner = await create_owner(owner_discord_id)
         await add_owner_to_server(server_discord_id, owner_discord_id)
         kennel = await create_kennel(owner_discord_id)
-        female_pooch = await create_pooch(owner_discord_id=owner_discord_id, sex="female", age=1, breeding_cooldown=0) # TODO pass random
-        male_pooch = await create_pooch(owner_discord_id=owner_discord_id, sex="male", age=1, breeding_cooldown=0) # TODO pass random
+        female_pooch = await create_pooch(
+            owner_discord_id=owner_discord_id, sex="female", age=1, breeding_cooldown=0
+        )  # TODO pass random
+        male_pooch = await create_pooch(
+            owner_discord_id=owner_discord_id, sex="male", age=1, breeding_cooldown=0
+        )  # TODO pass random
         await add_pooch_to_kennel(kennel.id, female_pooch.id)
         await add_pooch_to_kennel(kennel.id, male_pooch.id)
     else:

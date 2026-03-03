@@ -6,6 +6,7 @@ from database import (
 )
 from database.update import rename_pooch as db_rename_pooch
 
+from .constants import MAX_NAME_LENGTH
 from .exceptions.pooch_not_found import PoochNotFound
 from .models import Pooch, to_pooch
 
@@ -67,7 +68,7 @@ async def get_pooch_family(pooch_id: int) -> dict[str, list[Pooch]]:
     }
 
 
-async def rename_pooch(pooch_id: int, name: str, max_name_length: int) -> bool:
+async def rename_pooch(pooch_id: int, name: str) -> bool:
     """
     Rename the pooch with the given ID.
 
@@ -94,7 +95,7 @@ async def rename_pooch(pooch_id: int, name: str, max_name_length: int) -> bool:
     """
 
     name = name.strip()
-    if len(name) > max_name_length:
+    if len(name) > MAX_NAME_LENGTH:
         return False
 
     pooch = await db_rename_pooch(pooch_id, name)

@@ -205,7 +205,7 @@ class _RenameKennelModal(discord.ui.Modal):
             return
 
         new_name = str(self.name.value).strip()
-        ok = await rename_kennel(self._kennel_id, new_name, MAX_NAME_LENGTH)
+        ok = await rename_kennel(self._kennel_id, new_name)
         if not ok:
             await r.reply(content=f"That name is too long. Keep it under {MAX_NAME_LENGTH} characters.")
             return
@@ -242,7 +242,7 @@ class _RenamePoochModal(discord.ui.Modal):
             return
 
         new_name = str(self.name.value).strip()
-        ok = await rename_pooch(self._pooch_id, new_name, MAX_NAME_LENGTH)
+        ok = await rename_pooch(self._pooch_id, new_name)
         if not ok:
             await r.reply(content=f"That name is too long. Keep it under {MAX_NAME_LENGTH} characters.")
             return
