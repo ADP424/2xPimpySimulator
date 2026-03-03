@@ -327,6 +327,7 @@ async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeS
                     vendor_id=vendor.id,
                     age=rng.randint(VENDOR_POOCH_AGE_RANGE[0], VENDOR_POOCH_AGE_RANGE[1]),
                     base_health=rng.randint(POOCH_BASE_HEALTH_RANGE[0], POOCH_BASE_HEALTH_RANGE[1]),
+                    breeding_cooldown=POOCH_BREEDING_COOLDOWN // 2,
                     rng=rng,
                 )
                 num_breeds = rng.randint(NUM_BREEDS_PER_VENDOR_POOCH_RANGE[0], NUM_BREEDS_PER_VENDOR_POOCH_RANGE[1])
