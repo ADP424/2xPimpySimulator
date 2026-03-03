@@ -135,12 +135,20 @@ async def breed_pooches(first_pooch_id: int, second_pooch_id: int, rng_seed: Opt
         await set_pooch_parentage(puppy.id, father_id=father.id, mother_id=mother.id)
         await create_pooch_pregnancy(mother.id, puppy.id)
 
-        # The child gets 50% of the breeds from each parent
+        # The child gets 50% of the breeds from each parent (normalized first)
+        father_total = sum(father_breeds.values())
+        mother_total = sum(mother_breeds.values())
+        budget = max(father_total, mother_total, 1)
+
         merged: dict[int, float] = {}
-        for breed_id, weight in father_breeds.items():
-            merged[breed_id] = merged.get(breed_id, 0.0) + (weight * 0.5)
-        for breed_id, weight in mother_breeds.items():
-            merged[breed_id] = merged.get(breed_id, 0.0) + (weight * 0.5)
+
+        if father_total > 0:
+            for breed_id, weight in father_breeds.items():
+                merged[breed_id] = merged.get(breed_id, 0.0) + (0.5 * (weight / father_total) * budget)
+
+        if mother_total > 0:
+            for breed_id, weight in mother_breeds.items():
+                merged[breed_id] = merged.get(breed_id, 0.0) + (0.5 * (weight / mother_total) * budget)
 
         int_weights: dict[int, int] = {}
         for breed_id, weight in merged.items():
