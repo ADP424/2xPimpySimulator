@@ -5,7 +5,7 @@
 {% block content %}
 <div class="flex justify-between items-center mb-6 flex-wrap gap-3">
     <div>
-        <h1 class="text-3xl font-bold">🪦 Graveyard</h1>
+        <h1 class="text-3xl font-bold">⚰️ Graveyard</h1>
         <p class="text-base-content/60 mt-1">In memory of those who have passed.</p>
     </div>
     <a href="{{ url_for('graveyard.church') }}" class="btn btn-ghost btn-sm">← Back to Church</a>
@@ -19,9 +19,9 @@
 <div id="graveyard-container" style="display: none;">
     <div class="flex flex-wrap items-center gap-3 mb-6">
         <label class="text-sm text-base-content/50">Buried from</label>
-        <input type="date" id="date-from" class="input input-sm input-bordered">
+        <input type="date" id="date-from" class="input input-sm">
         <label class="text-sm text-base-content/50">to</label>
-        <input type="date" id="date-to" class="input input-sm input-bordered">
+        <input type="date" id="date-to" class="input input-sm">
         <button id="clear-dates" class="btn btn-ghost btn-sm" style="display: none;">Clear</button>
     </div>
     <div id="pooches-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>

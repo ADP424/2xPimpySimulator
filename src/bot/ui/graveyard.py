@@ -47,7 +47,7 @@ class GraveyardPageSource(PageSource):
         lines: list[str] = []
         for i, (pooch, buried_at) in enumerate(page_rows):
             when = buried_at.date().isoformat() if buried_at is not None else "????-??-??"
-            lines.append(f"{start + i + 1}. 🪦 **{pooch.name}** — buried {when}")
+            lines.append(f"{start + i + 1}. ⚰️ **{pooch.name}** — buried {when}")
         embed.description = "\n".join(lines)
 
         controls = _GraveyardControls(

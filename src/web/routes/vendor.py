@@ -1,6 +1,6 @@
 from flask import Blueprint, g, render_template
 
-from web.auth_utils import server_required
+from web.auth_utils import login_required, server_required
 
 vendor_bp = Blueprint("vendor", __name__)
 
@@ -26,4 +26,15 @@ def vendor_detail(vendor_id: int):
         "vendor/detail.html",
         vendor_id=vendor_id,
         server_name=g.current_server_name,
+    )
+
+
+@vendor_bp.route("/<int:vendor_id>/sell")
+@login_required
+def vendor_sell(vendor_id: int):
+    """Sell pooches to a specific vendor."""
+
+    return render_template(
+        "vendor/sell.html",
+        vendor_id=vendor_id,
     )

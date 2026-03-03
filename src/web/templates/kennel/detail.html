@@ -4,12 +4,28 @@
 
 {% block content %}
 <div class="flex justify-between items-center mb-6 flex-wrap gap-3">
-    <h1 class="text-3xl font-bold" id="kennel-name">Loading...</h1>
+    <div class="flex items-center gap-2">
+        <h1 class="text-3xl font-bold" id="kennel-name">Loading...</h1>
+        <button class="btn btn-ghost btn-xs" onclick="document.getElementById('rename-kennel-modal').showModal()" title="Rename">✏️</button>
+    </div>
     <div class="flex gap-2">
         <a href="{{ url_for('kennel.breeding_interface', kennel_id=kennel_id) }}" class="btn btn-primary btn-sm">💕 Breed Pooches</a>
         <a href="{{ url_for('kennel.kennels_list') }}" class="btn btn-ghost btn-sm">← Back to Kennels</a>
     </div>
 </div>
+
+<!-- Rename modal -->
+<dialog id="rename-kennel-modal" class="modal">
+    <div class="modal-box">
+        <h3 class="font-bold text-lg mb-4">Rename Kennel</h3>
+        <input id="rename-kennel-input" type="text" maxlength="256" class="input w-full" placeholder="New name...">
+        <div class="modal-action">
+            <form method="dialog"><button class="btn btn-ghost btn-sm">Cancel</button></form>
+            <button class="btn btn-primary btn-sm" onclick="submitRenameKennel()">Rename</button>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
 
 <div id="loading" class="flex items-center gap-3 text-base-content/50 py-8">
     <span class="loading loading-spinner loading-md"></span>
@@ -44,6 +60,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             document.getElementById('kennel-info').innerHTML = `
                 Capacity: <strong id="pooch-count">-</strong> / ${kennel.pooch_limit}
             `;
+            document.getElementById('rename-kennel-input').value = kennel.name;
         }
 
         // Load pooches
@@ -67,6 +84,29 @@ document.addEventListener('DOMContentLoaded', async function() {
         console.error('Error:', error);
     }
 });
+
+async function submitRenameKennel() {
+    const name = document.getElementById('rename-kennel-input').value.trim();
+    if (!name) return;
+
+    try {
+        const resp = await fetch(`/api/kennels/${PAGE_DATA.kennelId}/rename`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name }),
+        });
+        const result = await resp.json();
+        if (result.success) {
+            App.showNotification('Kennel renamed!', 'success');
+            window.location.reload();
+        } else {
+            App.showNotification(result.error || 'Rename failed', 'error');
+        }
+    } catch (e) {
+        App.showNotification('Something went wrong.', 'error');
+        console.error('Error:', e);
+    }
+}
 
 function createPoochCard(pooch) {
     const statusEmoji = {

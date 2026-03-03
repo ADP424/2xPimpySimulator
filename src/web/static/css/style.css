@@ -1,3 +1,36 @@
+/* ===== Dark Theme Override (v4 colors for v5) ===== */
+/* https://github.com/daisyui/v4-themes-for-v5 */
+[data-theme="dark"] {
+    --color-base-100: oklch(25.3267% 0.015896 252.417568);
+    --color-base-200: oklch(23.2607% 0.013807 253.100675);
+    --color-base-300: oklch(21.1484% 0.01165 254.087939);
+    --color-base-content: oklch(74.6477% 0.0216 264.435964);
+    --color-primary: oklch(65.69% 0.196 275.75);
+    --color-primary-content: oklch(13.138% 0.0392 275.75);
+    --color-secondary: oklch(74.8% 0.26 342.55);
+    --color-secondary-content: oklch(14.96% 0.052 342.55);
+    --color-accent: oklch(74.51% 0.167 183.61);
+    --color-accent-content: oklch(14.902% 0.0334 183.61);
+    --color-neutral: oklch(31.3815% 0.021108 254.139175);
+    --color-neutral-content: oklch(74.6477% 0.0216 264.435964);
+    --color-info: oklch(72.06% 0.191 231.6);
+    --color-info-content: oklch(0% 0 0);
+    --color-success: oklch(64.8% 0.150 160);
+    --color-success-content: oklch(0% 0 0);
+    --color-warning: oklch(84.71% 0.199 83.87);
+    --color-warning-content: oklch(0% 0 0);
+    --color-error: oklch(71.76% 0.221 22.18);
+    --color-error-content: oklch(0% 0 0);
+    --radius-selector: 1.9rem;
+    --radius-field: 0.5rem;
+    --radius-box: 1rem;
+    --size-selector: 0.25rem;
+    --size-field: 0.25rem;
+    --border: 1px;
+    --depth: 0;
+    --noise: 0;
+}
+
 /* ===== Rarity Badge Colors ===== */
 /* Used in JS-generated HTML and templates */
 .rarity-badge {
@@ -61,7 +94,7 @@
     border: 2px solid transparent;
     transition: border-color 0.15s;
 }
-.pooch-select-card:hover  { border-color: hsl(var(--p)); }
+.pooch-select-card:hover  { border-color: var(--color-primary); }
 .pooch-select-card.selected {
     border-color: #57f287;
     background-color: rgba(87, 242, 135, 0.08);
@@ -78,13 +111,13 @@
     border-radius: 0.5rem;
     font-size: 0.875rem;
     cursor: pointer;
-    border: 1px solid hsl(var(--b3));
-    background-color: hsl(var(--b2));
-    color: hsl(var(--bc));
+    border: 1px solid var(--color-base-300);
+    background-color: var(--color-base-200);
+    color: var(--color-base-content);
     transition: background-color 0.15s;
 }
-.filter-btn:hover    { background-color: hsl(var(--b3)); }
-.filter-btn.active   { background-color: hsl(var(--p)); border-color: hsl(var(--p)); color: hsl(var(--pc)); }
+.filter-btn:hover    { background-color: var(--color-base-300); }
+.filter-btn.active   { background-color: var(--color-primary); border-color: var(--color-primary); color: var(--color-primary-content); }
 
 /* ===== Breeding Interface Layout ===== */
 .breeding-interface {
@@ -139,9 +172,9 @@
 
 .search-input,
 .filter-select {
-    background-color: hsl(var(--b2));
-    color: hsl(var(--bc));
-    border: 1px solid hsl(var(--b3));
+    background-color: var(--color-base-200);
+    color: var(--color-base-content);
+    border: 1px solid var(--color-base-300);
     border-radius: 0.5rem;
     padding: 0.4rem 0.75rem;
     font-size: 0.875rem;
@@ -149,7 +182,7 @@
 
 .search-input:focus,
 .filter-select:focus {
-    outline: 2px solid hsl(var(--p));
+    outline: 2px solid var(--color-primary);
     outline-offset: 1px;
 }
 

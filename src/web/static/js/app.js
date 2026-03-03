@@ -7,6 +7,20 @@ const App = {
 
     init() {
         this.initSocket();
+        this.initTheme();
+    },
+
+    initTheme() {
+        const saved = localStorage.getItem('theme') || 'dark';
+        const radios = document.querySelectorAll('input[name="theme-picker"].theme-controller');
+        if (!radios.length) return;
+
+        radios.forEach(radio => {
+            if (radio.value === saved) radio.checked = true;
+            radio.addEventListener('change', () => {
+                if (radio.checked) localStorage.setItem('theme', radio.value);
+            });
+        });
     },
 
     initSocket() {
