@@ -333,10 +333,10 @@ def rename_pooch_route(pooch_id: int):
         return jsonify({"error": "Name is required"}), 400
 
     try:
-        ok = run_async(rename_pooch(pooch_id, name, 256))
+        ok = run_async(rename_pooch(pooch_id, name))
         if ok:
             return jsonify({"success": True})
-        return jsonify({"error": "Name is too long (max 256 characters)"}), 400
+        return jsonify({"error": f"Name is too long"}), 400
     except Exception as e:
         return jsonify({"error": str(e)}), 404
 
@@ -353,10 +353,10 @@ def rename_kennel_route(kennel_id: int):
         return jsonify({"error": "Name is required"}), 400
 
     try:
-        ok = run_async(rename_kennel(kennel_id, name, 256))
+        ok = run_async(rename_kennel(kennel_id, name))
         if ok:
             return jsonify({"success": True})
-        return jsonify({"error": "Name is too long (max 256 characters)"}), 400
+        return jsonify({"error": "Name is too long"}), 400
     except Exception as e:
         return jsonify({"error": str(e)}), 404
 
