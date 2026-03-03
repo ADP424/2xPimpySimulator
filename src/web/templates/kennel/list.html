@@ -51,10 +51,9 @@ document.addEventListener('DOMContentLoaded', async function() {
                             <span class="text-base-content/50 text-sm">/ ${kennel.pooch_limit} Pooches</span>
                         </div>
                         <div class="flex flex-wrap gap-1 mt-3">
-                            ${pooches.slice(0, 4).map(p => `
+                            ${pooches.map(p => `
                                 <span class="text-2xl">${getStatusEmoji(p.status)}</span>
                             `).join('')}
-                            ${pooches.length > 4 ? `<span class="badge badge-ghost badge-sm self-center">+${pooches.length - 4}</span>` : ''}
                         </div>
                     </div>
                 </a>
