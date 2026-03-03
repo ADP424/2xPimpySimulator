@@ -116,6 +116,13 @@ async def day_change_runner(bot: discord.Client, stage: str, tz: str = "America/
     bot._day_change_run_once = run_once
 
     logger.info(f"Beginning day change loop as {stage.upper()}...")
+
+    async with run_lock:
+        try:
+            await run_once()
+        except Exception:
+            logger.exception("Startup day change failed")
+
     while True:
         manual_task = asyncio.create_task(manual_queue.get())
 
