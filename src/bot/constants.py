@@ -8,7 +8,7 @@ They should NEVER contain gameplay logic.
 import discord
 
 # Server
-GUILDS = [discord.Object(id=1267910656838078474)]
+GUILDS = [discord.Object(id=1267910656838078474), discord.Object(id=618568730162495498)]
 
 # UI Timing
 VIEW_TIMEOUT = 300

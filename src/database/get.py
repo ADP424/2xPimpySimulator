@@ -1,6 +1,6 @@
 from typing import Optional
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, select
 
 from .models import (
     HealthImpactWeight,
@@ -129,7 +129,7 @@ async def get_owner_server(server_discord_id: int, owner_discord_id: int) -> Opt
 
     async with session_scope() as session:
         query = select(OwnerServer).where(
-            OwnerServer.server_discord_id == server_discord_id and OwnerServer.owner_discord_id == owner_discord_id
+            and_(OwnerServer.server_discord_id == server_discord_id, OwnerServer.owner_discord_id == owner_discord_id)
         )
         response = await session.execute(query)
 
