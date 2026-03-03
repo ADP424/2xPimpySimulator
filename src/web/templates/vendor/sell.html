@@ -166,7 +166,7 @@ async function sellPooch(poochId, name, price) {
         const result = await resp.json();
         if (result.success) {
             App.showNotification(result.message, 'success');
-            window.location.href = `/vendor/${PAGE_DATA.vendorId}`;
+            window.location.reload();
         } else {
             App.showNotification(result.message || result.error || 'Sale failed', 'error');
         }
