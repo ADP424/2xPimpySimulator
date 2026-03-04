@@ -132,6 +132,16 @@ async def day_change_runner(bot: discord.Client, stage: str, tz: str = "America/
         if paused_event.is_set():
             if stage == "dev":
                 sleep_seconds = 60.0
+            elif stage == "alpha":
+                now = datetime.now(tz=zone)
+                today = now.date()
+                tomorrow = (now + timedelta(days=1)).date()
+                candidates = [
+                    datetime.combine(today, time(12, 0), tzinfo=zone),
+                    datetime.combine(tomorrow, time(0, 0), tzinfo=zone),
+                ]
+                next_change = min(c for c in candidates if c > now)
+                sleep_seconds = max((next_change - now).total_seconds(), 1.0)
             else:
                 now = datetime.now(tz=zone)
                 tomorrow = (now + timedelta(days=1)).date()
