@@ -142,6 +142,7 @@ async def day_change_runner(bot: discord.Client, stage: str, tz: str = "America/
                 ]
                 next_change = min(c for c in candidates if c > now)
                 sleep_seconds = max((next_change - now).total_seconds(), 1.0)
+                logger.info(f"Next alpha day change in {sleep_seconds:.0f}s at {next_change} ({tz})")
             else:
                 now = datetime.now(tz=zone)
                 tomorrow = (now + timedelta(days=1)).date()
