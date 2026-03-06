@@ -1,6 +1,6 @@
 import { WebHaptics } from "web-haptics";
 
-const haptics = new WebHaptics({ debug: true });
+const haptics = new WebHaptics();
 
 const App = {
     haptics,
@@ -180,6 +180,11 @@ function formatCurrency(amount) {
         minimumFractionDigits: 0,
     }).format(amount);
 }
+
+// Expose globals for inline template scripts
+window.App = App;
+window.escapeHtml = escapeHtml;
+window.formatCurrency = formatCurrency;
 
 // Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
