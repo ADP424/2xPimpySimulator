@@ -158,6 +158,7 @@ async function confirmSacrifice() {
         const resp = await fetch(`/api/pooches/${selectedPoochId}/sacrifice`, { method: 'POST' });
         const result = await resp.json();
         if (result.success) {
+            App.rumble();
             App.showNotification(result.message, 'success');
             document.getElementById('sacrifice-select').value = '';
             document.getElementById('sacrifice-value').style.display = 'none';
@@ -165,9 +166,11 @@ async function confirmSacrifice() {
             selectedPoochId = null;
             await Promise.all([loadMyPooches(), loadHell()]);
         } else {
+            App.haptics.trigger('error');
             App.showNotification(result.message || result.error || 'Sacrifice failed', 'error');
         }
     } catch (e) {
+        App.haptics.trigger('error');
         App.showNotification('Something went wrong. Please try again.', 'error');
         console.error('Error:', e);
     }
@@ -178,6 +181,7 @@ async function confirmSacrifice() {
 function setRolls(n) {
     currentRolls = n;
     document.getElementById('rolls-input').value = n;
+    App.haptics.trigger('selection');
     updateSummonCost();
 }
 
@@ -211,12 +215,15 @@ async function confirmSummon() {
         });
         const result = await resp.json();
         if (result.success) {
+            App.rumble();
             App.showNotification(result.message, 'success');
             await loadMyPooches();
         } else {
+            App.haptics.trigger('error');
             App.showNotification(result.message || result.error || 'Summon failed', 'error');
         }
     } catch (e) {
+        App.haptics.trigger('error');
         App.showNotification('Something went wrong. Please try again.', 'error');
         console.error('Error:', e);
     } finally {

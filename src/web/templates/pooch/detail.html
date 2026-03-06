@@ -105,12 +105,15 @@ async function submitRenamePooch() {
         });
         const result = await resp.json();
         if (result.success) {
+            App.haptics.trigger('success');
             App.showNotification('Pooch renamed!', 'success');
             window.location.reload();
         } else {
+            App.haptics.trigger('error');
             App.showNotification(result.error || 'Rename failed', 'error');
         }
     } catch (e) {
+        App.haptics.trigger('error');
         App.showNotification('Something went wrong.', 'error');
         console.error('Error:', e);
     }

@@ -165,12 +165,15 @@ async function sellPooch(poochId, name, price) {
         const resp = await fetch(`/api/vendors/${PAGE_DATA.vendorId}/sell/${poochId}`, { method: 'POST' });
         const result = await resp.json();
         if (result.success) {
+            App.haptics.trigger('success');
             App.showNotification(result.message, 'success');
             window.location.reload();
         } else {
+            App.haptics.trigger('error');
             App.showNotification(result.message || result.error || 'Sale failed', 'error');
         }
     } catch (e) {
+        App.haptics.trigger('error');
         App.showNotification('Something went wrong. Please try again.', 'error');
         console.error('Error:', e);
     }
