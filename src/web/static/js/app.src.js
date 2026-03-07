@@ -18,6 +18,8 @@ const App = {
     },
 
     queueNotification(message, type = 'info') {
+        const hapticMap = { success: 'success', error: 'error', warning: 'warning' };
+        if (hapticMap[type]) haptics.trigger(hapticMap[type]);
         sessionStorage.setItem('pending_notification', JSON.stringify({ message, type }));
     },
 
@@ -27,7 +29,7 @@ const App = {
         sessionStorage.removeItem('pending_notification');
         try {
             const { message, type } = JSON.parse(raw);
-            this.showNotification(message, type);
+            this.showNotification(message, type, true);
         } catch {}
     },
 
@@ -115,9 +117,11 @@ const App = {
         }
     },
 
-    showNotification(message, type = 'info') {
-        const hapticMap = { success: 'success', error: 'error', warning: 'warning' };
-        if (hapticMap[type]) haptics.trigger(hapticMap[type]);
+    showNotification(message, type = 'info', skipHaptics = false) {
+        if (!skipHaptics) {
+            const hapticMap = { success: 'success', error: 'error', warning: 'warning' };
+            if (hapticMap[type]) haptics.trigger(hapticMap[type]);
+        }
 
         const container = document.getElementById('notification-container');
         if (!container) return;

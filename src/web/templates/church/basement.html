@@ -159,7 +159,7 @@ async function confirmSacrifice() {
         const result = await resp.json();
         if (result.success) {
             App.rumble();
-            App.showNotification(result.message, 'success');
+            App.showNotification(result.message, 'info');
             document.getElementById('sacrifice-select').value = '';
             document.getElementById('sacrifice-value').style.display = 'none';
             document.getElementById('sacrifice-btn').disabled = true;
@@ -214,7 +214,7 @@ async function confirmSummon() {
         const result = await resp.json();
         if (result.success) {
             App.rumble();
-            App.showNotification(result.message, 'success');
+            App.showNotification(result.message, 'info');
             await loadMyPooches();
         } else {
             App.showNotification(result.message || result.error || 'Summon failed', 'error');
