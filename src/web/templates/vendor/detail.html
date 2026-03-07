@@ -137,15 +137,12 @@ async function buyPooch(poochId) {
         const result = await response.json();
 
         if (result.success) {
-            App.haptics.trigger('success');
-            App.showNotification('Purchase successful!', 'success');
+            App.queueNotification('Purchase successful!', 'success');
             window.location.reload();
         } else {
-            App.haptics.trigger('error');
             App.showNotification(result.message || result.error || 'Purchase failed', 'error');
         }
     } catch (error) {
-        App.haptics.trigger('error');
         App.showNotification('Something went wrong. Please try again.', 'error');
         console.error('Error:', error);
     }

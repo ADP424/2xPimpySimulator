@@ -166,11 +166,9 @@ async function confirmSacrifice() {
             selectedPoochId = null;
             await Promise.all([loadMyPooches(), loadHell()]);
         } else {
-            App.haptics.trigger('error');
             App.showNotification(result.message || result.error || 'Sacrifice failed', 'error');
         }
     } catch (e) {
-        App.haptics.trigger('error');
         App.showNotification('Something went wrong. Please try again.', 'error');
         console.error('Error:', e);
     }
@@ -219,11 +217,9 @@ async function confirmSummon() {
             App.showNotification(result.message, 'success');
             await loadMyPooches();
         } else {
-            App.haptics.trigger('error');
             App.showNotification(result.message || result.error || 'Summon failed', 'error');
         }
     } catch (e) {
-        App.haptics.trigger('error');
         App.showNotification('Something went wrong. Please try again.', 'error');
         console.error('Error:', e);
     } finally {

@@ -1,6 +1,6 @@
 import { WebHaptics } from "web-haptics";
 
-const haptics = new WebHaptics();
+const haptics = new WebHaptics({ debug: true });
 
 const App = {
     haptics,
@@ -14,6 +14,21 @@ const App = {
     init() {
         this.initSocket();
         this.initTheme();
+        this.checkPendingNotification();
+    },
+
+    queueNotification(message, type = 'info') {
+        sessionStorage.setItem('pending_notification', JSON.stringify({ message, type }));
+    },
+
+    checkPendingNotification() {
+        const raw = sessionStorage.getItem('pending_notification');
+        if (!raw) return;
+        sessionStorage.removeItem('pending_notification');
+        try {
+            const { message, type } = JSON.parse(raw);
+            this.showNotification(message, type);
+        } catch {}
     },
 
     rumble() {
