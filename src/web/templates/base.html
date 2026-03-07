@@ -58,7 +58,7 @@
         <div class="navbar-end gap-2">
             {% if session.get('discord_id') %}
             {% if session.get('current_server_id') %}
-            <div id="navbar-currencies" class="flex items-center gap-1.5 sm:gap-3 text-xs sm:text-sm mr-1" style="display: none;">
+            <div id="navbar-currencies" class="hidden sm:flex items-center gap-3 text-sm mr-1" style="display: none;">
                 <span class="text-success font-semibold" id="nav-dollars">—</span>
                 <span class="text-error font-semibold" id="nav-bloodskulls">—</span>
             </div>
