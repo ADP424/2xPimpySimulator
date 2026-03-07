@@ -45,7 +45,10 @@ const App = {
         radios.forEach(radio => {
             if (radio.value === saved) radio.checked = true;
             radio.addEventListener('change', () => {
-                if (radio.checked) localStorage.setItem('theme', radio.value);
+                if (radio.checked) {
+                    document.documentElement.setAttribute('data-theme', radio.value);
+                    localStorage.setItem('theme', radio.value);
+                }
             });
         });
     },
