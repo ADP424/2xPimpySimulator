@@ -30,7 +30,6 @@ logger = get_logger("database/load/load_resources")
 _SELECTED_TARGET_TOKEN = "selected"
 _RANDOM_TARGET_TOKEN = "random"
 _EVENT_ALLOWED_KEYS = {
-    "alt_name",
     "description",
     "flavor_text",
     "severity",
@@ -106,7 +105,6 @@ class _EventValidator:
 
         self._validate_unknown_keys(path, attributes, _EVENT_ALLOWED_KEYS)
 
-        self._validate_optional_string(path, attributes, "alt_name", allow_blank=False)
         self._validate_optional_string(path, attributes, "description")
         self._validate_optional_string(path, attributes, "flavor_text")
         self._validate_optional_json_object(path, attributes, "advanced_options")
@@ -631,7 +629,6 @@ async def load_events():
             for event_name, attributes in events.items():
                 event = Event(
                     name=str(event_name),
-                    alt_name=str(attributes.get("alt_name", event_name)),
                     category=str(event_category),
                     description=str(attributes.get("description", f"{event_name} is a random event that can occur.")),
                     flavor_text=str(attributes.get("flavor_text", "")),

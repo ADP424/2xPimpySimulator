@@ -20,7 +20,6 @@ class TriggeredEvent:
     event_id: int
 
     name: str
-    alt_name: str
     category: str
     description: str
     flavor_text: str

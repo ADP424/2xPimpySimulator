@@ -10,7 +10,6 @@ Events are structured within `resources/events.json` and grouped by category, li
 {
     "[category]": {
         "[event name]": {
-            "alt_name": "string",
             "description": "string",
             "flavor_text": "string",
             "severity": "string",
@@ -90,20 +89,6 @@ Examples:
 - `"Escaped Pooch"`
 - `"Vet Bill"`
 - `"Strange Mutation"`
-
----
-
-#### Alt Name
-
-An alternate name or subtitle for the event.
-
-If not provided, the event can simply display using the main event name.
-
-Example:
-
-```json
-"alt_name": "Medical Emergency"
-```
 
 ---
 
@@ -976,7 +961,6 @@ This is especially useful for:
 {
     "Misfortune": {
         "Escaped Pooch": {
-            "alt_name": "Gone Missing",
             "description": "One of your pooches has escaped the kennel.",
             "flavor_text": "A neighbor says they saw the pooch sprint down the street an hour ago.",
             "severity": "MODERATE",
@@ -1087,37 +1071,3 @@ In this example:
 - the outcome `message` is shown
 - the outcome `actions` are applied
 - if the player does not respond in time, the event's top-level `actions` happen instead
-
----
-
-# Best Practices
-
-### Keep Event Text Clear
-
-The player should be able to understand the situation and the choices quickly.
-
----
-
-### Use Outcome Messages
-
-Every meaningful branch should have its own message so the player sees what actually happened.
-
-Avoid relying on generic fallback text.
-
----
-
-### Use Guaranteed Option Actions for Up-Front Costs
-
-If an option should always cost money or another resource, put that in the option's `actions`, not in just one outcome.
-
----
-
-### Keep Branch Chances Sensible
-
-Success and failure chances should match the tone and severity of the event.
-
----
-
-### Match Severity to Consequence
-
-A `CATASTROPHIC` event should not only cause tiny changes, and a `TRIVIAL` event should not wipe out major assets.

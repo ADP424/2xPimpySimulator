@@ -61,7 +61,6 @@ CREATE TABLE events (
     id                  BIGSERIAL PRIMARY KEY,
 
     name                TEXT NOT NULL UNIQUE,
-    alt_name            TEXT NOT NULL,
     category            TEXT NOT NULL,
     description         TEXT NOT NULL,
     flavor_text         TEXT NOT NULL DEFAULT '',

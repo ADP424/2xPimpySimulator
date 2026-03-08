@@ -240,9 +240,6 @@ def build_triggered_event_embed(event: TriggeredEvent) -> discord.Embed:
         color=_color_for_severity(event.severity),
     )
 
-    if event.alt_name and event.alt_name != event.name:
-        embed.add_field(name="Alt Name", value=event.alt_name, inline=True)
-
     details = [
         f"**Category:** {event.category.title()}",
         f"**Severity:** {event.severity.title()}",

@@ -21,7 +21,6 @@ class Event(Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
 
     name: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
-    alt_name: Mapped[str] = mapped_column(Text, nullable=False)
     category: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     flavor_text: Mapped[str] = mapped_column(Text, nullable=False, default="")
