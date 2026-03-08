@@ -9,11 +9,9 @@ from bot.ui.util import (
     mention,
 )
 from game import get_pooch_family
-from game.models.mutation import Mutation
-from game.models.pooch import PoochBreedInfo
+from game.models import Mutation, PoochBreedInfo
 
-from .components.breed_dropdown import build_breed_info_embed
-from .components.mutation_dropdown import build_mutation_info_embed
+from .components import build_breed_info_embed, build_mutation_info_embed
 
 if TYPE_CHECKING:
     from game.models import Owner, Pooch, Server

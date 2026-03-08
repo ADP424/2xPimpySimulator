@@ -2,8 +2,8 @@ from sqlalchemy import BigInteger, Text, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
-from database.models.base import Base
-from database.models.enums.rarity import RARITY
+from database.models import Base
+from database.models.enums import RARITY
 
 
 class Breed(Base):

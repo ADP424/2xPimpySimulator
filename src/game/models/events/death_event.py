@@ -1,7 +1,11 @@
-from dataclasses import dataclass
+from __future__ import annotations
 
-from game.models.pooch import Pooch
-from game.models.server import Server
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from game.models.pooch import Pooch
+    from game.models.server import Server
 
 
 @dataclass(frozen=True)

@@ -1,10 +1,16 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from database import get_owner_by_discord_id
-from database.models import Kennel as KennelORM
 
-from .owner import Owner, to_owner
+from .owner import to_owner
+
+if TYPE_CHECKING:
+    from database.models import Kennel as KennelORM
+
+    from .owner import Owner
 
 
 @dataclass(frozen=True)

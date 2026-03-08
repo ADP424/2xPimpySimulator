@@ -73,3 +73,42 @@ INSERT INTO health_impact_weights VALUES
     ('brilliant', 5),
     ('immortality', 1000)
 ;
+
+
+-- EVENT SEVERITY
+CREATE TYPE event_severity AS ENUM (
+    'trivial',
+    'minor',
+    'moderate',
+    'major',
+    'critical',
+    'catastrophic'
+);
+
+
+-- EVENT TARGET TYPE (what an event affects)
+CREATE TYPE event_target_type AS ENUM (
+    'owner',
+    'pooch',
+    'kennel',
+    'all_pooches',
+    'all_kennels'
+);
+
+
+-- EVENT ACTION TYPE (what happens to an event's target)
+CREATE TYPE event_action_type AS ENUM (
+    'modify_money',
+    'modify_bloodskulls',
+    'modify_pooch_health',
+    'modify_pooch_age',
+    'kill_pooch',
+    'add_mutation',
+    'remove_mutation',
+    'add_breed',
+    'transfer_pooch',
+    'create_pooch',
+    'modify_kennel_capacity',
+    'rename_pooch',
+    'set_breeding_cooldown',
+);

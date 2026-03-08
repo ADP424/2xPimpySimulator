@@ -1,10 +1,3 @@
-"""
-Database-layer constants.
-
-These define default weights, rarity distributions, and generation ranges.
-They should not encode logic, only values.
-"""
-
 # Pooch Defaults
 POOCH_BASE_HEALTH = 10
 POOCH_HEALTH_LOSS_AGE = 0

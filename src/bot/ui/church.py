@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 import discord
 from discord.ui import Button, Select, View
@@ -18,10 +18,12 @@ from game import (
     sacrifice_pooch,
     summon_pooch,
 )
-from game.models import Kennel, Pooch
 from logger import get_logger
 
-from .components.paginator import PageSource, PaginatorView
+if TYPE_CHECKING:
+    from game.models import Kennel, Pooch
+
+from .components import PageSource, PaginatorView
 from .pooch_info import PoochInfoView
 
 logger = get_logger("bot/ui/church")
@@ -215,7 +217,7 @@ class _SummonRollButton(Button):
 
 class _CustomSummonButton(Button):
     def __init__(self, owner_discord_id: int):
-        super().__init__(label="Custom…", style=discord.ButtonStyle.secondary, row=1)
+        super().__init__(label="Custom...", style=discord.ButtonStyle.secondary, row=1)
         self._owner_id = owner_discord_id
 
     async def callback(self, interaction: discord.Interaction):

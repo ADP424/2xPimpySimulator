@@ -5,9 +5,11 @@ import discord
 from discord import app_commands
 from dotenv import load_dotenv
 
+from bot.commands.event_history import register_event_history_command
 from bot.commands.get_money import register_get_money_command
 from bot.commands.increment_day import register_increment_day_command
 from bot.commands.pause_day_loop import register_pause_day_loop_command
+from bot.commands.pending_events import register_pending_events_command
 from game import get_or_create_server
 from logger import get_logger
 
@@ -16,6 +18,7 @@ from .commands.set_event_channel import register_set_event_channel_command
 from .commands.town import register_town_command
 from .constants import GUILDS
 from .day_change_loop import day_change_runner
+from .event_loop import hourly_event_runner
 
 logger = get_logger("bot/app")
 
@@ -35,6 +38,8 @@ def run():
     register_home_command(tree)
     register_town_command(tree)
     register_set_event_channel_command(tree)
+    register_event_history_command(tree)
+    register_pending_events_command(tree)
 
     # dev only commands
     if stage == "dev":
@@ -55,7 +60,9 @@ def run():
         logger.info(f"Bot ready as {bot.user} ({stage})")
 
         if not hasattr(bot, "_day_change_task"):
-            bot._day_change_task = asyncio.create_task(day_change_runner(bot, stage=stage, tz=tz))  # type: ignore
+            bot._day_change_task = asyncio.create_task(day_change_runner(bot, stage=stage, tz=tz))
+        if not hasattr(bot, "_hourly_event_task"):
+            bot._hourly_event_task = asyncio.create_task(hourly_event_runner(bot, stage=stage))
 
     if not token:
         raise RuntimeError("DISCORD_TOKEN not set")

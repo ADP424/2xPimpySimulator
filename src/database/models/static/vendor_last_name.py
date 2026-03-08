@@ -1,7 +1,7 @@
 from sqlalchemy import BigInteger, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
-from database.models.base import Base
+from database.models import Base
 
 
 class VendorLastName(Base):

@@ -8,7 +8,7 @@ from discord.ui import Select, View
 
 from game import get_or_create_server, list_graveyard_pooches
 
-from .components.paginator import PageSource
+from .components import PageSource
 from .pooch_info import PoochInfoView
 from .util import InteractionResponder
 

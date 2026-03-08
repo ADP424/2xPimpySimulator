@@ -1,4 +1,6 @@
-from typing import Optional
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Optional
 
 from database import (
     add_pooch_to_kennel,
@@ -34,16 +36,14 @@ from .constants import (
     POOCH_DOLLAR_VALUE_LOSS_BY_HEALTH_BELOW_AVERAGE,
     VENDOR_DESIRED_MUTATION_MULT,
 )
-from .exceptions.pooch_not_found import PoochNotFound
-from .exceptions.vendor_not_found import VendorNotFound
-from .models import Pooch, Vendor, to_pooch, to_vendor
+from .exceptions import PoochNotFound, VendorNotFound
+from .models import to_pooch, to_vendor
+
+if TYPE_CHECKING:
+    from .models import Pooch, Vendor
 
 
-async def buy_pooch(
-    owner_discord_id: int,
-    vendor_id: int,
-    pooch_id: int,
-) -> tuple[bool, str]:
+async def buy_pooch(owner_discord_id: int, vendor_id: int, pooch_id: int) -> tuple[bool, str]:
     """
     Have the given owner purchase the given pooch from the given vendor.
     Fails with a specific error message if:

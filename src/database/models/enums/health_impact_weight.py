@@ -1,7 +1,7 @@
 from sqlalchemy import Integer
 from sqlalchemy.orm import Mapped, mapped_column
 
-from database.models.base import Base
+from database.models import Base
 from database.models.enums.health_impact import HEALTH_IMPACT
 
 

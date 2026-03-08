@@ -4,7 +4,7 @@ import discord
 from discord.ui import Button, View
 
 from bot.constants import VIEW_TIMEOUT
-from bot.ui.util import edit_interaction
+from bot.ui import edit_interaction
 
 
 class PageSource(Protocol):

@@ -1,15 +1,22 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from database import (
     get_mutation_by_id,
     get_server_by_discord_id,
     list_vendor_pooch_stock,
 )
-from database.models import Vendor as VendorORM
 
-from .mutation import Mutation, to_mutation
-from .server import Server, to_server
+from .mutation import to_mutation
+from .server import to_server
+
+if TYPE_CHECKING:
+    from database.models import Vendor as VendorORM
+
+    from .mutation import Mutation
+    from .server import Server
 
 
 @dataclass(frozen=True)
@@ -29,6 +36,20 @@ class Vendor:
 
 
 async def to_vendor(vendor: VendorORM) -> Vendor:
+    """
+    Convert an ORM Vendor object to a game Vendor object.
+
+    Parameters
+    ----------
+    vendor: Vendor
+        The Vendor object to convert.
+
+    Returns
+    -------
+    Vendor
+        The converted Vendor dataclass object.
+    """
+
     return Vendor(
         id=vendor.id,
         server_discord_id=vendor.server_discord_id,

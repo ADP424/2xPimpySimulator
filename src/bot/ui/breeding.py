@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import discord
 from discord.ui import Select, View
 
 from bot.ui.util import InteractionResponder
 from game import breed_pooches
-from game.models import Pooch
+
+if TYPE_CHECKING:
+    from game.models import Pooch
 
 
 class BreedMateView(View):

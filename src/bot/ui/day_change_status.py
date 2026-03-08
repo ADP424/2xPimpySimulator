@@ -8,7 +8,7 @@ from discord.ui import Button, Select, View
 from bot.constants import ITEMS_PER_PAGE
 from bot.ui.util import InteractionResponder
 
-from .components.paginator import PageSource, PaginatorView
+from .components import PageSource, PaginatorView
 from .pooch_info import PoochInfoView
 
 if TYPE_CHECKING:

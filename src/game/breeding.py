@@ -28,7 +28,7 @@ from .constants import (
     TRIPLETS_CHANCE,
     TWINS_CHANCE,
 )
-from .exceptions.pooch_not_found import PoochNotFound
+from .exceptions import PoochNotFound
 from .utils import get_pooch_mutation_advanced_option_total
 
 

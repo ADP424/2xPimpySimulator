@@ -1,0 +1,239 @@
+{
+    "Fortune": {
+        "Lucky Find": {
+            "alt_name": "Found Money",
+            "description": "You found some money on the ground while walking your pooches!",
+            "flavor_text": "It's your lucky day!",
+            "severity": "TRIVIAL",
+            "rarity": "COMMON",
+            "requires_response": false,
+            "actions": [
+                {
+                    "action_type": "modify_money",
+                    "target_type": "owner",
+                    "parameters": {
+                        "min_amount": 5,
+                        "max_amount": 25
+                    }
+                }
+            ]
+        },
+        "Inheritance": {
+            "alt_name": "Unexpected Windfall",
+            "description": "A distant relative has left you some money in their will!",
+            "flavor_text": "You didn't even know Great Aunt Mildred had pooches...",
+            "severity": "MODERATE",
+            "rarity": "RARE",
+            "requires_response": false,
+            "actions": [
+                {
+                    "action_type": "modify_money",
+                    "target_type": "owner",
+                    "parameters": {
+                        "min_amount": 100,
+                        "max_amount": 500
+                    }
+                }
+            ]
+        }
+    },
+    "Misfortune": {
+        "Vet Bill": {
+            "alt_name": "Medical Emergency",
+            "description": "One of your pooches got sick and needs medical attention!",
+            "flavor_text": "The vet says it's nothing serious, but it'll cost you.",
+            "severity": "MINOR",
+            "rarity": "UNCOMMON",
+            "requires_response": true,
+            "response_timeout": 7200,
+            "min_pooches": 1,
+            "options": [
+                {
+                    "label": "Pay for treatment",
+                    "description": "Pay $50 to treat your pooch.",
+                    "min_money": 50,
+                    "actions": [
+                        {
+                            "action_type": "modify_money",
+                            "target_type": "owner",
+                            "parameters": {
+                                "amount": -50
+                            }
+                        }
+                    ]
+                },
+                {
+                    "label": "Let nature take its course",
+                    "description": "Hope they get better on their own...",
+                    "actions": [
+                        {
+                            "action_type": "modify_pooch_health",
+                            "target_type": "pooch",
+                            "parameters": {
+                                "pooch_id": "random",
+                                "amount": -3
+                            }
+                        }
+                    ]
+                }
+            ],
+            "actions": [
+                {
+                    "action_type": "modify_pooch_health",
+                    "target_type": "pooch",
+                    "parameters": {
+                        "pooch_id": "random",
+                        "amount": -5
+                    }
+                }
+            ]
+        },
+        "Escaped Pooch": {
+            "alt_name": "Runaway",
+            "description": "One of your pooches has escaped from the kennel!",
+            "flavor_text": "Quick, you need to decide what to do!",
+            "severity": "MAJOR",
+            "rarity": "UNCOMMON",
+            "requires_response": true,
+            "response_timeout": 3600,
+            "min_pooches": 1,
+            "options": [
+                {
+                    "label": "Hire a search party",
+                    "description": "Pay $100 to hire professionals to find your pooch.",
+                    "min_money": 100,
+                    "actions": [
+                        {
+                            "action_type": "modify_money",
+                            "target_type": "owner",
+                            "parameters": {
+                                "amount": -100
+                            }
+                        }
+                    ]
+                },
+                {
+                    "label": "Search yourself",
+                    "description": "Spend time searching. There's a chance you won't find them...",
+                    "actions": []
+                },
+                {
+                    "label": "Give up",
+                    "description": "Accept that they're gone...",
+                    "actions": [
+                        {
+                            "action_type": "kill_pooch",
+                            "target_type": "pooch",
+                            "parameters": {
+                                "pooch_id": "random"
+                            }
+                        }
+                    ]
+                }
+            ],
+            "actions": []
+        }
+    },
+    "Mutation": {
+        "Strange Glow": {
+            "alt_name": "Radioactive Treat",
+            "description": "Your pooch ate something strange and is now... glowing?",
+            "flavor_text": "Maybe don't let them eat things off the ground...",
+            "severity": "MODERATE",
+            "rarity": "NOVEL",
+            "requires_response": false,
+            "min_pooches": 1,
+            "actions": [
+                {
+                    "action_type": "add_mutation",
+                    "target_type": "pooch",
+                    "parameters": {
+                        "pooch_id": "random"
+                    }
+                }
+            ]
+        }
+    },
+    "Supernatural": {
+        "Dark Ritual Opportunity": {
+            "alt_name": "Blood Moon Rising",
+            "description": "The blood moon rises, and you feel a dark power calling...",
+            "flavor_text": "The ancient ones are watching.",
+            "severity": "CRITICAL",
+            "rarity": "EXTRAORDINARY",
+            "requires_response": true,
+            "response_timeout": 1800,
+            "min_bloodskulls": 10,
+            "options": [
+                {
+                    "label": "Perform the ritual",
+                    "description": "Sacrifice 10 bloodskulls for a powerful reward.",
+                    "min_bloodskulls": 10,
+                    "actions": [
+                        {
+                            "action_type": "modify_bloodskulls",
+                            "target_type": "owner",
+                            "parameters": {
+                                "amount": -10
+                            }
+                        },
+                        {
+                            "action_type": "create_pooch",
+                            "target_type": "owner",
+                            "parameters": {}
+                        },
+                        {
+                            "action_type": "add_mutation",
+                            "target_type": "pooch",
+                            "parameters": {
+                                "pooch_id": "selected"
+                            }
+                        },
+                        {
+                            "action_type": "add_mutation",
+                            "target_type": "pooch",
+                            "parameters": {
+                                "pooch_id": "selected"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "label": "Resist the temptation",
+                    "description": "Turn away from the darkness.",
+                    "actions": [
+                        {
+                            "action_type": "modify_money",
+                            "target_type": "owner",
+                            "parameters": {
+                                "amount": 25
+                            }
+                        }
+                    ]
+                }
+            ],
+            "actions": []
+        }
+    },
+    "Breeding": {
+        "Fertility Blessing": {
+            "alt_name": "Breeding Boost",
+            "description": "A mysterious breeder passes by and blesses one of your pooches!",
+            "flavor_text": "Your pooch seems eager to breed...",
+            "severity": "MINOR",
+            "rarity": "UNCOMMON",
+            "requires_response": false,
+            "min_pooches": 1,
+            "actions": [
+                {
+                    "action_type": "set_breeding_cooldown",
+                    "target_type": "pooch",
+                    "parameters": {
+                        "pooch_id": "random",
+                        "cooldown": 0
+                    }
+                }
+            ]
+        }
+    }
+}

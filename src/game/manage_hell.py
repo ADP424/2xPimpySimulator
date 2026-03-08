@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import random
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from database import (
     add_breed_to_pooch,
@@ -31,8 +33,11 @@ from .constants import (
     POOCH_BASE_HEALTH_RANGE,
     POOCH_BLOODSKULL_VALUE_LOSS_BY_HEALTH_BELOW_AVERAGE,
 )
-from .exceptions.pooch_not_found import PoochNotFound
-from .models import Pooch, to_pooch
+from .exceptions import PoochNotFound
+from .models import to_pooch
+
+if TYPE_CHECKING:
+    from .models import Pooch
 
 
 async def get_pooch_bloodskull_value(pooch_id: int) -> int:

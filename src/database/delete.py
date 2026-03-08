@@ -1,8 +1,19 @@
+import random
 from typing import Optional
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import and_, delete, func, or_, select
 
-from .models import KennelPooch, Pooch, PoochPregnancy, Vendor, VendorPoochForSale
+from database.models.enums.health_impact_weight import HealthImpactWeight
+
+from .models import (
+    KennelPooch,
+    Mutation,
+    Pooch,
+    PoochMutation,
+    PoochPregnancy,
+    Vendor,
+    VendorPoochForSale,
+)
 from .session import session_scope
 
 
@@ -131,6 +142,40 @@ async def delete_random_vendor(server_discord_id: int) -> Optional[Vendor]:
         return vendor
 
 
+async def remove_mutation_from_pooch(pooch_id: int, mutation_id: int) -> Optional[PoochMutation]:
+    """
+    Remove a mutation from a pooch.
+
+    Parameters
+    ----------
+    pooch_id: int
+        The ID of the pooch to remove the mutation from.
+
+    mutation_id: int
+        The ID of the mutation to remove.
+
+    Returns
+    -------
+    PoochMutation, optional
+        The removed PoochMutation relationship, or None if it didn't exist.
+    """
+
+    async with session_scope() as session:
+        query = select(PoochMutation).where(
+            and_(
+                PoochMutation.pooch_id == pooch_id,
+                PoochMutation.mutation_id == mutation_id,
+            )
+        )
+        result = await session.execute(query)
+        pooch_mutation = result.scalar_one_or_none()
+
+        if pooch_mutation is not None:
+            await session.delete(pooch_mutation)
+
+        return pooch_mutation
+
+
 async def remove_pooch_from_kennel(pooch_id: int) -> Pooch:
     """
     Remove the pooch with the given ID from the kennel it's in, if any.
@@ -209,3 +254,73 @@ async def remove_pooch_from_vendor_stock(vendor_id: int, pooch_id: int) -> Optio
         )
 
     return pooch
+
+
+async def remove_random_mutation_from_pooch(
+    pooch_id: int,
+    rng: Optional[random.Random] = None,
+    positive: bool = True,
+    negative: bool = True,
+    neutral: bool = True,
+) -> Optional[PoochMutation]:
+    """
+    Remove a random mutation from a pooch.
+
+    Parameters
+    ----------
+    pooch_id: int
+        The ID of the pooch to remove a mutation from.
+
+    rng: Random, optional
+        The random generator to use for selection.
+
+    positive: bool
+        Whether to include positive health impact mutations.
+
+    negative: bool
+        Whether to include negative health impact mutations.
+
+    neutral: bool
+        Whether to include neutral health impact mutations.
+
+    Returns
+    -------
+    PoochMutation, optional
+        The removed PoochMutation relationship, or None if the pooch had no mutations.
+    """
+
+    rng = rng if rng is not None else random.Random()
+
+    async with session_scope() as session:
+        weight_conditions = []
+        if positive:
+            weight_conditions.append(HealthImpactWeight.weight > 0)
+        if negative:
+            weight_conditions.append(HealthImpactWeight.weight < 0)
+        if neutral:
+            weight_conditions.append(HealthImpactWeight.weight == 0)
+
+        if not weight_conditions:
+            return None
+
+        query = (
+            select(PoochMutation)
+            .join(Mutation, Mutation.id == PoochMutation.mutation_id)
+            .join(HealthImpactWeight, HealthImpactWeight.health_impact == Mutation.health_impact)
+            .where(
+                and_(
+                    PoochMutation.pooch_id == pooch_id,
+                    or_(*weight_conditions),
+                )
+            )
+        )
+        result = await session.execute(query)
+        mutations = list(result.scalars().all())
+
+        if not mutations:
+            return None
+
+        selected = rng.choice(mutations)
+        await session.delete(selected)
+
+        return selected

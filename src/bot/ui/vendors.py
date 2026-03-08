@@ -1,4 +1,6 @@
-from typing import Optional
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Optional
 
 import discord
 from discord.ui import Button, Select, View
@@ -15,11 +17,12 @@ from game import (
     list_vendor_pooches,
     sell_pooch,
 )
-from game.models import Kennel, Pooch, Vendor
 from logger import get_logger
 
-from .components.mutation_dropdown import build_mutation_info_embed
-from .components.paginator import PageSource, PaginatorView
+if TYPE_CHECKING:
+    from game.models import Kennel, Pooch, Vendor
+
+from .components import PageSource, PaginatorView, build_mutation_info_embed
 from .pooch_info import PoochInfoView
 from .util import InteractionResponder
 
@@ -103,7 +106,7 @@ class VendorPageControls:
 
         # A select-only control (no extra buttons) so it can coexist with the pooch select.
         self.mutation_select = Select(
-            placeholder="Vendor desired mutation…",
+            placeholder="Vendor desired mutation...",
             options=mutation_options,
             disabled=not bool(self._desired_mutations),
             min_values=1,

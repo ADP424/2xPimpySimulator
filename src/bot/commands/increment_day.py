@@ -13,5 +13,5 @@ def register_increment_day_command(tree: app_commands.CommandTree):
             return
 
         # Queue the day change so we can respond immediately (day change may take time).
-        await trigger_manual_day_change(bot)  # type: ignore
+        await trigger_manual_day_change(bot)
         await interaction.response.send_message("✅ Queued **one** manual day change.", ephemeral=True)

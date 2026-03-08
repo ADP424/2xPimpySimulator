@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 import discord
 from discord.ui import Button, Select, View
 
-from bot.ui.util import edit_interaction, reply_to_interacted_message
-from game.models import Breed
+from bot.ui import edit_interaction, reply_to_interacted_message
+
+if TYPE_CHECKING:
+    from game.models import Breed
 
 
 def build_breed_info_embed(breed: Breed) -> discord.Embed:

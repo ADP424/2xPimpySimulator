@@ -2,9 +2,8 @@ from sqlalchemy import BigInteger, Boolean, CheckConstraint, Numeric, Text, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
-from database.models.base import Base
-from database.models.enums.health_impact import HEALTH_IMPACT
-from database.models.enums.rarity import RARITY
+from database.models import Base
+from database.models.enums import HEALTH_IMPACT, RARITY
 
 
 class Mutation(Base):

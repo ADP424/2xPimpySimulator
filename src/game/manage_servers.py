@@ -1,4 +1,6 @@
-from typing import Optional
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Optional
 
 from database import (
     create_server,
@@ -6,7 +8,10 @@ from database import (
     set_event_channel_discord_id,
 )
 
-from .models import Server, to_server
+from .models import to_server
+
+if TYPE_CHECKING:
+    from .models import Server
 
 
 async def get_event_channel(server_discord_id: int) -> Optional[int]:

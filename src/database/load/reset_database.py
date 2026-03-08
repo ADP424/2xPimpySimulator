@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 from logger import get_logger
 
-logger = get_logger("database/load/reset_db")
+logger = get_logger("database/load/reset_database")
 
 
 def _get_sync_dsn() -> str:

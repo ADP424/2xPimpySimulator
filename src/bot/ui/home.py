@@ -8,7 +8,7 @@ from bot.ui.util import (
 )
 from game import get_or_create_owner
 
-from .components.paginator import PaginatorView
+from .components import PaginatorView
 from .graveyard import GraveyardPageSource
 from .kennels import KennelsPageSource
 

@@ -6,13 +6,11 @@ import hmac
 import json
 import os
 import urllib.request
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from game.models.events.birth_event import BirthEvent
-from game.models.events.day_change_summary import DayChangeSummary
-from game.models.events.death_event import DeathEvent
-from game.models.events.other_event import OtherEvent
-from game.models.pooch import Pooch
+if TYPE_CHECKING:
+    from game.models import BirthEvent, DayChangeSummary, DeathEvent, OtherEvent, Pooch
+
 from logger import get_logger
 
 logger = get_logger("bot/webhooks")

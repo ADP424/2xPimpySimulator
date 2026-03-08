@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import random
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from database import (
     add_breed_to_pooch,
@@ -16,9 +18,12 @@ from database import (
 )
 
 from .constants import BEG_DOLLARS_RANGE, BEG_MAX_DOLLARS
-from .exceptions.owner_not_found import OwnerNotFound
+from .exceptions import OwnerNotFound
 from .manage_servers import get_or_create_server
-from .models import Kennel, Owner, to_kennel, to_owner
+from .models import to_kennel, to_owner
+
+if TYPE_CHECKING:
+    from .models import Kennel, Owner
 
 
 async def add_money(server_discord_id: int, owner_discord_id: int, amount: int) -> Owner:

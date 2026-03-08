@@ -1,43 +1,21 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from database import add_pooch_to_kennel as db_add_pooch_to_kennel
 from database import (
     get_kennel_by_id,
     get_pooch_by_id,
     list_pooches_for_kennel,
 )
-from database.update import rename_kennel as db_rename_kennel
+from database import rename_kennel as db_rename_kennel
 
 from .constants import MAX_NAME_LENGTH
-from .exceptions.kennel_not_found import KennelNotFound
-from .exceptions.pooch_not_found import PoochNotFound
-from .models import Pooch, to_pooch
+from .exceptions import KennelNotFound, PoochNotFound
+from .models import to_pooch
 
-
-async def list_kennel_pooches(kennel_id: int) -> list[Pooch]:
-    """
-    List every pooch in a given kennel.
-
-    Parameters
-    ----------
-    kennel_id: int
-        The ID of the kennel to fetch the pooches from.
-
-    Returns
-    -------
-    list[Pooch]
-        The list of every pooch in the given kennel.
-
-    Raises
-    ------
-    KennelNotFound
-        When the kennel with the given ID isn't found in the database.
-    """
-
-    kennel = await get_kennel_by_id(kennel_id)
-    if kennel is None:
-        raise KennelNotFound(kennel_id)
-
-    pooches = await list_pooches_for_kennel(kennel_id)
-    return [(await to_pooch(pooch)) for pooch in pooches]
+if TYPE_CHECKING:
+    from .models import Pooch
 
 
 async def add_pooch_to_kennel(kennel_id: int, pooch_id: int) -> bool:
@@ -80,6 +58,34 @@ async def add_pooch_to_kennel(kennel_id: int, pooch_id: int) -> bool:
         return False
 
     await db_add_pooch_to_kennel(kennel_id, pooch_id)
+
+
+async def list_kennel_pooches(kennel_id: int) -> list[Pooch]:
+    """
+    List every pooch in a given kennel.
+
+    Parameters
+    ----------
+    kennel_id: int
+        The ID of the kennel to fetch the pooches from.
+
+    Returns
+    -------
+    list[Pooch]
+        The list of every pooch in the given kennel.
+
+    Raises
+    ------
+    KennelNotFound
+        When the kennel with the given ID isn't found in the database.
+    """
+
+    kennel = await get_kennel_by_id(kennel_id)
+    if kennel is None:
+        raise KennelNotFound(kennel_id)
+
+    pooches = await list_pooches_for_kennel(kennel_id)
+    return [(await to_pooch(pooch)) for pooch in pooches]
 
 
 async def rename_kennel(kennel_id: int, name: str) -> bool:
