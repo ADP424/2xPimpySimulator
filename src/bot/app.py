@@ -41,22 +41,32 @@ def run():
     register_event_history_command(tree)
     register_pending_events_command(tree)
 
-    # dev only commands
     if stage == "dev":
         register_get_money_command(tree)
         register_pause_day_loop_command(tree)
         register_increment_day_command(tree)
 
-    @bot.event
-    async def on_ready():
+    async def sync_commands():
         if stage == "dev":
             for guild in GUILDS:
+                tree.clear_commands(guild=guild)
+                tree.copy_global_to(guild=guild)
                 await tree.sync(guild=guild)
+                logger.info(f"Synced commands to guild {guild.id}")
         else:
             await tree.sync()
+            logger.info("Synced global commands")
+
+    @bot.event
+    async def setup_hook():
+        await sync_commands()
+
+    @bot.event
+    async def on_ready():
         for guild in GUILDS:
             server = await get_or_create_server(guild.id)
             logger.info(f"Initialized Server with ID '{server.discord_id}'.")
+
         logger.info(f"Bot ready as {bot.user} ({stage})")
 
         if not hasattr(bot, "_day_change_task"):

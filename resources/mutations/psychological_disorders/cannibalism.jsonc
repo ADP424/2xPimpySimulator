@@ -1,0 +1,8 @@
+{
+    "name": "Cannibalism",
+    "alt_name": "Canis Canem",
+    "description": "This pooch is on a very strict diet.",
+    "heritability": 0.1,
+    "health_impact": "HEALTHY",
+    "rarity": "REMARKABLE"
+}

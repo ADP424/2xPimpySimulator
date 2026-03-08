@@ -1,0 +1,13 @@
+{
+    "name": "Dwarfism",
+    "alt_name": "Achondroplasia",
+    "description": "This pooch is tiny wee.",
+    "heritability": 0.45,
+    "health_impact": "NEUTRAL",
+    "rarity": "RARE",
+    "advanced_options": {
+        "incompatible_mutations": [
+            "Gigantism"
+        ]
+    }
+}

@@ -12,6 +12,7 @@ from database import (
     get_active_event_by_id,
 )
 from database import get_event_by_id as db_get_event_by_id
+from database import get_event_by_name as db_get_event_by_name
 from database import (
     get_event_option_by_id,
     get_owner_by_discord_id,
@@ -41,15 +42,24 @@ from database import (
     transfer_pooch_to_vendor,
     update_active_event_result,
 )
-from game.constants import (
+
+from .constants import (
     EVENT_HOURLY_TRIGGER_CHANCE,
     EVENT_MAX_ACTIVE_PER_OWNER,
 )
-
-from .models.events import EventContext, EventResult, TriggeredEvent
+from .models import (
+    Event,
+    EventContext,
+    EventHistory,
+    EventResult,
+    TriggeredEvent,
+    to_event,
+    to_event_history,
+    to_triggered_event,
+)
 
 if TYPE_CHECKING:
-    from database.models import Event, EventAction
+    from database.models import EventAction, EventOption, EventOutcome
 
 
 logger = logging.getLogger(__name__)
@@ -74,103 +84,10 @@ async def get_active_events_for_owner(owner_discord_id: int, pending_only: bool 
     """
 
     active_events = await list_active_events_for_owner(owner_discord_id, pending_only=pending_only)
-
-    result = []
-    for active_event in active_events:
-        event = active_event.event
-        context = EventContext.from_dict(active_event.context)
-
-        options = []
-        if event.requires_response:
-            for option in sorted(event.options, key=lambda o: o.option_order):
-                options.append(
-                    {
-                        "id": option.id,
-                        "label": option.label,
-                        "description": option.description,
-                        "min_money": option.min_money,
-                        "min_bloodskulls": option.min_bloodskulls,
-                    }
-                )
-
-        triggered = TriggeredEvent(
-            active_event_id=active_event.id,
-            event_id=event.id,
-            name=event.name,
-            category=event.category,
-            description=event.description,
-            flavor_text=event.flavor_text,
-            severity=event.severity,
-            requires_response=event.requires_response,
-            response_timeout=event.response_timeout,
-            expires_at=active_event.expires_at,
-            context=context,
-            options=options,
-        )
-
-        if active_event.result_summary:
-            triggered.result = EventResult.from_dict(active_event.result_summary)
-
-        result.append(triggered)
-
-    return result
+    return [await to_triggered_event(active_event) for active_event in active_events]
 
 
-async def get_event_by_id(event_id: int) -> Optional[dict[str, Any]]:
-    """
-    Get detailed information about an event.
-
-    Parameters
-    ----------
-    event_id: int
-        The ID of the event.
-
-    Returns
-    -------
-    dict, optional
-        Event information, or None if not found.
-    """
-
-    event = await db_get_event_by_id(event_id)
-    if event is None:
-        return None
-
-    return {
-        "id": event.id,
-        "name": event.name,
-        "category": event.category,
-        "description": event.description,
-        "flavor_text": event.flavor_text,
-        "severity": event.severity,
-        "rarity": event.rarity,
-        "requires_response": event.requires_response,
-        "response_timeout": event.response_timeout,
-        "min_pooches": event.min_pooches,
-        "min_kennels": event.min_kennels,
-        "min_money": event.min_money,
-        "min_bloodskulls": event.min_bloodskulls,
-        "actions": [
-            {
-                "action_type": action.action_type,
-                "target_type": action.target_type,
-                "parameters": action.parameters,
-            }
-            for action in sorted(event.actions, key=lambda a: a.action_order)
-        ],
-        "options": [
-            {
-                "id": option.id,
-                "label": option.label,
-                "description": option.description,
-                "min_money": option.min_money,
-                "min_bloodskulls": option.min_bloodskulls,
-            }
-            for option in sorted(event.options, key=lambda o: o.option_order)
-        ],
-    }
-
-
-async def get_event_history(owner_discord_id: int, limit: int = 50) -> list[dict[str, Any]]:
+async def get_event_history(owner_discord_id: int, limit: int = 50) -> list[EventHistory]:
     """
     Get the event history for an owner.
 
@@ -184,24 +101,12 @@ async def get_event_history(owner_discord_id: int, limit: int = 50) -> list[dict
 
     Returns
     -------
-    list[dict]
-        List of event history records.
+    list[EventHistory]
+        List of typed event history records.
     """
 
     history = await list_event_history_for_owner(owner_discord_id, limit)
-    return [
-        {
-            "id": record.id,
-            "event_id": record.event_id,
-            "context": record.context,
-            "result_summary": record.result_summary,
-            "triggered_at": record.triggered_at.isoformat(),
-            "completed_at": record.completed_at.isoformat(),
-            "selected_option_id": record.selected_option_id,
-            "timed_out": record.timed_out,
-        }
-        for record in history
-    ]
+    return [await to_event_history(record) for record in history]
 
 
 async def get_pending_event(owner_discord_id: int, active_event_id: Optional[int] = None) -> Optional[TriggeredEvent]:
@@ -233,61 +138,21 @@ async def get_pending_event(owner_discord_id: int, active_event_id: Optional[int
         if active_event is None:
             return None
 
-    event = active_event.event
-    context = EventContext.from_dict(active_event.context)
-
-    options = []
-    if event.requires_response:
-        for option in sorted(event.options, key=lambda o: o.option_order):
-            options.append(
-                {
-                    "id": option.id,
-                    "label": option.label,
-                    "description": option.description,
-                    "min_money": option.min_money,
-                    "min_bloodskulls": option.min_bloodskulls,
-                }
-            )
-
-    return TriggeredEvent(
-        active_event_id=active_event.id,
-        event_id=event.id,
-        name=event.name,
-        category=event.category,
-        description=event.description,
-        flavor_text=event.flavor_text,
-        severity=event.severity,
-        requires_response=event.requires_response,
-        response_timeout=event.response_timeout,
-        expires_at=active_event.expires_at,
-        context=context,
-        options=options,
-    )
+    return await to_triggered_event(active_event)
 
 
-async def list_all_events() -> list[dict[str, Any]]:
+async def list_all_events() -> list[Event]:
     """
     List all available events.
 
     Returns
     -------
-    list[dict]
-        A list of event information dictionaries.
+    list[Event]
+        A list of typed event information objects.
     """
 
     events = await db_list_all_events()
-    return [
-        {
-            "id": event.id,
-            "name": event.name,
-            "category": event.category,
-            "description": event.description,
-            "severity": event.severity,
-            "rarity": event.rarity,
-            "requires_response": event.requires_response,
-        }
-        for event in events
-    ]
+    return [await to_event(event) for event in events]
 
 
 async def process_expired_events(rng: Optional[random.Random] = None) -> list[tuple[int, int, EventResult]]:
@@ -325,6 +190,37 @@ async def process_expired_events(rng: Optional[random.Random] = None) -> list[tu
         logger.info(f"Processed expired event {active_event.id} for owner " f"{active_event.owner_discord_id}")
 
     return results
+
+
+def _choose_option_outcome(option: EventOption, rng: random.Random) -> Optional[EventOutcome]:
+    explicit = [outcome for outcome in option.outcomes if outcome.chance is not None]
+    if not explicit:
+        return rng.choice(option.outcomes)
+
+    total_explicit = sum(float(outcome.chance) for outcome in explicit)
+    implicit = [outcome for outcome in option.outcomes if outcome.chance is None]
+
+    weighted: list[tuple[EventOutcome, float]] = []
+    if implicit and total_explicit < 1:
+        remaining = 1 - total_explicit
+        implicit_weight = remaining / len(implicit)
+        weighted.extend((outcome, implicit_weight) for outcome in implicit)
+    elif implicit:
+        weighted.extend((outcome, 1.0) for outcome in implicit)
+
+    weighted.extend((outcome, float(outcome.chance)) for outcome in explicit)
+    total_weight = sum(weight for _, weight in weighted)
+    if total_weight <= 0:
+        return rng.choice(option.outcomes)
+
+    roll = rng.uniform(0, total_weight)
+    running_total = 0.0
+    for outcome, weight in weighted:
+        running_total += weight
+        if roll <= running_total:
+            return outcome
+
+    return weighted[-1][0]
 
 
 async def respond_to_event(
@@ -390,12 +286,27 @@ async def respond_to_event(
     context = EventContext.from_dict(active_event.context)
     result = await _execute_event_actions(owner_discord_id, option.actions, context, rng)
 
+    selected_outcome = _choose_option_outcome(option, rng)
+    outcome_message = None
+    if selected_outcome is not None:
+        outcome_result = await _execute_event_actions(owner_discord_id, selected_outcome.actions, context, rng)
+        result.merge(outcome_result)
+        outcome_message = selected_outcome.message or selected_outcome.description or selected_outcome.label or None
+        result.extra_data["selected_outcome"] = {
+            "id": selected_outcome.id,
+            "label": selected_outcome.label,
+            "description": selected_outcome.description,
+            "message": selected_outcome.message,
+            "chance": selected_outcome.chance,
+        }
+
     await respond_to_active_event(active_event_id, option_id, result.to_dict())
     await archive_active_event(active_event_id)
 
     logger.info(f"Owner {owner_discord_id} responded to event {active_event_id} with option {option_id}.")
 
-    return True, f"You selected: {option.label}.", result
+    response_message = outcome_message or f"You selected: {option.label}."
+    return True, response_message, result
 
 
 async def run_hourly_event_check(rng_seed: Optional[int] = None) -> dict[int, list[TriggeredEvent]]:
@@ -449,8 +360,8 @@ async def _create_event_context(owner_discord_id: int, event: Event, rng: random
     This pre-selects random targets for actions that need them.
     Dynamic runtime entities are never referenced by literal IDs in static events.
     Instead, event actions use string selectors for dynamic targets:
-    - `pooch` with `pooch_id` of `selected` or `random`
-    - `kennel` with `kennel_id` of `selected` or `random`
+    - `pooch` with `pooch` of `selected` or `random`
+    - `kennel` with `kennel` of `selected` or `random`
     - `all_pooches` targets all of the owner's living pooches
     - `all_kennels` targets all of the owner's kennels
     """
@@ -458,13 +369,14 @@ async def _create_event_context(owner_discord_id: int, event: Event, rng: random
     context = EventContext(owner_discord_id=owner_discord_id)
 
     kennels = await list_kennels_for_owner(owner_discord_id)
-    context.affected_kennel_ids = [kennel.id for kennel in kennels]
+    candidate_kennel_ids = [kennel.id for kennel in kennels]
+    context.extra_data["candidate_kennel_ids"] = candidate_kennel_ids
 
-    all_pooch_ids = []
+    candidate_pooch_ids: list[int] = []
     for kennel in kennels:
         pooches = await list_pooches_for_kennel(kennel.id)
-        all_pooch_ids.extend([pooch.id for pooch in pooches if pooch.alive])
-    context.affected_pooch_ids = all_pooch_ids
+        candidate_pooch_ids.extend([pooch.id for pooch in pooches if pooch.alive])
+    context.extra_data["candidate_pooch_ids"] = candidate_pooch_ids
 
     def _uses_random_selector(action: EventAction, field_name: str) -> bool:
         if action.target_type not in {"pooch", "kennel"}:
@@ -472,19 +384,19 @@ async def _create_event_context(owner_discord_id: int, event: Event, rng: random
         selector = action.parameters.get(field_name)
         return isinstance(selector, str) and selector.strip().lower() == "random"
 
-    needs_random_pooch = any(_uses_random_selector(action, "pooch_id") for action in event.actions)
-    needs_random_kennel = any(_uses_random_selector(action, "kennel_id") for action in event.actions)
+    needs_random_pooch = any(_uses_random_selector(action, "pooch") for action in event.actions)
+    needs_random_kennel = any(_uses_random_selector(action, "kennel") for action in event.actions)
 
     for option in event.options:
         for action in option.actions:
-            needs_random_pooch = needs_random_pooch or _uses_random_selector(action, "pooch_id")
-            needs_random_kennel = needs_random_kennel or _uses_random_selector(action, "kennel_id")
+            needs_random_pooch = needs_random_pooch or _uses_random_selector(action, "pooch")
+            needs_random_kennel = needs_random_kennel or _uses_random_selector(action, "kennel")
 
-    if needs_random_pooch and all_pooch_ids:
-        context.selected_pooch_id = rng.choice(all_pooch_ids)
+    if needs_random_pooch and candidate_pooch_ids:
+        context.selected_pooch_id = rng.choice(candidate_pooch_ids)
 
-    if needs_random_kennel and kennels:
-        context.selected_kennel_id = rng.choice([kennel.id for kennel in kennels])
+    if needs_random_kennel and candidate_kennel_ids:
+        context.selected_kennel_id = rng.choice(candidate_kennel_ids)
 
     return context
 
@@ -497,10 +409,10 @@ async def _execute_single_action(
 
     Target type semantics:
     - `owner`: Target the owner directly (for money, bloodskulls, etc.)
-    - `pooch`: Target the contextual pooch specified by the `pooch_id` selector.
+    - `pooch`: Target the contextual pooch specified by the `pooch` selector.
                Supported selectors are `selected` and `random`.
     - `all_pooches`: Target all living pooches owned by the player.
-    - `kennel`: Target the contextual kennel specified by the `kennel_id` selector.
+    - `kennel`: Target the contextual kennel specified by the `kennel` selector.
                 Supported selectors are `selected` and `random`.
     - `all_kennels`: Target all kennels owned by the player.
     """
@@ -519,18 +431,21 @@ async def _execute_single_action(
         Get the target pooch ID(s) based on target type.
 
         Target types:
-        - `pooch`: Returns the contextual pooch selected by the `pooch_id` selector
+        - `pooch`: Returns the contextual pooch selected by the `pooch` selector
         - `all_pooches`: Returns all living pooches owned by the player
         """
 
         if target_type == "pooch":
-            selector = params.get("pooch_id")
+            selector = params.get("pooch")
             if isinstance(selector, str) and selector.strip().lower() in {"selected", "random"}:
                 return [context.selected_pooch_id] if context.selected_pooch_id else []
             return []
 
         elif target_type == "all_pooches":
-            return context.affected_pooch_ids
+            candidate_pooch_ids = context.extra_data.get("candidate_pooch_ids", [])
+            if isinstance(candidate_pooch_ids, list):
+                return [int(pooch_id) for pooch_id in candidate_pooch_ids if pooch_id is not None]
+            return []
 
         return []
 
@@ -539,18 +454,21 @@ async def _execute_single_action(
         Get the target kennel ID(s) based on target type.
 
         Target types:
-        - `kennel`: Returns the contextual kennel selected by the `kennel_id` selector
+        - `kennel`: Returns the contextual kennel selected by the `kennel` selector
         - `all_kennels`: Returns all kennels owned by the player
         """
 
         if target_type == "kennel":
-            selector = params.get("kennel_id")
+            selector = params.get("kennel")
             if isinstance(selector, str) and selector.strip().lower() in {"selected", "random"}:
                 return [context.selected_kennel_id] if context.selected_kennel_id else []
             return []
 
         elif target_type == "all_kennels":
-            return context.affected_kennel_ids
+            candidate_kennel_ids = context.extra_data.get("candidate_kennel_ids", [])
+            if isinstance(candidate_kennel_ids, list):
+                return [int(kennel_id) for kennel_id in candidate_kennel_ids if kennel_id is not None]
+            return []
 
         return []
 
@@ -667,6 +585,8 @@ async def _execute_single_action(
             for kennel_id in kennel_ids:
                 kennel = await modify_kennel_pooch_limit(kennel_id, amount)
                 if kennel:
+                    if kennel_id not in context.affected_kennel_ids:
+                        context.affected_kennel_ids.append(kennel_id)
                     result.extra_data.setdefault("kennel_capacity_changes", {})[kennel_id] = amount
 
         elif action_type == "create_pooch":
@@ -688,11 +608,36 @@ async def _execute_single_action(
             pooch = await create_pooch(**create_pooch_kwargs)
             if pooch:
                 context.selected_pooch_id = pooch.id
+                candidate_pooch_ids = context.extra_data.setdefault("candidate_pooch_ids", [])
+                if isinstance(candidate_pooch_ids, list) and pooch.id not in candidate_pooch_ids:
+                    candidate_pooch_ids.append(pooch.id)
                 if pooch.id not in context.affected_pooch_ids:
                     context.affected_pooch_ids.append(pooch.id)
                 result.pooches_created.append(pooch.id)
                 result.pooches_affected.append(pooch.id)
                 result.message = "A new pooch has appeared!"
+
+        elif action_type == "start_event":
+            event_to_start = None
+            if bool(params.get("random_event", False)):
+                event_to_start = await get_random_eligible_event_for_owner(owner_discord_id, rng=rng)
+            else:
+                event_name = params.get("event")
+                if isinstance(event_name, str) and event_name.strip():
+                    event_to_start = await db_get_event_by_name(event_name.strip())
+
+            if event_to_start is not None:
+                started_event = await _create_and_execute_event(owner_discord_id, event_to_start, rng)
+                if started_event is not None:
+                    started_events = result.extra_data.setdefault("started_events", [])
+                    started_events.append(
+                        {
+                            "active_event_id": started_event.active_event_id,
+                            "event_id": started_event.event_id,
+                            "name": started_event.name,
+                        }
+                    )
+                    result.message = f"Started event '{started_event.name}'."
 
         else:
             logger.warning(f"Unknown action type: {action_type}")
@@ -763,43 +708,15 @@ async def _create_and_execute_event(
 
     logger.info(f"Triggered event '{event.name}' for owner {owner_discord_id}")
 
-    result = None
-
     if not event.requires_response:
         result = await _execute_event_actions(owner_discord_id, event.actions, context, rng)
         await update_active_event_result(active_event.id, result.to_dict())
         await archive_active_event(active_event.id)
+        active_event.result_summary = result.to_dict()
 
-    options = []
-    if event.requires_response:
-        for option in sorted(event.options, key=lambda o: o.option_order):
-            options.append(
-                {
-                    "id": option.id,
-                    "label": option.label,
-                    "description": option.description,
-                    "min_money": option.min_money,
-                    "min_bloodskulls": option.min_bloodskulls,
-                }
-            )
-
-    triggered = TriggeredEvent(
-        active_event_id=active_event.id,
-        event_id=event.id,
-        name=event.name,
-        category=event.category,
-        description=event.description,
-        flavor_text=event.flavor_text,
-        severity=event.severity,
-        requires_response=event.requires_response,
-        response_timeout=event.response_timeout,
-        expires_at=expires_at,
-        context=context,
-        options=options,
-        result=result,
-    )
-
-    return triggered
+    active_event.context = context.to_dict()
+    active_event.expires_at = expires_at
+    return await to_triggered_event(active_event)
 
 
 async def trigger_random_event(owner_discord_id: int, rng: Optional[random.Random] = None) -> Optional[TriggeredEvent]:

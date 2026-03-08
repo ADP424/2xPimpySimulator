@@ -1,4 +1,4 @@
--- BREEDS (statically loaded from resources/breeds.json)
+-- BREEDS (statically loaded from resources/breeds/**/*.jsonc)
 CREATE TABLE breeds (
     id                  BIGSERIAL PRIMARY KEY,
 
@@ -13,7 +13,7 @@ CREATE TABLE breeds (
 );
 
 
--- MUTATIONS (statically loaded from resources/mutations.json)
+-- MUTATIONS (statically loaded from resources/mutations/**/*.jsonc)
 CREATE TABLE mutations (
     id                  BIGSERIAL PRIMARY KEY,
 
@@ -36,27 +36,27 @@ CREATE TABLE mutations (
 );
 
 
--- DOG NAMES (statically loaded from resources/dog_names.txt)
+-- DOG NAMES (statically loaded from resources/dog_names/**/*.txt)
 CREATE TABLE dog_names (
     id      BIGSERIAL PRIMARY KEY,
     name    TEXT NOT NULL UNIQUE
 );
 
 
--- VENDOR FIRST NAMES (statically loaded from resources/vendor_first_names.txt)
+-- VENDOR FIRST NAMES (statically loaded from resources/vendor_names/first/**/*.txt)
 CREATE TABLE vendor_first_names (
     id      BIGSERIAL PRIMARY KEY,
     name    TEXT NOT NULL UNIQUE
 );
 
 
--- VENDOR LAST NAMES (statically loaded from resources/vendor_last_names.txt)
+-- VENDOR LAST NAMES (statically loaded from resources/vendor_names/last/**/*.txt)
 CREATE TABLE vendor_last_names (
     id      BIGSERIAL PRIMARY KEY,
     name    TEXT NOT NULL UNIQUE
 );
 
--- EVENTS (statically loaded from resources/events.json)
+-- EVENTS (statically loaded from resources/events/**/*.jsonc)
 CREATE TABLE events (
     id                  BIGSERIAL PRIMARY KEY,
 
@@ -75,6 +75,7 @@ CREATE TABLE events (
     min_kennels         INTEGER NOT NULL DEFAULT 0,
     min_money           INTEGER NOT NULL DEFAULT 0,
     min_bloodskulls     INTEGER NOT NULL DEFAULT 0,
+    triggered_only      BOOLEAN NOT NULL DEFAULT FALSE,
 
     advanced_options    JSONB NOT NULL DEFAULT '{}'::jsonb
 );

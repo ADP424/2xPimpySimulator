@@ -111,4 +111,5 @@ CREATE TYPE event_action_type AS ENUM (
     'modify_kennel_capacity',
     'rename_pooch',
     'set_breeding_cooldown',
+    'start_event'
 );

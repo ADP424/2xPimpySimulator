@@ -1,0 +1,16 @@
+{
+    "name": "Polycystic Ovary Syndrome",
+    "alt_name": "Stein-Leventhal Syndrome",
+    "description": "This pooch is relatively infertile.",
+    "heritability": 0.25,
+    "health_impact": "NEUTRAL",
+    "rarity": "COMMON",
+    "affects_males": false,
+    "advanced_options": {
+        "breeding_cooldown": 3,
+        "dollar_value_mult": 0.5,
+        "incompatible_mutations": [
+            "Severe Polycystic Ovary Syndrome"
+        ]
+    }
+}

@@ -1,0 +1,9 @@
+{
+    "name": "Grand Fauve de Bretagne",
+    "alt_name": "FRENCHound",
+    "description": "The Grand Fauve de Bretagne was a breed of scenthound from Brittany used to hunt wolves and wild boar.",
+    "rarity": "REMARKABLE",
+    "advanced_options": {
+        "sold_by_vendors": 0
+    }
+}

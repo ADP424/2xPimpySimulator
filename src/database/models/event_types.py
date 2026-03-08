@@ -23,6 +23,7 @@ EventActionType: TypeAlias = Literal[
     "modify_kennel_capacity",
     "rename_pooch",
     "set_breeding_cooldown",
+    "start_event",
 ]
 EventEntitySelector: TypeAlias = int | Literal["selected", "random"]
 
@@ -65,8 +66,8 @@ class EventOutcomeAdvancedOptions(TypedDict, total=False):
 
 
 class EventActionBaseParameters(TypedDict, total=False):
-    pooch_id: EventEntitySelector
-    kennel_id: EventEntitySelector
+    pooch: EventEntitySelector
+    kennel: EventEntitySelector
 
 
 class EventAmountParameters(EventActionBaseParameters, total=False):
@@ -105,6 +106,11 @@ class EventSetBreedingCooldownParameters(EventActionBaseParameters, total=False)
     cooldown: int
 
 
+class EventStartEventParameters(TypedDict, total=False):
+    event: str
+    random_event: bool
+
+
 EventActionParameters: TypeAlias = (
     EventAmountParameters
     | EventMutationParameters
@@ -113,6 +119,7 @@ EventActionParameters: TypeAlias = (
     | EventCreatePoochParameters
     | EventRenamePoochParameters
     | EventSetBreedingCooldownParameters
+    | EventStartEventParameters
 )
 
 

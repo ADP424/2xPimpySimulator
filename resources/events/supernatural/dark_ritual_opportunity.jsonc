@@ -1,0 +1,50 @@
+{
+    "name": "Dark Ritual Opportunity",
+    "description": "The blood moon rises, and you feel a dark power calling...",
+    "flavor_text": "All hail the dark lord of the New Moon.",
+    "severity": "MINOR",
+    "rarity": "UNCOMMON",
+    "requires_response": true,
+    "response_timeout": 1800,
+    "min_bloodskulls": 5,
+    "options": [
+        {
+            "label": "Perform the ritual",
+            "description": "Sacrifice 5 bloodskulls for a lost soul from Hell.",
+            "min_bloodskulls": 5,
+            "actions": [
+                {
+                    "action_type": "modify_bloodskulls",
+                    "target_type": "owner",
+                    "parameters": {
+                        "amount": -5
+                    }
+                },
+                {
+                    "action_type": "create_pooch",
+                    "target_type": "owner",
+                    "parameters": {}
+                },
+                {
+                    "action_type": "add_breed",
+                    "target_type": "pooch",
+                    "parameters": {
+                        "weight": 1.0,
+                        "pooch": "selected"
+                    }
+                },
+                {
+                    "action_type": "add_mutation",
+                    "target_type": "pooch",
+                    "parameters": {
+                        "pooch": "selected"
+                    }
+                }
+            ]
+        },
+        {
+            "label": "Resist the temptation",
+            "description": "Turn away from the darkness."
+        }
+    ]
+}

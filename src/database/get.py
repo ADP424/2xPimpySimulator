@@ -1,7 +1,7 @@
 import random
 from typing import Optional
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, func, select, true
 from sqlalchemy.orm import selectinload
 
 from .models import (
@@ -101,6 +101,36 @@ async def get_event_by_id(event_id: int) -> Optional[Event]:
         query = (
             select(Event)
             .where(Event.id == event_id)
+            .options(
+                selectinload(Event.actions),
+                selectinload(Event.options).selectinload(EventOption.actions),
+                selectinload(Event.options).selectinload(EventOption.outcomes).selectinload(EventOutcome.actions),
+            )
+        )
+        response = await session.execute(query)
+
+    return response.scalar_one_or_none()
+
+
+async def get_event_by_name(event_name: str) -> Optional[Event]:
+    """
+    Fetch an event by its name.
+
+    Parameters
+    ----------
+    event_name: str
+        The name of the event to fetch.
+
+    Returns
+    -------
+    Event, optional
+        The ORM event object if found, otherwise None.
+    """
+
+    async with session_scope() as session:
+        query = (
+            select(Event)
+            .where(Event.name == event_name)
             .options(
                 selectinload(Event.actions),
                 selectinload(Event.options).selectinload(EventOption.actions),
@@ -439,6 +469,7 @@ async def get_pooch_virginity_status(pooch_id: int) -> Optional[bool]:
 async def get_random_eligible_event_for_owner(
     owner_discord_id: int,
     rng: Optional[random.Random] = None,
+    include_triggered_only: bool = False,
 ) -> Optional[Event]:
     """
     Get a random eligible event for an owner, weighted by rarity.
@@ -489,6 +520,7 @@ async def get_random_eligible_event_for_owner(
                     Event.min_kennels <= kennel_count,
                     Event.min_money <= owner.dollars,
                     Event.min_bloodskulls <= owner.bloodskulls,
+                    true() if include_triggered_only else Event.triggered_only.is_(False),
                 )
             )
             .options(

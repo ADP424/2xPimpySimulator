@@ -1,0 +1,9 @@
+{
+    "name": "Old English Bulldog",
+    "alt_name": "Ald Anglash Balldag",
+    "description": "The Old English Bulldog is an extinct breed of dog.",
+    "rarity": "REMARKABLE",
+    "advanced_options": {
+        "sold_by_vendors": 0
+    }
+}

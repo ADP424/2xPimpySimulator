@@ -4,7 +4,7 @@
 
 ### JSON
 
-Events are structured within `resources/events.json` and grouped by category, like:
+Events are structured within `resources/events/**/*.jsonc` and grouped by category, like:
 
 ```json
 {
@@ -66,7 +66,7 @@ Events are structured within `resources/events.json` and grouped by category, li
 
 #### Category
 
-Events are grouped by category at the top level of `resources/events.json`.
+Events are grouped by category at the top level of `resources/events/**/*.jsonc`.
 
 A category is just a named bucket for organizing events.
 
@@ -82,7 +82,7 @@ Examples:
 
 #### Event Name
 
-The name of the event. This is the primary name used to identify it.
+The event name comes from the file's `name` field. This is the primary name used to identify it.
 
 Examples:
 
@@ -260,7 +260,7 @@ Example:
         "action_type": "modify_pooch_health",
         "target_type": "pooch",
         "parameters": {
-            "pooch_id": "random",
+            "pooch": "random",
             "amount": -2
         }
     }
@@ -296,7 +296,7 @@ Example:
                         "action_type": "kill_pooch",
                         "target_type": "pooch",
                         "parameters": {
-                            "pooch_id": "selected"
+                            "pooch": "selected"
                         }
                     }
                 ]
@@ -440,7 +440,7 @@ Example:
                 "action_type": "kill_pooch",
                 "target_type": "pooch",
                 "parameters": {
-                    "pooch_id": "selected"
+                    "pooch": "selected"
                 }
             }
         ]
@@ -647,14 +647,14 @@ Allowed target types:
 - `all_pooches`
 
 Allowed parameters:
-- `pooch_id` : `string`
+- `pooch` : `string`
 - `amount` : `int`
 - `min_amount` : `int`
 - `max_amount` : `int`
 
-`pooch_id` is required when `target_type` is `pooch`.
+`pooch` is required when `target_type` is `pooch`.
 
-`pooch_id` can be:
+`pooch` can be:
 - `"selected"`
 - `"random"`
 
@@ -675,14 +675,14 @@ Allowed target types:
 - `all_pooches`
 
 Allowed parameters:
-- `pooch_id` : `string`
+- `pooch` : `string`
 - `amount` : `int`
 - `min_amount` : `int`
 - `max_amount` : `int`
 
-`pooch_id` is required when `target_type` is `pooch`.
+`pooch` is required when `target_type` is `pooch`.
 
-`pooch_id` can be:
+`pooch` can be:
 - `"selected"`
 - `"random"`
 
@@ -703,11 +703,11 @@ Allowed target types:
 - `all_pooches`
 
 Allowed parameters:
-- `pooch_id` : `string`
+- `pooch` : `string`
 
-`pooch_id` is required when `target_type` is `pooch`.
+`pooch` is required when `target_type` is `pooch`.
 
-`pooch_id` can be:
+`pooch` can be:
 - `"selected"`
 - `"random"`
 
@@ -724,10 +724,10 @@ Allowed target types:
 - `all_pooches`
 
 Allowed parameters:
-- `pooch_id` : `string`
+- `pooch` : `string`
 - `mutation` : `string`
 
-`pooch_id` is required when `target_type` is `pooch`.
+`pooch` is required when `target_type` is `pooch`.
 
 If `mutation` is omitted, the game chooses a mutation. Reference the mutation by name.
 
@@ -742,10 +742,10 @@ Allowed target types:
 - `all_pooches`
 
 Allowed parameters:
-- `pooch_id` : `string`
+- `pooch` : `string`
 - `mutation` : `string`
 
-`pooch_id` is required when `target_type` is `pooch`.
+`pooch` is required when `target_type` is `pooch`.
 
 If `mutation` is omitted, the game chooses a mutation to remove. Reference the mutation by name.
 
@@ -760,11 +760,11 @@ Allowed target types:
 - `all_pooches`
 
 Allowed parameters:
-- `pooch_id` : `string`
+- `pooch` : `string`
 - `breed` : `string`
 - `weight` : `int|float`
 
-`pooch_id` is required when `target_type` is `pooch`.
+`pooch` is required when `target_type` is `pooch`.
 
 If `breed` is omitted, the game chooses a breed.
 
@@ -785,11 +785,11 @@ Allowed target types:
 - `all_pooches`
 
 Allowed parameters:
-- `pooch_id` : `string`
+- `pooch` : `string`
 - `new_owner_discord_id` : `int`
 - `vendor_id` : `int`
 
-`pooch_id` is required when `target_type` is `pooch`.
+`pooch` is required when `target_type` is `pooch`.
 
 You must provide exactly one of:
 - `new_owner_discord_id`
@@ -824,14 +824,14 @@ Allowed target types:
 - `all_kennels`
 
 Allowed parameters:
-- `kennel_id` : `string`
+- `kennel` : `string`
 - `amount` : `int`
 - `min_amount` : `int`
 - `max_amount` : `int`
 
-`kennel_id` is required when `target_type` is `kennel`.
+`kennel` is required when `target_type` is `kennel`.
 
-`kennel_id` can be:
+`kennel` can be:
 - `"selected"`
 - `"random"`
 
@@ -854,10 +854,10 @@ Allowed target types:
 - `all_pooches`
 
 Allowed parameters:
-- `pooch_id` : `string`
+- `pooch` : `string`
 - `name` : `string`
 
-`pooch_id` is required when `target_type` is `pooch`.
+`pooch` is required when `target_type` is `pooch`.
 
 `name` is required.
 
@@ -872,10 +872,10 @@ Allowed target types:
 - `all_pooches`
 
 Allowed parameters:
-- `pooch_id` : `string`
+- `pooch` : `string`
 - `cooldown` : `int`
 
-`pooch_id` is required when `target_type` is `pooch`.
+`pooch` is required when `target_type` is `pooch`.
 
 `cooldown` is required.
 
@@ -986,7 +986,7 @@ This is especially useful for:
                                     "action_type": "kill_pooch",
                                     "target_type": "pooch",
                                     "parameters": {
-                                        "pooch_id": "selected"
+                                        "pooch": "selected"
                                     }
                                 }
                             ]
@@ -1020,7 +1020,7 @@ This is especially useful for:
                                     "action_type": "kill_pooch",
                                     "target_type": "pooch",
                                     "parameters": {
-                                        "pooch_id": "selected"
+                                        "pooch": "selected"
                                     }
                                 }
                             ]
@@ -1039,7 +1039,7 @@ This is especially useful for:
                                     "action_type": "kill_pooch",
                                     "target_type": "pooch",
                                     "parameters": {
-                                        "pooch_id": "selected"
+                                        "pooch": "selected"
                                     }
                                 }
                             ]
@@ -1052,7 +1052,7 @@ This is especially useful for:
                     "action_type": "kill_pooch",
                     "target_type": "pooch",
                     "parameters": {
-                        "pooch_id": "selected"
+                        "pooch": "selected"
                     }
                 }
             ]

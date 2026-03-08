@@ -1,0 +1,12 @@
+{
+    "name": "Autism",
+    "alt_name": "Autism Spectrum Disorder",
+    "description": "This pooch enjoys trains a little too much.",
+    "heritability": 0.35,
+    "health_impact": "NEUTRAL",
+    "rarity": "COMMON",
+    "advanced_options": {
+        "breeding_cooldown": 1,
+        "dollar_value_mult": 0.9
+    }
+}

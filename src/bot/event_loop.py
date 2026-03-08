@@ -38,5 +38,7 @@ async def hourly_event_runner(bot: discord.Client, stage: str):
         await asyncio.sleep(sleep_seconds)
         try:
             await run_once()
-        except Exception:
-            logger.exception("Hourly event check failed")
+        except Exception as exception:
+            logger.exception(f"Hourly event check failed: {exception}")
+            if stage == "dev":
+                raise exception

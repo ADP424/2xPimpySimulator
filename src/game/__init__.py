@@ -7,7 +7,6 @@ from .change_day import (
 )
 from .manage_events import (
     get_active_events_for_owner,
-    get_event_by_id,
     get_event_history,
     get_pending_event,
     list_all_events,
@@ -71,7 +70,6 @@ __all__ = [
     "run_day_change",
     # Event commands
     "list_all_events",
-    "get_event_by_id",
     "get_active_events_for_owner",
     "get_pending_event",
     "trigger_random_event",

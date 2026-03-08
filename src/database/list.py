@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, func, or_, select, true
 from sqlalchemy.orm import selectinload
 
 from .get import get_pooch_parents
@@ -130,7 +130,7 @@ async def list_all_mutations() -> list[Mutation]:
     return list(response.scalars().all())
 
 
-async def list_eligible_events_for_owner(owner_discord_id: int) -> list[Event]:
+async def list_eligible_events_for_owner(owner_discord_id: int, include_triggered_only: bool = False) -> list[Event]:
     """
     List all events that an owner is eligible for based on their current state.
 
@@ -138,6 +138,9 @@ async def list_eligible_events_for_owner(owner_discord_id: int) -> list[Event]:
     ----------
     owner_discord_id: int
         The Discord ID of the owner.
+
+    include_triggered_only: bool, default : False
+        Whether to include events that are supposed to only be triggered by other events or not.
 
     Returns
     -------
@@ -171,6 +174,7 @@ async def list_eligible_events_for_owner(owner_discord_id: int) -> list[Event]:
                     Event.min_kennels <= kennel_count,
                     Event.min_money <= owner.dollars,
                     Event.min_bloodskulls <= owner.bloodskulls,
+                    true() if include_triggered_only else Event.triggered_only.is_(False),
                 )
             )
             .options(

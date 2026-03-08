@@ -1,0 +1,8 @@
+{
+    "name": "Cancer Syndrome",
+    "alt_name": "Crabs (Not Those Crabs)",
+    "description": "This pooch is visited by crabs.",
+    "heritability": 0.4,
+    "health_impact": "UNHEALTHY",
+    "rarity": "COMMON"
+}

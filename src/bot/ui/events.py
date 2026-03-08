@@ -14,7 +14,15 @@ from game import (
     respond_to_event,
 )
 from game.models import Pooch
-from game.models.events import EventResult, TriggeredEvent
+from game.models.events import (
+    EventContext,
+    EventEntityReferences,
+    EventHistory,
+    EventOption,
+    EventResult,
+    TriggeredEvent,
+    resolve_event_entity_references,
+)
 
 from .components import PaginatorView, build_breed_info_embed, build_mutation_info_embed
 from .util import InteractionResponder, edit_interaction
@@ -55,15 +63,15 @@ def _discord_timestamp(value: datetime | str | None, style: str = "f") -> str:
     return f"<t:{int(value.timestamp())}:{style}>"
 
 
-def _format_option_line(option: dict[str, Any]) -> str:
+def _format_option_line(option: EventOption) -> str:
     requirements: list[str] = []
-    if option.get("min_money", 0) > 0:
-        requirements.append(f"${int(option['min_money'])}")
-    if option.get("min_bloodskulls", 0) > 0:
-        requirements.append(f"{int(option['min_bloodskulls'])} bloodskulls")
+    if option.min_money > 0:
+        requirements.append(f"${int(option.min_money)}")
+    if option.min_bloodskulls > 0:
+        requirements.append(f"{int(option.min_bloodskulls)} bloodskulls")
 
-    description = option.get("description") or ""
-    line = f"**{option['label']}**"
+    description = option.description or ""
+    line = f"**{option.label}**"
     if description:
         line += f" — {description}"
     if requirements:
@@ -71,15 +79,15 @@ def _format_option_line(option: dict[str, Any]) -> str:
     return line
 
 
-def _format_option_select_description(option: dict[str, Any]) -> str:
+def _format_option_select_description(option: EventOption) -> str:
     lines: list[str] = []
-    if option.get("description"):
-        lines.append(str(option["description"]))
+    if option.description:
+        lines.append(str(option.description))
     costs: list[str] = []
-    if option.get("min_money", 0) > 0:
-        costs.append(f"${int(option['min_money'])}")
-    if option.get("min_bloodskulls", 0) > 0:
-        costs.append(f"{int(option['min_bloodskulls'])} skulls")
+    if option.min_money > 0:
+        costs.append(f"${int(option.min_money)}")
+    if option.min_bloodskulls > 0:
+        costs.append(f"{int(option.min_bloodskulls)} skulls")
     if costs:
         lines.append("Req: " + ", ".join(costs))
     return _truncate("\n".join(lines) if lines else "No description.")
@@ -103,16 +111,33 @@ def _signed(value: int) -> str:
     return f"{value:+d}"
 
 
-def _entity_reference_lines(entity_references: dict[str, list[dict[str, Any]]]) -> list[str]:
+def _entity_reference_lines(context: EventContext, entity_references: EventEntityReferences) -> list[str]:
     lines: list[str] = []
-    for key, title in ENTITY_KINDS:
-        items = entity_references.get(key) or []
+
+    for kind, title in ENTITY_KINDS:
+        items = entity_references.for_kind(kind)[:8]
         if not items:
             continue
-        names = ", ".join(str(item.get("label") or item.get("name") or item.get("id")) for item in items[:8])
-        if len(items) > 8:
-            names += f", +{len(items) - 8} more"
+
+        names = ", ".join(reference.label for reference in items)
+        total_items = len(entity_references.for_kind(kind))
+        if total_items > 8:
+            names += f", +{total_items - 8} more"
         lines.append(f"**{title}:** {names}")
+
+    kennel_bits: list[str] = []
+    if context.selected_kennel_id is not None:
+        kennel_bits.append(f"Kennel #{context.selected_kennel_id}")
+    for kennel_id in context.affected_kennel_ids:
+        label = f"Kennel #{kennel_id}"
+        if label not in kennel_bits:
+            kennel_bits.append(label)
+    if kennel_bits:
+        lines.append(
+            f"**Kennels:** {', '.join(kennel_bits[:8])}"
+            + (f", +{len(kennel_bits) - 8} more" if len(kennel_bits) > 8 else "")
+        )
+
     return lines
 
 
@@ -253,7 +278,7 @@ def build_triggered_event_embed(event: TriggeredEvent) -> discord.Embed:
     if event.flavor_text:
         embed.add_field(name="Flavor", value=_truncate(event.flavor_text), inline=False)
 
-    entity_lines = _entity_reference_lines(event.entity_references)
+    entity_lines = _entity_reference_lines(event.context, event.entity_references)
     if entity_lines:
         embed.add_field(name="Related", value=_truncate("\n".join(entity_lines)), inline=False)
 
@@ -283,135 +308,41 @@ def build_resolved_event_embed(
     return embed
 
 
-def build_history_embed(record: dict[str, Any], page_index: int, page_count: int) -> discord.Embed:
+def build_history_embed(record: EventHistory, page_index: int, page_count: int) -> discord.Embed:
     embed = discord.Embed(
-        title=f"📜 {record['name']}",
-        description=record.get("description") or "No description provided.",
-        color=_color_for_severity(record.get("severity", "moderate")),
+        title=f"📜 {record.name}",
+        description=record.description or "No description provided.",
+        color=_color_for_severity(record.severity),
     )
 
     details = [
-        f"**Category:** {str(record.get('category', 'unknown')).title()}",
-        f"**Severity:** {str(record.get('severity', 'moderate')).title()}",
-        f"**Triggered:** {_discord_timestamp(record.get('triggered_at'))}",
+        f"**Category:** {str(record.category).title()}",
+        f"**Severity:** {str(record.severity).title()}",
+        f"**Triggered:** {_discord_timestamp(record.triggered_at)}",
     ]
-    completed_at = record.get("completed_at") or record.get("responded_at")
+    completed_at = record.completed_at
     if completed_at:
         details.append(f"**Completed:** {_discord_timestamp(completed_at)}")
 
-    if record.get("timed_out"):
+    if record.timed_out:
         details.append("**Status:** Timed out")
-    elif record.get("selected_option_label"):
-        details.append(f"**Selected:** {record['selected_option_label']}")
+    elif record.selected_option_label:
+        details.append(f"**Selected:** {record.selected_option_label}")
     else:
         details.append("**Status:** Auto-resolved")
 
     embed.add_field(name="Details", value="\n".join(details), inline=False)
 
-    flavor_text = record.get("flavor_text") or ""
-    if flavor_text:
-        embed.add_field(name="Flavor", value=_truncate(flavor_text), inline=False)
+    if record.flavor_text:
+        embed.add_field(name="Flavor", value=_truncate(record.flavor_text), inline=False)
 
-    entity_lines = _entity_reference_lines(record.get("entity_references") or {})
+    entity_lines = _entity_reference_lines(record.context, record.entity_references)
     if entity_lines:
         embed.add_field(name="Related", value=_truncate("\n".join(entity_lines)), inline=False)
 
-    result = EventResult.from_dict(record.get("result_summary") or {})
-    embed.add_field(name="Outcome", value=_format_result_summary(result), inline=False)
+    embed.add_field(name="Outcome", value=_format_result_summary(record.result_summary), inline=False)
     embed.set_footer(text=f"History entry {page_index + 1}/{page_count}")
     return embed
-
-
-async def _augment_entity_references(
-    existing: dict[str, list[dict[str, Any]]],
-    result: Optional[EventResult],
-) -> dict[str, list[dict[str, Any]]]:
-    references: dict[str, list[dict[str, Any]]] = {
-        "pooches": list(existing.get("pooches") or []),
-        "breeds": list(existing.get("breeds") or []),
-        "mutations": list(existing.get("mutations") or []),
-    }
-    if result is None:
-        return {key: value for key, value in references.items() if value}
-
-    existing_ids = {
-        key: {int(item.get("id")) for item in value if item.get("id") is not None} for key, value in references.items()
-    }
-
-    pooch_ids: set[int] = set()
-    breed_ids: set[int] = set()
-    mutation_ids: set[int] = set()
-
-    pooch_ids.update(int(pooch_id) for pooch_id in result.pooches_affected)
-    pooch_ids.update(int(pooch_id) for pooch_id in result.pooches_created)
-    pooch_ids.update(int(pooch_id) for pooch_id in result.pooches_killed)
-    mutation_ids.update(int(mutation_id) for _pooch_id, mutation_id in result.mutations_added)
-    mutation_ids.update(int(mutation_id) for _pooch_id, mutation_id in result.mutations_removed)
-
-    extra = result.extra_data or {}
-    for entry in _detail_entries(extra.get("health_changes"), id_key="pooch_id", value_key="amount"):
-        if entry.get("pooch_id") is not None:
-            pooch_ids.add(int(entry["pooch_id"]))
-    for entry in _detail_entries(extra.get("age_changes"), id_key="pooch_id", value_key="amount"):
-        if entry.get("pooch_id") is not None:
-            pooch_ids.add(int(entry["pooch_id"]))
-    for key in ("created_pooches", "killed_pooches", "renamed_pooches", "transferred_pooches", "breeds_added"):
-        for entry in extra.get(key, []):
-            if not isinstance(entry, dict):
-                continue
-            if entry.get("pooch_id") is not None:
-                pooch_ids.add(int(entry["pooch_id"]))
-            if entry.get("breed_id") is not None:
-                breed_ids.add(int(entry["breed_id"]))
-    for key in ("mutations_added_details", "mutations_removed_details"):
-        for entry in extra.get(key, []):
-            if not isinstance(entry, dict):
-                continue
-            if entry.get("pooch_id") is not None:
-                pooch_ids.add(int(entry["pooch_id"]))
-            if entry.get("mutation_id") is not None:
-                mutation_ids.add(int(entry["mutation_id"]))
-
-    for pooch_id in sorted(pooch_ids):
-        if pooch_id in existing_ids["pooches"]:
-            continue
-        label = None
-        pooch = None
-        try:
-            pooch = await get_pooch_by_id(pooch_id)
-        except Exception:
-            pooch = None
-        if pooch is not None:
-            label = pooch.name
-        else:
-            for key in ("created_pooches", "killed_pooches", "transferred_pooches"):
-                for entry in extra.get(key, []):
-                    if (
-                        isinstance(entry, dict)
-                        and int(entry.get("pooch_id", -1)) == pooch_id
-                        and entry.get("pooch_name")
-                    ):
-                        label = str(entry["pooch_name"])
-                        break
-                if label:
-                    break
-        references["pooches"].append({"id": pooch_id, "label": label or f"Pooch #{pooch_id}"})
-
-    for breed_id in sorted(breed_ids):
-        if breed_id in existing_ids["breeds"]:
-            continue
-        breed = await get_breed_by_id(breed_id)
-        label = breed.name if breed is not None else f"Breed #{breed_id}"
-        references["breeds"].append({"id": breed_id, "label": label})
-
-    for mutation_id in sorted(mutation_ids):
-        if mutation_id in existing_ids["mutations"]:
-            continue
-        mutation = await get_mutation_by_id(mutation_id)
-        label = mutation.name if mutation is not None else f"Mutation #{mutation_id}"
-        references["mutations"].append({"id": mutation_id, "label": label})
-
-    return {key: value for key, value in references.items() if value}
 
 
 async def _build_pooch_embed_from_id(pooch_id: int, fallback_label: str) -> discord.Embed:
@@ -460,9 +391,9 @@ def _build_pooch_info_embed(pooch: Pooch) -> discord.Embed:
 
 
 class EventEntityControls:
-    def __init__(self, owner_discord_id: int, entity_references: dict[str, list[dict[str, Any]]]):
+    def __init__(self, owner_discord_id: int, entity_references: EventEntityReferences):
         self.owner_discord_id = owner_discord_id
-        self.entity_references = {key: list(entity_references.get(key) or []) for key, _title in ENTITY_KINDS}
+        self.entity_references = entity_references
         self.selected_kind: Optional[str] = None
         self.selected_id: Optional[int] = None
         self.selected_label: Optional[str] = None
@@ -471,15 +402,15 @@ class EventEntityControls:
         self.info_button.callback = self._on_info
 
         for kind, title in ENTITY_KINDS:
-            items = self.entity_references.get(kind) or []
+            items = self.entity_references.for_kind(kind)
             if not items:
                 continue
             select = discord.ui.Select(
                 placeholder=f"Select {title.lower()}",
                 options=[
                     discord.SelectOption(
-                        label=_truncate(str(item.get("label") or item.get("name") or item.get("id")), 100),
-                        value=str(item.get("id")),
+                        label=_truncate(item.label, 100),
+                        value=str(item.id),
                     )
                     for item in items[:25]
                 ],
@@ -508,11 +439,7 @@ class EventEntityControls:
             self.selected_kind = kind
             self.selected_id = int(value)
             self.selected_label = next(
-                (
-                    str(item.get("label") or item.get("name") or item.get("id"))
-                    for item in self.entity_references.get(kind, [])
-                    if int(item.get("id")) == self.selected_id
-                ),
+                (item.label for item in self.entity_references.for_kind(kind) if item.id == self.selected_id),
                 f"{kind[:-1].title()} #{value}",
             )
             self.info_button.disabled = False
@@ -555,7 +482,7 @@ class EventEntityControls:
 
 
 class EventHistoryPageSource:
-    def __init__(self, records: list[dict[str, Any]], owner_discord_id: int):
+    def __init__(self, records: list[EventHistory], owner_discord_id: int):
         self._records = records
         self._owner_discord_id = owner_discord_id
 
@@ -571,7 +498,8 @@ class EventHistoryPageSource:
             return None, embed
 
         record = self._records[page_index]
-        controls = EventEntityControls(self._owner_discord_id, record.get("entity_references") or {})
+
+        controls = EventEntityControls(self._owner_discord_id, record.entity_references)
         controls.attach(view, row_start=1)
         return None, build_history_embed(record, page_index, len(self._records))
 
@@ -580,8 +508,8 @@ class EventResponseSelect(discord.ui.Select):
     def __init__(self, owner_discord_id: int, event: TriggeredEvent):
         options = [
             discord.SelectOption(
-                label=_truncate(str(option["label"]), 100),
-                value=str(option["id"]),
+                label=_truncate(option.label, 100),
+                value=str(option.id),
                 description=_format_option_select_description(option),
             )
             for option in event.options[:25]
@@ -596,18 +524,20 @@ class EventResponseSelect(discord.ui.Select):
             return
 
         option_id = int(self.values[0])
-        option = next((item for item in self.event.options if int(item["id"]) == option_id), None)
+        option = next((item for item in self.event.options if item.id == option_id), None)
         success, message, result = await respond_to_event(interaction.user.id, self.event.active_event_id, option_id)
 
         if success:
             if self.view is not None:
                 self.view.stop()
             self.event.result = result
-            self.event.entity_references = await _augment_entity_references(self.event.entity_references, result)
+            self.event.entity_references = await resolve_event_entity_references(
+                self.event.context, result, existing=self.event.entity_references
+            )
             embed = build_resolved_event_embed(
                 self.event,
                 result=result,
-                selected_option_label=option["label"] if option is not None else None,
+                selected_option_label=option.label if option is not None else None,
                 status_text="Response recorded.",
             )
             next_view = EventMessageView(self.owner_discord_id, self.event, response_enabled=False)
@@ -623,7 +553,9 @@ class EventResponseSelect(discord.ui.Select):
             if self.view is not None:
                 self.view.stop()
             self.event.result = result
-            self.event.entity_references = await _augment_entity_references(self.event.entity_references, result)
+            self.event.entity_references = await resolve_event_entity_references(
+                self.event.context, result, existing=self.event.entity_references
+            )
             embed = build_resolved_event_embed(self.event, result=result, status_text=message)
             next_view = EventMessageView(self.owner_discord_id, self.event, response_enabled=False)
             await interaction.response.edit_message(embed=embed, view=next_view)

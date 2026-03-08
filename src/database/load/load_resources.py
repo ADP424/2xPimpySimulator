@@ -1,8 +1,9 @@
 import asyncio
-import json
+from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
+import json5
 from sqlalchemy import delete, select
 
 from database.models import (
@@ -11,6 +12,7 @@ from database.models import (
     Event,
     EventAction,
     EventOption,
+    EventOutcome,
     Mutation,
     VendorFirstName,
     VendorLastName,
@@ -27,9 +29,19 @@ from logger import get_logger
 
 logger = get_logger("database/load/load_resources")
 
+RESOURCE_ROOT = Path("resources")
+BREEDS_ROOT = RESOURCE_ROOT / "breeds"
+EVENTS_ROOT = RESOURCE_ROOT / "events"
+MUTATIONS_ROOT = RESOURCE_ROOT / "mutations"
+DOG_NAMES_ROOT = RESOURCE_ROOT / "dog_names"
+VENDOR_NAMES_ROOT = RESOURCE_ROOT / "vendor_names"
+VENDOR_FIRST_NAMES_ROOT = VENDOR_NAMES_ROOT / "first"
+VENDOR_LAST_NAMES_ROOT = VENDOR_NAMES_ROOT / "last"
+
 _SELECTED_TARGET_TOKEN = "selected"
 _RANDOM_TARGET_TOKEN = "random"
 _EVENT_ALLOWED_KEYS = {
+    "name",
     "description",
     "flavor_text",
     "severity",
@@ -40,6 +52,7 @@ _EVENT_ALLOWED_KEYS = {
     "min_kennels",
     "min_money",
     "min_bloodskulls",
+    "triggered_only",
     "advanced_options",
     "actions",
     "options",
@@ -51,8 +64,18 @@ _OPTION_ALLOWED_KEYS = {
     "min_bloodskulls",
     "advanced_options",
     "actions",
+    "outcomes",
+}
+_OUTCOME_ALLOWED_KEYS = {
+    "label",
+    "description",
+    "message",
+    "chance",
+    "advanced_options",
+    "actions",
 }
 _ACTION_ALLOWED_KEYS = {"action_type", "target_type", "parameters"}
+_JSONC_SUFFIXES = {".jsonc", ".json"}
 
 
 def _enum_values(enum_obj: Any) -> set[str]:
@@ -71,9 +94,10 @@ class EventValidationError(ValueError):
 
 
 class _EventValidator:
-    def __init__(self, breed_names: set[str], mutation_names: set[str]):
+    def __init__(self, breed_names: set[str], mutation_names: set[str], event_names: set[str]):
         self.breed_names = breed_names
         self.mutation_names = mutation_names
+        self.event_names = event_names
         self.errors: list[str] = []
 
     def error(self, path: str, message: str) -> None:
@@ -95,7 +119,7 @@ class _EventValidator:
     def raise_if_invalid(self) -> None:
         if self.errors:
             joined = "\n".join(f"- {error}" for error in self.errors)
-            raise EventValidationError(f"Invalid events.json:\n{joined}")
+            raise EventValidationError(f"Invalid event resources:\n{joined}")
 
     def _validate_event(self, category_name: str, event_name: str, attributes: Any) -> None:
         path = f"events.{category_name}.{event_name}"
@@ -105,6 +129,7 @@ class _EventValidator:
 
         self._validate_unknown_keys(path, attributes, _EVENT_ALLOWED_KEYS)
 
+        self._validate_optional_string(path, attributes, "name", allow_blank=False)
         self._validate_optional_string(path, attributes, "description")
         self._validate_optional_string(path, attributes, "flavor_text")
         self._validate_optional_json_object(path, attributes, "advanced_options")
@@ -116,6 +141,7 @@ class _EventValidator:
         min_kennels = self._validate_optional_int(path, attributes, "min_kennels", minimum=0)
         min_money = self._validate_optional_int(path, attributes, "min_money", minimum=0)
         min_bloodskulls = self._validate_optional_int(path, attributes, "min_bloodskulls", minimum=0)
+        triggered_only = self._validate_optional_bool(path, attributes, "triggered_only")
         actions = self._validate_actions_list(path, attributes.get("actions", []), "actions")
         options = self._validate_options_list(path, attributes.get("options", []))
 
@@ -124,8 +150,16 @@ class _EventValidator:
         if not actions and not options:
             self.error(path, "events must define at least one action or option")
 
-        # Silence unused-value warnings for readability
-        _ = (severity, rarity, response_timeout, min_pooches, min_kennels, min_money, min_bloodskulls)
+        _ = (
+            severity,
+            rarity,
+            response_timeout,
+            min_pooches,
+            min_kennels,
+            min_money,
+            min_bloodskulls,
+            triggered_only,
+        )
 
     def _validate_options_list(self, path: str, options: Any) -> list[dict[str, Any]]:
         option_path = f"{path}.options"
@@ -147,7 +181,32 @@ class _EventValidator:
             self._validate_optional_int(current_path, option, "min_bloodskulls", minimum=0)
             self._validate_optional_json_object(current_path, option, "advanced_options")
             self._validate_actions_list(current_path, option.get("actions", []), "actions")
+            self._validate_outcomes_list(current_path, option.get("outcomes", []))
             validated.append(option)
+
+        return validated
+
+    def _validate_outcomes_list(self, path: str, outcomes: Any) -> list[dict[str, Any]]:
+        outcomes_path = f"{path}.outcomes"
+        if not isinstance(outcomes, list):
+            self.error(outcomes_path, "must be a list")
+            return []
+
+        validated: list[dict[str, Any]] = []
+        for index, outcome in enumerate(outcomes):
+            current_path = f"{outcomes_path}[{index}]"
+            if not isinstance(outcome, dict):
+                self.error(current_path, "outcome must be an object")
+                continue
+
+            self._validate_unknown_keys(current_path, outcome, _OUTCOME_ALLOWED_KEYS)
+            self._validate_optional_string(current_path, outcome, "label")
+            self._validate_optional_string(current_path, outcome, "description")
+            self._validate_optional_string(current_path, outcome, "message")
+            self._validate_optional_json_object(current_path, outcome, "advanced_options")
+            self._validate_optional_probability(current_path, outcome, "chance")
+            self._validate_actions_list(current_path, outcome.get("actions", []), "actions")
+            validated.append(outcome)
 
         return validated
 
@@ -191,11 +250,11 @@ class _EventValidator:
         common_allowed = set()
 
         if target_type == "pooch":
-            common_allowed.add("pooch_id")
-            self._validate_entity_selector(params_path, parameters, "pooch_id")
+            common_allowed.add("pooch")
+            self._validate_entity_selector(params_path, parameters, "pooch")
         if target_type == "kennel":
-            common_allowed.add("kennel_id")
-            self._validate_entity_selector(params_path, parameters, "kennel_id")
+            common_allowed.add("kennel")
+            self._validate_entity_selector(params_path, parameters, "kennel")
 
         if action_type in {"modify_money", "modify_bloodskulls"}:
             self._validate_allowed_keys(
@@ -274,6 +333,14 @@ class _EventValidator:
             self._validate_optional_int(params_path, parameters, "cooldown", minimum=0)
             self._validate_requires_one_of(params_path, parameters, [("cooldown",)])
             self._validate_target_type(path, action_type, target_type, {"pooch", "all_pooches"})
+
+        elif action_type == "start_event":
+            self._validate_allowed_keys(params_path, parameters, {"event", "random_event"})
+            event_name = self._validate_optional_known_name(params_path, parameters, "event", self.event_names)
+            random_event = self._validate_optional_bool(params_path, parameters, "random_event")
+            if random_event is not True and event_name is None:
+                self.error(params_path, "requires 'event' unless 'random_event' is true")
+            self._validate_target_type(path, action_type, target_type, {"owner"})
 
         else:
             self.error(path, f"unsupported action type '{action_type}'")
@@ -429,6 +496,17 @@ class _EventValidator:
             return None
         return numeric_value
 
+    def _validate_optional_probability(self, path: str, value: dict[str, Any], field_name: str) -> float | None:
+        if field_name not in value:
+            return None
+        numeric_value = self._validate_optional_number(path, value, field_name)
+        if numeric_value is None:
+            return None
+        if numeric_value < 0 or numeric_value > 1:
+            self.error(f"{path}.{field_name}", "must be between 0 and 1")
+            return None
+        return numeric_value
+
     def _validate_enum_string(
         self,
         path: str,
@@ -450,6 +528,61 @@ class _EventValidator:
             )
             return None
         return normalized
+
+
+def _titleize_slug(value: str) -> str:
+    normalized = value.replace("-", "_").strip("_")
+    parts = [part for part in normalized.split("_") if part]
+    return " ".join(part.capitalize() for part in parts) or value
+
+
+def _iter_files(root: Path, suffixes: set[str]) -> list[Path]:
+    if not root.exists():
+        return []
+    return sorted(path for path in root.rglob("*") if path.is_file() and path.suffix.lower() in suffixes)
+
+
+def _load_jsonc_file(path: Path) -> dict[str, Any]:
+    payload = json5.loads(path.read_text(encoding="utf8"))
+    if not isinstance(payload, dict):
+        raise ValueError(f"Expected an object in {path}")
+    return payload
+
+
+def _load_names_from_root(root: Path) -> list[str]:
+    names: list[str] = []
+    for path in _iter_files(root, {".txt"}):
+        for raw_name in path.read_text(encoding="utf8").splitlines():
+            name = raw_name.strip()
+            if name:
+                names.append(name)
+    return names
+
+
+def _load_categorized_resource_objects(root: Path, label: str) -> dict[str, dict[str, dict[str, Any]]]:
+    resources: dict[str, dict[str, dict[str, Any]]] = defaultdict(dict)
+    seen_names: dict[str, Path] = {}
+
+    for path in _iter_files(root, _JSONC_SUFFIXES):
+        relative = path.relative_to(root)
+        if len(relative.parts) < 2:
+            raise ValueError(f"{label} file must live inside a category folder: {path}")
+
+        category = _titleize_slug(relative.parts[0])
+        payload = _load_jsonc_file(path)
+        name = str(payload.get("name") or _titleize_slug(path.stem)).strip()
+        if not name:
+            raise ValueError(f"{label} file has a blank name: {path}")
+
+        if name in seen_names:
+            raise ValueError(f"Duplicate {label} name '{name}' in {seen_names[name]} and {path}")
+        seen_names[name] = path
+
+        payload = dict(payload)
+        payload.pop("name", None)
+        resources[category][name] = payload
+
+    return {category: items for category, items in resources.items()}
 
 
 def _resolve_event_action_parameters(
@@ -475,17 +608,13 @@ def _resolve_event_action_parameters(
 
 
 async def load_breeds():
-    logger.info("Loading breeds from 'breeds.json' into the database...")
+    logger.info("Loading breeds from 'resources/breeds/**/*.jsonc' into the database...")
 
-    with open("resources/breeds.json", "r", encoding="utf8") as breeds_json_file:
-        breeds_json: dict[str, dict[str, dict[str, str | Any]]] = json.loads(breeds_json_file.read().strip())
+    breeds_json = _load_categorized_resource_objects(BREEDS_ROOT, "breed")
 
     async with session_scope() as session:
-
-        # delete
         await session.execute(delete(Breed))
 
-        # load
         for breed_category, breeds in breeds_json.items():
             for breed, attributes in breeds.items():
                 session.add(
@@ -503,17 +632,13 @@ async def load_breeds():
 
 
 async def load_mutations():
-    logger.info("Loading mutations from 'mutations.json' into the database...")
+    logger.info("Loading mutations from 'resources/mutations/**/*.jsonc' into the database...")
 
-    with open("resources/mutations.json", "r", encoding="utf8") as mutations_json_file:
-        mutations_json: dict[str, dict[str, dict[str, str | Any]]] = json.loads(mutations_json_file.read().strip())
+    mutations_json = _load_categorized_resource_objects(MUTATIONS_ROOT, "mutation")
 
     async with session_scope() as session:
-
-        # delete
         await session.execute(delete(Mutation))
 
-        # load
         for mutation_category, mutations in mutations_json.items():
             for mutation, attributes in mutations.items():
                 session.add(
@@ -537,71 +662,52 @@ async def load_mutations():
 
 
 async def load_dog_names():
-    logger.info("Loading dog names from 'dog_names.txt' into the database...")
+    logger.info("Loading dog names from 'resources/dog_names/**/*.txt' into the database...")
 
-    with open("resources/dog_names.txt", "r", encoding="utf8") as dog_names_file:
-        dog_names = dog_names_file.readlines()
+    dog_names = _load_names_from_root(DOG_NAMES_ROOT)
 
     async with session_scope() as session:
-
-        # delete
         await session.execute(delete(DogName))
 
-        # load
         for dog_name in dog_names:
-            dog_name = dog_name.strip()
-            if dog_name:
-                session.add(DogName(name=dog_name))
+            session.add(DogName(name=dog_name))
 
     logger.info("Finished loading dog names.")
 
 
 async def load_vendor_first_names():
-    logger.info("Loading vendor first names from 'vendor_first_names.txt' into the database...")
+    logger.info("Loading vendor first names from 'resources/vendor_names/first/**/*.txt' into the database...")
 
-    with open("resources/vendor_first_names.txt", "r", encoding="utf8") as vendor_first_names_file:
-        vendor_first_names = vendor_first_names_file.readlines()
+    vendor_first_names = _load_names_from_root(VENDOR_FIRST_NAMES_ROOT)
 
     async with session_scope() as session:
-
-        # delete
         await session.execute(delete(VendorFirstName))
 
-        # load
         for vendor_first_name in vendor_first_names:
-            vendor_first_name = vendor_first_name.strip()
-            if vendor_first_name:
-                session.add(VendorFirstName(name=vendor_first_name))
+            session.add(VendorFirstName(name=vendor_first_name))
 
     logger.info("Finished loading vendor first names.")
 
 
 async def load_vendor_last_names():
-    logger.info("Loading vendor last names from 'vendor_last_names.txt' into the database...")
+    logger.info("Loading vendor last names from 'resources/vendor_names/last/**/*.txt' into the database...")
 
-    with open("resources/vendor_last_names.txt", "r", encoding="utf8") as vendor_last_names_file:
-        vendor_last_names = vendor_last_names_file.readlines()
+    vendor_last_names = _load_names_from_root(VENDOR_LAST_NAMES_ROOT)
 
     async with session_scope() as session:
-
-        # delete
         await session.execute(delete(VendorLastName))
 
-        # load
         for vendor_last_name in vendor_last_names:
-            vendor_last_name = vendor_last_name.strip()
-            if vendor_last_name:
-                session.add(VendorLastName(name=vendor_last_name))
+            session.add(VendorLastName(name=vendor_last_name))
 
     logger.info("Finished loading vendor last names.")
 
 
 async def load_events():
-    logger.info("Loading events from 'events.json' into the database...")
+    logger.info("Loading events from 'resources/events/**/*.jsonc' into the database...")
 
-    events_path = Path("resources/events.json")
-    with events_path.open("r", encoding="utf8") as events_json_file:
-        events_json: dict[str, dict[str, dict[str, Any]]] = json.loads(events_json_file.read().strip())
+    events_json = _load_categorized_resource_objects(EVENTS_ROOT, "event")
+    event_names = {event_name.strip().lower() for events in events_json.values() for event_name in events}
 
     async with session_scope() as session:
         breed_names = {name.strip().lower() for name in (await session.execute(select(Breed.name))).scalars().all()}
@@ -616,13 +722,17 @@ async def load_events():
             for mutation in (await session.execute(select(Mutation))).scalars().all()
         }
 
-        validator = _EventValidator(breed_names=breed_names, mutation_names=mutation_names)
+        validator = _EventValidator(
+            breed_names=breed_names,
+            mutation_names=mutation_names,
+            event_names=event_names,
+        )
         validator.validate_events_json(events_json)
         validator.raise_if_invalid()
 
         await session.execute(delete(EventAction))
+        await session.execute(delete(EventOutcome))
         await session.execute(delete(EventOption))
-        await session.execute(delete(EventAction))
         await session.execute(delete(Event))
 
         for event_category, events in events_json.items():
@@ -640,6 +750,7 @@ async def load_events():
                     min_kennels=int(attributes.get("min_kennels", 0)),
                     min_money=int(attributes.get("min_money", 0)),
                     min_bloodskulls=int(attributes.get("min_bloodskulls", 0)),
+                    triggered_only=bool(attributes.get("triggered_only", False)),
                     advanced_options=attributes.get("advanced_options", {}),
                 )
                 session.add(event)
@@ -681,6 +792,33 @@ async def load_events():
                             ),
                         )
                         session.add(option_action)
+
+                    for outcome_idx, outcome_data in enumerate(option_data.get("outcomes", [])):
+                        outcome = EventOutcome(
+                            option_id=option.id,
+                            outcome_order=outcome_idx,
+                            label=str(outcome_data.get("label", "")),
+                            description=str(outcome_data.get("description", "")),
+                            message=str(outcome_data.get("message", "")),
+                            chance=float(outcome_data["chance"]) if "chance" in outcome_data else None,
+                            advanced_options=outcome_data.get("advanced_options", {}),
+                        )
+                        session.add(outcome)
+                        await session.flush()
+
+                        for outcome_action_idx, outcome_action_data in enumerate(outcome_data.get("actions", [])):
+                            outcome_action = EventAction(
+                                outcome_id=outcome.id,
+                                action_order=outcome_action_idx,
+                                action_type=str(outcome_action_data.get("action_type")).lower(),
+                                target_type=str(outcome_action_data.get("target_type", "owner")).lower(),
+                                parameters=_resolve_event_action_parameters(
+                                    outcome_action_data.get("parameters", {}),
+                                    breed_name_to_id,
+                                    mutation_name_to_id,
+                                ),
+                            )
+                            session.add(outcome_action)
 
     logger.info("Finished loading events.")
 

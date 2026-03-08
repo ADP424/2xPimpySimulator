@@ -145,8 +145,10 @@ async def day_change_runner(bot: discord.Client, stage: str, tz: str = "America/
             async with run_lock:
                 try:
                     await run_once()
-                except Exception:
-                    logger.exception("Manual day change failed")
+                except Exception as exception:
+                    logger.exception(f"Manual day change failed: {exception}")
+                    if stage == "dev":
+                        raise exception
             continue
 
         if not paused_event.is_set():
@@ -155,5 +157,7 @@ async def day_change_runner(bot: discord.Client, stage: str, tz: str = "America/
         async with run_lock:
             try:
                 await run_once()
-            except Exception:
-                logger.exception("Scheduled day change failed")
+            except Exception as exception:
+                logger.exception(f"Scheduled day change failed: {exception}")
+                if stage == "dev":
+                    raise exception

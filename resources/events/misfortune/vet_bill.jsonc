@@ -1,0 +1,61 @@
+{
+    "name": "Vet Bill",
+    "description": "One of your pooches got sick and needs medical attention.",
+    "flavor_text": "The vet says it's nothing serious, but it'll cost you.",
+    "severity": "MINOR",
+    "rarity": "UNCOMMON",
+    "requires_response": true,
+    "response_timeout": 7200,
+    "min_pooches": 1,
+    "options": [
+        {
+            "label": "Pay for treatment",
+            "description": "Pay $50 to treat your pooch.",
+            "min_money": 50,
+            "actions": [
+                {
+                    "action_type": "modify_money",
+                    "target_type": "owner",
+                    "parameters": {
+                        "amount": -50
+                    }
+                }
+            ]
+        },
+        {
+            "label": "Let nature take its course",
+            "description": "Hope they get better on their own...",
+            "outcomes": [
+                {
+                    "chance": 0.8,
+                    "message": "The sickness has done its damage.",
+                    "actions": [
+                        {
+                            "action_type": "modify_pooch_health",
+                            "target_type": "pooch",
+                            "parameters": {
+                                "min_amount": -5,
+                                "max_amount": -1,
+                                "pooch": "random"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "chance": 0.2,
+                    "message": "Your pooch recovered without side effects!"
+                }
+            ]
+        }
+    ],
+    "actions": [
+        {
+            "action_type": "modify_pooch_health",
+            "target_type": "pooch",
+            "parameters": {
+                "amount": -5,
+                "pooch": "random"
+            }
+        }
+    ]
+}
