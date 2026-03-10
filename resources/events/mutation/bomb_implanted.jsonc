@@ -1,0 +1,19 @@
+{
+    "name": "Bomb Implanted",
+    "description": "Your pooch swallowed a large explosive.",
+    "flavor_text": "You'll have to get rid of it before it blows up!",
+    "severity": "REMARKABLE",
+    "rarity": "REMARKABLE",
+    "requires_response": false,
+    "min_pooches": 1,
+    "actions": [
+        {
+            "action_type": "add_mutation",
+            "target_type": "pooch",
+            "parameters": {
+                "pooch": "random",
+                "mutation": "explosion_syndrome"
+            }
+        }
+    ]
+}
