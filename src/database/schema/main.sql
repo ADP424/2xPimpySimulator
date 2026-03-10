@@ -9,6 +9,7 @@ CREATE TABLE servers (
 -- OWNERS (players)
 CREATE TABLE owners (
     discord_id      BIGINT NOT NULL PRIMARY KEY,
+    discord_name    TEXT NULL,
     dollars         INTEGER NOT NULL DEFAULT 100,
     bloodskulls     INTEGER NOT NULL DEFAULT 0,
     begged_today    BOOLEAN NOT NULL DEFAULT TRUE,

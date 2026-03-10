@@ -41,6 +41,7 @@ def serialize_owner(owner: Any) -> dict:
     """Serialize an Owner object."""
     return {
         "discord_id": owner.discord_id,
+        "discord_name": owner.discord_name,
         "dollars": owner.dollars,
         "bloodskulls": owner.bloodskulls,
     }

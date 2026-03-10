@@ -23,7 +23,9 @@ from .manage_owners import (
     add_money,
     beg_for_money,
     get_or_create_owner,
+    list_all_owners,
     list_owner_kennels,
+    update_owner_names,
 )
 from .manage_pooches import (
     get_pooch_by_id,
@@ -70,7 +72,9 @@ __all__ = [
     "add_money",
     "beg_for_money",
     "get_or_create_owner",
+    "list_all_owners",
     "list_owner_kennels",
+    "update_owner_names",
     # Pooch commands
     "get_pooch_by_id",
     "get_pooch_family",

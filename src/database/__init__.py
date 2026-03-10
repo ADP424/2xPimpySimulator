@@ -28,6 +28,7 @@ from .list import (
     list_hell_pooches,
     list_kennels_for_owner,
     list_living_pooches,
+    list_owners,
     list_owner_servers,
     list_pooch_breed_weights,
     list_pooch_breeds,
@@ -75,6 +76,7 @@ from .update import (
     set_pooch_virgin,
     transfer_pooch_to_owner,
     transfer_pooch_to_vendor,
+    update_owner_discord_name,
 )
 
 __all__ = [
@@ -106,6 +108,7 @@ __all__ = [
     "list_hell_pooches",
     "list_kennels_for_owner",
     "list_living_pooches",
+    "list_owners",
     "list_owner_servers",
     "list_pooch_breed_weights",
     "list_pooch_breeds",
@@ -152,4 +155,5 @@ __all__ = [
     "set_pooch_virgin",
     "transfer_pooch_to_owner",
     "transfer_pooch_to_vendor",
+    "update_owner_discord_name",
 ]

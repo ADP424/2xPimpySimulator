@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import BigInteger, Boolean, DateTime, Integer, text
+from sqlalchemy import BigInteger, Boolean, DateTime, Integer, Text, text
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -18,6 +18,7 @@ class Owner(Base):
     __tablename__ = "owners"
 
     discord_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    discord_name: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     dollars: Mapped[int] = mapped_column(Integer, default=100)
     bloodskulls: Mapped[int] = mapped_column(Integer, default=0)

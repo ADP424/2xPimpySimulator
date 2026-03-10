@@ -67,6 +67,36 @@ async def decrement_pooch_breeding_cooldown(pooch_id: int) -> Optional[Pooch]:
     return pooch
 
 
+async def update_owner_discord_name(owner_discord_id: int, discord_name: str) -> Optional[Owner]:
+    """
+    Update the cached Discord display name for the given owner.
+
+    Parameters
+    ----------
+    owner_discord_id: int
+        The Discord ID of the owner to update.
+
+    discord_name: str
+        The new Discord display name.
+
+    Returns
+    -------
+    Owner, optional
+        The updated Owner ORM object, or None if the owner wasn't found.
+    """
+
+    async with session_scope() as session:
+        query = select(Owner).where(Owner.discord_id == owner_discord_id)
+        owner = (await session.execute(query)).scalar_one_or_none()
+
+        if owner is None:
+            return None
+
+        owner.discord_name = discord_name
+
+    return owner
+
+
 async def give_bloodskulls_to_owner(owner_discord_id: int, bloodskulls: int) -> Optional[Owner]:
     """
     Add a number to the given owner's `bloodskulls`.

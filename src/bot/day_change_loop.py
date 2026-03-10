@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 
 import discord
 
-from game import get_event_channel, run_day_change
+from game import get_event_channel, list_all_owners, run_day_change, update_owner_names
 from logger import get_logger
 
 from .ui.day_change_status import make_status_view
@@ -58,6 +58,21 @@ async def trigger_manual_day_change(bot: discord.Client):
     """Trigger one immediate day change (even if paused)."""
     _, manual_queue, _ = _ensure_controls(bot)
     manual_queue.put_nowait(1)
+
+
+async def _fetch_and_update_names(bot: discord.Client):
+    """Resolve Discord display names for all owners and pass them to the game layer."""
+    owners = await list_all_owners()
+    names: dict[int, str] = {}
+    for owner in owners:
+        try:
+            user = bot.get_user(owner.discord_id) or await bot.fetch_user(owner.discord_id)
+            names[owner.discord_id] = user.display_name
+        except discord.NotFound:
+            logger.warning(f"Owner {owner.discord_id} not found on Discord, skipping name update")
+        except discord.HTTPException as e:
+            logger.warning(f"Failed to fetch user {owner.discord_id}: {e}")
+    await update_owner_names(names)
 
 
 async def post_day_change_summaries(bot: discord.Client, summaries: dict[int, DayChangeSummary]):
@@ -112,6 +127,10 @@ async def day_change_runner(bot: discord.Client, stage: str, tz: str = "America/
         summaries = await run_day_change(rng_seed=int.from_bytes(os.urandom(8)))
         await post_day_change_summaries(bot, summaries)
         await post_day_change_webhooks(summaries)
+        try:
+            await _fetch_and_update_names(bot)
+        except Exception:
+            logger.exception("Failed to update owner display names")
 
     bot._day_change_run_once = run_once
 
