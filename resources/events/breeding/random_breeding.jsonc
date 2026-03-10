@@ -1,0 +1,26 @@
+{
+    "name": "Random Breeding",
+    "description": "Two of your pooches breed without permission",
+    "flavor_text": "Maybe you should throw them in cages.",
+    "severity": "MODERATE",
+    "rarity": "RARE",
+    "requires_response": false,
+    "min_pooches": 2, //To Do. Check for a male and female Pooch.
+    "actions": [
+        {
+            "action_type": "set_breeding_cooldown",
+            "target_type": "pooch",
+            "parameters": {
+                "cooldown": 2, //To Do. Change to full breeding cooldown.
+                "pooch": "random"
+            }
+        },
+        {
+            "action_type": "create_pooch",
+            "target_type": "kennel",
+            "parameters": {
+                //To Do. Breed two pooches together.
+            }
+        }
+    ]
+}

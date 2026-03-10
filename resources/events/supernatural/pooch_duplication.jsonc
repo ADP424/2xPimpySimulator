@@ -1,0 +1,18 @@
+{
+    "name": "Pooch Duplication", 
+    "description": "One of your pooches just made a copy of itself.",
+    "flavor_text": "Weird.",
+    "severity": "MAJOR",
+    "rarity": "UNPRECEDENTED",
+    "requires_response": false,
+    "min_pooches": 1,
+    "actions": [ //To Do. Copy a pooch.
+        {
+            "action_type": "create_pooch",
+            "target_type": "kennel",
+            "parameters": {
+                
+            }
+        }
+    ]
+}
