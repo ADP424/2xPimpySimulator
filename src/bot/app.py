@@ -15,12 +15,12 @@ from .commands.home import register_home_command
 from .commands.set_event_channel import register_set_event_channel_command
 from .commands.town import register_town_command
 from .constants import GUILDS
-from .day_change_loop import day_change_runner
+from .day_change_loop import _fetch_and_update_names, day_change_runner
 
 logger = get_logger("bot/app")
 
 
-def run():
+def run(update_names_only: bool = False):
     load_dotenv()
     token = os.getenv("DISCORD_TOKEN")
     stage = os.getenv("STAGE", "dev").lower()
@@ -53,6 +53,11 @@ def run():
             server = await get_or_create_server(guild.id)
             logger.info(f"Initialized Server with ID '{server.discord_id}'.")
         logger.info(f"Bot ready as {bot.user} ({stage})")
+
+        if update_names_only:
+            await _fetch_and_update_names(bot)
+            await bot.close()
+            return
 
         if not hasattr(bot, "_day_change_task"):
             bot._day_change_task = asyncio.create_task(day_change_runner(bot, stage=stage, tz=tz))  # type: ignore

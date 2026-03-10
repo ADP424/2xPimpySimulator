@@ -17,6 +17,13 @@ if __name__ == "__main__":
         help="Reset the database instead of launching anything.",
         dest="reset_db",
     )
+    parser.add_argument(
+        "-n",
+        "--update-names",
+        action="store_true",
+        help="Update owner Discord display names and exit.",
+        dest="update_names",
+    )
     args = parser.parse_args()
 
     if args.web_app:
@@ -24,5 +31,7 @@ if __name__ == "__main__":
     elif args.reset_db:
         reset_db()
         asyncio.run(load_resources())
+    elif args.update_names:
+        run_bot(update_names_only=True)
     else:
         run_bot()
