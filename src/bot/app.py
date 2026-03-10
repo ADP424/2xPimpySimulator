@@ -20,7 +20,7 @@ from .day_change_loop import _fetch_and_update_names, day_change_runner
 logger = get_logger("bot/app")
 
 
-def run(update_names_only: bool = False):
+def run(update_names_only: bool = False, skip_startup_day_change: bool = False):
     load_dotenv()
     token = os.getenv("DISCORD_TOKEN")
     stage = os.getenv("STAGE", "dev").lower()
@@ -60,7 +60,7 @@ def run(update_names_only: bool = False):
             return
 
         if not hasattr(bot, "_day_change_task"):
-            bot._day_change_task = asyncio.create_task(day_change_runner(bot, stage=stage, tz=tz))  # type: ignore
+            bot._day_change_task = asyncio.create_task(day_change_runner(bot, stage=stage, tz=tz, skip_startup_day_change=skip_startup_day_change))  # type: ignore
 
     if not token:
         raise RuntimeError("DISCORD_TOKEN not set")

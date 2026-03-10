@@ -118,7 +118,9 @@ async def post_day_change_summaries(bot: discord.Client, summaries: dict[int, Da
         await channel.send(**send_kwargs)
 
 
-async def day_change_runner(bot: discord.Client, stage: str, tz: str = "America/New_York"):
+async def day_change_runner(
+    bot: discord.Client, stage: str, tz: str = "America/New_York", skip_startup_day_change: bool = False
+):
     zone = ZoneInfo(tz)
     paused_event, manual_queue, run_lock = _ensure_controls(bot)
 
@@ -136,11 +138,12 @@ async def day_change_runner(bot: discord.Client, stage: str, tz: str = "America/
 
     logger.info(f"Beginning day change loop as {stage.upper()}...")
 
-    async with run_lock:
-        try:
-            await run_once()
-        except Exception:
-            logger.exception("Startup day change failed")
+    if not skip_startup_day_change:
+        async with run_lock:
+            try:
+                await run_once()
+            except Exception:
+                logger.exception("Startup day change failed")
 
     while True:
         manual_task = asyncio.create_task(manual_queue.get())
