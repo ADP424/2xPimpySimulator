@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from database.models import ServerEventParticipation as ServerEventParticipationORM
+from src.database.models import ServerEventParticipation as ServerEventParticipationORM
 
 from .event_context import EventContext
 from .event_entity_reference import (

@@ -5,9 +5,9 @@ from typing import TYPE_CHECKING, Optional
 import discord
 from discord.ui import Button, Select, View
 
-from bot.constants import VIEW_TIMEOUT
-from bot.ui.util import InteractionResponder
-from game import (
+from src.bot.constants import VIEW_TIMEOUT
+from src.bot.ui.util import InteractionResponder
+from src.game import (
     beg_for_money,
     get_or_create_server,
     get_pooch_bloodskull_value,
@@ -18,10 +18,10 @@ from game import (
     sacrifice_pooch,
     summon_pooch,
 )
-from logger import get_logger
+from src.logger import get_logger
 
 if TYPE_CHECKING:
-    from game.models import Kennel, Pooch
+    from src.game.models import Kennel, Pooch
 
 from .components import PageSource, PaginatorView
 from .pooch_info import PoochInfoView

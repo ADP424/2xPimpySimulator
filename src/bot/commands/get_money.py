@@ -1,7 +1,7 @@
 from discord import Interaction, app_commands
 
-from bot.constants import GUILDS
-from game import add_money
+from src.bot.constants import GUILDS
+from src.game import add_money
 
 
 def register_get_money_command(tree: app_commands.CommandTree):

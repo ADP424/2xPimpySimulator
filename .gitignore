@@ -9,6 +9,10 @@ __pycache__/
 .pytest_cache/
 .coverage
 
+# claude
+CLAUDE.md
+.claude
+
 # other
 .vscode
 *.egg-info

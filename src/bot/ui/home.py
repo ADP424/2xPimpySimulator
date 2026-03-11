@@ -1,12 +1,12 @@
 import discord
 from discord.ui import Button, Select, View
 
-from bot.constants import VIEW_TIMEOUT
-from bot.ui.util import (
+from src.bot.constants import VIEW_TIMEOUT
+from src.bot.ui.util import (
     InteractionResponder,
     mention,
 )
-from game import get_or_create_owner
+from src.game import get_or_create_owner
 
 from .components import PaginatorView
 from .graveyard import GraveyardPageSource

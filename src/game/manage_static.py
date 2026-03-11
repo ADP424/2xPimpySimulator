@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional
 
-from database import get_breed_by_id as db_get_breed_by_id
-from database import get_mutation_by_id as db_get_mutation_by_id
-from database import list_all_breeds as db_list_all_breeds
-from database import list_all_mutations as db_list_all_mutations
+from src.database import get_breed_by_id as db_get_breed_by_id
+from src.database import get_mutation_by_id as db_get_mutation_by_id
+from src.database import list_all_breeds as db_list_all_breeds
+from src.database import list_all_mutations as db_list_all_mutations
 
 from .models import to_breed, to_mutation
 

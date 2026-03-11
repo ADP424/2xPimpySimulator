@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 
-from database import (
+from src.database import (
     get_owner_by_discord_id,
     get_pooch_health,
     get_vendor_by_id,
@@ -18,7 +18,7 @@ from .owner import to_owner
 from .vendor import to_vendor
 
 if TYPE_CHECKING:
-    from database.models import Pooch as PoochORM
+    from src.database.models import Pooch as PoochORM
 
     from .breed import Breed
     from .mutation import Mutation

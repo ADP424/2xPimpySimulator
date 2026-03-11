@@ -1,6 +1,6 @@
 from sqlalchemy import delete
 
-from logger import get_logger
+from src.logger import get_logger
 
 from ...models import VendorFirstName
 from ...session import session_scope

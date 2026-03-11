@@ -5,7 +5,7 @@ from flask import Flask
 from flask_session import Session
 from flask_socketio import SocketIO
 
-from web.async_utils import AsyncBridge
+from src.web.async_utils import AsyncBridge
 
 socketio = SocketIO(async_mode="threading")
 
@@ -37,16 +37,16 @@ def create_app(config: dict | None = None) -> Flask:
     socketio.init_app(app, cors_allowed_origins="*")
 
     # Register blueprints
-    from web.routes.api import api_bp
-    from web.routes.auth import auth_bp
-    from web.routes.church import church_bp
-    from web.routes.graveyard import graveyard_bp
-    from web.routes.info import info_bp
-    from web.routes.kennel import kennel_bp
-    from web.routes.main import main_bp
-    from web.routes.pooch import pooch_bp
-    from web.routes.vendor import vendor_bp
-    from web.routes.webhooks import webhooks_bp
+    from src.web.routes.api import api_bp
+    from src.web.routes.auth import auth_bp
+    from src.web.routes.church import church_bp
+    from src.web.routes.graveyard import graveyard_bp
+    from src.web.routes.info import info_bp
+    from src.web.routes.kennel import kennel_bp
+    from src.web.routes.main import main_bp
+    from src.web.routes.pooch import pooch_bp
+    from src.web.routes.vendor import vendor_bp
+    from src.web.routes.webhooks import webhooks_bp
 
     app.register_blueprint(auth_bp, url_prefix="/auth")
     app.register_blueprint(main_bp)
@@ -60,7 +60,7 @@ def create_app(config: dict | None = None) -> Flask:
     app.register_blueprint(webhooks_bp, url_prefix="/webhook")
 
     # Register WebSocket events
-    from web.events import register_events
+    from src.web.events import register_events
 
     register_events(socketio)
 

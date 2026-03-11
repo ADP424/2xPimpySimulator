@@ -3,8 +3,8 @@ from typing import Optional, Protocol
 import discord
 from discord.ui import Button, View
 
-from bot.constants import VIEW_TIMEOUT
-from bot.ui import edit_interaction
+from src.bot.constants import VIEW_TIMEOUT
+from src.bot.ui import edit_interaction
 
 
 class PageSource(Protocol):

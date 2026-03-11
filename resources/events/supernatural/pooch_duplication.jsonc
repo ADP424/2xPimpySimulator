@@ -6,11 +6,16 @@
     "rarity": "UNPRECEDENTED",
     "requires_response": false,
     "filter": {
-        "pooches": [{ "min_count": 1 }]
+        "pooches": [
+            { 
+                "min_count": 1,
+                "is_alive": true
+            }
+        ]
     },
-    "actions": [ //To Do. Copy a pooch.
+    "actions": [
         {
-            "action_type": "create_pooch",
+            "action_type": "create_pooch", // TODO: Add "clone_pooch"
             "target_type": "owner",
             "parameters": {
                 

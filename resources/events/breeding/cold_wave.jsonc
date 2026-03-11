@@ -6,15 +6,23 @@
     "rarity": "UNCOMMON",
     "requires_response": false,
     "filter": {
-        "pooches": [{ "min_count": 1 }]
+        "pooches": [
+            {
+                "min_count": 1,
+                "is_alive": true
+            }
+        ]
     },
     "actions": [
         {
             "action_type": "set_breeding_cooldown",
             "target_type": "pooch",
             "parameters": {
-                "cooldown": 2, //To Do. Change to full breeding cooldown
-                "pooch": "random"
+                "cooldown": "base",
+                "selector": "random",
+                "filter": {
+                    "is_alive": true
+                }
             }
         }
     ]

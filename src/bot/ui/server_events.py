@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 import discord
 
-from game import (
+from src.game import (
     get_active_server_event,
     get_event_channel,
     get_or_create_owner,
@@ -13,8 +13,8 @@ from game import (
     list_owner_kennels,
     participate_in_server_event,
 )
-from game.models import Pooch
-from game.models.events import (
+from src.game.models import Pooch
+from src.game.models.events import (
     ServerEventOption,
     ServerEventResolution,
     TriggeredServerEvent,

@@ -3,7 +3,7 @@ from typing import Optional
 
 from sqlalchemy import and_, delete, func, or_, select
 
-from database.models.enums.health_impact_weight import HealthImpactWeight
+from src.database.models.enums.health_impact_weight import HealthImpactWeight
 
 from .models import (
     KennelPooch,

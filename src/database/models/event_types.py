@@ -8,7 +8,8 @@ JsonObject: TypeAlias = dict[str, JsonValue]
 
 EventSeverity: TypeAlias = Literal["trivial", "minor", "moderate", "major", "critical"]
 EventRarity: TypeAlias = Literal["common", "uncommon", "rare", "novel", "extraordinary"]
-EventTargetType: TypeAlias = Literal["owner", "pooch", "kennel", "all_pooches", "all_kennels"]
+EventTargetType: TypeAlias = Literal["owner", "pooch", "kennel"]
+EventEntitySelector: TypeAlias = Literal["selected", "random", "all"]
 EventActionType: TypeAlias = Literal[
     "modify_money",
     "modify_bloodskulls",
@@ -24,8 +25,8 @@ EventActionType: TypeAlias = Literal[
     "rename_pooch",
     "set_breeding_cooldown",
     "start_event",
+    "breed_pooches",
 ]
-EventEntitySelector: TypeAlias = int | Literal["selected", "random"]
 
 
 class PoochFilterSpec(TypedDict, total=False):
@@ -34,7 +35,7 @@ class PoochFilterSpec(TypedDict, total=False):
     description: str
     min_age: int
     max_age: int
-    sex: Literal["female", "male"]
+    sex: str
     min_health: int
     max_health: int
     is_virgin: bool
@@ -47,7 +48,7 @@ class PoochFilterSpec(TypedDict, total=False):
     has_any_mutation: list[str]
     has_all_mutations: list[str]
     exclude_mutations: list[str]
-    location: Literal["kennel", "homeless", "any"]
+    location: str
 
 
 class KennelFilterSpec(TypedDict, total=False):
@@ -135,15 +136,18 @@ class EventOutcomeAdvancedOptions(TypedDict, total=False):
 
 
 class EventActionBaseParameters(TypedDict, total=False):
-    pooch: EventEntitySelector
-    kennel: EventEntitySelector
+    selector: EventEntitySelector
     filter: JsonObject
+    save_as: str
+    save_kennel: bool
+    use_saved: str
 
 
 class EventAmountParameters(EventActionBaseParameters, total=False):
     amount: int
     min_amount: int
     max_amount: int
+    roll_once: bool
 
 
 class EventMutationParameters(EventActionBaseParameters, total=False):
@@ -164,7 +168,7 @@ class EventTransferPoochParameters(EventActionBaseParameters, total=False):
 
 class EventCreatePoochParameters(TypedDict, total=False):
     name: str
-    sex: Literal["female", "male"]
+    sex: str
     age: int
     base_health: int
     breeding_cooldown: int
@@ -183,6 +187,18 @@ class EventStartEventParameters(TypedDict, total=False):
     random_event: bool
 
 
+class EventBreedPoochesParameters(TypedDict, total=False):
+    first_selector: EventEntitySelector
+    first_filter: JsonObject
+    second_selector: EventEntitySelector
+    second_filter: JsonObject
+    baby_name: str
+    baby_sex: str
+    baby_age: int
+    baby_base_health: int
+    baby_breeding_cooldown: int
+
+
 EventActionParameters: TypeAlias = (
     EventAmountParameters
     | EventMutationParameters
@@ -192,6 +208,7 @@ EventActionParameters: TypeAlias = (
     | EventRenamePoochParameters
     | EventSetBreedingCooldownParameters
     | EventStartEventParameters
+    | EventBreedPoochesParameters
 )
 
 

@@ -3,8 +3,8 @@ import os
 
 import discord
 
-from game import run_hourly_event_check
-from logger import get_logger
+from src.game import run_hourly_event_check
+from src.logger import get_logger
 
 from .constants import EVENT_LOOP_INTERVAL_SECONDS
 from .ui.events import send_triggered_event_dm

@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from database.models import Breed as BreedORM
+    from src.database.models import Breed as BreedORM
 
 
 @dataclass(frozen=True)

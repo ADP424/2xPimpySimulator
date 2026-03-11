@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from database.models.event_types import EventContextDict, JsonObject
+    from src.database.models.event_types import EventContextDict, JsonObject
 
 
 @dataclass

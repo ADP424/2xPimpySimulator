@@ -7,12 +7,17 @@
     "requires_response": true,
     "response_timeout": 3600,
     "filter": {
-        "pooches": [{ "min_count": 1 }]
+        "kennels": [
+            {
+                "min_count": 1,
+                "min_pooches": 1
+            }
+        ]
     },
     "options": [
         {
-            "label": "Call the fire department.",
-            "description": "Medium chance to save your pooch but no chance of further damage.",
+            "label": "Call the fire department",
+            "description": "Medium chance to save your pooch but small chance of further damage.",
             "outcomes": [
                 {
                     "chance": 0.4,
@@ -22,9 +27,12 @@
                             "action_type": "modify_pooch_health",
                             "target_type": "pooch",
                             "parameters": {
-                                "min_amount": -2, //change to minor burn injury later
+                                "min_amount": -2,
                                 "max_amount": -1,
-                                "pooch": "random"
+                                "selector": "random",
+                                "filter": {
+                                    "location": "kennel"
+                                }
                             }
                         }
                     ]
@@ -37,7 +45,10 @@
                             "action_type": "kill_pooch",
                             "target_type": "pooch",
                             "parameters": {
-                                "pooch": "random"
+                                "selector": "random",
+                                "filter": {
+                                    "location": "kennel"
+                                }
                             }
                         }
                     ]
@@ -50,7 +61,12 @@
                             "action_type": "kill_pooch",
                             "target_type": "pooch",
                             "parameters": {
-                                "pooch": "random"
+                                "selector": "random",
+                                "filter": {
+                                    "location": "kennel"
+                                },
+                                "save_as": "fire_victim",
+                                "save_kennel": true
                             }
                         },
                         {
@@ -63,9 +79,10 @@
                         },
                         {
                             "action_type": "modify_pooch_health",
-                            "target_type": "all_pooches", //To do. Target all pooches in the kennel of the random dog.
+                            "target_type": "kennel",
                             "parameters": {
-                                "min_amount": -2, //change to minor burn injury later
+                                "use_saved": "fire_victim",
+                                "min_amount": -2,
                                 "max_amount": -1
                             }
                         }
@@ -75,7 +92,7 @@
         },
         {
             "label": "Save them yourself",
-            "description": "Quickly try to put out the fire. Higher chance to save your pooch but you might hurt yourself.",
+            "description": "Quickly try to put out the fire. Higher chance to save your pooch, but you might hurt yourself.",
             "outcomes": [
                 {
                     "chance": 0.3,
@@ -83,10 +100,10 @@
                 },
                 {
                     "chance": 0.3,
-                    "message": "You save them but both of you are a little burnt.",
+                    "message": "You save your pooch, but both of you are a little burnt.",
                     "actions": [
                         {
-                             "action_type": "modify_money",
+                            "action_type": "modify_money",
                             "target_type": "owner",
                             "parameters": {
                                 "min_amount": -25,
@@ -97,9 +114,12 @@
                             "action_type": "modify_pooch_health",
                             "target_type": "pooch",
                             "parameters": {
-                                "min_amount": -2, //change to minor burn injury later
+                                "min_amount": -2,
                                 "max_amount": -1,
-                                "pooch": "random"
+                                "selector": "random",
+                                "filter": {
+                                    "location": "kennel"
+                                }
                             }
                         }
                     ]
@@ -112,7 +132,10 @@
                             "action_type": "kill_pooch",
                             "target_type": "pooch",
                             "parameters": {
-                                "pooch": "random"
+                                "selector": "random",
+                                "filter": {
+                                    "location": "kennel"
+                                }
                             }
                         }
                     ]
@@ -122,7 +145,7 @@
                     "message": "You couldn't do it... They're dead, and you hurt yourself in the process.",
                     "actions": [
                         {
-                             "action_type": "modify_money",
+                            "action_type": "modify_money",
                             "target_type": "owner",
                             "parameters": {
                                 "min_amount": -50,
@@ -133,7 +156,10 @@
                             "action_type": "kill_pooch",
                             "target_type": "pooch",
                             "parameters": {
-                                "pooch": "random"
+                                "selector": "random",
+                                "filter": {
+                                    "location": "kennel"
+                                }
                             }
                         }
                     ]
@@ -154,9 +180,12 @@
                             "action_type": "modify_pooch_health",
                             "target_type": "pooch",
                             "parameters": {
-                                "min_amount": -5, //change to major burn injury later
+                                "min_amount": -5,
                                 "max_amount": -1,
-                                "pooch": "random"
+                                "selector": "random",
+                                "filter": {
+                                    "location": "kennel"
+                                }
                             }
                         }
                     ]
@@ -169,27 +198,36 @@
                             "action_type": "kill_pooch",
                             "target_type": "pooch",
                             "parameters": {
-                                "pooch": "random"
+                                "selector": "random",
+                                "filter": {
+                                    "location": "kennel"
+                                }
                             }
                         }
                     ]
                 },
                 {
                     "chance": 0.1,
-                    "message": "They die horribly and the other pooches got burn.",
+                    "message": "They die horribly, and the other pooches got burnt.",
                     "actions": [
                         {
                             "action_type": "kill_pooch",
                             "target_type": "pooch",
                             "parameters": {
-                                "pooch": "random"
+                                "selector": "random",
+                                "filter": { 
+                                    "location": "kennel"
+                                },
+                                "save_as": "fire_victim",
+                                "save_kennel": true
                             }
                         },
                         {
                             "action_type": "modify_pooch_health",
-                            "target_type": "all_pooches", //To do. Target all pooches in the kennel of the random dog.
+                            "target_type": "kennel",
                             "parameters": {
-                                "min_amount": -2, //change to minor burn injury later
+                                "use_saved": "fire_victim",
+                                "min_amount": -2,
                                 "max_amount": -1
                             }
                         }
@@ -197,13 +235,16 @@
                 },
                 {
                     "chance": 0.2,
-                    "message": "They die horribly and you have to pay for damage to your kennel.",
+                    "message": "They die horribly, and you have to pay for damage to your kennel.",
                     "actions": [
                         {
                             "action_type": "kill_pooch",
                             "target_type": "pooch",
                             "parameters": {
-                                "pooch": "random"
+                                "selector": "random",
+                                "filter": {
+                                    "location": "kennel"
+                                }
                             }
                         },
                         {

@@ -33,7 +33,11 @@ from .models import (
     VendorPoochForSale,
 )
 from .session import session_scope
-from .utils import check_owner_event_filter
+from .utils import (
+    check_owner_event_filter,
+    get_matching_kennel_ids_for_owner,
+    get_matching_pooch_ids_for_owner,
+)
 
 
 async def list_active_owner_events_for_owner(
@@ -809,3 +813,20 @@ async def list_server_event_history(server_discord_id: int, limit: int = 20) -> 
         response = await session.execute(query)
 
     return list(response.scalars().all())
+
+
+async def list_matching_pooch_ids(owner_discord_id: int, filter_spec: dict | None) -> list[int]:
+    async with session_scope() as session:
+        return await get_matching_pooch_ids_for_owner(session, owner_discord_id, filter_spec or {})
+
+
+async def list_matching_pooch_ids_in_kennel(
+    owner_discord_id: int, kennel_id: int, filter_spec: dict | None
+) -> list[int]:
+    async with session_scope() as session:
+        return await get_matching_pooch_ids_for_owner(session, owner_discord_id, filter_spec or {}, kennel_id=kennel_id)
+
+
+async def list_matching_kennel_ids(owner_discord_id: int, filter_spec: dict | None) -> list[int]:
+    async with session_scope() as session:
+        return await get_matching_kennel_ids_for_owner(session, owner_discord_id, filter_spec or {})

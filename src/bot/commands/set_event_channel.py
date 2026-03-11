@@ -1,6 +1,6 @@
 from discord import Interaction, app_commands
 
-from game import set_event_channel
+from src.game import set_event_channel
 
 
 def register_set_event_channel_command(tree: app_commands.CommandTree):

@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from database import list_graveyard_pooches_for_owner
+from src.database import list_graveyard_pooches_for_owner
 
 from .models import to_pooch
 

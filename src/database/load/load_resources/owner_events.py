@@ -2,7 +2,7 @@ from typing import Any
 
 from sqlalchemy import delete, select
 
-from logger import get_logger
+from src.logger import get_logger
 
 from ...models import Breed, Event, EventAction, EventOption, EventOutcome, Mutation
 from ...session import session_scope

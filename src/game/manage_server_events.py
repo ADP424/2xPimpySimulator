@@ -4,7 +4,7 @@ import random
 from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Optional
 
-from database import (
+from src.database import (
     create_server_event_occurrence,
     create_server_event_participation,
     finalize_server_event_participation,
@@ -12,8 +12,8 @@ from database import (
     get_owner_by_discord_id,
     get_owner_server,
 )
-from database import get_pooch_by_id as db_get_pooch_by_id
-from database import (
+from src.database import get_pooch_by_id as db_get_pooch_by_id
+from src.database import (
     get_random_eligible_server_event_for_server,
     get_server_by_discord_id,
     get_server_event_occurrence_by_id,
@@ -26,7 +26,7 @@ from database import (
     resolve_server_event_occurrence,
     set_server_event_occurrence_message_discord_id,
 )
-from logger import get_logger
+from src.logger import get_logger
 
 from .manage_events import _execute_event_actions
 from .manage_owners import get_or_create_owner
@@ -42,7 +42,7 @@ from .models.events import (
 )
 
 if TYPE_CHECKING:
-    from database.models import ServerEventOccurrence, ServerEventParticipation
+    from src.database.models import ServerEventOccurrence, ServerEventParticipation
 
 logger = get_logger("game/manage_server_events")
 

@@ -4,7 +4,7 @@ import random
 from collections import deque
 from typing import Optional
 
-from database import (
+from src.database import (
     add_mutation_to_pooch,
     add_pooch_breeds,
     create_pooch,

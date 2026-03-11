@@ -5,14 +5,14 @@ from typing import TYPE_CHECKING, Optional
 import discord
 from discord.ui import Button, Select, View
 
-from bot.constants import ITEMS_PER_PAGE
-from bot.ui.util import InteractionResponder
+from src.bot.constants import ITEMS_PER_PAGE
+from src.bot.ui.util import InteractionResponder
 
 from .components import PageSource, PaginatorView
 from .pooch_info import PoochInfoView
 
 if TYPE_CHECKING:
-    from game.models import BirthEvent, DeathEvent, OtherEvent, Pooch, Server
+    from src.game.models import BirthEvent, DeathEvent, OtherEvent, Pooch, Server
 
 
 class DayChangeStatusPageSource(PageSource):

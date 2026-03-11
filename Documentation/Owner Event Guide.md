@@ -224,7 +224,7 @@ For `requires_response: true` events, exactly one option must be `"default": tru
 
 ### Visible
 
-Whether this option is shown to the player.
+Whether this option is shown to the player (only relevant for default options).
 
 - `true` (default): the option appears as a choice the player can select
 - `false`: the option is hidden and can only execute on expiry (requires `"default": true`)
@@ -261,7 +261,7 @@ Outcomes are objects inside an option's `outcomes` list.
 
 ### Chance
 
-A floating point value between `0.0` and `1.0`.
+A floating point value between `0.0` and `1.0` determining how likely this outcome is to randomly occur.
 
 ### Message
 
@@ -277,8 +277,7 @@ The actions that happen for this outcome.
 
 Owner events and owner-event options both use the same `filter` format.
 
-An empty filter means no restrictions.
-
+An empty filter means no restrictions. Example:
 ```json
 "filter": {
     "min_money": 100,
@@ -447,12 +446,14 @@ Pooch filter objects live either:
 
 ### Pooch Field Notes
 
-- `health` uses the pooch's effective current health (`base_health - health_loss_age`)
+- `health` uses the pooch's effective current health, including mutation contributions (matches `get_pooch_health`)
 - breed and mutation references are always by **name**, never by internal database ID
 - `location` can be:
   - `"kennel"`: the pooch must currently be in a kennel
-  - `"homeless"`: the pooch must not currently be in a kennel
-  - `"any"`: no location restriction
+  - `"graveyard"`: the pooch is dead and buried
+  - `"hell"`: the pooch has been damned
+  - `"town"`: no location restriction (reserved for future use, currently acts like `"all"`)
+  - `"all"` / `"any"`: no location restriction
 
 For top-level `filter.pooches`, matching is across all pooches the owner owns.  
 For nested kennel `pooches`, matching is only against pooches inside that kennel.
@@ -469,14 +470,11 @@ If the action targets `"selected"`, the filter is ignored and the already-select
 
 If the action targets `"random"`, the filter narrows the random pool.
 
-If the action targets `"all_pooches"` or `"all_kennels"`, the filter narrows which objects are affected.
+If the `selector` is `"all"`, the filter narrows which objects are affected.
 
 ### Pooch Action Filters
 
-Valid for:
-
-- `target_type: "pooch"` with `parameters.pooch: "random"`
-- `target_type: "all_pooches"`
+Valid for `target_type: "pooch"` with any `selector` value.
 
 Example:
 
@@ -485,7 +483,7 @@ Example:
     "action_type": "set_breeding_cooldown",
     "target_type": "pooch",
     "parameters": {
-        "pooch": "random",
+        "selector": "random",
         "filter": {
             "location": "kennel",
             "min_breeding_cooldown": 1
@@ -501,18 +499,16 @@ Pooch action filters use the same pooch attribute fields as normal pooch filters
 
 ### Kennel Action Filters
 
-Valid for:
-
-- `target_type: "kennel"` with `parameters.kennel: "random"`
-- `target_type: "all_kennels"`
+Valid for `target_type: "kennel"` with any `selector` value.
 
 Example:
 
 ```json
 {
     "action_type": "modify_kennel_capacity",
-    "target_type": "all_kennels",
+    "target_type": "kennel",
     "parameters": {
+        "selector": "all",
         "filter": {
             "max_capacity": 5,
             "min_pooches": 1
@@ -538,16 +534,19 @@ They do **not** use `min_count` / `max_count` because action targeting is alread
 
 ---
 
-## About `"selected"` and `"random"`
+## About Selectors
 
 Dynamic runtime entities such as pooches and kennels should never be referenced by literal IDs in static event JSON.
 
-Instead, use selector strings:
+Instead, `target_type: "pooch"` and `target_type: "kennel"` actions use a `selector` parameter:
 
-- `"selected"`: use the event's current contextual target
 - `"random"`: choose a random matching target at action execution time
+- `"selected"`: use the event's pre-selected contextual target (resolved once at trigger time)
+- `"all"`: apply the action to every matching target
 
-This is especially useful for events that need to refer to the same target across option branches and outcomes.
+`"random"` is the default if `selector` is omitted.
+
+`"selected"` is especially useful for events that need to refer to the same target across option branches and outcomes.
 
 ---
 
@@ -600,7 +599,7 @@ The following would live at `resources/owner_events/misfortune/escaped_pooch.jso
                             "action_type": "kill_pooch",
                             "target_type": "pooch",
                             "parameters": {
-                                "pooch": "selected"
+                                "selector": "selected"
                             }
                         }
                     ]
@@ -617,7 +616,7 @@ The following would live at `resources/owner_events/misfortune/escaped_pooch.jso
                     "action_type": "kill_pooch",
                     "target_type": "pooch",
                     "parameters": {
-                        "pooch": "selected"
+                        "selector": "selected"
                     }
                 }
             ]
@@ -628,7 +627,7 @@ The following would live at `resources/owner_events/misfortune/escaped_pooch.jso
 
 ---
 
-## Action Reference
+# Action Reference
 
 Actions are structured as:
 
@@ -642,27 +641,311 @@ Actions are structured as:
 
 ### Supported Action Types
 
-- `modify_money`
-- `modify_bloodskulls`
-- `modify_pooch_health`
-- `modify_pooch_age`
-- `kill_pooch`
-- `add_mutation`
-- `remove_mutation`
-- `add_breed`
-- `transfer_pooch`
-- `create_pooch`
-- `modify_kennel_capacity`
-- `rename_pooch`
-- `set_breeding_cooldown`
-- `start_event`
+| Action | Target Types | Notes |
+|--------|-------------|-------|
+| `modify_money` | `owner` | Adjusts the owner's dollars |
+| `modify_bloodskulls` | `owner` | Adjusts the owner's bloodskulls |
+| `create_pooch` | `owner` | Creates a new pooch for the owner |
+| `start_event` | `owner` | Triggers another event |
+| `modify_pooch_health` | `pooch`, `kennel`, `owner` | Modifies base health |
+| `modify_pooch_age` | `pooch`, `kennel`, `owner` | Modifies age |
+| `kill_pooch` | `pooch`, `kennel`, `owner` | Kills the pooch(es) |
+| `add_mutation` | `pooch`, `kennel`, `owner` | Adds a mutation |
+| `remove_mutation` | `pooch`, `kennel`, `owner` | Removes a mutation |
+| `add_breed` | `pooch`, `kennel`, `owner` | Adds a breed weight |
+| `transfer_pooch` | `pooch`, `kennel`, `owner` | Transfers to another owner or vendor |
+| `rename_pooch` | `pooch`, `kennel`, `owner` | Renames the pooch |
+| `set_breeding_cooldown` | `pooch`, `kennel`, `owner` | Sets breeding cooldown |
+| `modify_kennel_capacity` | `kennel`, `owner` | Adjusts the kennel's pooch limit |
+| `breed_pooches` | `owner` | Breeds two of the owner's pooches together |
 
 ### Supported Target Types
 
 - `owner`
 - `pooch`
 - `kennel`
-- `all_pooches`
-- `all_kennels`
+
+For `pooch` and `kennel` targets, use `parameters.selector` to control which entities are affected:
+
+- `"random"` (default) — one random matching entity
+- `"selected"` — the event's pre-selected contextual entity
+- `"all"` — every matching entity owned by the player
+
+When `target_type` is `"kennel"` on a **pooch action** (e.g. `kill_pooch`, `modify_pooch_health`), the action applies to pooches *inside* the targeted kennel(s) rather than to the kennel itself. An optional `pooch_filter` parameter can narrow which pooches inside the kennel are affected.
+
+When `target_type` is `"owner"` on a **pooch action**, the action applies to *all pooches* the owner has, optionally narrowed by a `filter` (pooch filter). When used on a **kennel action**, it applies to all kennels the owner has, optionally narrowed by a `filter` (kennel filter). No `selector` is needed or accepted in either case.
 
 Static event JSON should reference stable content by name and dynamic runtime entities by selector strings.
+
+---
+
+### Carry-Forward: Named Slots (`save_as` / `use_saved`)
+
+Actions execute sequentially in `action_order`. When one action needs to operate on the *same entity* that a previous action resolved, use named slots to carry the resolved IDs forward.
+
+#### `save_as` (string)
+
+After an action resolves its targets, write the IDs into `context.extra_data` under this key. The slot is a plain object:
+
+- Pooch actions write `{ "pooch_ids": [5, 12, ...] }`
+- Kennel actions write `{ "kennel_ids": [3, ...] }`
+
+#### `save_kennel` (bool, pooch actions only)
+
+When `save_as` is present on a pooch action, also look up each resolved pooch's kennel and include it in the slot:
+
+```json
+{ "pooch_ids": [5], "kennel_ids": [2] }
+```
+
+If a pooch has no kennel, `kennel_ids` will be `[]` — any follow-up action targeting that slot is a no-op. Use `filter: { "location": "kennel" }` on the pooch action if you need to guarantee a kennel exists.
+
+#### `use_saved` (string)
+
+Instead of resolving targets via `selector`/`filter`, pull IDs directly from the named slot. Cannot be used together with `selector`. The action type determines which key is read (`pooch_ids` or `kennel_ids`).
+
+#### Example — fire spreads to the kennel
+
+```jsonc
+// Action 1: kill a random pooch in a kennel; save which kennel it was in
+{
+    "action_type": "kill_pooch",
+    "target_type": "pooch",
+    "parameters": {
+        "selector": "random",
+        "filter": { "location": "kennel" },
+        "save_as": "fire_victim",
+        "save_kennel": true
+    }
+},
+// Action 2: damage all pooches in that same kennel
+{
+    "action_type": "modify_pooch_health",
+    "target_type": "kennel",
+    "parameters": {
+        "use_saved": "fire_victim",
+        "min_amount": -2,
+        "max_amount": -1
+    }
+}
+```
+
+Slots persist for the lifetime of the action list they're in (event-level, option, or outcome). They do not carry across phases (e.g. a slot written during event-level actions is not available during outcome actions).
+
+---
+
+### Action Parameter Reference
+
+#### `modify_money` / `modify_bloodskulls`
+
+```json
+{
+    "action_type": "modify_money",
+    "target_type": "owner",
+    "parameters": {
+        "amount": -50
+    }
+}
+```
+
+| Parameter | Type | Required | Notes |
+|-----------|------|----------|-------|
+| `amount` | int | one of | Fixed delta (can be negative) |
+| `min_amount` / `max_amount` | int | one of | Random delta in range |
+| `roll_once` | bool | no | If true, roll the random amount once and apply to all targets |
+
+---
+
+#### `modify_pooch_health` / `modify_pooch_age`
+
+```json
+{
+    "action_type": "modify_pooch_health",
+    "target_type": "pooch",
+    "parameters": {
+        "selector": "random",
+        "filter": { "min_health": 10 },
+        "min_amount": -5,
+        "max_amount": -1,
+        "roll_once": false
+    }
+}
+```
+
+| Parameter | Type | Required | Notes |
+|-----------|------|----------|-------|
+| `selector` | string | yes (except `owner`) | `"random"`, `"selected"`, or `"all"` — not used when `target_type` is `"owner"` or `use_saved` is set |
+| `filter` | object | no | Pooch filter (`pooch`/`owner`), or kennel filter (`kennel`) |
+| `pooch_filter` | object | no | Pooch filter when `target_type` is `"kennel"` |
+| `amount` | int | one of | Fixed delta |
+| `min_amount` / `max_amount` | int | one of | Random delta in range |
+| `roll_once` | bool | no | Roll once for all targets instead of per-target |
+| `save_as` | string | no | Save resolved target IDs into a named slot for later actions |
+| `save_kennel` | bool | no | Also save kennel IDs of resolved pooches into the slot (requires `save_as`) |
+| `use_saved` | string | no | Use IDs from a named slot instead of resolving via `selector` (cannot combine with `selector`) |
+
+---
+
+#### `kill_pooch`
+
+```json
+{
+    "action_type": "kill_pooch",
+    "target_type": "pooch",
+    "parameters": {
+        "selector": "random",
+        "filter": { "location": "kennel" }
+    }
+}
+```
+
+| Parameter | Type | Required | Notes |
+|-----------|------|----------|-------|
+| `selector` | string | yes (except `owner`) | `"random"`, `"selected"`, or `"all"` |
+| `filter` | object | no | Pooch filter (`pooch`/`owner`), or kennel filter (`kennel`) |
+| `pooch_filter` | object | no | Pooch filter when `target_type` is `"kennel"` |
+| `save_as` | string | no | Save resolved pooch IDs (and optionally kennel) into a named slot |
+| `save_kennel` | bool | no | Also save kennel IDs of resolved pooches (requires `save_as`) |
+| `use_saved` | string | no | Use IDs from a named slot instead of `selector` |
+
+---
+
+#### `add_mutation` / `remove_mutation`
+
+```json
+{
+    "action_type": "add_mutation",
+    "target_type": "pooch",
+    "parameters": {
+        "selector": "random",
+        "mutation": "Iron Stomach"
+    }
+}
+```
+
+| Parameter | Type | Required | Notes |
+|-----------|------|----------|-------|
+| `selector` | string | yes (except `owner`) | `"random"`, `"selected"`, or `"all"` |
+| `filter` / `pooch_filter` | object | no | Filters |
+| `mutation` | string | no | Mutation name — omit for a random mutation |
+
+---
+
+#### `add_breed`
+
+| Parameter | Type | Required | Notes |
+|-----------|------|----------|-------|
+| `selector` | string | yes (except `owner`) | |
+| `filter` / `pooch_filter` | object | no | |
+| `breed` | string | no | Breed name — omit for a random breed |
+| `weight` | float | no | Breed weight, must be > 0 (default: 0.5) |
+
+---
+
+#### `transfer_pooch`
+
+| Parameter | Type | Required | Notes |
+|-----------|------|----------|-------|
+| `selector` | string | yes (except `owner`) | |
+| `filter` / `pooch_filter` | object | no | |
+| `new_owner_discord_id` | int | one of | Transfer to this owner |
+| `vendor_id` | int | one of | Transfer to this vendor |
+
+---
+
+#### `create_pooch`
+
+```json
+{
+    "action_type": "create_pooch",
+    "target_type": "owner",
+    "parameters": {
+        "sex": "female",
+        "age": 0,
+        "base_health": 100
+    }
+}
+```
+
+| Parameter | Type | Required | Notes |
+|-----------|------|----------|-------|
+| `name` | string | no | Defaults to a generated name |
+| `sex` | string | no | `"male"` or `"female"` — random if omitted |
+| `age` | int | no | Default: 0 |
+| `base_health` | int | no | Default value from constants |
+| `breeding_cooldown` | int | no | Default value from constants |
+
+---
+
+#### `modify_kennel_capacity`
+
+| Parameter | Type | Required | Notes |
+|-----------|------|----------|-------|
+| `selector` | string | yes (except `owner`) | |
+| `filter` | object | no | Kennel filter (`kennel`/`owner`) |
+| `amount` | int | one of | Fixed delta |
+| `min_amount` / `max_amount` | int | one of | Random delta in range |
+| `roll_once` | bool | no | Roll once for all kennels |
+
+---
+
+#### `rename_pooch`
+
+| Parameter | Type | Required | Notes |
+|-----------|------|----------|-------|
+| `selector` | string | yes (except `owner`) | |
+| `filter` / `pooch_filter` | object | no | |
+| `name` | string | yes | New name for the pooch |
+
+---
+
+#### `set_breeding_cooldown`
+
+| Parameter | Type | Required | Notes |
+|-----------|------|----------|-------|
+| `selector` | string | yes (except `owner`) | |
+| `filter` / `pooch_filter` | object | no | |
+| `cooldown` | int or `"base"` | yes | Days to set; `"base"` resets to the pooch's mutation-adjusted base cooldown |
+
+---
+
+#### `start_event`
+
+| Parameter | Type | Required | Notes |
+|-----------|------|----------|-------|
+| `event` | string | one of | Event name to trigger |
+| `random_event` | bool | one of | If true, trigger a random eligible event instead |
+
+---
+
+#### `breed_pooches`
+
+Selects two of the owner's pooches and breeds them. Calls the same breeding logic as manual breeding, so the pooches must be opposite sexes — use `first_filter` / `second_filter` to ensure this.
+
+```json
+{
+    "action_type": "breed_pooches",
+    "target_type": "owner",
+    "parameters": {
+        "first_selector": "random",
+        "first_filter": { "sex": "male" },
+        "second_selector": "random",
+        "second_filter": { "sex": "female" },
+        "baby_base_health": 10
+    }
+}
+```
+
+| Parameter | Type | Required | Notes |
+|-----------|------|----------|-------|
+| `first_selector` | string | no | `"random"` (default), `"selected"`, or `"all"` (picks one from all) |
+| `first_filter` | object | no | Pooch filter applied to the first pooch selection |
+| `second_selector` | string | no | Same as above for the second pooch |
+| `second_filter` | object | no | Pooch filter applied to the second pooch selection |
+| `baby_name` | string | no | Override the generated baby name |
+| `baby_sex` | string | no | `"male"` or `"female"` — random if omitted |
+| `baby_age` | int | no | Override the baby's starting age |
+| `baby_base_health` | int | no | Override the baby's base health |
+| `baby_breeding_cooldown` | int | no | Override the baby's initial breeding cooldown |
+
+If the two selectors resolve to the same pooch, or if both pooches are the same sex, the action is silently skipped. Use filters to prevent this.

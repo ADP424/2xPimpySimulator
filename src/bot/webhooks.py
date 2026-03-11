@@ -9,9 +9,9 @@ import urllib.request
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from game.models import BirthEvent, DayChangeSummary, DeathEvent, OtherEvent, Pooch
+    from src.game.models import BirthEvent, DayChangeSummary, DeathEvent, OtherEvent, Pooch
 
-from logger import get_logger
+from src.logger import get_logger
 
 logger = get_logger("bot/webhooks")
 

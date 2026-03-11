@@ -3,18 +3,18 @@ from typing import TYPE_CHECKING, Optional, Sequence
 import discord
 from discord.ui import Select, View
 
-from bot.constants import VIEW_TIMEOUT
-from bot.ui.util import (
+from src.bot.constants import VIEW_TIMEOUT
+from src.bot.ui.util import (
     InteractionResponder,
     mention,
 )
-from game import get_pooch_family
-from game.models import Mutation, PoochBreedInfo
+from src.game import get_pooch_family
+from src.game.models import Mutation, PoochBreedInfo
 
 from .components import build_breed_info_embed, build_mutation_info_embed
 
 if TYPE_CHECKING:
-    from game.models import Owner, Pooch, Server
+    from src.game.models import Owner, Pooch, Server
 
 
 class _FamilySelect(Select):

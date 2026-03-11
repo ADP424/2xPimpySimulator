@@ -531,6 +531,33 @@ async def get_random_eligible_owner_event_for_owner(
         return weighted_choice(rng, eligible_rows)
 
 
+async def check_owner_event_filter_for_owner(owner_discord_id: int, filter_spec: dict | None) -> bool:
+    async with session_scope() as session:
+        return await check_owner_event_filter(session, owner_discord_id, filter_spec or {})
+
+
+async def get_random_matching_pooch_id(
+    owner_discord_id: int,
+    filter_spec: dict | None,
+    rng: random.Random,
+) -> Optional[int]:
+    from .utils import get_random_matching_pooch_id_for_owner
+
+    async with session_scope() as session:
+        return await get_random_matching_pooch_id_for_owner(session, owner_discord_id, filter_spec or {}, rng)
+
+
+async def get_random_matching_kennel_id(
+    owner_discord_id: int,
+    filter_spec: dict | None,
+    rng: random.Random,
+) -> Optional[int]:
+    from .utils import get_random_matching_kennel_id_for_owner
+
+    async with session_scope() as session:
+        return await get_random_matching_kennel_id_for_owner(session, owner_discord_id, filter_spec or {}, rng)
+
+
 async def get_server_by_discord_id(server_discord_id: int) -> Optional[Server]:
     """
     Fetch a server by its Discord ID.

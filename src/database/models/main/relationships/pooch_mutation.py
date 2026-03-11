@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import BigInteger, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from database.models import Base
+from src.database.models import Base
 
 if TYPE_CHECKING:
     from ...static import Mutation

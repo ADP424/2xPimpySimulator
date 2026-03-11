@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from database.models import Mutation as MutationORM
+    from src.database.models import Mutation as MutationORM
 
 
 @dataclass(frozen=True)

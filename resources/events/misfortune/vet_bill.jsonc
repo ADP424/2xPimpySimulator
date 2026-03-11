@@ -7,13 +7,20 @@
     "requires_response": true,
     "response_timeout": 7200,
     "filter": {
-        "pooches": [{ "min_count": 1 }]
+        "pooches": [
+            {
+                "min_count": 1,
+                "is_alive": true
+            }
+        ]
     },
     "options": [
         {
             "label": "Pay for treatment",
             "description": "Pay $50 to treat your pooch.",
-            "filter": { "min_money": 50 },
+            "filter": {
+                "min_money": 50
+            },
             "actions": [
                 {
                     "action_type": "modify_money",
@@ -26,7 +33,7 @@
         },
         {
             "label": "Let nature take its course",
-            "description": "Hope they get better on their own...",
+            "description": "Give them a warm blanket and hope they recover on their own...",
             "outcomes": [
                 {
                     "chance": 0.8,
@@ -38,7 +45,10 @@
                             "parameters": {
                                 "min_amount": -5,
                                 "max_amount": -1,
-                                "pooch": "random"
+                                "selector": "random",
+                                "filter": {
+                                    "is_alive": true
+                                }
                             }
                         }
                     ]
@@ -51,7 +61,7 @@
         },
         {
             "label": "Ignore the bill",
-            "description": "Fail to respond before the deadline. Your pooch suffers the consequences.",
+            "description": "You neglected your pooch, and it suffered the consequences.",
             "default": true,
             "visible": false,
             "actions": [
@@ -60,7 +70,10 @@
                     "target_type": "pooch",
                     "parameters": {
                         "amount": -5,
-                        "pooch": "random"
+                        "selector": "random",
+                        "filter": {
+                            "is_alive": true
+                        }
                     }
                 }
             ]

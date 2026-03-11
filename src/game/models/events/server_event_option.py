@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from database.models import ServerEventOption as ServerEventOptionORM
+from src.database.models import ServerEventOption as ServerEventOptionORM
 
 
 @dataclass(frozen=True)

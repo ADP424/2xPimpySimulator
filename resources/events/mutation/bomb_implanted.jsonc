@@ -6,15 +6,23 @@
     "rarity": "REMARKABLE",
     "requires_response": false,
     "filter": {
-        "pooches": [{ "min_count": 1 }]
+        "pooches": [
+            {
+                "min_count": 1,
+                "is_alive": true
+            }
+        ]
     },
     "actions": [
         {
             "action_type": "add_mutation",
             "target_type": "pooch",
             "parameters": {
-                "pooch": "random",
-                "mutation": "Explosion Syndrome"
+                "selector": "random",
+                "mutation": "Explosion Syndrome",
+                "filter": {
+                    "is_alive": true
+                }
             }
         }
     ]

@@ -1,7 +1,7 @@
 from discord import Interaction, app_commands
 
-from bot.ui.events import send_all_pending_event_dms
-from game import get_active_events_for_owner
+from src.bot.ui.events import send_all_pending_event_dms
+from src.game import get_active_events_for_owner
 
 
 def register_pending_events_command(tree: app_commands.CommandTree):

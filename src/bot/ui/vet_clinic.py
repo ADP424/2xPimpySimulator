@@ -6,12 +6,12 @@ from typing import TYPE_CHECKING, Optional
 import discord
 from discord.ui import Button, View
 
-from bot.constants import VIEW_TIMEOUT
-from bot.ui.util import InteractionResponder
-from game import list_all_breeds, list_all_mutations
+from src.bot.constants import VIEW_TIMEOUT
+from src.bot.ui.util import InteractionResponder
+from src.game import list_all_breeds, list_all_mutations
 
 if TYPE_CHECKING:
-    from game.models import Breed, Mutation
+    from src.game.models import Breed, Mutation
 
 from .components import (
     BreedDropdownControls,

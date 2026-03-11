@@ -3,7 +3,7 @@ from __future__ import annotations
 import random
 from typing import TYPE_CHECKING, Optional
 
-from database import (
+from src.database import (
     add_breed_to_pooch,
     add_pooch_to_kennel,
     create_pooch,
@@ -14,8 +14,8 @@ from database import (
     get_pooch_health,
     give_bloodskulls_to_owner,
 )
-from database import list_hell_pooches as db_list_hell_pooches
-from database import (
+from src.database import list_hell_pooches as db_list_hell_pooches
+from src.database import (
     list_kennels_for_owner,
     list_pooch_breeds,
     list_pooch_mutations,

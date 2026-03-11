@@ -5,11 +5,11 @@ from typing import TYPE_CHECKING
 import discord
 from discord.ui import Select, View
 
-from bot.ui.util import InteractionResponder
-from game import breed_pooches
+from src.bot.ui.util import InteractionResponder
+from src.game import breed_pooches
 
 if TYPE_CHECKING:
-    from game.models import Pooch
+    from src.game.models import Pooch
 
 
 class BreedMateView(View):

@@ -7,13 +7,13 @@ from zoneinfo import ZoneInfo
 
 import discord
 
-from game import (
+from src.game import (
     get_event_channel,
     run_daily_server_event_cycle,
     run_day_change,
     set_server_event_message_id,
 )
-from logger import get_logger
+from src.logger import get_logger
 
 from .ui.day_change_status import make_status_view
 from .ui.server_events import (
@@ -24,7 +24,7 @@ from .ui.server_events import (
 from .webhooks import post_day_change_webhooks
 
 if TYPE_CHECKING:
-    from game.models import DayChangeSummary
+    from src.game.models import DayChangeSummary
 
 
 logger = get_logger("bot/day_change_loop")

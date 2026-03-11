@@ -90,9 +90,7 @@ CREATE TYPE event_severity AS ENUM (
 CREATE TYPE event_target_type AS ENUM (
     'owner',
     'pooch',
-    'kennel',
-    'all_pooches',
-    'all_kennels'
+    'kennel'
 );
 
 
@@ -111,5 +109,6 @@ CREATE TYPE event_action_type AS ENUM (
     'modify_kennel_capacity',
     'rename_pooch',
     'set_breeding_cooldown',
-    'start_event'
+    'start_event',
+    'breed_pooches'
 );

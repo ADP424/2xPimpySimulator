@@ -4,7 +4,7 @@ from typing import Any
 
 import json5
 
-from logger import get_logger
+from src.logger import get_logger
 
 from ...models import (
     EVENT_ACTION_TYPE,
@@ -20,8 +20,7 @@ logger = get_logger("database/load/load_resources")
 RESOURCE_ROOT = Path("resources")
 VENDOR_NAMES_ROOT = RESOURCE_ROOT / "vendor_names"
 
-_SELECTED_TARGET_TOKEN = "selected"
-_RANDOM_TARGET_TOKEN = "random"
+_SELECTOR_TOKENS = {"selected", "random", "all"}
 _JSONC_SUFFIXES = {".jsonc", ".json"}
 
 _ACTION_ALLOWED_KEYS = {"action_type", "target_type", "parameters"}
@@ -81,7 +80,7 @@ EVENT_SEVERITY_VALUES = _enum_values(EVENT_SEVERITY)
 HEALTH_IMPACT_VALUES = _enum_values(HEALTH_IMPACT)
 RARITY_VALUES = _enum_values(RARITY)
 SEX_VALUES = _enum_values(SEX)
-LOCATION_VALUES = {"kennel", "homeless", "any"}
+LOCATION_VALUES = {"kennel", "graveyard", "hell", "town", "all", "any"}
 
 
 class EventValidationError(ValueError):
@@ -247,8 +246,13 @@ class BaseEventValidator:
         common_allowed: set[str] = set()
 
         if target_type == "pooch":
-            common_allowed |= {"pooch", "filter"}
-            self._validate_entity_selector(params_path, parameters, "pooch")
+            common_allowed |= {"selector", "filter", "save_as", "save_kennel", "use_saved"}
+            if "use_saved" not in parameters:
+                self._validate_entity_selector(params_path, parameters, "selector")
+            else:
+                self._validate_optional_string(params_path, parameters, "use_saved", allow_blank=False)
+                if "selector" in parameters:
+                    self.error(params_path, "'selector' and 'use_saved' cannot both be present")
             if "filter" in parameters:
                 self._validate_pooch_filter(
                     f"{params_path}.filter",
@@ -256,55 +260,86 @@ class BaseEventValidator:
                     allow_counts=False,
                     allow_location=True,
                 )
-        elif target_type == "all_pooches":
-            common_allowed |= {"filter"}
-            if "filter" in parameters:
-                self._validate_pooch_filter(
-                    f"{params_path}.filter",
-                    parameters["filter"],
-                    allow_counts=False,
-                    allow_location=True,
-                )
+            self._validate_optional_string(params_path, parameters, "save_as", allow_blank=False)
+            self._validate_optional_bool(params_path, parameters, "save_kennel")
         elif target_type == "kennel":
-            common_allowed |= {"kennel", "filter"}
-            self._validate_entity_selector(params_path, parameters, "kennel")
+            common_allowed |= {"selector", "filter", "pooch_filter", "save_as", "use_saved"}
+            if "use_saved" not in parameters:
+                self._validate_entity_selector(params_path, parameters, "selector")
+            else:
+                self._validate_optional_string(params_path, parameters, "use_saved", allow_blank=False)
+                if "selector" in parameters:
+                    self.error(params_path, "'selector' and 'use_saved' cannot both be present")
             if "filter" in parameters:
                 self._validate_kennel_filter(f"{params_path}.filter", parameters["filter"], allow_counts=False)
-        elif target_type == "all_kennels":
-            common_allowed |= {"filter"}
+            if "pooch_filter" in parameters:
+                self._validate_pooch_filter(
+                    f"{params_path}.pooch_filter",
+                    parameters["pooch_filter"],
+                    allow_counts=False,
+                    allow_location=True,
+                )
+            self._validate_optional_string(params_path, parameters, "save_as", allow_blank=False)
+        elif target_type == "owner":
+            # Pooch/kennel actions that target "owner" apply to all pooches/kennels owned.
+            # An optional filter narrows which ones are affected; no selector is needed.
+            _kennel_only_actions = {"modify_kennel_capacity"}
+            _is_kennel_action = action_type in _kennel_only_actions
+            common_allowed |= {"filter", "pooch_filter", "save_as"}
             if "filter" in parameters:
-                self._validate_kennel_filter(f"{params_path}.filter", parameters["filter"], allow_counts=False)
+                if _is_kennel_action:
+                    self._validate_kennel_filter(f"{params_path}.filter", parameters["filter"], allow_counts=False)
+                else:
+                    self._validate_pooch_filter(
+                        f"{params_path}.filter", parameters["filter"], allow_counts=False, allow_location=True
+                    )
+            if "pooch_filter" in parameters:
+                self._validate_pooch_filter(
+                    f"{params_path}.pooch_filter",
+                    parameters["pooch_filter"],
+                    allow_counts=False,
+                    allow_location=True,
+                )
+            self._validate_optional_string(params_path, parameters, "save_as", allow_blank=False)
+
+        # Cross-target-type checks for carry-forward params
+        if "save_kennel" in parameters and "save_as" not in parameters:
+            self.error(params_path, "'save_kennel' requires 'save_as'")
+        if "save_kennel" in parameters and target_type != "pooch":
+            self.error(params_path, "'save_kennel' is only valid on pooch target actions")
 
         if action_type in {"modify_money", "modify_bloodskulls"}:
             self._validate_allowed_keys(
-                params_path, parameters, common_allowed | {"amount", "min_amount", "max_amount"}
+                params_path, parameters, common_allowed | {"amount", "min_amount", "max_amount", "roll_once"}
             )
             self._validate_requires_one_of(params_path, parameters, [("amount",), ("min_amount", "max_amount")])
             self._validate_amount_group(params_path, parameters)
+            self._validate_optional_bool(params_path, parameters, "roll_once")
             self._validate_target_type(path, action_type, target_type, {"owner"})
 
         elif action_type in {"modify_pooch_health", "modify_pooch_age"}:
             self._validate_allowed_keys(
-                params_path, parameters, common_allowed | {"amount", "min_amount", "max_amount"}
+                params_path, parameters, common_allowed | {"amount", "min_amount", "max_amount", "roll_once"}
             )
             self._validate_requires_one_of(params_path, parameters, [("amount",), ("min_amount", "max_amount")])
             self._validate_amount_group(params_path, parameters)
-            self._validate_target_type(path, action_type, target_type, {"pooch", "all_pooches"})
+            self._validate_optional_bool(params_path, parameters, "roll_once")
+            self._validate_target_type(path, action_type, target_type, {"pooch", "kennel", "owner"})
 
         elif action_type == "kill_pooch":
             self._validate_allowed_keys(params_path, parameters, common_allowed)
-            self._validate_target_type(path, action_type, target_type, {"pooch", "all_pooches"})
+            self._validate_target_type(path, action_type, target_type, {"pooch", "kennel", "owner"})
 
         elif action_type in {"add_mutation", "remove_mutation"}:
             self._validate_allowed_keys(params_path, parameters, common_allowed | {"mutation"})
             self._validate_optional_known_name(params_path, parameters, "mutation", self.mutation_names)
-            self._validate_target_type(path, action_type, target_type, {"pooch", "all_pooches"})
+            self._validate_target_type(path, action_type, target_type, {"pooch", "kennel", "owner"})
 
         elif action_type == "add_breed":
             self._validate_allowed_keys(params_path, parameters, common_allowed | {"breed", "weight"})
             self._validate_optional_known_name(params_path, parameters, "breed", self.breed_names)
             self._validate_optional_number(params_path, parameters, "weight", minimum_exclusive=0)
-            self._validate_target_type(path, action_type, target_type, {"pooch", "all_pooches"})
+            self._validate_target_type(path, action_type, target_type, {"pooch", "kennel", "owner"})
 
         elif action_type == "transfer_pooch":
             self._validate_allowed_keys(params_path, parameters, common_allowed | {"new_owner_discord_id", "vendor_id"})
@@ -312,7 +347,7 @@ class BaseEventValidator:
             self._validate_mutually_exclusive(params_path, parameters, "new_owner_discord_id", "vendor_id")
             self._validate_optional_int(params_path, parameters, "new_owner_discord_id", minimum=1)
             self._validate_optional_int(params_path, parameters, "vendor_id", minimum=1)
-            self._validate_target_type(path, action_type, target_type, {"pooch", "all_pooches"})
+            self._validate_target_type(path, action_type, target_type, {"pooch", "kennel", "owner"})
 
         elif action_type == "create_pooch":
             self._validate_allowed_keys(
@@ -335,23 +370,24 @@ class BaseEventValidator:
 
         elif action_type == "modify_kennel_capacity":
             self._validate_allowed_keys(
-                params_path, parameters, common_allowed | {"amount", "min_amount", "max_amount"}
+                params_path, parameters, common_allowed | {"amount", "min_amount", "max_amount", "roll_once"}
             )
             self._validate_requires_one_of(params_path, parameters, [("amount",), ("min_amount", "max_amount")])
             self._validate_amount_group(params_path, parameters)
-            self._validate_target_type(path, action_type, target_type, {"kennel", "all_kennels"})
+            self._validate_optional_bool(params_path, parameters, "roll_once")
+            self._validate_target_type(path, action_type, target_type, {"kennel", "owner"})
 
         elif action_type == "rename_pooch":
             self._validate_allowed_keys(params_path, parameters, common_allowed | {"name"})
             self._validate_optional_string(params_path, parameters, "name", allow_blank=False)
             self._validate_requires_one_of(params_path, parameters, [("name",)])
-            self._validate_target_type(path, action_type, target_type, {"pooch", "all_pooches"})
+            self._validate_target_type(path, action_type, target_type, {"pooch", "kennel", "owner"})
 
         elif action_type == "set_breeding_cooldown":
             self._validate_allowed_keys(params_path, parameters, common_allowed | {"cooldown"})
             self._validate_cooldown_value(params_path, parameters, "cooldown")
             self._validate_requires_one_of(params_path, parameters, [("cooldown",)])
-            self._validate_target_type(path, action_type, target_type, {"pooch", "all_pooches"})
+            self._validate_target_type(path, action_type, target_type, {"pooch", "kennel", "owner"})
 
         elif action_type == "start_event":
             self._validate_allowed_keys(params_path, parameters, {"event", "random_event"})
@@ -359,6 +395,41 @@ class BaseEventValidator:
             random_event = self._validate_optional_bool(params_path, parameters, "random_event")
             if random_event is not True and event_name is None:
                 self.error(params_path, "requires 'event' unless 'random_event' is true")
+            self._validate_target_type(path, action_type, target_type, {"owner"})
+
+        elif action_type == "breed_pooches":
+            self._validate_allowed_keys(
+                params_path,
+                parameters,
+                {
+                    "first_selector",
+                    "first_filter",
+                    "second_selector",
+                    "second_filter",
+                    "baby_name",
+                    "baby_sex",
+                    "baby_age",
+                    "baby_base_health",
+                    "baby_breeding_cooldown",
+                },
+            )
+            if "first_selector" in parameters:
+                self._validate_entity_selector(params_path, parameters, "first_selector")
+            if "second_selector" in parameters:
+                self._validate_entity_selector(params_path, parameters, "second_selector")
+            if "first_filter" in parameters:
+                self._validate_pooch_filter(
+                    f"{params_path}.first_filter", parameters["first_filter"], allow_counts=False, allow_location=True
+                )
+            if "second_filter" in parameters:
+                self._validate_pooch_filter(
+                    f"{params_path}.second_filter", parameters["second_filter"], allow_counts=False, allow_location=True
+                )
+            self._validate_optional_string(params_path, parameters, "baby_name", allow_blank=False)
+            self._validate_enum_string(params_path, parameters, "baby_sex", SEX_VALUES)
+            self._validate_optional_int(params_path, parameters, "baby_age", minimum=0)
+            self._validate_optional_int(params_path, parameters, "baby_base_health")
+            self._validate_optional_int(params_path, parameters, "baby_breeding_cooldown", minimum=0)
             self._validate_target_type(path, action_type, target_type, {"owner"})
 
         else:
@@ -542,13 +613,13 @@ class BaseEventValidator:
             return None
         raw_value = value[field_name]
         if isinstance(raw_value, bool):
-            self.error(f"{path}.{field_name}", "must be 'selected' or 'random'")
+            self.error(f"{path}.{field_name}", "must be 'selected', 'random', or 'all'")
             return None
         if isinstance(raw_value, str):
             normalized = raw_value.strip().lower()
-            if normalized in {_SELECTED_TARGET_TOKEN, _RANDOM_TARGET_TOKEN}:
+            if normalized in _SELECTOR_TOKENS:
                 return normalized
-        self.error(f"{path}.{field_name}", "must be 'selected' or 'random'")
+        self.error(f"{path}.{field_name}", "must be 'selected', 'random', or 'all'")
         return None
 
     def _validate_optional_known_name(

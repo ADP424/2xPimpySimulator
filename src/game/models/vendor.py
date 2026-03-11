@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Optional
 
-from database import (
+from src.database import (
     get_mutation_by_id,
     get_server_by_discord_id,
     list_vendor_pooch_stock,
@@ -13,7 +13,7 @@ from .mutation import to_mutation
 from .server import to_server
 
 if TYPE_CHECKING:
-    from database.models import Vendor as VendorORM
+    from src.database.models import Vendor as VendorORM
 
     from .mutation import Mutation
     from .server import Server

@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Optional
 import discord
 from discord.ui import Button, Select, View
 
-from game import (
+from src.game import (
     buy_pooch,
     get_or_create_owner,
     get_or_create_server,
@@ -17,10 +17,10 @@ from game import (
     list_vendor_pooches,
     sell_pooch,
 )
-from logger import get_logger
+from src.logger import get_logger
 
 if TYPE_CHECKING:
-    from game.models import Kennel, Pooch, Vendor
+    from src.game.models import Kennel, Pooch, Vendor
 
 from .components import PageSource, PaginatorView, build_mutation_info_embed
 from .pooch_info import PoochInfoView
@@ -31,7 +31,7 @@ logger = get_logger("bot/ui/vendors")
 
 class VendorsMenuView(View):
     def __init__(self, server_discord_id: int, owner_discord_id: int):
-        from bot.constants import VIEW_TIMEOUT
+        from src.bot.constants import VIEW_TIMEOUT
 
         super().__init__(timeout=VIEW_TIMEOUT)
         self.server_discord_id = server_discord_id

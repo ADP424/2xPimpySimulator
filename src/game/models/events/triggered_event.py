@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
-from database import get_owner_event_by_id
+from src.database import get_owner_event_by_id
 
 from .event_context import EventContext
 from .event_entity_reference import (
@@ -15,7 +15,7 @@ from .event_option import EventOption, to_event_option
 from .event_result import EventResult
 
 if TYPE_CHECKING:
-    from database.models import EventOccurrence as EventOccurrenceORM
+    from src.database.models import EventOccurrence as EventOccurrenceORM
 
 
 @dataclass

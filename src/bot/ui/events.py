@@ -5,16 +5,16 @@ from typing import Any, Optional
 
 import discord
 
-from bot.constants import VIEW_TIMEOUT
-from game import (
+from src.bot.constants import VIEW_TIMEOUT
+from src.game import (
     get_breed_by_id,
     get_event_history,
     get_mutation_by_id,
     get_pooch_by_id,
     respond_to_event,
 )
-from game.models import Pooch
-from game.models.events import (
+from src.game.models import Pooch
+from src.game.models.events import (
     EventContext,
     EventEntityReferences,
     EventHistory,

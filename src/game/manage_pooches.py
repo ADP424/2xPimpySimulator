@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from database import get_pooch_by_id as db_get_pooch_by_id
-from database import (
+from src.database import get_pooch_by_id as db_get_pooch_by_id
+from src.database import (
     get_pooch_parents,
     list_pooch_children,
     list_pooch_siblings,
 )
-from database import rename_pooch as db_rename_pooch
+from src.database import rename_pooch as db_rename_pooch
 
 from .constants import MAX_NAME_LENGTH
 from .exceptions import PoochNotFound

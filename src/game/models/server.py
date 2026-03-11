@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from database.models import Server as ServerORM
+    from src.database.models import Server as ServerORM
 
 
 @dataclass(frozen=True)

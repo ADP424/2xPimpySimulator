@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from flask import Blueprint, g, redirect, render_template, session, url_for
 
-from database import get_server_by_discord_id, list_servers
-from web.async_utils import run_async
-from web.auth_utils import get_current_user_id, login_required, server_required
-from web.discord_oauth import get_guild_dicts_from_session
+from src.database import get_server_by_discord_id, list_servers
+from src.web.async_utils import run_async
+from src.web.auth_utils import get_current_user_id, login_required, server_required
+from src.web.discord_oauth import get_guild_dicts_from_session
 
 main_bp = Blueprint("main", __name__)
 
@@ -87,7 +87,7 @@ def set_server(server_id: int):
     session["current_server_name"] = server["name"]
 
     # Ensure owner exists for this server
-    from game import get_or_create_owner
+    from src.game import get_or_create_owner
 
     discord_id = get_current_user_id()
     if discord_id is not None:

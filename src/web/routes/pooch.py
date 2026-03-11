@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template
 
-from web.auth_utils import login_required
+from src.web.auth_utils import login_required
 
 pooch_bp = Blueprint("pooch", __name__)
 

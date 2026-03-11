@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from database.models import Event as EventORM
+    from src.database.models import Event as EventORM
 
 
 @dataclass(frozen=True)

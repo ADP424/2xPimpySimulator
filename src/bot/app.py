@@ -5,8 +5,8 @@ import discord
 from discord import app_commands
 from dotenv import load_dotenv
 
-from game import get_or_create_server
-from logger import get_logger
+from src.game import get_or_create_server
+from src.logger import get_logger
 
 from .commands.event_history import register_event_history_command
 from .commands.get_money import register_get_money_command

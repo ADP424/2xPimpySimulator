@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal
 
-from database import get_breed_by_id, get_mutation_by_id, get_pooch_by_id
+from src.database import get_breed_by_id, get_mutation_by_id, get_pooch_by_id
 
 if TYPE_CHECKING:
     from .event_context import EventContext

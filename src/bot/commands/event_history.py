@@ -1,7 +1,7 @@
 from discord import Interaction, app_commands
 
-from bot.ui.events import send_event_history_dm
-from game import get_event_history
+from src.bot.ui.events import send_event_history_dm
+from src.game import get_event_history
 
 
 def register_event_history_command(tree: app_commands.CommandTree):

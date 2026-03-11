@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from database.models.event_types import JsonObject, ServerEventContextDict
+from src.database.models.event_types import JsonObject, ServerEventContextDict
 
 
 @dataclass

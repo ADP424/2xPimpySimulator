@@ -1,6 +1,6 @@
 import asyncio
 
-from database.load.load_resources import (
+from src.database.load.load_resources import (
     load_breeds,
     load_dog_names,
     load_mutations,

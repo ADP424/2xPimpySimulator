@@ -1,9 +1,9 @@
 import argparse
 import asyncio
 
-from bot import run as run_bot
-from database import load_resources, reset_database
-from web import run as run_web_app
+from src.bot import run as run_bot
+from src.database import load_resources, reset_database
+from src.web import run as run_web_app
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

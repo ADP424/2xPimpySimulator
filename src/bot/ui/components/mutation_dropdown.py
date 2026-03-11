@@ -6,10 +6,10 @@ from typing import TYPE_CHECKING, Optional
 import discord
 from discord.ui import Button, Select, View
 
-from bot.ui import edit_interaction, reply_to_interacted_message
+from src.bot.ui import edit_interaction, reply_to_interacted_message
 
 if TYPE_CHECKING:
-    from game.models import Mutation
+    from src.game.models import Mutation
 
 
 def build_mutation_info_embed(mutation: Mutation) -> discord.Embed:

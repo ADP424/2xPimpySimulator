@@ -1,6 +1,6 @@
 from discord import Interaction, app_commands
 
-from game import get_active_server_event
+from src.game import get_active_server_event
 
 from ..ui.server_events import ServerEventParticipationView, build_server_event_embed
 

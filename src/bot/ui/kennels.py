@@ -5,9 +5,9 @@ from typing import TYPE_CHECKING, Optional
 import discord
 from discord.ui import Button, Select, View
 
-from bot.constants import MAX_NAME_LENGTH
-from bot.ui.util import InteractionResponder
-from game import (
+from src.bot.constants import MAX_NAME_LENGTH
+from src.bot.ui.util import InteractionResponder
+from src.game import (
     get_or_create_owner,
     get_or_create_server,
     list_kennel_pooches,
@@ -17,7 +17,7 @@ from game import (
 )
 
 if TYPE_CHECKING:
-    from game.models import Kennel, Pooch
+    from src.game.models import Kennel, Pooch
 
 from .breeding import BreedMateView
 from .components import PageSource

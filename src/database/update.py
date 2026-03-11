@@ -183,7 +183,7 @@ async def modify_pooch_age(
         The ID of the pooch to modify.
 
     amount: int
-        The amount to add to age (can be negative) to a minimum of -1.
+        The amount to add to age (can be negative) to a minimum of 0.
 
     health_loss_starting_age: int
         The age at which a pooch starts losing health from age.
@@ -202,7 +202,7 @@ async def modify_pooch_age(
         if pooch is None:
             return None
 
-        pooch.age = max(-1, pooch.age + amount)
+        pooch.age = max(0, pooch.age + amount)
         pooch.health_loss_age = max(0, pooch.age - health_loss_starting_age)
 
         await session.flush()

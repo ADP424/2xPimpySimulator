@@ -6,14 +6,22 @@
     "rarity": "NOVEL",
     "requires_response": false,
     "filter": {
-        "pooches": [{ "min_count": 1 }]
+        "pooches": [
+            {
+                "min_count": 1,
+                "is_alive": true
+            }
+        ]
     },
     "actions": [
         {
             "action_type": "add_mutation",
             "target_type": "pooch",
             "parameters": {
-                "pooch": "random"
+                "selector": "random",
+                "filter": {
+                    "is_alive": true
+                }
             }
         }
     ]

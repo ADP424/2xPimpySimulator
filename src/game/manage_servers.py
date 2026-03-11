@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional
 
-from database import (
+from src.database import (
     create_server,
     get_server_by_discord_id,
     set_event_channel_discord_id,

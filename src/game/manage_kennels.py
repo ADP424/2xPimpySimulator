@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from database import add_pooch_to_kennel as db_add_pooch_to_kennel
-from database import (
+from src.database import add_pooch_to_kennel as db_add_pooch_to_kennel
+from src.database import (
     get_kennel_by_id,
     get_pooch_by_id,
     list_pooches_for_kennel,
 )
-from database import rename_kennel as db_rename_kennel
+from src.database import rename_kennel as db_rename_kennel
 
 from .constants import MAX_NAME_LENGTH
 from .exceptions import KennelNotFound, PoochNotFound

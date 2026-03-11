@@ -8,6 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models import (
     Breed,
+    GraveyardPooch,
+    HealthImpactWeight,
+    HellPooch,
     Kennel,
     KennelPooch,
     Mutation,
@@ -18,7 +21,7 @@ from ..models import (
 )
 
 _FILTER_META_KEYS = {"min_count", "max_count", "description"}
-_POOCH_LOCATION_VALUES = {"kennel", "homeless", "any"}
+_POOCH_LOCATION_VALUES = {"kennel", "graveyard", "hell", "town", "all", "any"}
 
 
 def _normalize_name(value: str) -> str:
@@ -77,11 +80,20 @@ async def _build_pooch_query(
     if filter_spec.get("sex") is not None:
         conditions.append(Pooch.sex == str(filter_spec["sex"]).strip().lower())
 
-    effective_health = Pooch.base_health - Pooch.health_loss_age
-    if filter_spec.get("min_health") is not None:
-        conditions.append(effective_health >= int(filter_spec["min_health"]))
-    if filter_spec.get("max_health") is not None:
-        conditions.append(effective_health <= int(filter_spec["max_health"]))
+    if filter_spec.get("min_health") is not None or filter_spec.get("max_health") is not None:
+        mutation_health_subquery = (
+            select(func.coalesce(func.sum(HealthImpactWeight.weight), 0))
+            .join(Mutation, Mutation.health_impact == HealthImpactWeight.health_impact)
+            .join(PoochMutation, PoochMutation.mutation_id == Mutation.id)
+            .where(PoochMutation.pooch_id == Pooch.id)
+            .correlate(Pooch)
+            .scalar_subquery()
+        )
+        effective_health = Pooch.base_health - Pooch.health_loss_age + mutation_health_subquery
+        if filter_spec.get("min_health") is not None:
+            conditions.append(effective_health >= int(filter_spec["min_health"]))
+        if filter_spec.get("max_health") is not None:
+            conditions.append(effective_health <= int(filter_spec["max_health"]))
 
     if filter_spec.get("is_virgin") is not None:
         conditions.append(Pooch.virgin.is_(bool(filter_spec["is_virgin"])))
@@ -99,10 +111,13 @@ async def _build_pooch_query(
         kennel_members_subquery = select(KennelPooch.pooch_id).distinct()
         if normalized_location == "kennel":
             conditions.append(Pooch.id.in_(kennel_members_subquery))
-        elif normalized_location == "homeless":
-            conditions.append(Pooch.id.not_in(kennel_members_subquery))
-        elif normalized_location in _POOCH_LOCATION_VALUES:
-            pass
+        elif normalized_location == "graveyard":
+            graveyard_subquery = select(GraveyardPooch.pooch_id).distinct()
+            conditions.append(Pooch.id.in_(graveyard_subquery))
+        elif normalized_location == "hell":
+            hell_subquery = select(HellPooch.pooch_id).distinct()
+            conditions.append(Pooch.id.in_(hell_subquery))
+        # "town", "all", "any" — no location restriction
 
     if conditions:
         query = query.where(and_(*conditions))

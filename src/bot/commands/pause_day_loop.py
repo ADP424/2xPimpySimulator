@@ -1,7 +1,7 @@
 from discord import Interaction, app_commands
 
-from bot.constants import GUILDS
-from bot.day_change_loop import is_day_change_paused, set_day_change_paused
+from src.bot.constants import GUILDS
+from src.bot.day_change_loop import is_day_change_paused, set_day_change_paused
 
 
 def register_pause_day_loop_command(tree: app_commands.CommandTree):

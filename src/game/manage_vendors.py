@@ -2,17 +2,17 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional
 
-from database import (
+from src.database import (
     add_pooch_to_kennel,
     get_mutation_by_id,
     get_owner_by_discord_id,
 )
-from database import get_pooch_by_id as db_get_pooch_by_id
-from database import (
+from src.database import get_pooch_by_id as db_get_pooch_by_id
+from src.database import (
     get_pooch_health,
 )
-from database import get_vendor_by_id as db_get_vendor_by_id
-from database import (
+from src.database import get_vendor_by_id as db_get_vendor_by_id
+from src.database import (
     give_money_to_owner,
     list_kennels_for_owner,
     list_pooch_breeds,
@@ -20,8 +20,8 @@ from database import (
     list_pooches_for_kennel,
     list_vendor_pooch_stock,
 )
-from database import list_vendors as db_list_vendors
-from database import (
+from src.database import list_vendors as db_list_vendors
+from src.database import (
     remove_pooch_from_kennel,
     remove_pooch_from_vendor_stock,
     transfer_pooch_to_owner,

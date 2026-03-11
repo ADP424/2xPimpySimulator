@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Optional
 
 import numpy
 
-from database import (
+from src.database import (
     add_breed_to_pooch,
     add_mutation_to_pooch,
     add_pooch_to_vendor_stock,
@@ -32,7 +32,7 @@ from database import (
     set_pooch_breeding_cooldown,
     set_pooch_dead,
 )
-from logger import get_logger
+from src.logger import get_logger
 
 from .constants import (
     DEATH_CHANCE_PER_HEALTH_UNDER_MIN,
@@ -59,7 +59,7 @@ from .models import (
 )
 
 if TYPE_CHECKING:
-    from database.models import Mutation, Pooch
+    from src.database.models import Mutation, Pooch
 
 from .utils import get_pooch_mutation_advanced_option_total
 

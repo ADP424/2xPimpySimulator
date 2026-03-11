@@ -2,7 +2,7 @@ from typing import Any
 
 from sqlalchemy import delete
 
-from logger import get_logger
+from src.logger import get_logger
 
 from ...models import Breed
 from ...session import session_scope
