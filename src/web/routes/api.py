@@ -88,6 +88,24 @@ def get_pooch_family(pooch_id: int):
         return jsonify({"error": str(e)}), 404
 
 
+@api_bp.route("/pooches/<int:pooch_id>/family-tree")
+@login_required
+def get_pooch_family_tree(pooch_id: int):
+    """Get the full family tree graph for a pooch."""
+    from game import get_pooch_family_tree
+
+    ancestor_depth = request.args.get("ancestor_depth", 5, type=int)
+    descendant_depth = request.args.get("descendant_depth", 2, type=int)
+    ancestor_depth = min(max(ancestor_depth, 0), 8)
+    descendant_depth = min(max(descendant_depth, 0), 4)
+
+    try:
+        tree = run_async(get_pooch_family_tree(pooch_id, ancestor_depth, descendant_depth))
+        return jsonify(tree)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 404
+
+
 @api_bp.route("/pooches/<int:pooch_id>/buy-price")
 @login_required
 def get_pooch_buy_price(pooch_id: int):
