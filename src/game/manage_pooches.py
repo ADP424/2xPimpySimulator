@@ -67,6 +67,16 @@ async def get_pooch_family_tree(pooch_id: int, ancestor_depth: int = 5, descenda
             edges.add((pid, child.id))
             prev_gen = node_generation.get(child.id, 999)
             await _add_node(child, generation)
+
+            # Also fetch and add the child's other parent (mate of pid)
+            father, mother = await get_pooch_parents(child.id)
+            for parent in (father, mother):
+                if parent is not None and parent.id != pid:
+                    # Place the mate at the same generation as pid (they're partners)
+                    mate_gen = node_generation.get(pid, 0)
+                    await _add_node(parent, mate_gen)
+                    edges.add((parent.id, child.id))
+
             # Only recurse if this is a new node or placed at a lower generation
             if generation < prev_gen:
                 await _fetch_descendants(child.id, depth - 1, generation - 1)
@@ -81,6 +91,17 @@ async def get_pooch_family_tree(pooch_id: int, ancestor_depth: int = 5, descenda
     # Fetch ancestors (positive generations) and descendants (negative generations)
     await _fetch_ancestors(pooch_id, ancestor_depth, 1)
     await _fetch_descendants(pooch_id, descendant_depth, -1)
+
+    # Fetch siblings of the root pooch (same generation as root)
+    siblings_orm = await list_pooch_siblings(pooch_id)
+    for sibling in siblings_orm:
+        await _add_node(sibling, 0)
+        # Add edges from parents to this sibling (parents are already in the tree)
+        father, mother = await get_pooch_parents(sibling.id)
+        if father:
+            edges.add((father.id, sibling.id))
+        if mother:
+            edges.add((mother.id, sibling.id))
 
     # Attach generation to each node
     for pid, node in nodes.items():
