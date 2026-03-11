@@ -14,6 +14,8 @@ class EventOption:
     description: str
     min_money: int
     min_bloodskulls: int
+    is_default: bool
+    is_visible: bool
 
 
 async def to_event_option(option: EventOptionORM) -> EventOption:
@@ -37,4 +39,6 @@ async def to_event_option(option: EventOptionORM) -> EventOption:
         description=option.description,
         min_money=option.min_money,
         min_bloodskulls=option.min_bloodskulls,
+        is_default=option.is_default,
+        is_visible=option.is_visible,
     )

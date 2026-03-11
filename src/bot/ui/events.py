@@ -525,7 +525,9 @@ class EventResponseSelect(discord.ui.Select):
 
         option_id = int(self.values[0])
         option = next((item for item in self.event.options if item.id == option_id), None)
-        success, message, result = await respond_to_event(interaction.user.id, self.event.active_event_id, option_id)
+        success, message, result = await respond_to_event(
+            interaction.user.id, self.event.active_owner_event_id, option_id
+        )
 
         if success:
             if self.view is not None:

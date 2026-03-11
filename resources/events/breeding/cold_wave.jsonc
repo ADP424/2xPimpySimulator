@@ -5,7 +5,9 @@
     "severity": "MINOR",
     "rarity": "UNCOMMON",
     "requires_response": false,
-    "min_pooches": 1,
+    "filter": {
+        "pooches": [{ "min_count": 1 }]
+    },
     "actions": [
         {
             "action_type": "set_breeding_cooldown",

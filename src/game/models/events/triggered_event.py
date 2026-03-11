@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
-from database import get_event_by_id
+from database import get_owner_event_by_id
 
 from .event_context import EventContext
 from .event_entity_reference import (
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 @dataclass
 class TriggeredEvent:
-    active_event_id: int
+    active_owner_event_id: int
     event_id: int
 
     name: str
@@ -60,7 +60,7 @@ async def to_triggered_event(event_occurrence: EventOccurrenceORM) -> TriggeredE
         The converted triggered event model.
     """
 
-    event = await get_event_by_id(event_occurrence.event_id)
+    event = await get_owner_event_by_id(event_occurrence.event_id)
     if event is None:
         raise ValueError(f"Event {event_occurrence.event_id} could not be loaded.")
 
@@ -71,11 +71,13 @@ async def to_triggered_event(event_occurrence: EventOccurrenceORM) -> TriggeredE
     options = []
     if event.requires_response:
         options = [
-            await to_event_option(option) for option in sorted(event.options, key=lambda option: option.option_order)
+            await to_event_option(option)
+            for option in sorted(event.options, key=lambda option: option.option_order)
+            if option.is_visible
         ]
 
     return TriggeredEvent(
-        active_event_id=event_occurrence.id,
+        active_owner_event_id=event_occurrence.id,
         event_id=event.id,
         name=event.name,
         category=event.category,

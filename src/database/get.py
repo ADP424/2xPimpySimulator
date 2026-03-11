@@ -21,19 +21,24 @@ from .models import (
     PoochParentage,
     RarityWeight,
     Server,
+    ServerEvent,
+    ServerEventOccurrence,
+    ServerEventOption,
+    ServerEventOutcome,
+    ServerEventParticipation,
     Vendor,
 )
 from .session import session_scope
-from .utils import weighted_choice
+from .utils import check_owner_event_filter, weighted_choice
 
 
-async def get_active_event_by_id(active_event_id: int) -> Optional[EventOccurrence]:
+async def get_active_owner_event_by_id(active_owner_event_id: int) -> Optional[EventOccurrence]:
     """
     Get an active event by its ID.
 
     Parameters
     ----------
-    active_event_id: int
+    active_owner_event_id: int
         The ID of the active event to retrieve.
 
     Returns
@@ -45,7 +50,7 @@ async def get_active_event_by_id(active_event_id: int) -> Optional[EventOccurren
     async with session_scope() as session:
         query = (
             select(EventOccurrence)
-            .where(EventOccurrence.id == active_event_id, EventOccurrence.archived.is_(False))
+            .where(EventOccurrence.id == active_owner_event_id, EventOccurrence.archived.is_(False))
             .options(
                 selectinload(EventOccurrence.event).selectinload(Event.actions),
                 selectinload(EventOccurrence.event).selectinload(Event.options).selectinload(EventOption.actions),
@@ -82,7 +87,7 @@ async def get_breed_by_id(breed_id: int) -> Optional[Breed]:
     return response.scalar_one_or_none()
 
 
-async def get_event_by_id(event_id: int) -> Optional[Event]:
+async def get_owner_event_by_id(event_id: int) -> Optional[Event]:
     """
     Get an event by its ID.
 
@@ -112,7 +117,7 @@ async def get_event_by_id(event_id: int) -> Optional[Event]:
     return response.scalar_one_or_none()
 
 
-async def get_event_by_name(event_name: str) -> Optional[Event]:
+async def get_owner_event_by_name(event_name: str) -> Optional[Event]:
     """
     Fetch an event by its name.
 
@@ -142,7 +147,7 @@ async def get_event_by_name(event_name: str) -> Optional[Event]:
     return response.scalar_one_or_none()
 
 
-async def get_event_option_by_id(option_id: int) -> Optional[EventOption]:
+async def get_owner_event_option_by_id(option_id: int) -> Optional[EventOption]:
     """
     Get an event option by its ID.
 
@@ -289,7 +294,9 @@ async def get_owner_server(server_discord_id: int, owner_discord_id: int) -> Opt
     return response.scalar_one_or_none()
 
 
-async def get_pending_active_event(owner_discord_id: int, event_id: Optional[int] = None) -> Optional[EventOccurrence]:
+async def get_pending_active_owner_event(
+    owner_discord_id: int, event_id: Optional[int] = None
+) -> Optional[EventOccurrence]:
     """
     Get a pending (unresponded) active event for an owner.
 
@@ -466,7 +473,7 @@ async def get_pooch_virginity_status(pooch_id: int) -> Optional[bool]:
     return response.scalar_one_or_none()
 
 
-async def get_random_eligible_event_for_owner(
+async def get_random_eligible_owner_event_for_owner(
     owner_discord_id: int,
     rng: Optional[random.Random] = None,
     include_triggered_only: bool = False,
@@ -495,33 +502,11 @@ async def get_random_eligible_event_for_owner(
         if owner is None:
             return None
 
-        pooch_count = (
-            await session.scalar(
-                select(func.count(Pooch.id)).where(
-                    and_(
-                        Pooch.owner_discord_id == owner_discord_id,
-                        Pooch.alive == True,  # noqa: E712
-                    )
-                )
-            )
-            or 0
-        )
-
-        kennel_count = (
-            await session.scalar(select(func.count(Kennel.id)).where(Kennel.owner_discord_id == owner_discord_id)) or 0
-        )
-
         event_query = (
             select(Event, RarityWeight.weight)
             .join(RarityWeight, RarityWeight.rarity == Event.rarity)
             .where(
-                and_(
-                    Event.min_pooches <= pooch_count,
-                    Event.min_kennels <= kennel_count,
-                    Event.min_money <= owner.dollars,
-                    Event.min_bloodskulls <= owner.bloodskulls,
-                    true() if include_triggered_only else Event.triggered_only.is_(False),
-                )
+                true() if include_triggered_only else Event.triggered_only.is_(False),
             )
             .options(
                 selectinload(Event.actions),
@@ -535,7 +520,15 @@ async def get_random_eligible_event_for_owner(
         if not rows:
             return None
 
-        return weighted_choice(rng, rows)
+        eligible_rows: list[tuple[Event, float]] = []
+        for event, weight in rows:
+            if await check_owner_event_filter(session, owner_discord_id, event.filter):
+                eligible_rows.append((event, weight))
+
+        if not eligible_rows:
+            return None
+
+        return weighted_choice(rng, eligible_rows)
 
 
 async def get_server_by_discord_id(server_discord_id: int) -> Optional[Server]:
@@ -602,3 +595,133 @@ async def get_vendor_server(vendor_id: int) -> Optional[Server]:
         response = await session.execute(query)
 
     return response.scalar_one_or_none()
+
+
+async def get_server_event_by_id(server_event_id: int) -> Optional[ServerEvent]:
+    async with session_scope() as session:
+        query = (
+            select(ServerEvent)
+            .where(ServerEvent.id == server_event_id)
+            .options(
+                selectinload(ServerEvent.actions),
+                selectinload(ServerEvent.options).selectinload(ServerEventOption.actions),
+                selectinload(ServerEvent.outcomes).selectinload(ServerEventOutcome.actions),
+            )
+        )
+        response = await session.execute(query)
+
+    return response.scalar_one_or_none()
+
+
+async def get_server_event_option_by_id(option_id: int) -> Optional[ServerEventOption]:
+    async with session_scope() as session:
+        query = (
+            select(ServerEventOption)
+            .where(ServerEventOption.id == option_id)
+            .options(selectinload(ServerEventOption.actions))
+        )
+        response = await session.execute(query)
+
+    return response.scalar_one_or_none()
+
+
+async def get_server_event_occurrence_by_id(occurrence_id: int) -> Optional[ServerEventOccurrence]:
+    async with session_scope() as session:
+        query = (
+            select(ServerEventOccurrence)
+            .where(ServerEventOccurrence.id == occurrence_id)
+            .options(
+                selectinload(ServerEventOccurrence.server_event).selectinload(ServerEvent.actions),
+                selectinload(ServerEventOccurrence.server_event)
+                .selectinload(ServerEvent.options)
+                .selectinload(ServerEventOption.actions),
+                selectinload(ServerEventOccurrence.server_event)
+                .selectinload(ServerEvent.outcomes)
+                .selectinload(ServerEventOutcome.actions),
+                selectinload(ServerEventOccurrence.participations).selectinload(
+                    ServerEventParticipation.selected_option
+                ),
+            )
+        )
+        response = await session.execute(query)
+
+    return response.scalar_one_or_none()
+
+
+async def get_active_server_event_occurrence(server_discord_id: int) -> Optional[ServerEventOccurrence]:
+    async with session_scope() as session:
+        query = (
+            select(ServerEventOccurrence)
+            .where(
+                ServerEventOccurrence.server_discord_id == server_discord_id,
+                ServerEventOccurrence.archived.is_(False),
+                ServerEventOccurrence.resolved_at.is_(None),
+            )
+            .options(
+                selectinload(ServerEventOccurrence.server_event).selectinload(ServerEvent.actions),
+                selectinload(ServerEventOccurrence.server_event)
+                .selectinload(ServerEvent.options)
+                .selectinload(ServerEventOption.actions),
+                selectinload(ServerEventOccurrence.server_event)
+                .selectinload(ServerEvent.outcomes)
+                .selectinload(ServerEventOutcome.actions),
+                selectinload(ServerEventOccurrence.participations).selectinload(
+                    ServerEventParticipation.selected_option
+                ),
+            )
+        )
+        response = await session.execute(query)
+
+    return response.scalar_one_or_none()
+
+
+async def get_server_event_participation(
+    occurrence_id: int, owner_discord_id: int
+) -> Optional[ServerEventParticipation]:
+    async with session_scope() as session:
+        query = (
+            select(ServerEventParticipation)
+            .where(
+                ServerEventParticipation.occurrence_id == occurrence_id,
+                ServerEventParticipation.owner_discord_id == owner_discord_id,
+            )
+            .options(selectinload(ServerEventParticipation.selected_option))
+        )
+        response = await session.execute(query)
+
+    return response.scalar_one_or_none()
+
+
+async def get_random_eligible_server_event_for_server(
+    server_discord_id: int,
+    rng: Optional[random.Random] = None,
+) -> Optional[ServerEvent]:
+    rng = rng if rng is not None else random.Random()
+
+    async with session_scope() as session:
+        owner_count = (
+            await session.scalar(
+                select(func.count(OwnerServer.owner_discord_id)).where(
+                    OwnerServer.server_discord_id == server_discord_id
+                )
+            )
+            or 0
+        )
+
+        event_query = (
+            select(ServerEvent, RarityWeight.weight)
+            .join(RarityWeight, RarityWeight.rarity == ServerEvent.rarity)
+            .where(ServerEvent.min_owners <= owner_count)
+            .options(
+                selectinload(ServerEvent.actions),
+                selectinload(ServerEvent.options).selectinload(ServerEventOption.actions),
+                selectinload(ServerEvent.outcomes).selectinload(ServerEventOutcome.actions),
+            )
+        )
+        response = await session.execute(event_query)
+        rows = [(event, weight) for event, weight in response.tuples().all()]
+
+        if not rows:
+            return None
+
+        return weighted_choice(rng, rows)

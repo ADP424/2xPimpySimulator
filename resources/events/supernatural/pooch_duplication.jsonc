@@ -5,11 +5,13 @@
     "severity": "MAJOR",
     "rarity": "UNPRECEDENTED",
     "requires_response": false,
-    "min_pooches": 1,
+    "filter": {
+        "pooches": [{ "min_count": 1 }]
+    },
     "actions": [ //To Do. Copy a pooch.
         {
             "action_type": "create_pooch",
-            "target_type": "kennel",
+            "target_type": "owner",
             "parameters": {
                 
             }

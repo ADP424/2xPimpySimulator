@@ -6,12 +6,14 @@
     "rarity": "UNCOMMON",
     "requires_response": true,
     "response_timeout": 7200,
-    "min_pooches": 1,
+    "filter": {
+        "pooches": [{ "min_count": 1 }]
+    },
     "options": [
         {
             "label": "Pay for treatment",
             "description": "Pay $50 to treat your pooch.",
-            "min_money": 50,
+            "filter": { "min_money": 50 },
             "actions": [
                 {
                     "action_type": "modify_money",
@@ -46,16 +48,22 @@
                     "message": "Your pooch recovered without side effects!"
                 }
             ]
-        }
-    ],
-    "actions": [
+        },
         {
-            "action_type": "modify_pooch_health",
-            "target_type": "pooch",
-            "parameters": {
-                "amount": -5,
-                "pooch": "random"
-            }
+            "label": "Ignore the bill",
+            "description": "Fail to respond before the deadline. Your pooch suffers the consequences.",
+            "default": true,
+            "visible": false,
+            "actions": [
+                {
+                    "action_type": "modify_pooch_health",
+                    "target_type": "pooch",
+                    "parameters": {
+                        "amount": -5,
+                        "pooch": "random"
+                    }
+                }
+            ]
         }
     ]
 }

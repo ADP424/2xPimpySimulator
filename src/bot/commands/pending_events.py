@@ -28,6 +28,6 @@ def register_pending_events_command(tree: app_commands.CommandTree):
             return
 
         await interaction.response.send_message(
-            "I couldn't DM your pending events. Please make sure your DMs are open.",
+            "I couldn't DM your pending owner_events. Please make sure your DMs are open.",
             ephemeral=True,
         )

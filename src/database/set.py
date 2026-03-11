@@ -33,6 +33,8 @@ from .models import (
     PoochPregnancy,
     RarityWeight,
     Server,
+    ServerEventOccurrence,
+    ServerEventParticipation,
     Vendor,
     VendorFirstName,
     VendorLastName,
@@ -353,13 +355,13 @@ async def add_pooch_to_vendor_stock(vendor_id: int, pooch_id: int) -> Optional[V
     return vendor_pooch_for_sale
 
 
-async def archive_active_event(active_event_id: int, timed_out: bool = False) -> Optional[EventOccurrence]:
+async def archive_active_event(active_owner_event_id: int, timed_out: bool = False) -> Optional[EventOccurrence]:
     """
     Archive an active event in place.
 
     Parameters
     ----------
-    active_event_id: int
+    active_owner_event_id: int
         The ID of the active event to archive.
 
     timed_out: bool
@@ -373,7 +375,7 @@ async def archive_active_event(active_event_id: int, timed_out: bool = False) ->
 
     async with session_scope() as session:
         query = select(EventOccurrence).where(
-            EventOccurrence.id == active_event_id, EventOccurrence.archived.is_(False)
+            EventOccurrence.id == active_owner_event_id, EventOccurrence.archived.is_(False)
         )
         result = await session.execute(query)
         active_event = result.scalar_one_or_none()
@@ -421,7 +423,7 @@ async def bury_pooch(owner_discord_id: int, pooch_id: int) -> Optional[Graveyard
     return graveyard_pooch
 
 
-async def create_active_event(
+async def create_active_owner_event(
     event_id: int,
     owner_discord_id: int,
     context: dict[str, Any] = None,
@@ -799,3 +801,43 @@ async def set_pooch_parentage(child_id: int, father_id: int | None, mother_id: i
         await session.flush()
 
     return parentage
+
+
+async def create_server_event_occurrence(
+    server_discord_id: int,
+    server_event_id: int,
+    context: dict[str, Any],
+    expires_at: datetime,
+) -> ServerEventOccurrence:
+    async with session_scope() as session:
+        occurrence = ServerEventOccurrence(
+            server_discord_id=server_discord_id,
+            server_event_id=server_event_id,
+            context=context,
+            expires_at=expires_at,
+        )
+        session.add(occurrence)
+        await session.flush()
+        await session.refresh(occurrence)
+    return occurrence
+
+
+async def create_server_event_participation(
+    occurrence_id: int,
+    owner_discord_id: int,
+    selected_option_id: int,
+    context: dict[str, Any],
+    immediate_result: dict[str, Any],
+) -> ServerEventParticipation:
+    async with session_scope() as session:
+        participation = ServerEventParticipation(
+            occurrence_id=occurrence_id,
+            owner_discord_id=owner_discord_id,
+            selected_option_id=selected_option_id,
+            context=context,
+            immediate_result=immediate_result,
+        )
+        session.add(participation)
+        await session.flush()
+        await session.refresh(participation)
+    return participation

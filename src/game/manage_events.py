@@ -7,40 +7,45 @@ from database import (
     add_breed_to_pooch,
     add_mutation_to_pooch,
     archive_active_event,
-    create_active_event,
+    create_active_owner_event,
     create_pooch,
-    get_active_event_by_id,
-)
-from database import get_event_by_id as db_get_event_by_id
-from database import get_event_by_name as db_get_event_by_name
-from database import (
-    get_event_option_by_id,
+    get_active_owner_event_by_id,
     get_owner_by_discord_id,
-    get_pending_active_event,
-    get_random_eligible_event_for_owner,
+)
+from database import get_owner_event_by_id as db_get_owner_event_by_id
+from database import get_owner_event_by_name as db_get_owner_event_by_name
+from database import (
+    get_owner_event_option_by_id,
+    get_pending_active_owner_event,
+    get_random_eligible_owner_event_for_owner,
     give_bloodskulls_to_owner,
     give_money_to_owner,
-    list_active_events_for_owner,
+    list_active_owner_events_for_owner,
 )
-from database import list_all_events as db_list_all_events
+from database import list_all_owner_events as db_list_all_owner_events
 from database import (
-    list_event_history_for_owner,
-    list_expired_active_events,
-    list_kennels_for_owner,
+    list_expired_active_owner_events,
+    list_owner_event_history_for_owner,
     list_owners,
-    list_pooches_for_kennel,
     modify_kennel_pooch_limit,
     modify_pooch_age,
     modify_pooch_base_health,
     remove_mutation_from_pooch,
     remove_random_mutation_from_pooch,
     rename_pooch,
-    respond_to_active_event,
+    respond_to_active_owner_event,
     set_pooch_breeding_cooldown,
     set_pooch_dead,
     transfer_pooch_to_owner,
     transfer_pooch_to_vendor,
     update_active_event_result,
+)
+from database.utils import (
+    check_owner_event_filter,
+    get_matching_kennel_ids_for_owner,
+    get_matching_pooch_ids_for_owner,
+    get_random_matching_kennel_id_for_owner,
+    get_random_matching_pooch_id_for_owner,
 )
 
 from .constants import (
@@ -83,7 +88,7 @@ async def get_active_events_for_owner(owner_discord_id: int, pending_only: bool 
         List of triggered events for the owner.
     """
 
-    active_events = await list_active_events_for_owner(owner_discord_id, pending_only=pending_only)
+    active_events = await list_active_owner_events_for_owner(owner_discord_id, pending_only=pending_only)
     return [await to_triggered_event(active_event) for active_event in active_events]
 
 
@@ -105,11 +110,13 @@ async def get_event_history(owner_discord_id: int, limit: int = 50) -> list[Even
         List of typed event history records.
     """
 
-    history = await list_event_history_for_owner(owner_discord_id, limit)
+    history = await list_owner_event_history_for_owner(owner_discord_id, limit)
     return [await to_event_history(record) for record in history]
 
 
-async def get_pending_event(owner_discord_id: int, active_event_id: Optional[int] = None) -> Optional[TriggeredEvent]:
+async def get_pending_event(
+    owner_discord_id: int, active_owner_event_id: Optional[int] = None
+) -> Optional[TriggeredEvent]:
     """
     Get a specific pending event for an owner.
 
@@ -118,7 +125,7 @@ async def get_pending_event(owner_discord_id: int, active_event_id: Optional[int
     owner_discord_id: int
         The Discord ID of the owner.
 
-    active_event_id: int, optional
+    active_owner_event_id: int, optional
         The specific active event ID to retrieve.
 
     Returns
@@ -127,23 +134,23 @@ async def get_pending_event(owner_discord_id: int, active_event_id: Optional[int
         The triggered event, or None if not found.
     """
 
-    if active_event_id is not None:
-        active_event = await get_active_event_by_id(active_event_id)
+    if active_owner_event_id is not None:
+        active_event = await get_active_owner_event_by_id(active_owner_event_id)
         if active_event is None or active_event.owner_discord_id != owner_discord_id:
             return None
         if active_event.responded_at is not None:
             return None
     else:
-        active_event = await get_pending_active_event(owner_discord_id)
+        active_event = await get_pending_active_owner_event(owner_discord_id)
         if active_event is None:
             return None
 
     return await to_triggered_event(active_event)
 
 
-async def list_all_events() -> list[Event]:
+async def list_all_owner_events() -> list[Event]:
     """
-    List all available events.
+    List all available owner_events.
 
     Returns
     -------
@@ -151,7 +158,7 @@ async def list_all_events() -> list[Event]:
         A list of typed event information objects.
     """
 
-    events = await db_list_all_events()
+    events = await db_list_all_owner_events()
     return [await to_event(event) for event in events]
 
 
@@ -167,27 +174,59 @@ async def process_expired_events(rng: Optional[random.Random] = None) -> list[tu
     Returns
     -------
     list[tuple[int, int, EventResult]]
-        List of (owner_discord_id, event_id, result) for processed events.
+        List of (owner_discord_id, event_id, result) for processed owner_events.
     """
 
     if rng is None:
         rng = random.Random()
 
-    expired_events = await list_expired_active_events()
+    expired_events = await list_expired_active_owner_events()
     results = []
 
     for active_event in expired_events:
         context = EventContext.from_dict(active_event.context)
-
         event = active_event.event
-        result = await _execute_event_actions(active_event.owner_discord_id, event.actions, context, rng)
-        result.message = f"Event '{event.name}' expired without response. {result.message}"
 
-        await respond_to_active_event(active_event.id, None, result.to_dict())
+        # Start with any result already recorded from event-level actions at trigger time
+        result = EventResult.from_dict(active_event.result_summary) if active_event.result_summary else EventResult()
+
+        default_option = next((opt for opt in event.options if opt.is_default), None)
+        responded_option_id = None
+
+        if default_option is not None:
+            responded_option_id = default_option.id
+            option_result = await _execute_event_actions(
+                active_event.owner_discord_id, default_option.actions, context, rng
+            )
+            result.merge(option_result)
+
+            selected_outcome = _choose_option_outcome(default_option, rng)
+            if selected_outcome is not None:
+                outcome_result = await _execute_event_actions(
+                    active_event.owner_discord_id, selected_outcome.actions, context, rng
+                )
+                result.merge(outcome_result)
+                outcome_message = (
+                    selected_outcome.message or selected_outcome.description or selected_outcome.label or None
+                )
+                result.extra_data["selected_outcome"] = {
+                    "id": selected_outcome.id,
+                    "label": selected_outcome.label,
+                    "description": selected_outcome.description,
+                    "message": selected_outcome.message,
+                    "chance": selected_outcome.chance,
+                }
+                result.message = outcome_message or f"Event '{event.name}' expired. {default_option.label} was applied."
+            else:
+                result.message = f"Event '{event.name}' expired. {default_option.label} was applied."
+        else:
+            result.message = f"Event '{event.name}' expired without response. {result.message}".strip()
+
+        await respond_to_active_owner_event(active_event.id, responded_option_id, result.to_dict())
         await archive_active_event(active_event.id, timed_out=True)
 
         results.append((active_event.owner_discord_id, event.id, result))
-        logger.info(f"Processed expired event {active_event.id} for owner " f"{active_event.owner_discord_id}")
+        logger.info(f"Processed expired event {active_event.id} for owner {active_event.owner_discord_id}")
 
     return results
 
@@ -224,7 +263,7 @@ def _choose_option_outcome(option: EventOption, rng: random.Random) -> Optional[
 
 
 async def respond_to_event(
-    owner_discord_id: int, active_event_id: int, option_id: int, rng: Optional[random.Random] = None
+    owner_discord_id: int, active_owner_event_id: int, option_id: int, rng: Optional[random.Random] = None
 ) -> tuple[bool, str, Optional[EventResult]]:
     """
     Process a player's response to an event.
@@ -234,7 +273,7 @@ async def respond_to_event(
     owner_discord_id: int
         The Discord ID of the owner responding.
 
-    active_event_id: int
+    active_owner_event_id: int
         The ID of the active event being responded to.
 
     option_id: int
@@ -252,7 +291,7 @@ async def respond_to_event(
     if rng is None:
         rng = random.Random()
 
-    active_event = await get_active_event_by_id(active_event_id)
+    active_event = await get_active_owner_event_by_id(active_owner_event_id)
     if active_event is None:
         return False, "Event not found.", None
 
@@ -263,15 +302,18 @@ async def respond_to_event(
         return False, "You have already responded to this event.", None
 
     if active_event.expires_at and datetime.now(timezone.utc) > active_event.expires_at:
-        await archive_active_event(active_event_id, timed_out=True)
+        await archive_active_event(active_owner_event_id, timed_out=True)
         return False, "This event has expired.", None
 
-    option = await get_event_option_by_id(option_id)
+    option = await get_owner_event_option_by_id(option_id)
     if option is None:
         return False, "Invalid option.", None
 
     if option.event_id != active_event.event_id:
         return False, "This option is not valid for this event.", None
+
+    if not option.is_visible:
+        return False, "That option is not available.", None
 
     owner = await get_owner_by_discord_id(owner_discord_id)
     if owner is None:
@@ -283,8 +325,14 @@ async def respond_to_event(
     if owner.bloodskulls < option.min_bloodskulls:
         return False, f"You need at least {option.min_bloodskulls} bloodskulls to select this option.", None
 
+    if not await _owner_passes_filter(owner_discord_id, option.filter):
+        return False, "You do not currently meet the requirements for that option.", None
+
     context = EventContext.from_dict(active_event.context)
-    result = await _execute_event_actions(owner_discord_id, option.actions, context, rng)
+    # Merge with any result already recorded from event-level actions at trigger time
+    result = EventResult.from_dict(active_event.result_summary) if active_event.result_summary else EventResult()
+    option_result = await _execute_event_actions(owner_discord_id, option.actions, context, rng)
+    result.merge(option_result)
 
     selected_outcome = _choose_option_outcome(option, rng)
     outcome_message = None
@@ -300,10 +348,10 @@ async def respond_to_event(
             "chance": selected_outcome.chance,
         }
 
-    await respond_to_active_event(active_event_id, option_id, result.to_dict())
-    await archive_active_event(active_event_id)
+    await respond_to_active_owner_event(active_owner_event_id, option_id, result.to_dict())
+    await archive_active_event(active_owner_event_id)
 
-    logger.info(f"Owner {owner_discord_id} responded to event {active_event_id} with option {option_id}.")
+    logger.info(f"Owner {owner_discord_id} responded to event {active_owner_event_id} with option {option_id}.")
 
     response_message = outcome_message or f"You selected: {option.label}."
     return True, response_message, result
@@ -324,7 +372,7 @@ async def run_hourly_event_check(rng_seed: Optional[int] = None) -> dict[int, li
     Returns
     -------
     dict[int, list[TriggeredEvent]]
-        Dictionary mapping owner Discord IDs to triggered events.
+        Dictionary mapping owner Discord IDs to triggered owner_events.
     """
 
     if rng_seed is not None:
@@ -348,55 +396,97 @@ async def run_hourly_event_check(rng_seed: Optional[int] = None) -> dict[int, li
                 triggered_events[owner.discord_id] = []
             triggered_events[owner.discord_id].append(event)
 
-    logger.info(f"Hourly event check complete. {len(triggered_events)} owners received events.")
+    logger.info(f"Hourly event check complete. {len(triggered_events)} owners received owner_events.")
 
     return triggered_events
+
+
+async def _owner_passes_filter(owner_discord_id: int, filter_spec: dict[str, Any] | None) -> bool:
+    owner = await get_owner_by_discord_id(owner_discord_id)
+    if owner is None:
+        return False
+
+    from database.session import session_scope
+
+    async with session_scope() as session:
+        return await check_owner_event_filter(session, owner_discord_id, filter_spec or {})
 
 
 async def _create_event_context(owner_discord_id: int, event: Event, rng: random.Random) -> EventContext:
     """
     Create context for an event based on its requirements.
 
-    This pre-selects random targets for actions that need them.
-    Dynamic runtime entities are never referenced by literal IDs in static events.
-    Instead, event actions use string selectors for dynamic targets:
-    - `pooch` with `pooch` of `selected` or `random`
-    - `kennel` with `kennel` of `selected` or `random`
-    - `all_pooches` targets all of the owner's living pooches
-    - `all_kennels` targets all of the owner's kennels
+    This pre-selects contextual targets for actions that use the `selected` selector.
+    Random targets are resolved when the action executes so they can respect action filters.
     """
 
     context = EventContext(owner_discord_id=owner_discord_id)
 
-    kennels = await list_kennels_for_owner(owner_discord_id)
-    candidate_kennel_ids = [kennel.id for kennel in kennels]
-    context.extra_data["candidate_kennel_ids"] = candidate_kennel_ids
+    from database.session import session_scope
 
-    candidate_pooch_ids: list[int] = []
-    for kennel in kennels:
-        pooches = await list_pooches_for_kennel(kennel.id)
-        candidate_pooch_ids.extend([pooch.id for pooch in pooches if pooch.alive])
-    context.extra_data["candidate_pooch_ids"] = candidate_pooch_ids
+    async with session_scope() as session:
+        candidate_kennel_ids = await get_matching_kennel_ids_for_owner(session, owner_discord_id, {})
+        candidate_pooch_ids = await get_matching_pooch_ids_for_owner(session, owner_discord_id, {})
+        context.extra_data["candidate_kennel_ids"] = candidate_kennel_ids
+        context.extra_data["candidate_pooch_ids"] = candidate_pooch_ids
 
-    def _uses_random_selector(action: EventAction, field_name: str) -> bool:
-        if action.target_type not in {"pooch", "kennel"}:
-            return False
-        selector = action.parameters.get(field_name)
-        return isinstance(selector, str) and selector.strip().lower() == "random"
+        def _uses_selected_selector(action: EventAction, field_name: str) -> bool:
+            if action.target_type not in {"pooch", "kennel"}:
+                return False
+            selector = action.parameters.get(field_name)
+            return isinstance(selector, str) and selector.strip().lower() == "selected"
 
-    needs_random_pooch = any(_uses_random_selector(action, "pooch") for action in event.actions)
-    needs_random_kennel = any(_uses_random_selector(action, "kennel") for action in event.actions)
+        needs_selected_pooch = False
+        needs_selected_kennel = False
 
-    for option in event.options:
-        for action in option.actions:
-            needs_random_pooch = needs_random_pooch or _uses_random_selector(action, "pooch")
-            needs_random_kennel = needs_random_kennel or _uses_random_selector(action, "kennel")
+        for action in event.actions:
+            needs_selected_pooch = needs_selected_pooch or _uses_selected_selector(action, "pooch")
+            needs_selected_kennel = needs_selected_kennel or _uses_selected_selector(action, "kennel")
 
-    if needs_random_pooch and candidate_pooch_ids:
-        context.selected_pooch_id = rng.choice(candidate_pooch_ids)
+        for option in event.options:
+            for action in option.actions:
+                needs_selected_pooch = needs_selected_pooch or _uses_selected_selector(action, "pooch")
+                needs_selected_kennel = needs_selected_kennel or _uses_selected_selector(action, "kennel")
+            for outcome in option.outcomes:
+                for action in outcome.actions:
+                    needs_selected_pooch = needs_selected_pooch or _uses_selected_selector(action, "pooch")
+                    needs_selected_kennel = needs_selected_kennel or _uses_selected_selector(action, "kennel")
 
-    if needs_random_kennel and candidate_kennel_ids:
-        context.selected_kennel_id = rng.choice(candidate_kennel_ids)
+        default_pooch_filter = None
+        if event.filter.get("pooches"):
+            first_filter = event.filter["pooches"][0]
+            if isinstance(first_filter, dict):
+                default_pooch_filter = {
+                    key: value
+                    for key, value in first_filter.items()
+                    if key not in {"min_count", "max_count", "description"}
+                }
+
+        default_kennel_filter = None
+        if event.filter.get("kennels"):
+            first_filter = event.filter["kennels"][0]
+            if isinstance(first_filter, dict):
+                default_kennel_filter = {
+                    key: value
+                    for key, value in first_filter.items()
+                    if key not in {"min_count", "max_count", "description"}
+                }
+
+        if needs_selected_pooch:
+            context.selected_pooch_id = await get_random_matching_pooch_id_for_owner(
+                session,
+                owner_discord_id,
+                default_pooch_filter or {},
+                rng,
+            )
+
+        if needs_selected_kennel:
+            context.selected_kennel_id = await get_random_matching_kennel_id_for_owner(
+                session,
+                owner_discord_id,
+                default_kennel_filter or {},
+                rng,
+            )
 
     return context
 
@@ -406,69 +496,70 @@ async def _execute_single_action(
 ) -> EventResult:
     """
     Execute a single event action.
-
-    Target type semantics:
-    - `owner`: Target the owner directly (for money, bloodskulls, etc.)
-    - `pooch`: Target the contextual pooch specified by the `pooch` selector.
-               Supported selectors are `selected` and `random`.
-    - `all_pooches`: Target all living pooches owned by the player.
-    - `kennel`: Target the contextual kennel specified by the `kennel` selector.
-                Supported selectors are `selected` and `random`.
-    - `all_kennels`: Target all kennels owned by the player.
     """
 
     def _get_amount_from_params(params: dict[str, Any], rng: random.Random) -> int:
-        """
-        Get an amount from action parameters, supporting both fixed and random ranges.
-        """
-
         if "min_amount" in params and "max_amount" in params:
             return rng.randint(int(params["min_amount"]), int(params["max_amount"]))
         return int(params.get("amount", 0))
 
-    def _get_target_pooch_ids(target_type: str, context: EventContext, params: dict[str, Any]) -> list[int]:
-        """
-        Get the target pooch ID(s) based on target type.
+    async def _get_target_pooch_ids(target_type: str, context: EventContext, params: dict[str, Any]) -> list[int]:
+        from database.session import session_scope
 
-        Target types:
-        - `pooch`: Returns the contextual pooch selected by the `pooch` selector
-        - `all_pooches`: Returns all living pooches owned by the player
-        """
+        action_filter = params.get("filter", {})
+        async with session_scope() as session:
+            if target_type == "pooch":
+                selector = params.get("pooch")
+                if isinstance(selector, str):
+                    selector = selector.strip().lower()
+                    if selector == "selected":
+                        return [context.selected_pooch_id] if context.selected_pooch_id else []
+                    if selector == "random":
+                        pooch_id = await get_random_matching_pooch_id_for_owner(
+                            session,
+                            owner_discord_id,
+                            action_filter if isinstance(action_filter, dict) else {},
+                            rng,
+                        )
+                        return [pooch_id] if pooch_id is not None else []
+                return []
 
-        if target_type == "pooch":
-            selector = params.get("pooch")
-            if isinstance(selector, str) and selector.strip().lower() in {"selected", "random"}:
-                return [context.selected_pooch_id] if context.selected_pooch_id else []
-            return []
-
-        elif target_type == "all_pooches":
-            candidate_pooch_ids = context.extra_data.get("candidate_pooch_ids", [])
-            if isinstance(candidate_pooch_ids, list):
-                return [int(pooch_id) for pooch_id in candidate_pooch_ids if pooch_id is not None]
-            return []
+            if target_type == "all_pooches":
+                return await get_matching_pooch_ids_for_owner(
+                    session,
+                    owner_discord_id,
+                    action_filter if isinstance(action_filter, dict) else {},
+                )
 
         return []
 
-    def _get_target_kennel_ids(target_type: str, context: EventContext, params: dict[str, Any]) -> list[int]:
-        """
-        Get the target kennel ID(s) based on target type.
+    async def _get_target_kennel_ids(target_type: str, context: EventContext, params: dict[str, Any]) -> list[int]:
+        from database.session import session_scope
 
-        Target types:
-        - `kennel`: Returns the contextual kennel selected by the `kennel` selector
-        - `all_kennels`: Returns all kennels owned by the player
-        """
+        action_filter = params.get("filter", {})
+        async with session_scope() as session:
+            if target_type == "kennel":
+                selector = params.get("kennel")
+                if isinstance(selector, str):
+                    selector = selector.strip().lower()
+                    if selector == "selected":
+                        return [context.selected_kennel_id] if context.selected_kennel_id else []
+                    if selector == "random":
+                        kennel_id = await get_random_matching_kennel_id_for_owner(
+                            session,
+                            owner_discord_id,
+                            action_filter if isinstance(action_filter, dict) else {},
+                            rng,
+                        )
+                        return [kennel_id] if kennel_id is not None else []
+                return []
 
-        if target_type == "kennel":
-            selector = params.get("kennel")
-            if isinstance(selector, str) and selector.strip().lower() in {"selected", "random"}:
-                return [context.selected_kennel_id] if context.selected_kennel_id else []
-            return []
-
-        elif target_type == "all_kennels":
-            candidate_kennel_ids = context.extra_data.get("candidate_kennel_ids", [])
-            if isinstance(candidate_kennel_ids, list):
-                return [int(kennel_id) for kennel_id in candidate_kennel_ids if kennel_id is not None]
-            return []
+            if target_type == "all_kennels":
+                return await get_matching_kennel_ids_for_owner(
+                    session,
+                    owner_discord_id,
+                    action_filter if isinstance(action_filter, dict) else {},
+                )
 
         return []
 
@@ -491,7 +582,7 @@ async def _execute_single_action(
             result.message = f"{amount:+d} bloodskulls"
 
         elif action_type == "modify_pooch_health":
-            pooch_ids = _get_target_pooch_ids(target_type, context, params)
+            pooch_ids = await _get_target_pooch_ids(target_type, context, params)
             amount = _get_amount_from_params(params, rng)
             for pooch_id in pooch_ids:
                 pooch = await modify_pooch_base_health(pooch_id, amount)
@@ -500,7 +591,7 @@ async def _execute_single_action(
                     result.extra_data.setdefault("health_changes", {})[pooch_id] = amount
 
         elif action_type == "modify_pooch_age":
-            pooch_ids = _get_target_pooch_ids(target_type, context, params)
+            pooch_ids = await _get_target_pooch_ids(target_type, context, params)
             amount = _get_amount_from_params(params, rng)
             for pooch_id in pooch_ids:
                 pooch = await modify_pooch_age(pooch_id, amount)
@@ -509,7 +600,7 @@ async def _execute_single_action(
                     result.extra_data.setdefault("age_changes", {})[pooch_id] = amount
 
         elif action_type == "kill_pooch":
-            pooch_ids = _get_target_pooch_ids(target_type, context, params)
+            pooch_ids = await _get_target_pooch_ids(target_type, context, params)
             for pooch_id in pooch_ids:
                 pooch = await set_pooch_dead(pooch_id)
                 if pooch:
@@ -519,19 +610,17 @@ async def _execute_single_action(
                 result.message = "A pooch has died!" if count == 1 else f"{count} pooches have died!"
 
         elif action_type == "add_mutation":
-            pooch_ids = _get_target_pooch_ids(target_type, context, params)
+            pooch_ids = await _get_target_pooch_ids(target_type, context, params)
             mutation_id = params.get("mutation_id")
             for pooch_id in pooch_ids:
                 if mutation_id:
-                    mutation = await add_mutation_to_pooch(pooch_id, mutation_id)
+                    await add_mutation_to_pooch(pooch_id, int(mutation_id))
                 else:
-                    mutation = await add_mutation_to_pooch(pooch_id, rng=rng)
-                if mutation:
-                    result.mutations_added.append((pooch_id, mutation.mutation_id))
-                    result.pooches_affected.append(pooch_id)
+                    await add_mutation_to_pooch(pooch_id, rng=rng)
+                result.pooches_affected.append(pooch_id)
 
         elif action_type == "remove_mutation":
-            pooch_ids = _get_target_pooch_ids(target_type, context, params)
+            pooch_ids = await _get_target_pooch_ids(target_type, context, params)
             mutation_id = params.get("mutation_id")
             for pooch_id in pooch_ids:
                 if mutation_id:
@@ -543,44 +632,46 @@ async def _execute_single_action(
                     result.pooches_affected.append(pooch_id)
 
         elif action_type == "add_breed":
-            pooch_ids = _get_target_pooch_ids(target_type, context, params)
+            pooch_ids = await _get_target_pooch_ids(target_type, context, params)
             breed_id = params.get("breed_id")
             weight = params.get("weight", 0.5)
             for pooch_id in pooch_ids:
                 if breed_id:
-                    await add_breed_to_pooch(pooch_id, breed_id, weight=weight)
+                    await add_breed_to_pooch(pooch_id, int(breed_id), weight=weight)
                 else:
                     await add_breed_to_pooch(pooch_id, rng=rng, weight=weight)
                 result.pooches_affected.append(pooch_id)
 
         elif action_type == "transfer_pooch":
-            pooch_ids = _get_target_pooch_ids(target_type, context, params)
+            pooch_ids = await _get_target_pooch_ids(target_type, context, params)
             new_owner_id = params.get("new_owner_discord_id")
             vendor_id = params.get("vendor_id")
             for pooch_id in pooch_ids:
                 if new_owner_id:
-                    await transfer_pooch_to_owner(pooch_id, new_owner_id)
+                    await transfer_pooch_to_owner(pooch_id, int(new_owner_id))
                 elif vendor_id:
-                    await transfer_pooch_to_vendor(pooch_id, vendor_id)
+                    await transfer_pooch_to_vendor(pooch_id, int(vendor_id))
                 result.pooches_affected.append(pooch_id)
 
         elif action_type == "set_breeding_cooldown":
-            pooch_ids = _get_target_pooch_ids(target_type, context, params)
+            pooch_ids = await _get_target_pooch_ids(target_type, context, params)
             cooldown = params.get("cooldown", 0)
+            if isinstance(cooldown, str) and cooldown.strip().lower() == "base":
+                cooldown = 2
             for pooch_id in pooch_ids:
-                await set_pooch_breeding_cooldown(pooch_id, cooldown)
+                await set_pooch_breeding_cooldown(pooch_id, int(cooldown))
                 result.pooches_affected.append(pooch_id)
 
         elif action_type == "rename_pooch":
-            pooch_ids = _get_target_pooch_ids(target_type, context, params)
+            pooch_ids = await _get_target_pooch_ids(target_type, context, params)
             new_name = params.get("name")
             if new_name:
                 for pooch_id in pooch_ids:
-                    await rename_pooch(pooch_id, new_name)
+                    await rename_pooch(pooch_id, str(new_name))
                     result.pooches_affected.append(pooch_id)
 
         elif action_type == "modify_kennel_capacity":
-            kennel_ids = _get_target_kennel_ids(target_type, context, params)
+            kennel_ids = await _get_target_kennel_ids(target_type, context, params)
             amount = _get_amount_from_params(params, rng)
             for kennel_id in kennel_ids:
                 kennel = await modify_kennel_pooch_limit(kennel_id, amount)
@@ -618,26 +709,28 @@ async def _execute_single_action(
                 result.message = "A new pooch has appeared!"
 
         elif action_type == "start_event":
-            event_to_start = None
             if bool(params.get("random_event", False)):
-                event_to_start = await get_random_eligible_event_for_owner(owner_discord_id, rng=rng)
+                started_event = await trigger_random_event(owner_discord_id, rng=rng)
             else:
                 event_name = params.get("event")
-                if isinstance(event_name, str) and event_name.strip():
-                    event_to_start = await db_get_event_by_name(event_name.strip())
-
-            if event_to_start is not None:
-                started_event = await _create_and_execute_event(owner_discord_id, event_to_start, rng)
-                if started_event is not None:
+                event = await db_get_owner_event_by_name(event_name.strip())
+                if event is None:
+                    logger.warning(f"Unknown event '{event_name}' triggered. Skipping...")
                     started_events = result.extra_data.setdefault("started_events", [])
-                    started_events.append(
-                        {
-                            "active_event_id": started_event.active_event_id,
-                            "event_id": started_event.event_id,
-                            "name": started_event.name,
-                        }
-                    )
-                    result.message = f"Started event '{started_event.name}'."
+                    result.message = "Error starting followup event."
+                    return result
+                started_event = await trigger_specific_event(owner_discord_id, event.id, rng=rng)
+
+            if started_event is not None:
+                started_events = result.extra_data.setdefault("started_events", [])
+                started_events.append(
+                    {
+                        "active_owner_event_id": started_event.active_owner_event_id,
+                        "event_id": started_event.event_id,
+                        "name": started_event.name,
+                    }
+                )
+                result.message = f"Started event '{started_event.name}'."
 
         else:
             logger.warning(f"Unknown action type: {action_type}")
@@ -695,7 +788,7 @@ async def _create_and_execute_event(
     if event.requires_response:
         expires_at = datetime.now(timezone.utc) + timedelta(seconds=event.response_timeout)
 
-    active_event = await create_active_event(
+    active_event = await create_active_owner_event(
         event_id=event.id,
         owner_discord_id=owner_discord_id,
         context=context.to_dict(),
@@ -708,12 +801,14 @@ async def _create_and_execute_event(
 
     logger.info(f"Triggered event '{event.name}' for owner {owner_discord_id}")
 
-    if not event.requires_response:
-        result = await _execute_event_actions(owner_discord_id, event.actions, context, rng)
-        await update_active_event_result(active_event.id, result.to_dict())
-        await archive_active_event(active_event.id)
-        active_event.result_summary = result.to_dict()
+    # Event-level actions always fire immediately at trigger time (before the user picks)
+    result = await _execute_event_actions(owner_discord_id, event.actions, context, rng)
+    await update_active_event_result(active_event.id, result.to_dict())
 
+    if not event.requires_response:
+        await archive_active_event(active_event.id)
+
+    active_event.result_summary = result.to_dict()
     active_event.context = context.to_dict()
     active_event.expires_at = expires_at
     return await to_triggered_event(active_event)
@@ -741,12 +836,12 @@ async def trigger_random_event(owner_discord_id: int, rng: Optional[random.Rando
         rng = random.Random()
 
     # Check if owner already has too many active events
-    active_events = await list_active_events_for_owner(owner_discord_id, pending_only=True)
+    active_events = await list_active_owner_events_for_owner(owner_discord_id, pending_only=True)
     if len(active_events) >= EVENT_MAX_ACTIVE_PER_OWNER:
         logger.debug(f"Owner {owner_discord_id} has max active events, skipping trigger...")
         return None
 
-    selected_event = await get_random_eligible_event_for_owner(owner_discord_id, rng=rng)
+    selected_event = await get_random_eligible_owner_event_for_owner(owner_discord_id, rng=rng)
 
     if selected_event is None:
         logger.debug(f"No eligible events for owner {owner_discord_id}.")
@@ -781,7 +876,7 @@ async def trigger_specific_event(
     if rng is None:
         rng = random.Random()
 
-    event = await db_get_event_by_id(event_id)
+    event = await db_get_owner_event_by_id(event_id)
     if event is None:
         logger.warning(f"Event {event_id} not found")
         return None

@@ -6,12 +6,14 @@
     "rarity": "UNCOMMON",
     "requires_response": true,
     "response_timeout": 1800,
-    "min_bloodskulls": 5,
+    "filter": {
+        "min_bloodskulls": 5
+    },
     "options": [
         {
             "label": "Perform the ritual",
             "description": "Sacrifice 5 bloodskulls for a lost soul from Hell.",
-            "min_bloodskulls": 5,
+            "filter": { "min_bloodskulls": 5 },
             "actions": [
                 {
                     "action_type": "modify_bloodskulls",
@@ -44,7 +46,9 @@
         },
         {
             "label": "Resist the temptation",
-            "description": "Turn away from the darkness."
+            "description": "Turn away from the darkness.",
+            "default": true,
+            "visible": true
         }
     ]
 }

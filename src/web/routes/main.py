@@ -36,7 +36,7 @@ def index():
 @main_bp.route("/home")
 @login_required
 def home():
-    """User's home page with account info and recent events."""
+    """User's home page with account info and recent owner_events."""
 
     discord_id = get_current_user_id()
 

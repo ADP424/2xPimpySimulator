@@ -23,20 +23,29 @@ def _execute_sql_file(cur: psycopg.Cursor, path: Path):
     cur.execute(path.read_text(encoding="utf-8"))
 
 
+def _iter_schema_files(directory: Path) -> list[Path]:
+    return sorted(path for path in directory.glob("*.sql") if path.is_file())
+
+
 def main():
     load_dotenv()
 
     schema_directory = Path(__file__).parent.parent / "schema"
+    static_directory = schema_directory / "static"
+    main_directory = schema_directory / "main"
+
     with psycopg.connect(_get_sync_dsn(), autocommit=True) as conn:
-        logger.info("Wiping database and loading the schema file...")
+        logger.info("Wiping database and loading schema files...")
 
         with conn.cursor() as cur:
             cur.execute("DROP SCHEMA public CASCADE; CREATE SCHEMA public;")
             _execute_sql_file(cur, schema_directory / "enums.sql")
-            _execute_sql_file(cur, schema_directory / "static.sql")
-            _execute_sql_file(cur, schema_directory / "main.sql")
+            for path in _iter_schema_files(static_directory):
+                _execute_sql_file(cur, path)
+            for path in _iter_schema_files(main_directory):
+                _execute_sql_file(cur, path)
 
-        logger.info("Finished wiping database and loading the schema file.")
+        logger.info("Finished wiping database and loading schema files.")
 
 
 if __name__ == "__main__":

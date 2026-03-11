@@ -4,7 +4,15 @@ from typing import Any, Optional
 from sqlalchemy import select, update
 
 from .constants import POOCH_HEALTH_LOSS_STARTING_AGE
-from .models import EventOccurrence, Kennel, Owner, Pooch, Server
+from .models import (
+    EventOccurrence,
+    Kennel,
+    Owner,
+    Pooch,
+    Server,
+    ServerEventOccurrence,
+    ServerEventParticipation,
+)
 from .session import session_scope
 
 
@@ -314,8 +322,8 @@ async def reset_begged_today() -> int:
         return len(owners)
 
 
-async def respond_to_active_event(
-    active_event_id: int,
+async def respond_to_active_owner_event(
+    active_owner_event_id: int,
     option_id: Optional[int],
     result_summary: dict[str, Any] = None,
 ) -> Optional[EventOccurrence]:
@@ -324,7 +332,7 @@ async def respond_to_active_event(
 
     Parameters
     ----------
-    active_event_id: int
+    active_owner_event_id: int
         The ID of the active event being responded to.
 
     option_id: int, optional
@@ -345,7 +353,7 @@ async def respond_to_active_event(
     async with session_scope() as session:
         query = (
             update(EventOccurrence)
-            .where(EventOccurrence.id == active_event_id, EventOccurrence.archived.is_(False))
+            .where(EventOccurrence.id == active_owner_event_id, EventOccurrence.archived.is_(False))
             .values(
                 responded_at=datetime.now(timezone.utc),
                 selected_option_id=option_id,
@@ -592,13 +600,15 @@ async def transfer_pooch_to_vendor(pooch_id: int, vendor_id: int) -> Optional[Po
     return pooch
 
 
-async def update_active_event_result(active_event_id: int, result_summary: dict[str, Any]) -> Optional[EventOccurrence]:
+async def update_active_event_result(
+    active_owner_event_id: int, result_summary: dict[str, Any]
+) -> Optional[EventOccurrence]:
     """
     Update the result summary of an active event.
 
     Parameters
     ----------
-    active_event_id: int
+    active_owner_event_id: int
         The ID of the active event to update.
 
     result_summary: dict[str, Any]
@@ -613,9 +623,55 @@ async def update_active_event_result(active_event_id: int, result_summary: dict[
     async with session_scope() as session:
         query = (
             update(EventOccurrence)
-            .where(EventOccurrence.id == active_event_id, EventOccurrence.archived.is_(False))
+            .where(EventOccurrence.id == active_owner_event_id, EventOccurrence.archived.is_(False))
             .values(result_summary=result_summary)
             .returning(EventOccurrence)
         )
         result = await session.execute(query)
         return result.scalar_one_or_none()
+
+
+async def set_server_event_occurrence_message_discord_id(
+    occurrence_id: int, message_discord_id: int | None
+) -> Optional[ServerEventOccurrence]:
+    async with session_scope() as session:
+        query = select(ServerEventOccurrence).where(ServerEventOccurrence.id == occurrence_id)
+        occurrence = (await session.execute(query)).scalar_one_or_none()
+        if occurrence is None:
+            return None
+        occurrence.message_discord_id = message_discord_id
+        await session.flush()
+        return occurrence
+
+
+async def resolve_server_event_occurrence(
+    occurrence_id: int, result_summary: dict[str, Any] | None = None
+) -> Optional[ServerEventOccurrence]:
+    async with session_scope() as session:
+        query = select(ServerEventOccurrence).where(ServerEventOccurrence.id == occurrence_id)
+        occurrence = (await session.execute(query)).scalar_one_or_none()
+        if occurrence is None:
+            return None
+        occurrence.result_summary = result_summary or {}
+        occurrence.resolved_at = datetime.now(timezone.utc)
+        occurrence.archived = True
+        await session.flush()
+        return occurrence
+
+
+async def finalize_server_event_participation(
+    participation_id: int,
+    resolution_result: dict[str, Any] | None = None,
+    score: float | None = None,
+    rank: int | None = None,
+) -> Optional[ServerEventParticipation]:
+    async with session_scope() as session:
+        query = select(ServerEventParticipation).where(ServerEventParticipation.id == participation_id)
+        participation = (await session.execute(query)).scalar_one_or_none()
+        if participation is None:
+            return None
+        participation.resolution_result = resolution_result or {}
+        participation.score = score
+        participation.rank = rank
+        await session.flush()
+        return participation

@@ -9,7 +9,7 @@ from .manage_events import (
     get_active_events_for_owner,
     get_event_history,
     get_pending_event,
-    list_all_events,
+    list_all_owner_events,
     process_expired_events,
     respond_to_event,
     run_hourly_event_check,
@@ -41,6 +41,14 @@ from .manage_pooches import (
     get_pooch_family,
     rename_pooch,
 )
+from .manage_server_events import (
+    get_active_server_event,
+    list_active_server_events,
+    participate_in_server_event,
+    run_daily_server_event_cycle,
+    set_server_event_message_id,
+    trigger_daily_server_event,
+)
 from .manage_servers import (
     get_event_channel,
     get_or_create_server,
@@ -69,7 +77,7 @@ __all__ = [
     # Day change commands
     "run_day_change",
     # Event commands
-    "list_all_events",
+    "list_all_owner_events",
     "get_active_events_for_owner",
     "get_pending_event",
     "trigger_random_event",
@@ -102,6 +110,12 @@ __all__ = [
     "get_event_channel",
     "get_or_create_server",
     "set_event_channel",
+    "get_active_server_event",
+    "list_active_server_events",
+    "participate_in_server_event",
+    "run_daily_server_event_cycle",
+    "set_server_event_message_id",
+    "trigger_daily_server_event",
     # Static listing commands
     "get_breed_by_id",
     "get_mutation_by_id",

@@ -24,13 +24,21 @@ from .models import (
     PoochParentage,
     PoochPregnancy,
     Server,
+    ServerEvent,
+    ServerEventOccurrence,
+    ServerEventOption,
+    ServerEventOutcome,
+    ServerEventParticipation,
     Vendor,
     VendorPoochForSale,
 )
 from .session import session_scope
+from .utils import check_owner_event_filter
 
 
-async def list_active_events_for_owner(owner_discord_id: int, pending_only: bool = False) -> list[EventOccurrence]:
+async def list_active_owner_events_for_owner(
+    owner_discord_id: int, pending_only: bool = False
+) -> list[EventOccurrence]:
     """
     List all active events for an owner.
 
@@ -87,9 +95,9 @@ async def list_all_breeds() -> list[Breed]:
     return list(response.scalars().all())
 
 
-async def list_all_events() -> list[Event]:
+async def list_all_owner_events() -> list[Event]:
     """
-    List all events.
+    List all owner_events.
 
     Returns
     -------
@@ -130,7 +138,9 @@ async def list_all_mutations() -> list[Mutation]:
     return list(response.scalars().all())
 
 
-async def list_eligible_events_for_owner(owner_discord_id: int, include_triggered_only: bool = False) -> list[Event]:
+async def list_eligible_owner_events_for_owner(
+    owner_discord_id: int, include_triggered_only: bool = False
+) -> list[Event]:
     """
     List all events that an owner is eligible for based on their current state.
 
@@ -156,26 +166,10 @@ async def list_eligible_events_for_owner(owner_discord_id: int, include_triggere
         if owner is None:
             return []
 
-        pooch_count_query = select(func.count(Pooch.id)).where(
-            and_(Pooch.owner_discord_id == owner_discord_id, Pooch.alive == True)  # noqa: E712
-        )
-        pooch_count_result = await session.execute(pooch_count_query)
-        pooch_count = pooch_count_result.scalar() or 0
-
-        kennel_count_query = select(func.count(Kennel.id)).where(Kennel.owner_discord_id == owner_discord_id)
-        kennel_count_result = await session.execute(kennel_count_query)
-        kennel_count = kennel_count_result.scalar() or 0
-
         query = (
             select(Event)
             .where(
-                and_(
-                    Event.min_pooches <= pooch_count,
-                    Event.min_kennels <= kennel_count,
-                    Event.min_money <= owner.dollars,
-                    Event.min_bloodskulls <= owner.bloodskulls,
-                    true() if include_triggered_only else Event.triggered_only.is_(False),
-                )
+                true() if include_triggered_only else Event.triggered_only.is_(False),
             )
             .options(
                 selectinload(Event.actions),
@@ -184,11 +178,17 @@ async def list_eligible_events_for_owner(owner_discord_id: int, include_triggere
             )
         )
         response = await session.execute(query)
+        events = list(response.scalars().all())
 
-    return list(response.scalars().all())
+        eligible_events: list[Event] = []
+        for event in events:
+            if await check_owner_event_filter(session, owner_discord_id, event.filter):
+                eligible_events.append(event)
+
+    return eligible_events
 
 
-async def list_event_history_for_owner(owner_discord_id: int, limit: int = 50) -> list[EventOccurrence]:
+async def list_owner_event_history_for_owner(owner_discord_id: int, limit: int = 50) -> list[EventOccurrence]:
     """
     List event history for an owner.
 
@@ -230,7 +230,7 @@ async def list_event_history_for_owner(owner_discord_id: int, limit: int = 50) -
     return list(response.scalars().all())
 
 
-async def list_events_by_category(category: str) -> list[Event]:
+async def list_owner_events_by_category(category: str) -> list[Event]:
     """
     List all events in a specific category.
 
@@ -261,7 +261,7 @@ async def list_events_by_category(category: str) -> list[Event]:
     return list(response.scalars().all())
 
 
-async def list_expired_active_events() -> list[EventOccurrence]:
+async def list_expired_active_owner_events() -> list[EventOccurrence]:
     """
     List all active events that have expired without a response.
 
@@ -285,6 +285,11 @@ async def list_expired_active_events() -> list[EventOccurrence]:
             )
             .options(
                 selectinload(EventOccurrence.event).selectinload(Event.actions),
+                selectinload(EventOccurrence.event).selectinload(Event.options).selectinload(EventOption.actions),
+                selectinload(EventOccurrence.event)
+                .selectinload(Event.options)
+                .selectinload(EventOption.outcomes)
+                .selectinload(EventOutcome.actions),
             )
         )
         response = await session.execute(query)
@@ -738,5 +743,69 @@ async def list_vendors(server_discord_id: int) -> list[Vendor]:
             .where(Vendor.server_discord_id == server_discord_id)
             .order_by(Vendor.name.asc(), Vendor.id.asc())
         )
+
+    return list(response.scalars().all())
+
+
+async def list_active_server_event_occurrences() -> list[ServerEventOccurrence]:
+    async with session_scope() as session:
+        query = (
+            select(ServerEventOccurrence)
+            .where(ServerEventOccurrence.archived.is_(False), ServerEventOccurrence.resolved_at.is_(None))
+            .options(
+                selectinload(ServerEventOccurrence.server_event).selectinload(ServerEvent.actions),
+                selectinload(ServerEventOccurrence.server_event)
+                .selectinload(ServerEvent.options)
+                .selectinload(ServerEventOption.actions),
+                selectinload(ServerEventOccurrence.server_event)
+                .selectinload(ServerEvent.outcomes)
+                .selectinload(ServerEventOutcome.actions),
+                selectinload(ServerEventOccurrence.participations).selectinload(
+                    ServerEventParticipation.selected_option
+                ),
+            )
+            .order_by(ServerEventOccurrence.triggered_at.desc())
+        )
+        response = await session.execute(query)
+
+    return list(response.scalars().all())
+
+
+async def list_server_event_participations(occurrence_id: int) -> list[ServerEventParticipation]:
+    async with session_scope() as session:
+        query = (
+            select(ServerEventParticipation)
+            .where(ServerEventParticipation.occurrence_id == occurrence_id)
+            .options(selectinload(ServerEventParticipation.selected_option))
+            .order_by(ServerEventParticipation.participated_at.asc())
+        )
+        response = await session.execute(query)
+
+    return list(response.scalars().all())
+
+
+async def list_server_event_history(server_discord_id: int, limit: int = 20) -> list[ServerEventOccurrence]:
+    async with session_scope() as session:
+        query = (
+            select(ServerEventOccurrence)
+            .where(
+                ServerEventOccurrence.server_discord_id == server_discord_id, ServerEventOccurrence.archived.is_(True)
+            )
+            .options(
+                selectinload(ServerEventOccurrence.server_event).selectinload(ServerEvent.actions),
+                selectinload(ServerEventOccurrence.server_event)
+                .selectinload(ServerEvent.options)
+                .selectinload(ServerEventOption.actions),
+                selectinload(ServerEventOccurrence.server_event)
+                .selectinload(ServerEvent.outcomes)
+                .selectinload(ServerEventOutcome.actions),
+                selectinload(ServerEventOccurrence.participations).selectinload(
+                    ServerEventParticipation.selected_option
+                ),
+            )
+            .order_by(ServerEventOccurrence.triggered_at.desc())
+            .limit(limit)
+        )
+        response = await session.execute(query)
 
     return list(response.scalars().all())

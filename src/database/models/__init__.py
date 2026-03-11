@@ -9,20 +9,25 @@ from .enums import (
     HealthImpactWeight,
     RarityWeight,
 )
-from .kennel import Kennel
-from .owner import Owner
-from .pooch import Pooch
-from .relationships import (
+from .main import (
     EventOccurrence,
     GraveyardPooch,
     HellPooch,
+    Kennel,
     KennelPooch,
+    Owner,
     OwnerServer,
+    Pooch,
+    PoochBreed,
+    PoochMutation,
     PoochParentage,
     PoochPregnancy,
+    Server,
+    ServerEventOccurrence,
+    ServerEventParticipation,
+    Vendor,
     VendorPoochForSale,
 )
-from .server import Server
 from .static import (
     Breed,
     DogName,
@@ -31,11 +36,12 @@ from .static import (
     EventOption,
     EventOutcome,
     Mutation,
+    ServerEvent,
+    ServerEventOption,
+    ServerEventOutcome,
     VendorFirstName,
     VendorLastName,
 )
-from .static_relationships import PoochBreed, PoochMutation
-from .vendor import Vendor
 
 __all__ = [
     "Base",
@@ -55,10 +61,15 @@ __all__ = [
     "HellPooch",
     "KennelPooch",
     "OwnerServer",
+    "PoochBreed",
+    "PoochMutation",
     "PoochParentage",
     "PoochPregnancy",
-    "VendorPoochForSale",
     "Server",
+    "ServerEventOccurrence",
+    "ServerEventParticipation",
+    "VendorPoochForSale",
+    "Vendor",
     "Breed",
     "DogName",
     "Event",
@@ -66,9 +77,9 @@ __all__ = [
     "EventOption",
     "EventOutcome",
     "Mutation",
+    "ServerEvent",
+    "ServerEventOption",
+    "ServerEventOutcome",
     "VendorFirstName",
     "VendorLastName",
-    "PoochBreed",
-    "PoochMutation",
-    "Vendor",
 ]

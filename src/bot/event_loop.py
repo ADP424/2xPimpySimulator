@@ -12,14 +12,14 @@ from .ui.events import send_triggered_event_dm
 logger = get_logger("bot/event_loop")
 
 
-async def post_hourly_event_notifications(bot: discord.Client, triggered_events: dict[int, list]):
-    for owner_discord_id, events in triggered_events.items():
+async def post_hourly_event_notifications(bot: discord.Client, triggered_owner_events: dict[int, list]):
+    for owner_discord_id, events in triggered_owner_events.items():
         for event in events:
             delivered = await send_triggered_event_dm(bot, owner_discord_id, event)
             if not delivered:
                 logger.warning(
                     "Failed to DM event %s to owner %s.",
-                    getattr(event, "active_event_id", "unknown"),
+                    getattr(event, "active_owner_event_id", "unknown"),
                     owner_discord_id,
                 )
 

@@ -6,7 +6,9 @@
     "rarity": "UNPRECEDENTED",
     "requires_response": true,
     "response_timeout": 3600,
-    "min_pooches": 1,
+    "filter": {
+        "pooches": [{ "min_count": 1 }]
+    },
     "options": [
         {
             "label": "Call the fire department.",
@@ -29,7 +31,7 @@
                 },
                 {
                     "chance": 0.5,
-                    "message": "The fire fighters don't get there in time. Your pooch dies horribly but no more damage is done.",
+                    "message": "The firefighters don't get there in time. Your pooch dies horribly, but no more damage is done.",
                     "actions": [
                         {
                             "action_type": "kill_pooch",
@@ -104,7 +106,7 @@
                 },
                 {
                     "chance": 0.1,
-                    "message": "You couldn't do... They're dead.",
+                    "message": "You couldn't do it... They're dead.",
                     "actions": [
                         {
                             "action_type": "kill_pooch",
@@ -117,7 +119,7 @@
                 },
                 {
                     "chance": 0.3,
-                    "message": "You couldn't do... They're dead and you hurt yourself in the process.",
+                    "message": "You couldn't do it... They're dead, and you hurt yourself in the process.",
                     "actions": [
                         {
                              "action_type": "modify_money",
@@ -141,6 +143,8 @@
         {
             "label": "Do nothing",
             "description": "Accept that they're going to die horribly.",
+            "default": true,
+            "visible": true,
             "outcomes": [
                 {
                     "chance": 0.2,

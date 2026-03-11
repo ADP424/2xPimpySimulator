@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from database import get_event_by_id, get_event_option_by_id
+from database import get_owner_event_by_id, get_owner_event_option_by_id
 
 from .event_context import EventContext
 from .event_entity_reference import (
@@ -63,11 +63,11 @@ async def to_event_history(event_occurrence: EventOccurrenceORM) -> EventHistory
         A look into this historical EventOccurrence.
     """
 
-    event = await get_event_by_id(event_occurrence.event_id)
+    event = await get_owner_event_by_id(event_occurrence.event_id)
 
     selected_option_orm = event_occurrence.selected_option
     if selected_option_orm is None and event_occurrence.selected_option_id is not None:
-        selected_option_orm = await get_event_option_by_id(event_occurrence.selected_option_id)
+        selected_option_orm = await get_owner_event_option_by_id(event_occurrence.selected_option_id)
 
     context = EventContext.from_dict(event_occurrence.context or {})
     result_summary = EventResult.from_dict(event_occurrence.result_summary or {})

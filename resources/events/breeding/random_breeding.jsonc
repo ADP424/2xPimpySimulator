@@ -5,7 +5,9 @@
     "severity": "MODERATE",
     "rarity": "RARE",
     "requires_response": false,
-    "min_pooches": 2, //To Do. Check for a male and female Pooch.
+    "filter": {
+        "pooches": [{ "min_count": 2 }] //To Do. Check for a male and female Pooch.
+    },
     "actions": [
         {
             "action_type": "set_breeding_cooldown",
@@ -17,7 +19,7 @@
         },
         {
             "action_type": "create_pooch",
-            "target_type": "kennel",
+            "target_type": "owner",
             "parameters": {
                 //To Do. Breed two pooches together.
             }
