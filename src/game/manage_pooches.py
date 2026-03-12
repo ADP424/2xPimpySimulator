@@ -107,10 +107,33 @@ async def get_pooch_family_tree(pooch_id: int, ancestor_depth: int = 5, descenda
     for pid, node in nodes.items():
         node["generation"] = node_generation[pid]
 
+    # Compute incest levels for each mating pair
+    from .breeding import calculate_incest_level
+
+    # Find unique parent pairs from edges
+    parent_pairs: dict[tuple[int, int], set[int]] = {}
+    edge_by_child: dict[int, list[int]] = {}
+    for src, tgt in edges:
+        edge_by_child.setdefault(tgt, []).append(src)
+    for child_id, parents in edge_by_child.items():
+        if len(parents) == 2:
+            pair = (min(parents), max(parents))
+            parent_pairs.setdefault(pair, set()).add(child_id)
+
+    couples = []
+    for (a_id, b_id), children_ids in parent_pairs.items():
+        incest_level = await calculate_incest_level(a_id, b_id)
+        couples.append({
+            "parents": [a_id, b_id],
+            "children": list(children_ids),
+            "incest_level": round(incest_level, 4),
+        })
+
     return {
         "root_id": pooch_id,
         "nodes": list(nodes.values()),
         "edges": [{"source": s, "target": t} for s, t in edges],
+        "couples": couples,
     }
 
 
