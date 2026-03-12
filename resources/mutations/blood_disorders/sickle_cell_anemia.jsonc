@@ -1,0 +1,8 @@
+{
+    "name": "Sickle Cell Anemia",
+    "alt_name": "Sickle Cell Disease",
+    "description": "This pooch has the moon in its blood.",
+    "heritability": 0.35,
+    "health_impact": "SEVERE",
+    "rarity": "UNCOMMON"
+}

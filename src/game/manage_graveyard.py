@@ -1,8 +1,14 @@
+from __future__ import annotations
+
 from datetime import datetime
+from typing import TYPE_CHECKING
 
-from database import list_graveyard_pooches_for_owner
+from src.database import list_graveyard_pooches_for_owner
 
-from .models import Pooch, to_pooch
+from .models import to_pooch
+
+if TYPE_CHECKING:
+    from .models import Pooch
 
 
 async def list_graveyard_pooches(owner_discord_id: int) -> list[tuple[Pooch, datetime]]:

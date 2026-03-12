@@ -2,7 +2,7 @@ import os
 
 from dotenv import load_dotenv
 
-from web.app import create_app, socketio
+from src.web.app import create_app, socketio
 
 
 def run():

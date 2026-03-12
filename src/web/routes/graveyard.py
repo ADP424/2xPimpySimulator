@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template
 
-from web.auth_utils import login_required
+from src.web.auth_utils import login_required
 
 graveyard_bp = Blueprint("graveyard", __name__)
 

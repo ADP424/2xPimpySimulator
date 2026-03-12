@@ -1,0 +1,8 @@
+{
+    "name": "Arrhythmogenic Cardiomyopathy",
+    "alt_name": "ACM",
+    "description": "This pooch has a fat heart.",
+    "heritability": 0.25,
+    "health_impact": "UNHEALTHY",
+    "rarity": "NOVEL"
+}

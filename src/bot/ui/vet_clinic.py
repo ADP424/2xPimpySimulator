@@ -1,19 +1,26 @@
 from __future__ import annotations
 
 from math import ceil
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 import discord
 from discord.ui import Button, View
 
-from bot.constants import VIEW_TIMEOUT
-from bot.ui.util import InteractionResponder
-from game import list_all_breeds, list_all_mutations
-from game.models import Breed, Mutation
+from src.bot.constants import VIEW_TIMEOUT
+from src.bot.ui.util import InteractionResponder
+from src.game import list_all_breeds, list_all_mutations
 
-from .components.breed_dropdown import BreedDropdownControls, BreedOption
-from .components.mutation_dropdown import MutationDropdownControls, MutationOption
-from .components.paginator import PageSource, PaginatorView
+if TYPE_CHECKING:
+    from src.game.models import Breed, Mutation
+
+from .components import (
+    BreedDropdownControls,
+    BreedOption,
+    MutationDropdownControls,
+    MutationOption,
+    PageSource,
+    PaginatorView,
+)
 
 PAGE_SIZE = 10
 

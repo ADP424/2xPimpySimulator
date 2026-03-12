@@ -1,0 +1,29 @@
+{
+    "name": "Cold Wave",
+    "description": "One of your pooches just became very tired and lazy.",
+    "flavor_text": "You wonder what set it off...",
+    "severity": "MINOR",
+    "rarity": "UNCOMMON",
+    "requires_response": false,
+    "filter": {
+        "pooches": [
+            {
+                "min_count": 1,
+                "is_alive": true
+            }
+        ]
+    },
+    "actions": [
+        {
+            "action_type": "set_breeding_cooldown",
+            "target_type": "pooch",
+            "parameters": {
+                "cooldown": "base",
+                "selector": "random",
+                "filter": {
+                    "is_alive": true
+                }
+            }
+        }
+    ]
+}

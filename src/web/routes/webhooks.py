@@ -8,8 +8,8 @@ from typing import Any
 
 from flask import Blueprint, abort, current_app, jsonify, request
 
-from web.app import socketio
-from web.events import broadcast_day_change
+from src.web.app import socketio
+from src.web.events import broadcast_day_change
 
 webhooks_bp = Blueprint("webhooks", __name__)
 

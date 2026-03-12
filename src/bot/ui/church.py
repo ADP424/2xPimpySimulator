@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 import discord
 from discord.ui import Button, Select, View
 
-from bot.constants import VIEW_TIMEOUT
-from bot.ui.util import InteractionResponder
-from game import (
+from src.bot.constants import VIEW_TIMEOUT
+from src.bot.ui.util import InteractionResponder
+from src.game import (
     beg_for_money,
     get_or_create_server,
     get_pooch_bloodskull_value,
@@ -18,10 +18,12 @@ from game import (
     sacrifice_pooch,
     summon_pooch,
 )
-from game.models import Kennel, Pooch
-from logger import get_logger
+from src.logger import get_logger
 
-from .components.paginator import PageSource, PaginatorView
+if TYPE_CHECKING:
+    from src.game.models import Kennel, Pooch
+
+from .components import PageSource, PaginatorView
 from .pooch_info import PoochInfoView
 
 logger = get_logger("bot/ui/church")
@@ -215,7 +217,7 @@ class _SummonRollButton(Button):
 
 class _CustomSummonButton(Button):
     def __init__(self, owner_discord_id: int):
-        super().__init__(label="Custom…", style=discord.ButtonStyle.secondary, row=1)
+        super().__init__(label="Custom...", style=discord.ButtonStyle.secondary, row=1)
         self._owner_id = owner_discord_id
 
     async def callback(self, interaction: discord.Interaction):
@@ -246,7 +248,7 @@ class _CustomSummonModal(discord.ui.Modal):
             return
 
         try:
-            num_rolls = int(str(self.rolls.value).strip())
+            num_rolls = self.rolls.value.strip()
         except Exception:
             await r.reply(content="Enter a whole number of rolls (like 7).")
             return
@@ -477,7 +479,7 @@ class _SacrificeControls:
             for option in self.select.options:
                 option.default = False
         else:
-            selected_id = int(value)
+            selected_id = value
             self.selected = next((p for p in self.pooches if p.id == selected_id), None)
             if self.selected is None:
                 return

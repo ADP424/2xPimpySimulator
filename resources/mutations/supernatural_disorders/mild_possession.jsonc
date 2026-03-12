@@ -1,0 +1,11 @@
+{
+    "name": "Mild Possession",
+    "alt_name": "Mitis Possessio",
+    "description": "This pooch has been possessed by a mischievious spirit.",
+    "heritability": 0.0,
+    "health_impact": "HARMFUL",
+    "rarity": "REMARKABLE",
+    "advanced_options": {
+        "bloodskull_value_mult": 3
+    }
+}

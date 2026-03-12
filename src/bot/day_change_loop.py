@@ -1,19 +1,30 @@
 import asyncio
 import os
+import random
 from datetime import datetime, time, timedelta
 from typing import TYPE_CHECKING
 from zoneinfo import ZoneInfo
 
 import discord
 
-from game import get_event_channel, run_day_change
-from logger import get_logger
+from src.game import (
+    get_event_channel,
+    run_daily_server_event_cycle,
+    run_day_change,
+    set_server_event_message_id,
+)
+from src.logger import get_logger
 
 from .ui.day_change_status import make_status_view
+from .ui.server_events import (
+    ServerEventParticipationView,
+    build_server_event_embed,
+    build_server_event_resolution_embed,
+)
 from .webhooks import post_day_change_webhooks
 
 if TYPE_CHECKING:
-    from game.models import DayChangeSummary
+    from src.game.models import DayChangeSummary
 
 
 logger = get_logger("bot/day_change_loop")
@@ -103,6 +114,43 @@ async def post_day_change_summaries(bot: discord.Client, summaries: dict[int, Da
         await channel.send(**send_kwargs)
 
 
+async def post_server_event_notifications(bot: discord.Client, owner_events: dict[int, object]):
+    for server_discord_id, event in owner_events.items():
+        channel_id = await get_event_channel(server_discord_id)
+        if not channel_id:
+            continue
+
+        channel = bot.get_channel(channel_id)
+        if channel is None:
+            try:
+                channel = await bot.fetch_channel(channel_id)
+            except Exception:
+                continue
+
+        message = await channel.send(
+            embed=await build_server_event_embed(event, include_viewer_status=False),
+            view=ServerEventParticipationView(event.occurrence_id, event.server_discord_id),
+        )
+        await set_server_event_message_id(event.occurrence_id, message.id)
+        bot.add_view(ServerEventParticipationView(event.occurrence_id, event.server_discord_id), message_id=message.id)
+
+
+async def post_server_event_resolutions(bot: discord.Client, resolutions: list[object]):
+    for resolution in resolutions:
+        channel_id = await get_event_channel(resolution.server_discord_id)
+        if not channel_id:
+            continue
+
+        channel = bot.get_channel(channel_id)
+        if channel is None:
+            try:
+                channel = await bot.fetch_channel(channel_id)
+            except Exception:
+                continue
+
+        await channel.send(embed=await build_server_event_resolution_embed(resolution))
+
+
 async def day_change_runner(bot: discord.Client, stage: str, tz: str = "America/New_York"):
     zone = ZoneInfo(tz)
     paused_event, manual_queue, run_lock = _ensure_controls(bot)
@@ -112,6 +160,12 @@ async def day_change_runner(bot: discord.Client, stage: str, tz: str = "America/
         summaries = await run_day_change(rng_seed=int.from_bytes(os.urandom(8)))
         await post_day_change_summaries(bot, summaries)
         await post_day_change_webhooks(summaries)
+
+        server_events, resolutions = await run_daily_server_event_cycle(
+            rng=random.Random(int.from_bytes(os.urandom(8)))
+        )
+        await post_server_event_resolutions(bot, resolutions)
+        await post_server_event_notifications(bot, server_events)
 
     bot._day_change_run_once = run_once
 
@@ -163,8 +217,10 @@ async def day_change_runner(bot: discord.Client, stage: str, tz: str = "America/
             async with run_lock:
                 try:
                     await run_once()
-                except Exception:
-                    logger.exception("Manual day change failed")
+                except Exception as exception:
+                    logger.exception(f"Manual day change failed: {exception}")
+                    if stage == "dev":
+                        raise exception
             continue
 
         if not paused_event.is_set():
@@ -173,5 +229,7 @@ async def day_change_runner(bot: discord.Client, stage: str, tz: str = "America/
         async with run_lock:
             try:
                 await run_once()
-            except Exception:
-                logger.exception("Scheduled day change failed")
+            except Exception as exception:
+                logger.exception(f"Scheduled day change failed: {exception}")
+                if stage == "dev":
+                    raise exception

@@ -71,8 +71,8 @@ def _get_database_url() -> str:
             "Provide DATABASE/DB_USER/DB_HOST/DB_PASSWORD(/DB_PORT) in a .env in root."
         )
 
-    user_quote = quote_plus(str(user))
-    password_quote = quote_plus(str(password))
+    user_quote = quote_plus(user)
+    password_quote = quote_plus(password)
 
     return f"postgresql+asyncpg://{user_quote}:{password_quote}@{host}:{port}/{database}"
 

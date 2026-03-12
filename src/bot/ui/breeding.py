@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import discord
 from discord.ui import Select, View
 
-from bot.ui.util import InteractionResponder
-from game import breed_pooches
-from game.models import Pooch
+from src.bot.ui.util import InteractionResponder
+from src.game import breed_pooches
+
+if TYPE_CHECKING:
+    from src.game.models import Pooch
 
 
 class BreedMateView(View):
@@ -26,7 +30,7 @@ class BreedMateView(View):
 
     async def _on_select(self, interaction: discord.Interaction):
         r = InteractionResponder(interaction)
-        mate_id = int(self.select.values[0])
+        mate_id = self.select.values[0]
         mate = next((mate for mate in self.mates if mate.id == mate_id), None)
         if mate is None:
             return

@@ -1,0 +1,14 @@
+{
+    "name": "Partial Deafness",
+    "alt_name": "Auditory Impairment",
+    "description": "This pooch only responds to shouting.",
+    "heritability": 0.2,
+    "health_impact": "NEUTRAL",
+    "rarity": "UNCOMMON",
+    "advanced_options": {
+        "dollar_value_add": -15,
+        "incompatible_mutations": [
+            "Total Deafness"
+        ]
+    }
+}

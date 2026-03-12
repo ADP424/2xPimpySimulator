@@ -4,7 +4,7 @@
 
 ### JSON
 
-Mutations are structured within resources/mutations.json, like:
+Mutations are structured within resources/mutations/**/*.jsonc, like:
 ```json
 "[category]": {
     "[mutation name]": {

@@ -1,0 +1,58 @@
+{
+  "name": "Sunday Pageant",
+  "description": "Enter one of your pooches in today's pageant. The healthiest hound wins.",
+  "flavor_text": "Bows, ribbons, and an unreasonable amount of applause.",
+  "severity": "minor",
+  "rarity": "uncommon",
+  "min_owners": 1,
+  "resolution_strategy": "selected_pooch_health",
+  "options": [
+    {
+      "label": "Enter a pooch",
+      "description": "Pick one living pooch to compete.",
+      "min_money": 10,
+      "requires_pooch_selection": true,
+      "actions": [
+        {
+          "action_type": "modify_money",
+          "target_type": "owner",
+          "parameters": {
+            "amount": -10
+          }
+        }
+      ]
+    }
+  ],
+  "outcomes": [
+    {
+      "label": "Champion",
+      "message": "Your pooch won the pageant!",
+      "min_rank": 1,
+      "max_rank": 1,
+      "actions": [
+        {
+          "action_type": "modify_money",
+          "target_type": "owner",
+          "parameters": {
+            "amount": 150
+          }
+        }
+      ]
+    },
+    {
+      "label": "Runner-up",
+      "message": "Your pooch placed as a runner-up.",
+      "min_rank": 2,
+      "max_rank": 3,
+      "actions": [
+        {
+          "action_type": "modify_money",
+          "target_type": "owner",
+          "parameters": {
+            "amount": 50
+          }
+        }
+      ]
+    }
+  ]
+}

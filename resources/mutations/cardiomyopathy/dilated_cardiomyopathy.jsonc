@@ -1,0 +1,8 @@
+{
+    "name": "Dilated Cardiomyopathy",
+    "alt_name": "DCM",
+    "description": "This pooch has a big heart.",
+    "heritability": 0.25,
+    "health_impact": "UNHEALTHY",
+    "rarity": "COMMON"
+}

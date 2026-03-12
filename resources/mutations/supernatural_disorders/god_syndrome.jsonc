@@ -1,0 +1,13 @@
+{
+    "name": "God Syndrome",
+    "alt_name": "Jesus Poochicus",
+    "description": "This pooch can't die, on Dog.",
+    "heritability": 0.0,
+    "health_impact": "IMMORTALITY",
+    "rarity": "UNIQUE",
+    "advanced_options": {
+        "on_death": "spread",
+        "on_death_targets": "random",
+        "always_on_death": 1
+    }
+}

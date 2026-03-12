@@ -1,20 +1,29 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
-from database import (
+from src.database import (
     get_owner_by_discord_id,
     get_pooch_health,
     get_vendor_by_id,
     list_pooch_breeds,
     list_pooch_mutations,
 )
-from database.models import Pooch as PoochORM
 
-from .breed import Breed, to_breed
-from .mutation import Mutation, to_mutation
-from .owner import Owner, to_owner
-from .vendor import Vendor, to_vendor
+from .breed import to_breed
+from .mutation import to_mutation
+from .owner import to_owner
+from .vendor import to_vendor
+
+if TYPE_CHECKING:
+    from src.database.models import Pooch as PoochORM
+
+    from .breed import Breed
+    from .mutation import Mutation
+    from .owner import Owner
+    from .vendor import Vendor
 
 
 @dataclass(frozen=True)

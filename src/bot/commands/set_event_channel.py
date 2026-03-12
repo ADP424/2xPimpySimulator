@@ -1,6 +1,6 @@
 from discord import Interaction, app_commands
 
-from game import set_event_channel
+from src.game import set_event_channel
 
 
 def register_set_event_channel_command(tree: app_commands.CommandTree):
@@ -9,5 +9,5 @@ def register_set_event_channel_command(tree: app_commands.CommandTree):
         if interaction.guild_id is None or interaction.channel_id is None:
             await interaction.response.send_message("This command must be used in a server channel.", ephemeral=False)
             return
-        await set_event_channel(int(interaction.guild_id), int(interaction.channel_id))
+        await set_event_channel(interaction.guild_id, interaction.channel_id)
         await interaction.response.send_message("✅ Event channel set for this server.", ephemeral=False)

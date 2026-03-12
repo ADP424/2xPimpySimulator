@@ -1,0 +1,8 @@
+{
+    "name": "Leukocyte Adhesion Deficiency",
+    "alt_name": "LAD",
+    "description": "This pooch's white blood cells are sleeping.",
+    "heritability": 0.2,
+    "health_impact": "SEVERE",
+    "rarity": "RARE"
+}

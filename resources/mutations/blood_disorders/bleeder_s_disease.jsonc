@@ -1,0 +1,8 @@
+{
+    "name": "Bleeder's Disease",
+    "alt_name": "Hemophilia",
+    "description": "This pooch should be extra careful around sharp objects.",
+    "heritability": 0.2,
+    "health_impact": "SEVERE",
+    "rarity": "NOVEL"
+}

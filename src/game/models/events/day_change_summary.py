@@ -1,11 +1,15 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
-from game.models.pooch import Pooch
-from game.models.server import Server
+if TYPE_CHECKING:
+    from src.game.models.pooch import Pooch
+    from src.game.models.server import Server
 
-from .birth_event import BirthEvent
-from .death_event import DeathEvent
-from .other_event import OtherEvent
+    from .birth_event import BirthEvent
+    from .death_event import DeathEvent
+    from .other_event import OtherEvent
 
 
 @dataclass(frozen=True)
