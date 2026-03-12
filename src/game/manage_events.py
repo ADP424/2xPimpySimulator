@@ -6,10 +6,14 @@ from typing import TYPE_CHECKING, Any, Optional
 from src.database import (
     add_breed_to_pooch,
     add_mutation_to_pooch,
+    add_pooch_breeds,
+    add_pooch_to_kennel,
     archive_active_event,
+    bury_pooch,
     check_owner_event_filter_for_owner,
     create_active_owner_event,
     create_pooch,
+    damn_pooch,
     get_active_owner_event_by_id,
     get_owner_by_discord_id,
 )
@@ -18,6 +22,7 @@ from src.database import get_owner_event_by_name as db_get_owner_event_by_name
 from src.database import (
     get_owner_event_option_by_id,
     get_pending_active_owner_event,
+    get_pooch_by_id,
     get_pooch_kennel,
     get_random_eligible_owner_event_for_owner,
     get_random_matching_kennel_id,
@@ -29,11 +34,15 @@ from src.database import (
 from src.database import list_all_owner_events as db_list_all_owner_events
 from src.database import (
     list_expired_active_owner_events,
+    list_kennels_for_owner,
     list_matching_kennel_ids,
     list_matching_pooch_ids,
     list_matching_pooch_ids_in_kennel,
     list_owner_event_history_for_owner,
     list_owners,
+    list_pooch_breed_weights,
+    list_pooch_mutations,
+    list_pooches_for_kennel,
     modify_kennel_pooch_limit,
     modify_pooch_age,
     modify_pooch_base_health,
@@ -482,6 +491,38 @@ async def _create_event_context(owner_discord_id: int, event: EventDB, rng: rand
     return context
 
 
+async def _deliver_pooch(owner_discord_id: int, pooch_id: int, destination: str) -> tuple[str, Optional[str]]:
+    """
+    Deliver a pooch to a destination. Returns (destination_key, kennel_name_or_None).
+
+    Destinations: "kennel" | "graveyard" | "hell" | "town"
+    For "kennel", places in the first kennel with free space. If no kennel has space, falls back to "town".
+    """
+
+    destination = destination.strip().lower() if isinstance(destination, str) else "town"
+
+    if destination == "kennel":
+        kennels = await list_kennels_for_owner(owner_discord_id)
+        for kennel in kennels:
+            pooches_in_kennel = await list_pooches_for_kennel(kennel.id)
+            if len(pooches_in_kennel) < kennel.pooch_limit:
+                await add_pooch_to_kennel(kennel.id, pooch_id)
+                return "kennel", kennel.name
+        # No kennel with free space — fall through to town
+        return "town", None
+
+    elif destination == "graveyard":
+        await bury_pooch(owner_discord_id, pooch_id)
+        return "graveyard", None
+
+    elif destination == "hell":
+        await damn_pooch(pooch_id)
+        return "hell", None
+
+    else:  # "town" or unknown
+        return "town", None
+
+
 async def _execute_single_action(
     owner_discord_id: int, action: EventAction, context: EventContext, rng: random.Random
 ) -> EventResult:
@@ -491,8 +532,8 @@ async def _execute_single_action(
 
     def _get_amount_from_parameters(parameters: dict[str, Any], rng: random.Random) -> int:
         if "min_amount" in parameters and "max_amount" in parameters:
-            return rng.randint(int(parameters["min_amount"]), int(parameters["max_amount"]))
-        return int(parameters.get("amount", 0))
+            return rng.randint(parameters["min_amount"], parameters["max_amount"])
+        return parameters.get("amount", 0)
 
     def _resolve_amount(parameters: dict[str, Any], rng: random.Random) -> tuple[int | None, bool]:
         """Return (pre_rolled_amount_or_None, roll_once). If roll_once, the amount is already rolled."""
@@ -636,7 +677,90 @@ async def _execute_single_action(
                     context.affected_pooch_ids.append(pooch.id)
                 result.pooches_created.append(pooch.id)
                 result.pooches_affected.append(pooch.id)
-                result.message = "A new pooch has appeared!"
+
+                destination_str = parameters.get("destination", "town")
+                dest_key, kennel_name = await _deliver_pooch(owner_discord_id, pooch.id, destination_str)
+                if dest_key == "kennel":
+                    result.message = f"A new pooch has appeared and was placed in {kennel_name}!"
+                elif dest_key == "graveyard":
+                    result.message = "A new pooch has appeared and was placed in the graveyard!"
+                elif dest_key == "hell":
+                    result.message = "A new pooch has appeared and was sent to Hell!"
+                else:
+                    result.message = "A new pooch has appeared!"
+
+                save_as = parameters.get("save_as")
+                if isinstance(save_as, str) and save_as:
+                    context.extra_data[save_as] = {"pooch_ids": [pooch.id]}
+
+        elif action_type == "clone_pooch":
+            # Resolve the source pooch
+            pooch_ids = await _get_target_pooch_ids(target_type, selector, parameters)
+            source_id = pooch_ids[0] if pooch_ids else None
+            if source_id is None:
+                logger.warning("clone_pooch: could not resolve source pooch; skipping")
+            else:
+                source = await get_pooch_by_id(source_id)
+                if source is None:
+                    logger.warning(f"clone_pooch: source pooch {source_id} not found; skipping")
+                else:
+                    clone_kwargs: dict[str, Any] = {
+                        "owner_discord_id": owner_discord_id,
+                        "rng": rng,
+                        "name": parameters.get("name", source.name),
+                        "sex": parameters.get("sex", source.sex),
+                        "age": parameters.get("age", source.age),
+                        "base_health": parameters.get("base_health", source.base_health),
+                        "breeding_cooldown": parameters.get("breeding_cooldown", source.breeding_cooldown),
+                    }
+                    clone = await create_pooch(**clone_kwargs)
+                    if clone:
+                        # Copy breeds (raw integer weights) and mutations from source
+                        breed_weights = await list_pooch_breed_weights(source_id)
+                        if breed_weights:
+                            await add_pooch_breeds(clone.id, dict(breed_weights))
+                        for mutation in await list_pooch_mutations(source_id):
+                            await add_mutation_to_pooch(clone.id, mutation_id=mutation.id)
+
+                        context.selected_pooch_id = clone.id
+                        candidate_pooch_ids = context.extra_data.setdefault("candidate_pooch_ids", [])
+                        if isinstance(candidate_pooch_ids, list) and clone.id not in candidate_pooch_ids:
+                            candidate_pooch_ids.append(clone.id)
+                        if clone.id not in context.affected_pooch_ids:
+                            context.affected_pooch_ids.append(clone.id)
+                        result.pooches_created.append(clone.id)
+                        result.pooches_affected.append(clone.id)
+
+                        destination_str = parameters.get("destination", "town")
+                        dest_key, kennel_name = await _deliver_pooch(owner_discord_id, clone.id, destination_str)
+                        if dest_key == "kennel":
+                            result.message = f"A clone of {source.name} appeared and was placed in {kennel_name}!"
+                        elif dest_key == "graveyard":
+                            result.message = f"A clone of {source.name} appeared and was placed in the graveyard!"
+                        elif dest_key == "hell":
+                            result.message = f"A clone of {source.name} appeared and was sent to Hell!"
+                        else:
+                            result.message = f"A clone of {source.name} has appeared!"
+
+                        # save_as: supports "source" or "clone" (or plain string → clone)
+                        save_as_raw = parameters.get("save_as")
+                        if save_as_raw is not None:
+                            save_specs: list[dict[str, str]]
+                            if isinstance(save_as_raw, str):
+                                save_specs = [{"slot": save_as_raw, "target": "clone"}]
+                            elif isinstance(save_as_raw, list):
+                                save_specs = [s for s in save_as_raw if isinstance(s, dict)]
+                            else:
+                                save_specs = []
+                            for spec in save_specs:
+                                slot = spec.get("slot")
+                                target = spec.get("target", "clone")
+                                if not isinstance(slot, str) or not slot:
+                                    continue
+                                if target == "source":
+                                    context.extra_data[slot] = {"pooch_ids": [source_id]}
+                                else:  # "clone"
+                                    context.extra_data[slot] = {"pooch_ids": [clone.id]}
 
         # Kennel Actions
         elif action_type == "modify_kennel_capacity":
@@ -686,7 +810,7 @@ async def _execute_single_action(
             mutation_id = parameters.get("mutation_id")
             for pooch_id in pooch_ids:
                 if mutation_id:
-                    await add_mutation_to_pooch(pooch_id, int(mutation_id))
+                    await add_mutation_to_pooch(pooch_id, mutation_id)
                 else:
                     await add_mutation_to_pooch(pooch_id, rng=rng)
                 result.pooches_affected.append(pooch_id)
@@ -696,7 +820,7 @@ async def _execute_single_action(
             mutation_id = parameters.get("mutation_id")
             for pooch_id in pooch_ids:
                 if mutation_id:
-                    removed = await remove_mutation_from_pooch(pooch_id, int(mutation_id))
+                    removed = await remove_mutation_from_pooch(pooch_id, mutation_id)
                 else:
                     removed = await remove_random_mutation_from_pooch(pooch_id, rng=rng)
                 if removed:
@@ -709,7 +833,7 @@ async def _execute_single_action(
             weight = parameters.get("weight", 0.5)
             for pooch_id in pooch_ids:
                 if breed_id:
-                    await add_breed_to_pooch(pooch_id, int(breed_id), weight=weight)
+                    await add_breed_to_pooch(pooch_id, breed_id, weight=weight)
                 else:
                     await add_breed_to_pooch(pooch_id, rng=rng, weight=weight)
                 result.pooches_affected.append(pooch_id)
@@ -720,9 +844,9 @@ async def _execute_single_action(
             vendor_id = parameters.get("vendor_id")
             for pooch_id in pooch_ids:
                 if new_owner_id:
-                    await transfer_pooch_to_owner(pooch_id, int(new_owner_id))
+                    await transfer_pooch_to_owner(pooch_id, new_owner_id)
                 elif vendor_id:
-                    await transfer_pooch_to_vendor(pooch_id, int(vendor_id))
+                    await transfer_pooch_to_vendor(pooch_id, vendor_id)
                 result.pooches_affected.append(pooch_id)
 
         elif action_type == "set_breeding_cooldown":
@@ -736,7 +860,7 @@ async def _execute_single_action(
                         0,
                     )
                 else:
-                    resolved_cooldown = int(cooldown)
+                    resolved_cooldown = cooldown
                 await set_pooch_breeding_cooldown(pooch_id, resolved_cooldown)
                 result.pooches_affected.append(pooch_id)
 
@@ -788,14 +912,39 @@ async def _execute_single_action(
                         if "baby_name" in parameters:
                             await rename_pooch(baby_id, str(parameters["baby_name"]))
                         if "baby_age" in parameters:
-                            await modify_pooch_age(baby_id, int(parameters["baby_age"]))
+                            await modify_pooch_age(baby_id, parameters["baby_age"])
                         if "baby_base_health" in parameters:
-                            await modify_pooch_base_health(baby_id, int(parameters["baby_base_health"]))
+                            await modify_pooch_base_health(baby_id, parameters["baby_base_health"])
                         if "baby_breeding_cooldown" in parameters:
-                            await set_pooch_breeding_cooldown(baby_id, int(parameters["baby_breeding_cooldown"]))
+                            await set_pooch_breeding_cooldown(baby_id, parameters["baby_breeding_cooldown"])
 
                     count = len(baby_ids)
                     result.message = "A puppy was born!" if count == 1 else f"{count} puppies were born!"
+
+                    # save_as: supports "first_parent", "second_parent", "baby" (or list of those)
+                    # Each save_as entry is a dict: { "slot": str, "target": "first_parent"|"second_parent"|"baby" }
+                    # For convenience, a plain string defaults to saving the baby/babies.
+                    save_as_raw = parameters.get("save_as")
+                    if save_as_raw is not None:
+                        save_specs: list[dict[str, str]]
+                        if isinstance(save_as_raw, str):
+                            save_specs = [{"slot": save_as_raw, "target": "baby"}]
+                        elif isinstance(save_as_raw, list):
+                            save_specs = [s for s in save_as_raw if isinstance(s, dict)]
+                        else:
+                            save_specs = []
+                        for spec in save_specs:
+                            slot = spec.get("slot")
+                            target = spec.get("target", "baby")
+                            if not isinstance(slot, str) or not slot:
+                                continue
+                            if target == "first_parent":
+                                context.extra_data[slot] = {"pooch_ids": [first_pooch_id]}
+                            elif target == "second_parent":
+                                context.extra_data[slot] = {"pooch_ids": [second_pooch_id]}
+                            else:  # "baby"
+                                context.extra_data[slot] = {"pooch_ids": list(baby_ids)}
+
                 except ValueError as e:
                     logger.warning(f"breed_pooches: breeding failed — {e}")
 

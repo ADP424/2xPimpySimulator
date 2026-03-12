@@ -86,35 +86,35 @@ async def resolve_event_entity_references(
     mutation_ids: set[int] = set()
 
     if result is not None:
-        pooch_ids.update(int(pooch_id) for pooch_id in result.pooches_affected)
-        pooch_ids.update(int(pooch_id) for pooch_id in result.pooches_created)
-        pooch_ids.update(int(pooch_id) for pooch_id in result.pooches_killed)
-        mutation_ids.update(int(mutation_id) for _pooch_id, mutation_id in result.mutations_added)
-        mutation_ids.update(int(mutation_id) for _pooch_id, mutation_id in result.mutations_removed)
+        pooch_ids.update(pooch_id for pooch_id in result.pooches_affected)
+        pooch_ids.update(pooch_id for pooch_id in result.pooches_created)
+        pooch_ids.update(pooch_id for pooch_id in result.pooches_killed)
+        mutation_ids.update(mutation_id for _pooch_id, mutation_id in result.mutations_added)
+        mutation_ids.update(mutation_id for _pooch_id, mutation_id in result.mutations_removed)
 
         extra = result.extra_data or {}
 
         for entry in _normalize_detail_entries(extra.get("health_changes"), id_key="pooch_id", value_key="amount"):
             if entry.get("pooch_id") is not None:
-                pooch_ids.add(int(entry["pooch_id"]))
+                pooch_ids.add(entry["pooch_id"])
 
         for entry in _normalize_detail_entries(extra.get("age_changes"), id_key="pooch_id", value_key="amount"):
             if entry.get("pooch_id") is not None:
-                pooch_ids.add(int(entry["pooch_id"]))
+                pooch_ids.add(entry["pooch_id"])
 
         for key in ("created_pooches", "killed_pooches", "renamed_pooches", "transferred_pooches", "breeds_added"):
             for entry in _iter_dict_entries(extra.get(key)):
                 if entry.get("pooch_id") is not None:
-                    pooch_ids.add(int(entry["pooch_id"]))
+                    pooch_ids.add(entry["pooch_id"])
                 if entry.get("breed_id") is not None:
-                    breed_ids.add(int(entry["breed_id"]))
+                    breed_ids.add(entry["breed_id"])
 
         for key in ("mutations_added_details", "mutations_removed_details"):
             for entry in _iter_dict_entries(extra.get(key)):
                 if entry.get("pooch_id") is not None:
-                    pooch_ids.add(int(entry["pooch_id"]))
+                    pooch_ids.add(entry["pooch_id"])
                 if entry.get("mutation_id") is not None:
-                    mutation_ids.add(int(entry["mutation_id"]))
+                    mutation_ids.add(entry["mutation_id"])
 
     for pooch_id in sorted(pooch_ids):
         if pooch_id in seen_ids["pooches"]:
@@ -157,7 +157,7 @@ def _normalize_detail_entries(value: Any, *, id_key: str, value_key: str) -> lis
         rows: list[dict[str, Any]] = []
         for raw_id, raw_value in value.items():
             try:
-                rows.append({id_key: int(raw_id), value_key: raw_value})
+                rows.append({id_key: raw_id, value_key: raw_value})
             except TypeError, ValueError:
                 continue
         return rows

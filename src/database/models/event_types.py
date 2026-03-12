@@ -21,6 +21,7 @@ EventActionType: TypeAlias = Literal[
     "add_breed",
     "transfer_pooch",
     "create_pooch",
+    "clone_pooch",
     "modify_kennel_capacity",
     "rename_pooch",
     "set_breeding_cooldown",
@@ -58,7 +59,7 @@ class KennelFilterSpec(TypedDict, total=False):
     min_capacity: int
     max_capacity: int
     min_pooches: int
-    max_pooches: int
+    max_pooches: int | str
     pooches: list[PoochFilterSpec]
 
 
@@ -172,6 +173,20 @@ class EventCreatePoochParameters(TypedDict, total=False):
     age: int
     base_health: int
     breeding_cooldown: int
+    destination: str  # "kennel" | "graveyard" | "hell" | "town"
+    save_as: str
+
+
+class EventClonePoochParameters(EventActionBaseParameters, total=False):
+    # Overrides inherited from source pooch if provided
+    name: str
+    sex: str
+    age: int
+    base_health: int
+    breeding_cooldown: int
+    destination: str  # "kennel" | "graveyard" | "hell" | "town"
+    # save_as here supports either a plain str (saves clone) or a list of {slot, target} dicts
+    # where target is "clone" or "source"
 
 
 class EventRenamePoochParameters(EventActionBaseParameters, total=False):
@@ -197,6 +212,8 @@ class EventBreedPoochesParameters(TypedDict, total=False):
     baby_age: int
     baby_base_health: int
     baby_breeding_cooldown: int
+    # save_as supports a plain str (saves baby IDs) or a list of {slot, target} dicts
+    # where target is "baby", "first_parent", or "second_parent"
 
 
 EventActionParameters: TypeAlias = (
@@ -205,6 +222,7 @@ EventActionParameters: TypeAlias = (
     | EventBreedParameters
     | EventTransferPoochParameters
     | EventCreatePoochParameters
+    | EventClonePoochParameters
     | EventRenamePoochParameters
     | EventSetBreedingCooldownParameters
     | EventStartEventParameters

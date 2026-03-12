@@ -388,6 +388,7 @@ Kennel filter objects live inside `filter.kennels`.
 
 - `min_count` / `max_count` apply to the number of kennels matching that kennel filter
 - `min_pooches` / `max_pooches` apply to the number of pooches currently in an individual kennel
+- `max_pooches` can be set to `"capacity - [X]"` to set the max relative to the kennel's capacity, like `"capacity - 1"`
 - nested `pooches` filters apply only to pooches inside that kennel
 
 ---
@@ -646,6 +647,7 @@ Actions are structured as:
 | `modify_money` | `owner` | Adjusts the owner's dollars |
 | `modify_bloodskulls` | `owner` | Adjusts the owner's bloodskulls |
 | `create_pooch` | `owner` | Creates a new pooch for the owner |
+| `clone_pooch` | `pooch`, `kennel`, `owner` | Duplicates an existing pooch |
 | `start_event` | `owner` | Triggers another event |
 | `modify_pooch_health` | `pooch`, `kennel`, `owner` | Modifies base health |
 | `modify_pooch_age` | `pooch`, `kennel`, `owner` | Modifies age |
@@ -683,12 +685,23 @@ Static event JSON should reference stable content by name and dynamic runtime en
 
 Actions execute sequentially in `action_order`. When one action needs to operate on the *same entity* that a previous action resolved, use named slots to carry the resolved IDs forward.
 
-#### `save_as` (string)
+#### `save_as`
 
-After an action resolves its targets, write the IDs into `context.extra_data` under this key. The slot is a plain object:
+After an action resolves its targets, write the IDs into `context.extra_data` under this key.
+
+For most pooch and kennel actions, `save_as` is a plain **string** (the slot name):
 
 - Pooch actions write `{ "pooch_ids": [5, 12, ...] }`
 - Kennel actions write `{ "kennel_ids": [3, ...] }`
+
+For `create_pooch`, `save_as` is also a plain string and saves the newly created pooch's ID.
+
+For `clone_pooch` and `breed_pooches`, `save_as` supports an extended form because there are multiple participants to save. It can be either:
+
+- A plain **string** — saves the default participant (clone / baby) into that slot.
+- A **list** of `{ "slot": "...", "target": "..." }` objects — each entry saves a specific participant independently.
+
+See the parameter tables for `clone_pooch` and `breed_pooches` for the valid `target` values.
 
 #### `save_kennel` (bool, pooch actions only)
 
@@ -855,6 +868,8 @@ Slots persist for the lifetime of the action list they're in (event-level, optio
 
 #### `create_pooch`
 
+Creates a new pooch and optionally delivers it to a destination.
+
 ```json
 {
     "action_type": "create_pooch",
@@ -862,7 +877,9 @@ Slots persist for the lifetime of the action list they're in (event-level, optio
     "parameters": {
         "sex": "female",
         "age": 0,
-        "base_health": 100
+        "base_health": 100,
+        "destination": "kennel",
+        "save_as": "new_pooch"
     }
 }
 ```
@@ -874,6 +891,71 @@ Slots persist for the lifetime of the action list they're in (event-level, optio
 | `age` | int | no | Default: 0 |
 | `base_health` | int | no | Default value from constants |
 | `breeding_cooldown` | int | no | Default value from constants |
+| `destination` | string | no | Where to deliver the pooch (see below) — default: `"town"` |
+| `save_as` | string | no | Save the new pooch's ID into a named slot for use by later actions |
+
+##### `destination` values
+
+| Value | Effect |
+|-------|--------|
+| `"kennel"` | Place in the first kennel the owner has with free space. Falls back to `"town"` if all kennels are full. The result message names the kennel. |
+| `"graveyard"` | Send directly to the owner's graveyard. |
+| `"hell"` | Damn the pooch to Hell. |
+| `"town"` (default) | Do nothing extra — the pooch simply exists, unhoused. |
+
+---
+
+#### `clone_pooch`
+
+Duplicates an existing pooch, inheriting its name, stats, breeds, and mutations. Any field can be overridden in parameters. Uses the same target/selector system as other pooch actions to select the source.
+
+```json
+{
+    "action_type": "clone_pooch",
+    "target_type": "pooch",
+    "parameters": {
+        "selector": "selected",
+        "destination": "kennel",
+        "save_as": "the_clone"
+    }
+}
+```
+
+| Parameter | Type | Required | Notes |
+|-----------|------|----------|-------|
+| `selector` | string | yes (except `owner`) | `"random"`, `"selected"`, or `"all"` (picks first) — selects the source pooch |
+| `filter` / `pooch_filter` | object | no | Filters for source pooch selection |
+| `name` | string | no | Override — defaults to source's name |
+| `sex` | string | no | Override — defaults to source's sex |
+| `age` | int | no | Override — defaults to source's age |
+| `base_health` | int | no | Override — defaults to source's base health |
+| `breeding_cooldown` | int | no | Override — defaults to source's breeding cooldown |
+| `destination` | string | no | Same values as `create_pooch` — default: `"town"` |
+| `save_as` | string or list | no | Save clone and/or source into named slots (see below) |
+
+The clone always starts as a virgin with `alive = true`, regardless of the source's state.
+
+##### `save_as` for `clone_pooch`
+
+`save_as` can be a plain string (saves the clone) or a list of `{ "slot": "...", "target": "..." }` objects to save multiple participants independently.
+
+| `target` | What is saved |
+|----------|---------------|
+| `"clone"` (default) | The newly created clone |
+| `"source"` | The original pooch that was cloned |
+
+Examples:
+
+```jsonc
+// Plain string — saves the clone
+"save_as": "the_clone"
+
+// List form — save both
+"save_as": [
+    { "slot": "the_clone", "target": "clone" },
+    { "slot": "the_original", "target": "source" }
+]
+```
 
 ---
 
@@ -947,5 +1029,30 @@ Selects two of the owner's pooches and breeds them. Calls the same breeding logi
 | `baby_age` | int | no | Override the baby's starting age |
 | `baby_base_health` | int | no | Override the baby's base health |
 | `baby_breeding_cooldown` | int | no | Override the baby's initial breeding cooldown |
+| `save_as` | string or list | no | Save one or more participants into named slots (see below) |
 
 If the two selectors resolve to the same pooch, or if both pooches are the same sex, the action is silently skipped. Use filters to prevent this.
+
+##### `save_as` for `breed_pooches`
+
+`save_as` can be a plain string (saves the baby/babies) or a list of `{ "slot": "...", "target": "..." }` objects to save multiple participants independently.
+
+| `target` | What is saved |
+|----------|---------------|
+| `"baby"` (default) | The baby or babies that were born |
+| `"first_parent"` | The first parent pooch |
+| `"second_parent"` | The second parent pooch |
+
+Examples:
+
+```jsonc
+// Plain string — saves the baby IDs
+"save_as": "the_baby"
+
+// List form — save all three participants
+"save_as": [
+    { "slot": "the_baby", "target": "baby" },
+    { "slot": "the_father", "target": "first_parent" },
+    { "slot": "the_mother", "target": "second_parent" }
+]
+```

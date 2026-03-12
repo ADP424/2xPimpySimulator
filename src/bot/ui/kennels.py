@@ -112,7 +112,7 @@ class KennelPageControls:
 
     async def _on_select(self, interaction: discord.Interaction):
         r = InteractionResponder(interaction)
-        selected_id = int(self.select.values[0])
+        selected_id = self.select.values[0]
         self.selected_pooch = next((pooch for pooch in self.pooches if pooch.id == selected_id), None)
         if self.selected_pooch is None:
             return

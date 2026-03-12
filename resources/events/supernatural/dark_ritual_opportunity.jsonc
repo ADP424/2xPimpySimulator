@@ -11,8 +11,8 @@
             "label": "Perform the ritual",
             "description": "Sacrifice 5 bloodskulls for a lost soul from Hell.",
             "filter": {
-                "min_bloodskulls": 5
-                // TODO: Add filter entry for having enough kennel space
+                "min_bloodskulls": 5,
+                "max_pooches": "capacity - 1"
             },
             "actions": [
                 {
@@ -23,23 +23,25 @@
                     }
                 },
                 {
-                    "action_type": "create_pooch", // TODO: Add ability to save created pooch with "save_as"
+                    "action_type": "create_pooch",
                     "target_type": "owner",
-                    "parameters": {}
+                    "parameters": {
+                        "save_as": "summoned_pooch"
+                    }
                 },
                 {
                     "action_type": "add_breed",
                     "target_type": "pooch",
                     "parameters": {
                         "weight": 1.0,
-                        "selector": "selected"
+                        "use_saved": "summoned_pooch"
                     }
                 },
                 {
                     "action_type": "add_mutation",
                     "target_type": "pooch",
                     "parameters": {
-                        "selector": "selected"
+                        "use_saved": "summoned_pooch"
                     }
                 }
             ]

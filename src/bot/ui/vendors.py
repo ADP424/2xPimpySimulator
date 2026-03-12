@@ -164,7 +164,7 @@ class VendorPageControls:
         value = self.mutation_select.values[0]
         if value == "__none__":
             return
-        mutation_id = int(value)
+        mutation_id = value
         mutation = next((m for m in self._desired_mutations if m.id == mutation_id), None)
         if mutation is None:
             return
@@ -186,7 +186,7 @@ class VendorPageControls:
             for option in self.select.options:
                 option.default = False
         else:
-            selected_id = int(value)
+            selected_id = value
             self.selected_pooch = next((pooch for pooch in self.pooches if pooch.id == selected_id), None)
             if self.selected_pooch is None:
                 return
@@ -347,7 +347,7 @@ class _SellKennelControls:
             for option in self.select.options:
                 option.default = False
         else:
-            selected_id = int(value)
+            selected_id = value
             self.selected_pooch = next((p for p in self.pooches if p.id == selected_id), None)
             if self.selected_pooch is None:
                 return

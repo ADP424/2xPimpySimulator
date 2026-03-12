@@ -43,7 +43,7 @@ ENTITY_KINDS: tuple[tuple[str, str], ...] = (
 
 
 def _color_for_severity(severity: str) -> discord.Color:
-    return SEVERITY_COLORS.get(str(severity).lower(), discord.Color.blurple())
+    return SEVERITY_COLORS.get(severity.lower(), discord.Color.blurple())
 
 
 def _truncate(text: str, limit: int = 1024) -> str:
@@ -60,15 +60,15 @@ def _discord_timestamp(value: datetime | str | None, style: str = "f") -> str:
         value = datetime.fromisoformat(value)
     if value.tzinfo is None:
         value = value.replace(tzinfo=timezone.utc)
-    return f"<t:{int(value.timestamp())}:{style}>"
+    return f"<t:{value.timestamp()}:{style}>"
 
 
 def _format_option_line(option: EventOption) -> str:
     requirements: list[str] = []
     if option.min_money > 0:
-        requirements.append(f"${int(option.min_money)}")
+        requirements.append(f"${option.min_money}")
     if option.min_bloodskulls > 0:
-        requirements.append(f"{int(option.min_bloodskulls)} bloodskulls")
+        requirements.append(f"{option.min_bloodskulls} bloodskulls")
 
     description = option.description or ""
     line = f"**{option.label}**"
@@ -82,12 +82,12 @@ def _format_option_line(option: EventOption) -> str:
 def _format_option_select_description(option: EventOption) -> str:
     lines: list[str] = []
     if option.description:
-        lines.append(str(option.description))
+        lines.append(option.description)
     costs: list[str] = []
     if option.min_money > 0:
-        costs.append(f"${int(option.min_money)}")
+        costs.append(f"${option.min_money}")
     if option.min_bloodskulls > 0:
-        costs.append(f"{int(option.min_bloodskulls)} skulls")
+        costs.append(f"{option.min_bloodskulls} skulls")
     if costs:
         lines.append("Req: " + ", ".join(costs))
     return _truncate("\n".join(lines) if lines else "No description.")
@@ -100,7 +100,7 @@ def _detail_entries(bucket: Any, *, id_key: str, value_key: str) -> list[dict[st
         rows: list[dict[str, Any]] = []
         for raw_id, raw_value in bucket.items():
             try:
-                rows.append({id_key: int(raw_id), value_key: raw_value})
+                rows.append({id_key: raw_id, value_key: raw_value})
             except TypeError, ValueError:
                 continue
         return rows
@@ -189,13 +189,13 @@ def _format_result_summary(result: Optional[EventResult]) -> str:
 
     for entry in _detail_entries(extra_data.get("health_changes"), id_key="pooch_id", value_key="amount"):
         name = entry.get("pooch_name") or f"Pooch #{entry.get('pooch_id', '?')}"
-        amount = int(entry.get("amount", 0))
+        amount = entry.get("amount", 0)
         suffix = f" (base now {entry['new_base_health']})" if entry.get("new_base_health") is not None else ""
         lines.append(f"Health: {name} {_signed(amount)}{suffix}")
 
     for entry in _detail_entries(extra_data.get("age_changes"), id_key="pooch_id", value_key="amount"):
         name = entry.get("pooch_name") or f"Pooch #{entry.get('pooch_id', '?')}"
-        amount = int(entry.get("amount", 0))
+        amount = entry.get("amount", 0)
         suffix = f" (now age {entry['new_age']})" if entry.get("new_age") is not None else ""
         lines.append(f"Age: {name} {_signed(amount)}{suffix}")
 
@@ -237,7 +237,7 @@ def _format_result_summary(result: Optional[EventResult]) -> str:
         if not isinstance(entry, dict):
             continue
         weight = entry.get("weight")
-        suffix = f" ({int(round(float(weight) * 100))}% weight)" if weight is not None else ""
+        suffix = f" ({round(float(weight * 100))}% weight)" if weight is not None else ""
         lines.append(
             f"Breed added: {entry.get('pooch_name', 'Unknown')} → {entry.get('breed_name', 'Unknown')}{suffix}"
         )
@@ -251,7 +251,7 @@ def _format_result_summary(result: Optional[EventResult]) -> str:
 
     for entry in _detail_entries(extra_data.get("kennel_capacity_changes"), id_key="kennel_id", value_key="amount"):
         name = entry.get("kennel_name") or f"Kennel #{entry.get('kennel_id', '?')}"
-        amount = int(entry.get("amount", 0))
+        amount = entry.get("amount", 0)
         suffix = f" (limit {entry['new_limit']})" if entry.get("new_limit") is not None else ""
         lines.append(f"Kennel capacity: {name} {_signed(amount)}{suffix}")
 
@@ -316,8 +316,8 @@ def build_history_embed(record: EventHistory, page_index: int, page_count: int) 
     )
 
     details = [
-        f"**Category:** {str(record.category).title()}",
-        f"**Severity:** {str(record.severity).title()}",
+        f"**Category:** {record.category.title()}",
+        f"**Severity:** {record.severity.title()}",
         f"**Triggered:** {_discord_timestamp(record.triggered_at)}",
     ]
     completed_at = record.completed_at
@@ -437,7 +437,7 @@ class EventEntityControls:
         async def callback(interaction: discord.Interaction):
             value = self.selects[kind].values[0]
             self.selected_kind = kind
-            self.selected_id = int(value)
+            self.selected_id = value
             self.selected_label = next(
                 (item.label for item in self.entity_references.for_kind(kind) if item.id == self.selected_id),
                 f"{kind[:-1].title()} #{value}",
@@ -523,7 +523,7 @@ class EventResponseSelect(discord.ui.Select):
             await interaction.response.send_message("This event is not yours.", ephemeral=True)
             return
 
-        option_id = int(self.values[0])
+        option_id = self.values[0]
         option = next((item for item in self.event.options if item.id == option_id), None)
         success, message, result = await respond_to_event(
             interaction.user.id, self.event.active_owner_event_id, option_id

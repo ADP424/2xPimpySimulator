@@ -30,7 +30,7 @@ SEVERITY_COLORS: dict[str, discord.Color] = {
 
 
 def _color_for_severity(severity: str) -> discord.Color:
-    return SEVERITY_COLORS.get(str(severity).lower(), discord.Color.blurple())
+    return SEVERITY_COLORS.get(severity.lower(), discord.Color.blurple())
 
 
 def _truncate(text: str, limit: int = 1024) -> str:
@@ -45,15 +45,15 @@ def _discord_timestamp(value: datetime | None, style: str = "R") -> str:
         return "—"
     if value.tzinfo is None:
         value = value.replace(tzinfo=timezone.utc)
-    return f"<t:{int(value.timestamp())}:{style}>"
+    return f"<t:{value.timestamp()}:{style}>"
 
 
 def _format_server_option_line(option: ServerEventOption) -> str:
     requirements: list[str] = []
     if option.min_money > 0:
-        requirements.append(f"${int(option.min_money)}")
+        requirements.append(f"${option.min_money}")
     if option.min_bloodskulls > 0:
-        requirements.append(f"{int(option.min_bloodskulls)} bloodskulls")
+        requirements.append(f"{option.min_bloodskulls} bloodskulls")
     if option.requires_pooch_selection:
         requirements.append("a pooch")
 
@@ -148,7 +148,7 @@ class ServerEventPoochSelect(discord.ui.Select):
         super().__init__(placeholder="Choose a pooch...", min_values=1, max_values=1, options=options)
 
     async def callback(self, interaction: discord.Interaction):
-        pooch_id = int(self.values[0])
+        pooch_id = self.values[0]
         success, message, _summary = await participate_in_server_event(
             self.occurrence_id,
             self.server_discord_id,
@@ -185,7 +185,7 @@ class ServerEventOptionSelect(discord.ui.Select):
         )
 
     async def callback(self, interaction: discord.Interaction):
-        option = self.server_options[int(self.values[0])]
+        option = self.server_options[self.values[0]]
         if option.requires_pooch_selection:
             pooches = await _list_owner_living_pooches(self.server_discord_id, interaction.user.id)
             if not pooches:

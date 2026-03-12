@@ -30,7 +30,7 @@ class BreedMateView(View):
 
     async def _on_select(self, interaction: discord.Interaction):
         r = InteractionResponder(interaction)
-        mate_id = int(self.select.values[0])
+        mate_id = self.select.values[0]
         mate = next((mate for mate in self.mates if mate.id == mate_id), None)
         if mate is None:
             return

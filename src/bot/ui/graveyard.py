@@ -88,7 +88,7 @@ class _GraveyardControls:
         if value == "__none__":
             return
 
-        selected_id = int(value)
+        selected_id = value
         selected = next((pooch for (pooch, _) in self.page_rows if pooch.id == selected_id), None)
         if selected is None:
             return

@@ -106,6 +106,7 @@ CREATE TYPE event_action_type AS ENUM (
     'add_breed',
     'transfer_pooch',
     'create_pooch',
+    'clone_pooch',
     'modify_kennel_capacity',
     'rename_pooch',
     'set_breeding_cooldown',

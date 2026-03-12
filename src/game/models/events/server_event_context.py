@@ -16,10 +16,10 @@ class ServerEventContext:
     @classmethod
     def from_dict(cls, data: ServerEventContextDict | dict) -> "ServerEventContext":
         return cls(
-            server_discord_id=int(data.get("server_discord_id", 0)),
-            featured_pooch_ids=[int(value) for value in data.get("featured_pooch_ids", [])],
-            featured_breed_ids=[int(value) for value in data.get("featured_breed_ids", [])],
-            featured_mutation_ids=[int(value) for value in data.get("featured_mutation_ids", [])],
+            server_discord_id=data.get("server_discord_id", 0),
+            featured_pooch_ids=[value for value in data.get("featured_pooch_ids", [])],
+            featured_breed_ids=[value for value in data.get("featured_breed_ids", [])],
+            featured_mutation_ids=[value for value in data.get("featured_mutation_ids", [])],
             extra_data=dict(data.get("extra_data", {})),
         )
 

@@ -288,9 +288,9 @@ async def add_pooch_breeds(pooch_id: int, breed_weights: dict[int, int]) -> list
     rows: list[PoochBreed] = []
     async with session_scope() as session:
         for breed_id, weight in breed_weights.items():
-            if weight is None or int(weight) <= 0:
+            if weight is None or weight <= 0:
                 continue
-            row = PoochBreed(pooch_id=pooch_id, breed_id=int(breed_id), weight=int(weight))
+            row = PoochBreed(pooch_id=pooch_id, breed_id=breed_id, weight=weight)
             session.add(row)
             rows.append(row)
         await session.flush()

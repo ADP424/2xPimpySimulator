@@ -240,7 +240,7 @@ async def load_owner_events():
                     severity=str(attributes.get("severity", "minor")).lower(),
                     rarity=str(attributes.get("rarity", "common")).lower(),
                     requires_response=bool(attributes.get("requires_response", False)),
-                    response_timeout=int(attributes.get("response_timeout", 3600)),
+                    response_timeout=attributes.get("response_timeout", 3600),
                     triggered_only=bool(attributes.get("triggered_only", False)),
                     filter=_resolve_owner_event_filter(attributes),
                     advanced_options=attributes.get("advanced_options", {}),

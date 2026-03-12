@@ -48,16 +48,16 @@ class Event(Base):
 
     @property
     def min_pooches(self) -> int:
-        return int(self.filter.get("min_pooches", 0))
+        return self.filter.get("min_pooches", 0)
 
     @property
     def min_kennels(self) -> int:
-        return int(self.filter.get("min_kennels", 0))
+        return self.filter.get("min_kennels", 0)
 
     @property
     def min_money(self) -> int:
-        return int(self.filter.get("min_money", 0))
+        return self.filter.get("min_money", 0)
 
     @property
     def min_bloodskulls(self) -> int:
-        return int(self.filter.get("min_bloodskulls", 0))
+        return self.filter.get("min_bloodskulls", 0)

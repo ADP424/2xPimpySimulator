@@ -248,7 +248,7 @@ class _CustomSummonModal(discord.ui.Modal):
             return
 
         try:
-            num_rolls = int(str(self.rolls.value).strip())
+            num_rolls = self.rolls.value.strip()
         except Exception:
             await r.reply(content="Enter a whole number of rolls (like 7).")
             return
@@ -479,7 +479,7 @@ class _SacrificeControls:
             for option in self.select.options:
                 option.default = False
         else:
-            selected_id = int(value)
+            selected_id = value
             self.selected = next((p for p in self.pooches if p.id == selected_id), None)
             if self.selected is None:
                 return

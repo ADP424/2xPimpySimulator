@@ -16,7 +16,7 @@ def build_breed_info_embed(breed: Breed) -> discord.Embed:
     embed = discord.Embed(title=breed.name, description=breed.description)
     embed.add_field(name="Also Known As", value=breed.alt_name or "—", inline=True)
     embed.add_field(name="Category", value=breed.category or "—", inline=True)
-    embed.add_field(name="Rarity", value=str(breed.rarity).capitalize(), inline=True)
+    embed.add_field(name="Rarity", value=breed.rarity.capitalize(), inline=True)
     return embed
 
 
@@ -69,7 +69,7 @@ class BreedDropdownControls:
             await edit_interaction(interaction, view=self.select.view)
             return
 
-        selected_id = int(value)
+        selected_id = value
         selected = next((o.breed for o in self.breeds if o.breed.id == selected_id), None)
         if selected is None:
             return

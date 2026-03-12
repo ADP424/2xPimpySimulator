@@ -359,6 +359,8 @@ class BaseEventValidator:
                     "age",
                     "base_health",
                     "breeding_cooldown",
+                    "destination",
+                    "save_as",
                 },
             )
             self._validate_optional_string(params_path, parameters, "name", allow_blank=False)
@@ -366,7 +368,33 @@ class BaseEventValidator:
             self._validate_optional_int(params_path, parameters, "age", minimum=0)
             self._validate_optional_int(params_path, parameters, "base_health")
             self._validate_optional_int(params_path, parameters, "breeding_cooldown", minimum=0)
+            self._validate_enum_string(params_path, parameters, "destination", {"kennel", "graveyard", "hell", "town"})
+            self._validate_optional_string(params_path, parameters, "save_as", allow_blank=False)
             self._validate_target_type(path, action_type, target_type, {"owner"})
+
+        elif action_type == "clone_pooch":
+            self._validate_allowed_keys(
+                params_path,
+                parameters,
+                common_allowed
+                | {
+                    "name",
+                    "sex",
+                    "age",
+                    "base_health",
+                    "breeding_cooldown",
+                    "destination",
+                    "save_as",
+                },
+            )
+            self._validate_optional_string(params_path, parameters, "name", allow_blank=False)
+            self._validate_enum_string(params_path, parameters, "sex", SEX_VALUES)
+            self._validate_optional_int(params_path, parameters, "age", minimum=0)
+            self._validate_optional_int(params_path, parameters, "base_health")
+            self._validate_optional_int(params_path, parameters, "breeding_cooldown", minimum=0)
+            self._validate_enum_string(params_path, parameters, "destination", {"kennel", "graveyard", "hell", "town"})
+            self._validate_save_as_with_targets(params_path, parameters, {"clone", "source"})
+            self._validate_target_type(path, action_type, target_type, {"pooch", "kennel", "owner"})
 
         elif action_type == "modify_kennel_capacity":
             self._validate_allowed_keys(
@@ -411,6 +439,7 @@ class BaseEventValidator:
                     "baby_age",
                     "baby_base_health",
                     "baby_breeding_cooldown",
+                    "save_as",
                 },
             )
             if "first_selector" in parameters:
@@ -430,6 +459,7 @@ class BaseEventValidator:
             self._validate_optional_int(params_path, parameters, "baby_age", minimum=0)
             self._validate_optional_int(params_path, parameters, "baby_base_health")
             self._validate_optional_int(params_path, parameters, "baby_breeding_cooldown", minimum=0)
+            self._validate_save_as_with_targets(params_path, parameters, {"baby", "first_parent", "second_parent"})
             self._validate_target_type(path, action_type, target_type, {"owner"})
 
         else:
@@ -451,7 +481,8 @@ class BaseEventValidator:
             self._validate_optional_string(path, filter_data, "description")
 
         self._validate_min_max_pair(path, filter_data, "min_capacity", "max_capacity", minimum=0)
-        self._validate_min_max_pair(path, filter_data, "min_pooches", "max_pooches", minimum=0)
+        if isinstance(filter_data.get("max_pooches", 0), int):
+            self._validate_min_max_pair(path, filter_data, "min_pooches", "max_pooches", minimum=0)
 
         pooches = filter_data.get("pooches", [])
         if not isinstance(pooches, list):
@@ -785,3 +816,37 @@ class BaseEventValidator:
             self.error(f"{path}.{field_name}", "must be an integer or 'base'")
         elif raw_value < 0:
             self.error(f"{path}.{field_name}", "must be at least 0")
+
+    def _validate_save_as_with_targets(self, path: str, parameters: dict[str, Any], valid_targets: set[str]) -> None:
+        """
+        Validate a save_as field that can be either:
+          - a plain string (slot name, target defaults to the action-type default)
+          - a list of {"slot": str, "target": str} dicts
+
+        valid_targets: set of accepted target strings for this action type.
+        """
+        if "save_as" not in parameters:
+            return
+        raw = parameters["save_as"]
+        if isinstance(raw, str):
+            if not raw.strip():
+                self.error(f"{path}.save_as", "must not be blank")
+            return
+        if not isinstance(raw, list):
+            self.error(f"{path}.save_as", "must be a string or a list of {slot, target} objects")
+            return
+        for i, item in enumerate(raw):
+            item_path = f"{path}.save_as[{i}]"
+            if not isinstance(item, dict):
+                self.error(item_path, "must be an object with 'slot' and 'target'")
+                continue
+            slot = item.get("slot")
+            if not isinstance(slot, str) or not slot.strip():
+                self.error(f"{item_path}.slot", "must be a non-blank string")
+            target = item.get("target")
+            if target is not None:
+                if not isinstance(target, str) or target.strip().lower() not in valid_targets:
+                    self.error(
+                        f"{item_path}.target",
+                        f"must be one of: {', '.join(sorted(valid_targets))}",
+                    )

@@ -232,8 +232,8 @@ async def load_server_events():
                     flavor_text=str(attributes.get("flavor_text", "")),
                     severity=str(attributes.get("severity", "minor")).lower(),
                     rarity=str(attributes.get("rarity", "common")).lower(),
-                    min_owners=int(attributes.get("min_owners", 1)),
-                    max_participants=int(attributes.get("max_participants", 0)),
+                    min_owners=attributes.get("min_owners", 1),
+                    max_participants=attributes.get("max_participants", 0),
                     resolution_strategy=str(attributes.get("resolution_strategy", "random_winner")).lower(),
                     advanced_options=attributes.get("advanced_options", {}),
                 )
@@ -258,8 +258,8 @@ async def load_server_events():
                         option_order=opt_idx,
                         label=str(option_data.get("label", f"Option {opt_idx + 1}")),
                         description=str(option_data.get("description", "")),
-                        min_money=int(option_data.get("min_money", 0)),
-                        min_bloodskulls=int(option_data.get("min_bloodskulls", 0)),
+                        min_money=option_data.get("min_money", 0),
+                        min_bloodskulls=option_data.get("min_bloodskulls", 0),
                         requires_pooch_selection=bool(option_data.get("requires_pooch_selection", False)),
                         advanced_options=option_data.get("advanced_options", {}),
                     )
@@ -285,8 +285,8 @@ async def load_server_events():
                         label=str(outcome_data.get("label", "")),
                         description=str(outcome_data.get("description", "")),
                         message=str(outcome_data.get("message", "")),
-                        min_rank=int(outcome_data["min_rank"]) if "min_rank" in outcome_data else None,
-                        max_rank=int(outcome_data["max_rank"]) if "max_rank" in outcome_data else None,
+                        min_rank=outcome_data["min_rank"] if "min_rank" in outcome_data else None,
+                        max_rank=outcome_data["max_rank"] if "max_rank" in outcome_data else None,
                         chance=float(outcome_data["chance"]) if "chance" in outcome_data else None,
                         advanced_options=outcome_data.get("advanced_options", {}),
                     )
