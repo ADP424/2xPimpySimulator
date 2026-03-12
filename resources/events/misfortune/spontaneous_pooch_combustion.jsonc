@@ -27,7 +27,7 @@
                             "action_type": "modify_pooch_health",
                             "target_type": "pooch",
                             "parameters": {
-                                "min_amount": -2,
+                                "min_amount": -2, //change to minor burn
                                 "max_amount": -1,
                                 "selector": "random",
                                 "filter": {
@@ -82,7 +82,7 @@
                             "target_type": "kennel",
                             "parameters": {
                                 "use_saved": "fire_victim",
-                                "min_amount": -2,
+                                "min_amount": -2, //change to minor burn
                                 "max_amount": -1
                             }
                         }
@@ -114,7 +114,7 @@
                             "action_type": "modify_pooch_health",
                             "target_type": "pooch",
                             "parameters": {
-                                "min_amount": -2,
+                                "min_amount": -2, //change to minor burn
                                 "max_amount": -1,
                                 "selector": "random",
                                 "filter": {
@@ -180,7 +180,7 @@
                             "action_type": "modify_pooch_health",
                             "target_type": "pooch",
                             "parameters": {
-                                "min_amount": -5,
+                                "min_amount": -5, //change to major burn
                                 "max_amount": -1,
                                 "selector": "random",
                                 "filter": {
