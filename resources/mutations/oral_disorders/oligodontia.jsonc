@@ -1,0 +1,8 @@
+{
+    "name": "Oligodontia",
+    "alt_name": "None Teeth",
+    "description": "This pooch is all gums and no bite.",
+    "heritability": 0.25,
+    "health_impact": "HARMFUL",
+    "rarity": "UNCOMMON"
+}

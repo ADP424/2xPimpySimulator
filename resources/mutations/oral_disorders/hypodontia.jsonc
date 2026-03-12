@@ -1,0 +1,8 @@
+{
+    "name": "Hypodontia",
+    "alt_name": "Sparse Teeth",
+    "description": "This pooch is missing some teeth.",
+    "heritability": 0.25,
+    "health_impact": "NEUTRAL",
+    "rarity": "COMMON"
+}

@@ -6,6 +6,7 @@
 | Have per-server auction houses players can put their pooches in / players bid, highest bid by EOD gets the pooch              | 8      |
 | Create new breeds at runtime ???                                                                                              | ???    |
 | Get breed population stats for server (add this info to the vet)                                                              | 3      |
+| Have rarity be rolled first, then pick one from that rarity (mutations, breeds, events, etc.)                                 | 2      |
 
 ## UI
 | Feature                                                                                                                       | Points |
@@ -22,9 +23,16 @@
 ## Random Events
 | Feature                                                                                                                       | Points |
 | ----------------------------------------------------------------------------------------------------------------------------- | ------ |
-| Implement random events for an entire server (one per week)                                                                   | 21     |
 | Add a dog fighting ring in each server with gambling (winner gets skulls of dead pooches as bloodskulls)                      | 8      |
 | Dog show where you want to match closest to breed, mutations, and stats                                                       | 13     |
+| Major weekly server events guaranteed each week, minor events change per day (except major weekly start day)                  | 21     |
+
+## Seasons
+| Feature                                                                                                                       | Points |
+| ----------------------------------------------------------------------------------------------------------------------------- | ------ |
+| Minor server events change season, season only changes back when another season event happens (winter = dead strays)          | 13     |
+| Certain diseases, mutations (and maybe breeds) that can only show up in certain seasons                                       | 13     |
+| Certain events only happen during certain seasons                                                                             | 5      |
 
 ## Blood Magic
 | Feature                                                                                                                       | Points |
@@ -67,6 +75,7 @@
 | Make breeding have a chance to involve a second member you didn't choose (affected by fertility)                              | 5      |
 | Stillbirths/miscarriages                                                                                                      | 3      |
 | Have pooch stats (fertility, aggressiveness, etc.) be partially inherited                                                     | 3      |
+| Add option to neuter dogs at the vet                                                                                          | 3      |
 
 ## Vendors
 | Feature                                                                                                                       | Points |
@@ -87,6 +96,8 @@
 | Randomly generated strays wandering towns (servers)                                                                           | 3      |
 | Players can adopt strays by spending bones for a chance to attract one                                                        | 3      |
 | Add park you can go to in order to get stray pooches (chance increases with strays / player)                                  | 8      |
+| There should always be a minimum of one shitty stray per server                                                               | 1      |
+| Strays fuck each other bro                                                                                                    | 3      |
 
 ## Stat Management
 | Feature                                                                                                                       | Points |
@@ -96,6 +107,7 @@
 | Add strength stat that affects how good a do is at fighting (> change to deal injury, < chance to take injury)                | 5      |
 | Add size stat whose base is affected solely by breed (in fighting, size matters as well as strength)                          | 5      |
 | Add a cuteness stat, which could reduce the chance to be killed in combat slightly (mostly for pageants and stuff)            | 5      |
+| Add a fluffiness stat, which affects temperature regulation (important for seasons)                                           | 3      |
 | Add intelligence and dexterity as placeholder stats (don't affect anything yet)                                               | 2      |
 | Heritable stats (parent stats increase or decrease the upper/lower bounds the child can get)                                  | 3      |
 | Add "pooch snapshots" you can get from the vet clinic that show a pooch's stats at that point in time                         | 13     |
