@@ -110,4 +110,6 @@
 ## UI/UX
 | Feature                                                                                                                       | Points |
 | ----------------------------------------------------------------------------------------------------------------------------- | ------ |
-| Vendor stock in UI shows 0, even when they have dogs for sale                                                                 | 1      |
+| Sanitize inputs!!!                                                                                                            | 8      |
+| Authenticate owner permission to rename pooches, breed pooches, etc.                                                          | 8      |
+| Clean quotes (HTML-relavent characters)                                                                                       | 5      |

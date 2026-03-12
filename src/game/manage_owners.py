@@ -3,6 +3,7 @@ from __future__ import annotations
 import random
 from typing import TYPE_CHECKING, Optional
 
+from logger import get_logger
 from src.database import (
     add_breed_to_pooch,
     add_owner_to_server,
@@ -18,7 +19,6 @@ from src.database import (
     set_owner_begged_today,
     update_owner_discord_name,
 )
-from logger import get_logger
 
 from .constants import BEG_DOLLARS_RANGE, BEG_MAX_DOLLARS
 from .exceptions import OwnerNotFound

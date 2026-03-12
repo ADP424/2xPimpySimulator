@@ -1,6 +1,5 @@
 import atexit
 import os
-
 from datetime import timedelta
 
 from flask import Flask
