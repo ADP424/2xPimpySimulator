@@ -3,7 +3,7 @@
     "description": "Two of your pooches bred without permission.",
     "flavor_text": "Maybe you should throw them in cages.",
     "severity": "MODERATE",
-    "rarity": "RARE",
+    "rarity": "NOVEL",
     "requires_response": false,
     "filter": {
         "pooches": [

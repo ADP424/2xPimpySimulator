@@ -1,0 +1,37 @@
+{
+    "name": "Asexual Reproduction",
+    "description": "One of your pooches is pregnent from themselves.",
+    "flavor_text": "How did that even happen.",
+    "severity": "MINOR",
+    "rarity": "UNPRECEDENTED",
+    "requires_response": false,
+    "filter": {
+        "pooches": [ 
+            { 
+                "sex": "female",
+                "is_alive": true,
+                "max_breeding_cooldown": 0
+            }
+        ]
+    },
+    "actions": [
+        {
+            "action_type": "breed_pooches",
+            "target_type": "owner",
+            "parameters": {
+                "first_selector": "random", //To do. Make the same pooch breed with it self.
+                "first_filter": {
+                    "sex": "female",
+                    "is_alive": true,
+                    "max_breeding_cooldown": 0
+                },
+                "second_selector": "random",
+                "second_filter": {
+                    "sex": "female",
+                    "is_alive": true,
+                    "max_breeding_cooldown": 0
+                }
+            }
+        }
+    ]
+}

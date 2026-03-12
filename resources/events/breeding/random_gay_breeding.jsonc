@@ -1,0 +1,42 @@
+{
+    "name": "Random Breeding",
+    "description": "Two of your pooches bred without permission.",
+    "flavor_text": "Your not sure how they managed to get pregnent.",
+    "severity": "MODERATE",
+    "rarity": "UNPRECEDENTED",
+    "requires_response": false,
+    "filter": {
+        "pooches": [ //To do. Not sure if this would target the same pooch twice.
+            { 
+                "sex": "female",
+                "is_alive": true,
+                "max_breeding_cooldown": 0
+            },
+            { 
+                "sex": "female",
+                "is_alive": true,
+                "max_breeding_cooldown": 0
+            }
+        ]
+    },
+    "actions": [
+        {
+            "action_type": "breed_pooches",
+            "target_type": "owner",
+            "parameters": {
+                "first_selector": "random", //To do. Not sure if this would target the same pooch twice.
+                "first_filter": {
+                    "sex": "female",
+                    "is_alive": true,
+                    "max_breeding_cooldown": 0
+                },
+                "second_selector": "random",
+                "second_filter": {
+                    "sex": "female",
+                    "is_alive": true,
+                    "max_breeding_cooldown": 0
+                }
+            }
+        }
+    ]
+}

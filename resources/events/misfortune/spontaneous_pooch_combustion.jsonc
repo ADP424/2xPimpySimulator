@@ -173,7 +173,7 @@
             "visible": true,
             "outcomes": [
                 {
-                    "chance": 0.2,
+                    "chance": 0.1,
                     "message": "The fire goes out on it's own.",
                     "actions": [
                         {
@@ -207,7 +207,7 @@
                     ]
                 },
                 {
-                    "chance": 0.1,
+                    "chance": 0.2,
                     "message": "They die horribly, and the other pooches got burnt.",
                     "actions": [
                         {
