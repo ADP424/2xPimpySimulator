@@ -3,7 +3,7 @@ from __future__ import annotations
 import random
 from typing import TYPE_CHECKING, Optional
 
-from logger import get_logger
+from src.logger import get_logger
 from src.database import (
     add_breed_to_pooch,
     add_owner_to_server,

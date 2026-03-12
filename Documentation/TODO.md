@@ -72,6 +72,7 @@
 | Feature                                                                                                                       | Points |
 | ----------------------------------------------------------------------------------------------------------------------------- | ------ |
 | Vendors desire specific breeds (at least one of each rarity)                                                                  | 5      |
+| Fix exploit where you can buy and resell pooches between vendors (make vendors unable to sell what other vendors want)        | 5      |
 
 ## Kennel Management
 | Feature                                                                                                                       | Points |
@@ -91,6 +92,14 @@
 | ----------------------------------------------------------------------------------------------------------------------------- | ------ |
 | Add stat increase/decrease advanced options that mutations have to breeds also                                                | 5      |
 | Add stat increase/decrease advanced options for fertility and aggressiveness                                                  | 3      |
+| Add strength stat that affects how good a do is at fighting (> change to deal injury, < chance to take injury)                | 5      |
+| Add size stat whose base is affected solely by breed (in fighting, size matters as well as strength)                          | 5      |
+| Add a cuteness stat, which could reduce the chance to be killed in combat slightly (mostly for pageants and stuff)            | 5      |
+| Add intelligence and dexterity as placeholder stats (don't affect anything yet)                                               | 2      |
+| Heritable stats (parent stats increase or decrease the upper/lower bounds the child can get)                                  | 3      |
+| Add "pooch snapshots" you can get from the vet clinic that show a pooch's stats at that point in time                         | 13     |
+| Special procedure to get exact numbers on the buffs/debuffs pooches have on their stats                                       | 13     |
+| Pooch snapshots should display on pooch info pages (and it makes it easier to tell the value of auction pooches)              | 5      |
 
 ## Food
 | Feature                                                                                                                       | Points |

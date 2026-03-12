@@ -197,8 +197,11 @@ async def day_change_runner(
         async with run_lock:
             try:
                 await run_once()
-            except Exception:
+            except Exception as exception:
                 logger.exception("Startup day change failed")
+                logger.exception(exception)
+                if stage == "dev":
+                    raise exception
 
     while True:
         manual_task = asyncio.create_task(manual_queue.get())

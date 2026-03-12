@@ -118,6 +118,7 @@ from .update import (
     transfer_pooch_to_owner,
     transfer_pooch_to_vendor,
     update_active_event_result,
+    update_owner_discord_name,
 )
 
 __all__ = [
@@ -240,4 +241,5 @@ __all__ = [
     "transfer_pooch_to_owner",
     "transfer_pooch_to_vendor",
     "update_active_event_result",
+    "update_owner_discord_name",
 ]
