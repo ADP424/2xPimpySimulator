@@ -1,0 +1,29 @@
+{
+    "name": "Ascension",
+    "description": "You come back to your kennel and find all but one of your pooches dead.",
+    "flavor_text": "Something feels off about them.",
+    "severity": "CATASTROPHIC",
+    "rarity": "UNIQUE",
+    "requires_response": false,
+    "filter": {
+        "kennels": [
+            {
+                "min_count": 1,
+                "min_pooches": 5
+            }
+        ]
+    },
+    "actions": [
+        {
+            "action_type": "add_mutation", //To do. I'm not sure how to kill all but one pooch in a kennel so do that.
+            "target_type": "pooch",
+            "parameters": {
+                "selector": "random",
+                "filter": {
+                    "is_alive": true
+                },
+                "mutation": "god_syndrome"
+            }
+        }
+    ]
+}
