@@ -15,7 +15,7 @@
     },
     "actions": [
         {
-            "action_type": "add_mutation", //To do. I'm not sure how to kill all but one pooch in a kennel so do that.
+            "action_type": "add_mutation", // TODO: I'm not sure how to kill all but one pooch in a kennel so do that.
             "target_type": "pooch",
             "parameters": {
                 "selector": "random",

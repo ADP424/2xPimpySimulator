@@ -27,7 +27,7 @@
                             "action_type": "modify_pooch_health",
                             "target_type": "pooch",
                             "parameters": {
-                                "min_amount": -2, //change to minor burn
+                                "min_amount": -2, // TODO: change to minor burn
                                 "max_amount": -1,
                                 "selector": "random",
                                 "filter": {
@@ -180,7 +180,7 @@
                             "action_type": "modify_pooch_health",
                             "target_type": "pooch",
                             "parameters": {
-                                "min_amount": -5, //change to major burn
+                                "min_amount": -5, // TODO: change to major burn
                                 "max_amount": -1,
                                 "selector": "random",
                                 "filter": {

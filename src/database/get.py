@@ -489,6 +489,9 @@ async def get_random_eligible_owner_event_for_owner(
     rng: Random, optional
         The random generator to use for weighted selection.
 
+    include_triggered_only: bool, default : False
+        Whether to include events marked as being triggered only be other events or not.
+
     Returns
     -------
     Event, optional

@@ -148,7 +148,7 @@ class ServerEventPoochSelect(discord.ui.Select):
         super().__init__(placeholder="Choose a pooch...", min_values=1, max_values=1, options=options)
 
     async def callback(self, interaction: discord.Interaction):
-        pooch_id = self.values[0]
+        pooch_id = int(self.values[0])
         success, message, _summary = await participate_in_server_event(
             self.occurrence_id,
             self.server_discord_id,

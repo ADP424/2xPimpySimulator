@@ -100,7 +100,7 @@ async def post_day_change_summaries(bot: discord.Client, summaries: dict[int, Da
                 channel = await bot.fetch_channel(channel_id)
             except Exception:
                 logger.info(
-                    f"Couldn't find event channel with ID '{channel_id}' for server with ID '{server_discord_id}'."
+                    f"Couldn't find event channel with ID '{channel_id}' for server with ID '{server_discord_id}'. "
                     "Skipping summaries..."
                 )
                 continue

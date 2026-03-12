@@ -1,7 +1,7 @@
 {
-    "name": "Cheese or Fish",
-    "description": "A strange man apears. He asks you Cheese or Fish?",
-    "flavor_text": "He doesn't seem to respond to anything but cheese or fish.",
+    "name": "Fish or Cheese",
+    "description": "A strange woman apears. She asks you, \"Fish or Cheese?\"",
+    "flavor_text": "She doesn't seem to respond to anything but cheese or fish.",
     "severity": "MINOR",
     "rarity": "UNCOMMON",
     "requires_response": true,
@@ -15,22 +15,7 @@
         ]
     },
     "options": [
-        {
-            "label": "Say cheese.",
-            "description": "Cheese.",
-            "filter": {
-                "min_money": 10
-            },
-            "actions": [
-                {
-                    "action_type": "modify_money",
-                    "target_type": "owner",
-                    "parameters": {
-                        "amount": -10
-                    }
-                }
-            ]
-        },
+        
         {
             "label": "Say fish.",
             "description": "Fish.",
@@ -48,8 +33,24 @@
             ]
         },
         {
+            "label": "Say cheese.",
+            "description": "Cheese.",
+            "filter": {
+                "min_money": 10
+            },
+            "actions": [
+                {
+                    "action_type": "modify_money",
+                    "target_type": "owner",
+                    "parameters": {
+                        "amount": -10
+                    }
+                }
+            ]
+        },
+        {
             "label": "Call the cops.",
-            "description": "You don't like the look of him or his questions.",
+            "description": "You don't like the look of her or her questions.",
             "actions": [
                 {
                     "action_type": "modify_pooch_health",
@@ -65,8 +66,8 @@
             ]
         },
         {
-            "label": "Ignore the man.",
-            "description": "He grins and leaves you his blessing.",
+            "label": "Ignore the woman.",
+            "description": "She frowns and leaves you her curse.",
             "default": true,
             "visible": false,
             "actions": [
@@ -74,7 +75,7 @@
                     "action_type": "modify_pooch_health",
                     "target_type": "pooch",
                     "parameters": {
-                        "amount": 1,
+                        "amount": -1,
                         "selector": "random",
                         "filter": {
                             "is_alive": true
@@ -82,17 +83,28 @@
                     }
                 },
                 {
+                    "action_type": "add_mutation",
+                    "target_type": "pooch",
+                    "parameters": {
+                        "selector": "random",
+                        "filter": {
+                            "is_alive": true
+                        },
+                        "mutation": "dissociative_identity_disorder"
+                    }
+                },
+                {
                     "action_type": "modify_bloodskulls",
                     "target_type": "owner",
                     "parameters": {
-                        "amount": 1
+                        "amount": -1
                     }
                 },
                 {
                     "action_type": "modify_money",
                     "target_type": "owner",
                     "parameters": {
-                        "amount": 10
+                        "amount": -10
                     }
                 }
             ]

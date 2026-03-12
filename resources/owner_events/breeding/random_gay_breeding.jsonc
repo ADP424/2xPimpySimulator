@@ -1,18 +1,14 @@
 {
-    "name": "Random Breeding",
+    "name": "Random Gay Breeding",
     "description": "Two of your pooches bred without permission.",
-    "flavor_text": "Maybe you should throw them in cages.",
+    "flavor_text": "Your not sure how they managed to get pregnent.",
     "severity": "MODERATE",
-    "rarity": "NOVEL",
+    "rarity": "UNPRECEDENTED",
     "requires_response": false,
     "filter": {
-        "pooches": [
-            { 
-                "sex": "male",
-                "is_alive": true,
-                "max_breeding_cooldown": 0
-            },
-            { 
+        "pooches": [ // TODO: Make in kennel
+            {
+                "num_pooches": 2,
                 "sex": "female",
                 "is_alive": true,
                 "max_breeding_cooldown": 0
@@ -24,9 +20,9 @@
             "action_type": "breed_pooches",
             "target_type": "owner",
             "parameters": {
-                "first_selector": "random",
+                "first_selector": "random", // TODO: Not sure if this would target the same pooch twice.
                 "first_filter": {
-                    "sex": "male",
+                    "sex": "female",
                     "is_alive": true,
                     "max_breeding_cooldown": 0
                 },
