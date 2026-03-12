@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template
 
-from web.auth_utils import login_required, server_required
+from src.web.auth_utils import login_required, server_required
 
 church_bp = Blueprint("church", __name__)
 

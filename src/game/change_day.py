@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import random
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 import numpy
 
-from database import (
+from src.database import (
     add_breed_to_pooch,
     add_mutation_to_pooch,
     add_pooch_to_vendor_stock,
@@ -27,11 +29,10 @@ from database import (
     list_vendors,
     remove_pooch_from_kennel,
     reset_begged_today,
+    set_pooch_breeding_cooldown,
     set_pooch_dead,
 )
-from database.models import Mutation, Pooch
-from database.update import set_pooch_breeding_cooldown
-from logger import get_logger
+from src.logger import get_logger
 
 from .constants import (
     DEATH_CHANCE_PER_HEALTH_UNDER_MIN,
@@ -56,13 +57,19 @@ from .models import (
     to_pooch,
     to_server,
 )
+
+if TYPE_CHECKING:
+    from src.database.models import Mutation, Pooch
+
 from .utils import get_pooch_mutation_advanced_option_total
 
 logger = get_logger("game/change_day")
 
 
 def _death_roll(total_health: int, rng: random.Random) -> bool:
-    """Randomly determine whether a Pooch should die or not, based on its health."""
+    """
+    Randomly determine whether a Pooch should die or not, based on its health.
+    """
 
     if total_health >= MIN_HEALTH_FOR_DEATH_CHANCE:
         return False

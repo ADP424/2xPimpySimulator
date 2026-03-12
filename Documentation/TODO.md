@@ -17,11 +17,11 @@
 | Add sorting to the lists on the website, as well as filtering and searching                                                   | 1      |
 | Have timeline per pooch showing birthday / other significant events (like being bought) / death using cool timeline comp      | 5      |
 | Obfuscate mutations (so they don't tell you exactly what a pooch has unless you get it checked at vet)                        | 8      |
+| Gendered pronoun placeholders in JSON where it's relevant                                                                     | 3      |
 
 ## Random Events
 | Feature                                                                                                                       | Points |
 | ----------------------------------------------------------------------------------------------------------------------------- | ------ |
-| Implement random events (player-specific)                                                                                     | 21     |
 | Implement random events for an entire server (one per week)                                                                   | 21     |
 | Add a dog fighting ring in each server with gambling (winner gets skulls of dead pooches as bloodskulls)                      | 8      |
 | Dog show where you want to match closest to breed, mutations, and stats                                                       | 13     |
@@ -110,4 +110,4 @@
 ## UI/UX
 | Feature                                                                                                                       | Points |
 | ----------------------------------------------------------------------------------------------------------------------------- | ------ |
-| Vendor stock in UI shows 0, even when they have dogs for sale                                                                 | 1      |
+|                                                                 

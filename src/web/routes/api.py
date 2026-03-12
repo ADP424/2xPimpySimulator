@@ -1,13 +1,13 @@
 from flask import Blueprint, jsonify, request
 
-from web.async_utils import run_async
-from web.auth_utils import (
+from src.web.async_utils import run_async
+from src.web.auth_utils import (
     get_current_server_id,
     get_current_user_id,
     login_required,
     server_required,
 )
-from web.serializers import (
+from src.web.serializers import (
     serialize_breed,
     serialize_kennel,
     serialize_mutation,
@@ -23,7 +23,7 @@ api_bp = Blueprint("api", __name__)
 @server_required
 def get_owner():
     """Get the current user's owner info for the current server."""
-    from game import get_or_create_owner
+    from src.game import get_or_create_owner
 
     discord_id = get_current_user_id()
     server_id = get_current_server_id()
@@ -36,7 +36,7 @@ def get_owner():
 @login_required
 def get_kennels():
     """Get all kennels owned by the current user."""
-    from game import list_owner_kennels
+    from src.game import list_owner_kennels
 
     discord_id = get_current_user_id()
     kennels = run_async(list_owner_kennels(discord_id))
@@ -47,7 +47,7 @@ def get_kennels():
 @login_required
 def get_kennel_pooches(kennel_id: int):
     """Get all pooches in a specific kennel."""
-    from game import list_kennel_pooches
+    from src.game import list_kennel_pooches
 
     try:
         pooches = run_async(list_kennel_pooches(kennel_id))
@@ -60,7 +60,7 @@ def get_kennel_pooches(kennel_id: int):
 @login_required
 def get_pooch(pooch_id: int):
     """Get detailed info about a specific pooch."""
-    from game import get_pooch_by_id
+    from src.game import get_pooch_by_id
 
     try:
         pooch = run_async(get_pooch_by_id(pooch_id))
@@ -73,7 +73,7 @@ def get_pooch(pooch_id: int):
 @login_required
 def get_pooch_family(pooch_id: int):
     """Get the family of a specific pooch."""
-    from game import get_pooch_family
+    from src.game import get_pooch_family
 
     try:
         family = run_async(get_pooch_family(pooch_id))
@@ -92,7 +92,7 @@ def get_pooch_family(pooch_id: int):
 @login_required
 def get_pooch_buy_price(pooch_id: int):
     """Get the buy price of a pooch, optionally from a vendor."""
-    from game import get_pooch_buy_price
+    from src.game import get_pooch_buy_price
 
     vendor_id = request.args.get("vendor_id", type=int)
 
@@ -107,7 +107,7 @@ def get_pooch_buy_price(pooch_id: int):
 @login_required
 def get_pooch_sell_price(pooch_id: int):
     """Get the sell price of a pooch, optionally to a vendor."""
-    from game import get_pooch_sell_price
+    from src.game import get_pooch_sell_price
 
     vendor_id = request.args.get("vendor_id", type=int)
 
@@ -122,8 +122,8 @@ def get_pooch_sell_price(pooch_id: int):
 @login_required
 def breed_pooches():
     """Breed two pooches."""
-    from game import breed_pooches as game_breed_pooches
-    from game import get_pooch_by_id
+    from src.game import breed_pooches as game_breed_pooches
+    from src.game import get_pooch_by_id
 
     data = request.json
     first_pooch_id = data.get("first_pooch_id")
@@ -152,7 +152,7 @@ def breed_pooches():
 @login_required
 def check_incest():
     """Check incest level between two pooches."""
-    from game import calculate_incest_level
+    from src.game import calculate_incest_level
 
     first_id = request.args.get("first_pooch_id", type=int)
     second_id = request.args.get("second_pooch_id", type=int)
@@ -171,7 +171,7 @@ def check_incest():
 @server_required
 def get_vendors():
     """Get all vendors for the current server."""
-    from game import list_server_vendors
+    from src.game import list_server_vendors
 
     server_id = get_current_server_id()
     vendors = run_async(list_server_vendors(server_id))
@@ -182,7 +182,7 @@ def get_vendors():
 @login_required
 def get_vendor(vendor_id: int):
     """Get info about a specific vendor."""
-    from game import get_vendor_by_id
+    from src.game import get_vendor_by_id
 
     try:
         vendor = run_async(get_vendor_by_id(vendor_id))
@@ -195,7 +195,7 @@ def get_vendor(vendor_id: int):
 @login_required
 def get_vendor_pooches(vendor_id: int):
     """Get all pooches for sale by a vendor."""
-    from game import get_pooch_buy_price, list_vendor_pooches
+    from src.game import get_pooch_buy_price, list_vendor_pooches
 
     try:
         pooches = run_async(list_vendor_pooches(vendor_id))
@@ -213,7 +213,7 @@ def get_vendor_pooches(vendor_id: int):
 @login_required
 def buy_pooch(vendor_id: int, pooch_id: int):
     """Buy a pooch from a vendor."""
-    from game import buy_pooch as game_buy_pooch
+    from src.game import buy_pooch as game_buy_pooch
 
     discord_id = get_current_user_id()
 
@@ -228,7 +228,7 @@ def buy_pooch(vendor_id: int, pooch_id: int):
 @login_required
 def sell_pooch_to_vendor(vendor_id: int, pooch_id: int):
     """Sell a pooch to a vendor."""
-    from game import sell_pooch
+    from src.game import sell_pooch
 
     discord_id = get_current_user_id()
 
@@ -243,7 +243,7 @@ def sell_pooch_to_vendor(vendor_id: int, pooch_id: int):
 @login_required
 def get_hell_pooches():
     """List all pooches damned to Hell."""
-    from game import list_hell_pooches
+    from src.game import list_hell_pooches
 
     pooches = run_async(list_hell_pooches())
     return jsonify([serialize_pooch(p) for p in pooches])
@@ -253,7 +253,7 @@ def get_hell_pooches():
 @login_required
 def get_hell_summon_price():
     """Get the bloodskull cost to summon with the given number of rolls."""
-    from game import get_summon_pooch_price
+    from src.game import get_summon_pooch_price
 
     rolls = request.args.get("rolls", 1, type=int)
     price = get_summon_pooch_price(max(rolls, 1))
@@ -264,7 +264,7 @@ def get_hell_summon_price():
 @login_required
 def summon_hell_pooch():
     """Summon a pooch from Hell."""
-    from game import summon_pooch
+    from src.game import summon_pooch
 
     discord_id = get_current_user_id()
     data = request.json or {}
@@ -281,7 +281,7 @@ def summon_hell_pooch():
 @login_required
 def get_bloodskull_value(pooch_id: int):
     """Get the bloodskull sacrifice value of a pooch."""
-    from game import get_pooch_bloodskull_value
+    from src.game import get_pooch_bloodskull_value
 
     try:
         value = run_async(get_pooch_bloodskull_value(pooch_id))
@@ -294,7 +294,7 @@ def get_bloodskull_value(pooch_id: int):
 @login_required
 def sacrifice_pooch_route(pooch_id: int):
     """Sacrifice a pooch to Hell for bloodskulls."""
-    from game import sacrifice_pooch
+    from src.game import sacrifice_pooch
 
     discord_id = get_current_user_id()
 
@@ -309,7 +309,7 @@ def sacrifice_pooch_route(pooch_id: int):
 @login_required
 def get_graveyard():
     """Get all deceased pooches buried by the current user."""
-    from game import list_graveyard_pooches
+    from src.game import list_graveyard_pooches
 
     discord_id = get_current_user_id()
     rows = run_async(list_graveyard_pooches(discord_id))
@@ -325,7 +325,7 @@ def get_graveyard():
 @login_required
 def rename_pooch_route(pooch_id: int):
     """Rename a pooch."""
-    from game import rename_pooch
+    from src.game import rename_pooch
 
     data = request.json or {}
     name = data.get("name", "").strip()
@@ -345,7 +345,7 @@ def rename_pooch_route(pooch_id: int):
 @login_required
 def rename_kennel_route(kennel_id: int):
     """Rename a kennel."""
-    from game import rename_kennel
+    from src.game import rename_kennel
 
     data = request.json or {}
     name = data.get("name", "").strip()
@@ -365,7 +365,7 @@ def rename_kennel_route(kennel_id: int):
 @server_required
 def beg_route():
     """Beg for money at the church."""
-    from game import beg_for_money
+    from src.game import beg_for_money
 
     discord_id = get_current_user_id()
     server_id = get_current_server_id()
@@ -383,7 +383,7 @@ def beg_route():
 @login_required
 def get_breeds():
     """Get all breeds."""
-    from game import list_all_breeds
+    from src.game import list_all_breeds
 
     breeds = run_async(list_all_breeds())
     return jsonify([serialize_breed(b) for b in breeds])
@@ -393,7 +393,7 @@ def get_breeds():
 @login_required
 def get_breed(breed_id: int):
     """Get a single breed by ID."""
-    from game import list_all_breeds
+    from src.game import list_all_breeds
 
     breeds = run_async(list_all_breeds())
     for b in breeds:
@@ -406,7 +406,7 @@ def get_breed(breed_id: int):
 @login_required
 def get_mutations():
     """Get all mutations."""
-    from game import list_all_mutations
+    from src.game import list_all_mutations
 
     mutations = run_async(list_all_mutations())
     return jsonify([serialize_mutation(m) for m in mutations])
@@ -416,7 +416,7 @@ def get_mutations():
 @login_required
 def get_mutation(mutation_id: int):
     """Get a single mutation by ID."""
-    from game import list_all_mutations
+    from src.game import list_all_mutations
 
     mutations = run_async(list_all_mutations())
     for m in mutations:

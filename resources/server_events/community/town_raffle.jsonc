@@ -1,0 +1,42 @@
+{
+  "name": "Town Raffle",
+  "description": "The whole server is invited to throw a few dollars into the town raffle.",
+  "flavor_text": "The ticket drum is already clattering.",
+  "severity": "minor",
+  "rarity": "common",
+  "min_owners": 1,
+  "resolution_strategy": "random_winner",
+  "options": [
+    {
+      "label": "Buy a raffle ticket",
+      "description": "Pay $5 for a shot at the prize pool.",
+      "min_money": 5,
+      "actions": [
+        {
+          "action_type": "modify_money",
+          "target_type": "owner",
+          "parameters": {
+            "amount": -5
+          }
+        }
+      ]
+    }
+  ],
+  "outcomes": [
+    {
+      "label": "Winner",
+      "message": "You won the town raffle!",
+      "min_rank": 1,
+      "max_rank": 1,
+      "actions": [
+        {
+          "action_type": "modify_money",
+          "target_type": "owner",
+          "parameters": {
+            "amount": 100
+          }
+        }
+      ]
+    }
+  ]
+}

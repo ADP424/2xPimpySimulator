@@ -1,16 +1,18 @@
-from typing import Optional
+from __future__ import annotations
 
-from database import (
+from typing import TYPE_CHECKING, Optional
+
+from src.database import (
     add_pooch_to_kennel,
     get_mutation_by_id,
     get_owner_by_discord_id,
 )
-from database import get_pooch_by_id as db_get_pooch_by_id
-from database import (
+from src.database import get_pooch_by_id as db_get_pooch_by_id
+from src.database import (
     get_pooch_health,
 )
-from database import get_vendor_by_id as db_get_vendor_by_id
-from database import (
+from src.database import get_vendor_by_id as db_get_vendor_by_id
+from src.database import (
     give_money_to_owner,
     list_kennels_for_owner,
     list_pooch_breeds,
@@ -18,8 +20,8 @@ from database import (
     list_pooches_for_kennel,
     list_vendor_pooch_stock,
 )
-from database import list_vendors as db_list_vendors
-from database import (
+from src.database import list_vendors as db_list_vendors
+from src.database import (
     remove_pooch_from_kennel,
     remove_pooch_from_vendor_stock,
     transfer_pooch_to_owner,
@@ -34,16 +36,14 @@ from .constants import (
     POOCH_DOLLAR_VALUE_LOSS_BY_HEALTH_BELOW_AVERAGE,
     VENDOR_DESIRED_MUTATION_MULT,
 )
-from .exceptions.pooch_not_found import PoochNotFound
-from .exceptions.vendor_not_found import VendorNotFound
-from .models import Pooch, Vendor, to_pooch, to_vendor
+from .exceptions import PoochNotFound, VendorNotFound
+from .models import to_pooch, to_vendor
+
+if TYPE_CHECKING:
+    from .models import Pooch, Vendor
 
 
-async def buy_pooch(
-    owner_discord_id: int,
-    vendor_id: int,
-    pooch_id: int,
-) -> tuple[bool, str]:
+async def buy_pooch(owner_discord_id: int, vendor_id: int, pooch_id: int) -> tuple[bool, str]:
     """
     Have the given owner purchase the given pooch from the given vendor.
     Fails with a specific error message if:

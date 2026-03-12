@@ -1,0 +1,13 @@
+{
+    "name": "Gigantism",
+    "alt_name": "Acromegaly",
+    "description": "This pooch is mega huge.",
+    "heritability": 0.45,
+    "health_impact": "UNHEALTHY",
+    "rarity": "RARE",
+    "advanced_options": {
+        "incompatible_mutations": [
+            "Dwarfism"
+        ]
+    }
+}

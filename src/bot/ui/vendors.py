@@ -1,9 +1,11 @@
-from typing import Optional
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Optional
 
 import discord
 from discord.ui import Button, Select, View
 
-from game import (
+from src.game import (
     buy_pooch,
     get_or_create_owner,
     get_or_create_server,
@@ -15,11 +17,12 @@ from game import (
     list_vendor_pooches,
     sell_pooch,
 )
-from game.models import Kennel, Pooch, Vendor
-from logger import get_logger
+from src.logger import get_logger
 
-from .components.mutation_dropdown import build_mutation_info_embed
-from .components.paginator import PageSource, PaginatorView
+if TYPE_CHECKING:
+    from src.game.models import Kennel, Pooch, Vendor
+
+from .components import PageSource, PaginatorView, build_mutation_info_embed
 from .pooch_info import PoochInfoView
 from .util import InteractionResponder
 
@@ -28,7 +31,7 @@ logger = get_logger("bot/ui/vendors")
 
 class VendorsMenuView(View):
     def __init__(self, server_discord_id: int, owner_discord_id: int):
-        from bot.constants import VIEW_TIMEOUT
+        from src.bot.constants import VIEW_TIMEOUT
 
         super().__init__(timeout=VIEW_TIMEOUT)
         self.server_discord_id = server_discord_id
@@ -103,7 +106,7 @@ class VendorPageControls:
 
         # A select-only control (no extra buttons) so it can coexist with the pooch select.
         self.mutation_select = Select(
-            placeholder="Vendor desired mutation…",
+            placeholder="Vendor desired mutation...",
             options=mutation_options,
             disabled=not bool(self._desired_mutations),
             min_values=1,
@@ -161,7 +164,7 @@ class VendorPageControls:
         value = self.mutation_select.values[0]
         if value == "__none__":
             return
-        mutation_id = int(value)
+        mutation_id = value
         mutation = next((m for m in self._desired_mutations if m.id == mutation_id), None)
         if mutation is None:
             return
@@ -183,7 +186,7 @@ class VendorPageControls:
             for option in self.select.options:
                 option.default = False
         else:
-            selected_id = int(value)
+            selected_id = value
             self.selected_pooch = next((pooch for pooch in self.pooches if pooch.id == selected_id), None)
             if self.selected_pooch is None:
                 return
@@ -344,7 +347,7 @@ class _SellKennelControls:
             for option in self.select.options:
                 option.default = False
         else:
-            selected_id = int(value)
+            selected_id = value
             self.selected_pooch = next((p for p in self.pooches if p.id == selected_id), None)
             if self.selected_pooch is None:
                 return

@@ -1,7 +1,9 @@
-import random
-from typing import Optional
+from __future__ import annotations
 
-from database import (
+import random
+from typing import TYPE_CHECKING, Optional
+
+from src.database import (
     add_breed_to_pooch,
     add_pooch_to_kennel,
     create_pooch,
@@ -12,8 +14,8 @@ from database import (
     get_pooch_health,
     give_bloodskulls_to_owner,
 )
-from database import list_hell_pooches as db_list_hell_pooches
-from database import (
+from src.database import list_hell_pooches as db_list_hell_pooches
+from src.database import (
     list_kennels_for_owner,
     list_pooch_breeds,
     list_pooch_mutations,
@@ -31,8 +33,11 @@ from .constants import (
     POOCH_BASE_HEALTH_RANGE,
     POOCH_BLOODSKULL_VALUE_LOSS_BY_HEALTH_BELOW_AVERAGE,
 )
-from .exceptions.pooch_not_found import PoochNotFound
-from .models import Pooch, to_pooch
+from .exceptions import PoochNotFound
+from .models import to_pooch
+
+if TYPE_CHECKING:
+    from .models import Pooch
 
 
 async def get_pooch_bloodskull_value(pooch_id: int) -> int:

@@ -1,7 +1,7 @@
 from discord import Interaction, app_commands
 
-from bot.constants import GUILDS
-from bot.day_change_loop import trigger_manual_day_change
+from src.bot.constants import GUILDS
+from src.bot.day_change_loop import trigger_manual_day_change
 
 
 def register_increment_day_command(tree: app_commands.CommandTree):
@@ -13,5 +13,5 @@ def register_increment_day_command(tree: app_commands.CommandTree):
             return
 
         # Queue the day change so we can respond immediately (day change may take time).
-        await trigger_manual_day_change(bot)  # type: ignore
+        await trigger_manual_day_change(bot)
         await interaction.response.send_message("✅ Queued **one** manual day change.", ephemeral=True)

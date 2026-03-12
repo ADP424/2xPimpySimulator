@@ -5,17 +5,22 @@ import discord
 from discord import app_commands
 from dotenv import load_dotenv
 
-from bot.commands.get_money import register_get_money_command
-from bot.commands.increment_day import register_increment_day_command
-from bot.commands.pause_day_loop import register_pause_day_loop_command
-from game import get_or_create_server
-from logger import get_logger
+from src.game import get_or_create_server
+from src.logger import get_logger
 
+from .commands.event_history import register_event_history_command
+from .commands.get_money import register_get_money_command
 from .commands.home import register_home_command
+from .commands.increment_day import register_increment_day_command
+from .commands.pause_day_loop import register_pause_day_loop_command
+from .commands.pending_events import register_pending_events_command
+from .commands.server_event import register_server_event_command
 from .commands.set_event_channel import register_set_event_channel_command
 from .commands.town import register_town_command
 from .constants import GUILDS
 from .day_change_loop import day_change_runner
+from .event_loop import hourly_event_runner
+from .ui.server_events import register_active_server_event_views
 
 logger = get_logger("bot/app")
 
@@ -35,27 +40,44 @@ def run():
     register_home_command(tree)
     register_town_command(tree)
     register_set_event_channel_command(tree)
+    register_event_history_command(tree)
+    register_pending_events_command(tree)
+    register_server_event_command(tree)
 
-    # dev only commands
     if stage == "dev":
         register_get_money_command(tree)
         register_pause_day_loop_command(tree)
         register_increment_day_command(tree)
 
-    @bot.event
-    async def on_ready():
+    async def sync_commands():
         if stage == "dev":
             for guild in GUILDS:
+                tree.clear_commands(guild=guild)
+                tree.copy_global_to(guild=guild)
                 await tree.sync(guild=guild)
+                logger.info(f"Synced commands to guild {guild.id}")
         else:
             await tree.sync()
+            logger.info("Synced global commands")
+
+    @bot.event
+    async def setup_hook():
+        await sync_commands()
+
+    @bot.event
+    async def on_ready():
         for guild in GUILDS:
             server = await get_or_create_server(guild.id)
             logger.info(f"Initialized Server with ID '{server.discord_id}'.")
+
+        await register_active_server_event_views(bot)
+
         logger.info(f"Bot ready as {bot.user} ({stage})")
 
         if not hasattr(bot, "_day_change_task"):
-            bot._day_change_task = asyncio.create_task(day_change_runner(bot, stage=stage, tz=tz))  # type: ignore
+            bot._day_change_task = asyncio.create_task(day_change_runner(bot, stage=stage, tz=tz))
+        if not hasattr(bot, "_hourly_event_task"):
+            bot._hourly_event_task = asyncio.create_task(hourly_event_runner(bot, stage=stage))
 
     if not token:
         raise RuntimeError("DISCORD_TOKEN not set")

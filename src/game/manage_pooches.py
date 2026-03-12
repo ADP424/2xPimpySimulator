@@ -1,14 +1,21 @@
-from database import get_pooch_by_id as db_get_pooch_by_id
-from database import (
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from src.database import get_pooch_by_id as db_get_pooch_by_id
+from src.database import (
     get_pooch_parents,
     list_pooch_children,
     list_pooch_siblings,
 )
-from database.update import rename_pooch as db_rename_pooch
+from src.database import rename_pooch as db_rename_pooch
 
 from .constants import MAX_NAME_LENGTH
-from .exceptions.pooch_not_found import PoochNotFound
-from .models import Pooch, to_pooch
+from .exceptions import PoochNotFound
+from .models import to_pooch
+
+if TYPE_CHECKING:
+    from .models import Pooch
 
 
 async def get_pooch_by_id(pooch_id: int) -> Pooch:

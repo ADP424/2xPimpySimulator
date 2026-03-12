@@ -1,18 +1,66 @@
 from .breed import Breed, to_breed
-from .events.birth_event import BirthEvent
-from .events.day_change_summary import DayChangeSummary
-from .events.death_event import DeathEvent
-from .events.other_event import OtherEvent
+from .events import (
+    BirthEvent,
+    DayChangeSummary,
+    DeathEvent,
+    Event,
+    EventContext,
+    EventEntityReference,
+    EventEntityReferences,
+    EventHistory,
+    EventOption,
+    EventResult,
+    OtherEvent,
+    ServerEventContext,
+    ServerEventOption,
+    ServerEventParticipationSummary,
+    ServerEventResolution,
+    TriggeredEvent,
+    TriggeredServerEvent,
+    resolve_event_entity_references,
+    to_event,
+    to_event_history,
+    to_event_option,
+    to_server_event_option,
+    to_server_event_participation_summary,
+    to_triggered_event,
+    to_triggered_server_event,
+)
 from .kennel import Kennel, to_kennel
 from .mutation import Mutation, to_mutation
 from .owner import Owner, to_owner
-from .pooch import Pooch, to_pooch
+from .pooch import Pooch, PoochBreedInfo, to_pooch
 from .server import Server, to_server
 from .vendor import Vendor, to_vendor
 
 __all__ = [
     "Breed",
     "to_breed",
+    "BirthEvent",
+    "DayChangeSummary",
+    "DeathEvent",
+    "Event",
+    "EventContext",
+    "EventEntityReference",
+    "EventEntityReferences",
+    "EventHistory",
+    "EventOption",
+    "EventResult",
+    "OtherEvent",
+    "TriggeredEvent",
+    "ServerEventContext",
+    "ServerEventOption",
+    "ServerEventParticipationSummary",
+    "TriggeredServerEvent",
+    "ServerEventResolution",
+    "resolve_event_entity_references",
+    "to_event",
+    "to_event_history",
+    "to_event_option",
+    "to_triggered_event",
+    "to_server_event_option",
+    "to_server_event_participation_summary",
+    "to_triggered_server_event",
     "Kennel",
     "to_kennel",
     "Mutation",
@@ -20,13 +68,10 @@ __all__ = [
     "Owner",
     "to_owner",
     "Pooch",
+    "PoochBreedInfo",
     "to_pooch",
     "Server",
     "to_server",
     "Vendor",
     "to_vendor",
-    "BirthEvent",
-    "DayChangeSummary",
-    "DeathEvent",
-    "OtherEvent",
 ]

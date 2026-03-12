@@ -4,7 +4,7 @@ import random
 from collections import deque
 from typing import Optional
 
-from database import (
+from src.database import (
     add_mutation_to_pooch,
     add_pooch_breeds,
     create_pooch,
@@ -28,7 +28,7 @@ from .constants import (
     TRIPLETS_CHANCE,
     TWINS_CHANCE,
 )
-from .exceptions.pooch_not_found import PoochNotFound
+from .exceptions import PoochNotFound
 from .utils import get_pooch_mutation_advanced_option_total
 
 

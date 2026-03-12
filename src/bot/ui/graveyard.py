@@ -6,9 +6,9 @@ from typing import Optional
 import discord
 from discord.ui import Select, View
 
-from game import get_or_create_server, list_graveyard_pooches
+from src.game import get_or_create_server, list_graveyard_pooches
 
-from .components.paginator import PageSource
+from .components import PageSource
 from .pooch_info import PoochInfoView
 from .util import InteractionResponder
 
@@ -88,7 +88,7 @@ class _GraveyardControls:
         if value == "__none__":
             return
 
-        selected_id = int(value)
+        selected_id = value
         selected = next((pooch for (pooch, _) in self.page_rows if pooch.id == selected_id), None)
         if selected is None:
             return

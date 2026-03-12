@@ -1,7 +1,9 @@
 import random
-from typing import Optional, TypeVar
+from datetime import datetime, timezone
+from typing import Any, Optional
 
 from sqlalchemy import and_, bindparam, delete, func, not_, or_, select
+from sqlalchemy.orm import selectinload
 
 from .constants import (
     KENNEL_POOCH_LIMIT,
@@ -16,6 +18,7 @@ from .get import get_owner_by_discord_id, get_pooch_by_id, get_vendor_by_id
 from .models import (
     Breed,
     DogName,
+    EventOccurrence,
     GraveyardPooch,
     HellPooch,
     Kennel,
@@ -30,28 +33,15 @@ from .models import (
     PoochPregnancy,
     RarityWeight,
     Server,
+    ServerEventOccurrence,
+    ServerEventParticipation,
     Vendor,
     VendorFirstName,
     VendorLastName,
     VendorPoochForSale,
 )
 from .session import session_scope
-
-T = TypeVar("T")
-
-
-def _weighted_choice(rng: random.Random, items: list[tuple[T, int]]) -> Optional[T]:
-    if len(items) == 0:
-        return None
-
-    total = sum(weight for _, weight in items)
-    roll = rng.uniform(0, total)
-
-    accumulated = 0
-    for item, weight in items:
-        accumulated += weight
-        if roll <= accumulated:
-            return item
+from .utils import weighted_choice
 
 
 async def add_breed_to_pooch(
@@ -112,10 +102,10 @@ async def add_breed_to_pooch(
 
             breed_response = await session.execute(breed_query)
             rows = [(breed, breed_weight) for breed, breed_weight in breed_response.tuples().all()]
-            breed = _weighted_choice(rng, rows)
+            breed = weighted_choice(rng, rows)
             breed_id = breed.id if breed is not None else None
 
-        # If the pooch somehow has every possible breed it's eligible for already
+        # If the pooch somehow has every possible breed it's eligible for already...
         if breed_id is None:
             return None
 
@@ -197,7 +187,7 @@ async def add_mutation_to_pooch(
             )
             mutation_response = await session.execute(mutation_query)
             rows = [(mutation, weight) for mutation, weight in mutation_response.tuples().all()]
-            mutation = _weighted_choice(rng, rows)
+            mutation = weighted_choice(rng, rows)
             mutation_id = mutation.id if mutation is not None else None
 
         # If the pooch somehow has every possible mutation already
@@ -298,9 +288,9 @@ async def add_pooch_breeds(pooch_id: int, breed_weights: dict[int, int]) -> list
     rows: list[PoochBreed] = []
     async with session_scope() as session:
         for breed_id, weight in breed_weights.items():
-            if weight is None or int(weight) <= 0:
+            if weight is None or weight <= 0:
                 continue
-            row = PoochBreed(pooch_id=pooch_id, breed_id=int(breed_id), weight=int(weight))
+            row = PoochBreed(pooch_id=pooch_id, breed_id=breed_id, weight=weight)
             session.add(row)
             rows.append(row)
         await session.flush()
@@ -365,6 +355,42 @@ async def add_pooch_to_vendor_stock(vendor_id: int, pooch_id: int) -> Optional[V
     return vendor_pooch_for_sale
 
 
+async def archive_active_event(active_owner_event_id: int, timed_out: bool = False) -> Optional[EventOccurrence]:
+    """
+    Archive an active event in place.
+
+    Parameters
+    ----------
+    active_owner_event_id: int
+        The ID of the active event to archive.
+
+    timed_out: bool
+        Whether the event timed out without a response.
+
+    Returns
+    -------
+    EventOccurrence, optional
+        The archived event occurrence, or None if the active event wasn't found.
+    """
+
+    async with session_scope() as session:
+        query = select(EventOccurrence).where(
+            EventOccurrence.id == active_owner_event_id, EventOccurrence.archived.is_(False)
+        )
+        result = await session.execute(query)
+        active_event = result.scalar_one_or_none()
+
+        if active_event is None:
+            return None
+
+        active_event.archived = True
+        active_event.timed_out = timed_out
+        active_event.completed_at = datetime.now(timezone.utc)
+        await session.flush()
+
+        return active_event
+
+
 async def bury_pooch(owner_discord_id: int, pooch_id: int) -> Optional[GraveyardPooch]:
     """
     Move the given pooch to the given owner's graveyard.
@@ -395,6 +421,59 @@ async def bury_pooch(owner_discord_id: int, pooch_id: int) -> Optional[Graveyard
         await session.flush()
 
     return graveyard_pooch
+
+
+async def create_active_owner_event(
+    event_id: int,
+    owner_discord_id: int,
+    context: dict[str, Any] = None,
+    expires_at: Optional[datetime] = None,
+) -> Optional[EventOccurrence]:
+    """
+    Create a new active event for an owner.
+
+    Parameters
+    ----------
+    event_id: int
+        The ID of the event that occurred.
+
+    owner_discord_id: int
+        The Discord ID of the owner the event occurred for.
+
+    context: dict, optional
+        Context about the event (affected pooches, etc.).
+
+    expires_at: datetime, optional
+        When the event expires if not responded to.
+
+    Returns
+    -------
+    EventOccurrence, optional
+        The created EventOccurrence, or None if creation failed.
+    """
+
+    if context is None:
+        context = {}
+
+    async with session_scope() as session:
+        active_event = EventOccurrence(
+            event_id=event_id,
+            owner_discord_id=owner_discord_id,
+            context=context,
+            triggered_at=datetime.now(timezone.utc),
+            expires_at=expires_at,
+            archived=False,
+        )
+        session.add(active_event)
+        await session.flush()
+
+        query = (
+            select(EventOccurrence)
+            .where(EventOccurrence.id == active_event.id, EventOccurrence.archived.is_(False))
+            .options(selectinload(EventOccurrence.event))
+        )
+        result = await session.execute(query)
+        return result.scalar_one_or_none()
 
 
 async def create_kennel(
@@ -722,3 +801,43 @@ async def set_pooch_parentage(child_id: int, father_id: int | None, mother_id: i
         await session.flush()
 
     return parentage
+
+
+async def create_server_event_occurrence(
+    server_discord_id: int,
+    server_event_id: int,
+    context: dict[str, Any],
+    expires_at: datetime,
+) -> ServerEventOccurrence:
+    async with session_scope() as session:
+        occurrence = ServerEventOccurrence(
+            server_discord_id=server_discord_id,
+            server_event_id=server_event_id,
+            context=context,
+            expires_at=expires_at,
+        )
+        session.add(occurrence)
+        await session.flush()
+        await session.refresh(occurrence)
+    return occurrence
+
+
+async def create_server_event_participation(
+    occurrence_id: int,
+    owner_discord_id: int,
+    selected_option_id: int,
+    context: dict[str, Any],
+    immediate_result: dict[str, Any],
+) -> ServerEventParticipation:
+    async with session_scope() as session:
+        participation = ServerEventParticipation(
+            occurrence_id=occurrence_id,
+            owner_discord_id=owner_discord_id,
+            selected_option_id=selected_option_id,
+            context=context,
+            immediate_result=immediate_result,
+        )
+        session.add(participation)
+        await session.flush()
+        await session.refresh(participation)
+    return participation

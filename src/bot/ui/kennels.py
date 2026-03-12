@@ -1,11 +1,13 @@
-from typing import Optional
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Optional
 
 import discord
 from discord.ui import Button, Select, View
 
-from bot.constants import MAX_NAME_LENGTH
-from bot.ui.util import InteractionResponder
-from game import (
+from src.bot.constants import MAX_NAME_LENGTH
+from src.bot.ui.util import InteractionResponder
+from src.game import (
     get_or_create_owner,
     get_or_create_server,
     list_kennel_pooches,
@@ -13,10 +15,12 @@ from game import (
     rename_kennel,
     rename_pooch,
 )
-from game.models import Kennel, Pooch
+
+if TYPE_CHECKING:
+    from src.game.models import Kennel, Pooch
 
 from .breeding import BreedMateView
-from .components.paginator import PageSource
+from .components import PageSource
 from .pooch_info import PoochInfoView
 
 
@@ -108,7 +112,7 @@ class KennelPageControls:
 
     async def _on_select(self, interaction: discord.Interaction):
         r = InteractionResponder(interaction)
-        selected_id = int(self.select.values[0])
+        selected_id = self.select.values[0]
         self.selected_pooch = next((pooch for pooch in self.pooches if pooch.id == selected_id), None)
         if self.selected_pooch is None:
             return
@@ -211,7 +215,7 @@ class _RenameKennelModal(discord.ui.Modal):
             return
 
         # Refresh the current page so the new name shows up immediately.
-        from .components.paginator import PaginatorView
+        from .components import PaginatorView
 
         if isinstance(self._parent_view, PaginatorView):
             await self._parent_view.refresh(interaction)
@@ -247,7 +251,7 @@ class _RenamePoochModal(discord.ui.Modal):
             await r.reply(content=f"That name is too long. Keep it under {MAX_NAME_LENGTH} characters.")
             return
 
-        from .components.paginator import PaginatorView
+        from .components import PaginatorView
 
         if isinstance(self._parent_view, PaginatorView):
             await self._parent_view.refresh(interaction)

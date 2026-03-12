@@ -1,7 +1,7 @@
 from discord import Interaction, app_commands
 
-from bot.constants import GUILDS
-from game import add_money
+from src.bot.constants import GUILDS
+from src.game import add_money
 
 
 def register_get_money_command(tree: app_commands.CommandTree):
@@ -16,7 +16,7 @@ def register_get_money_command(tree: app_commands.CommandTree):
             await interaction.response.send_message("Amount must be > 0.", ephemeral=True)
             return
 
-        owner = await add_money(int(interaction.guild_id), int(interaction.user.id), int(amount))
+        owner = await add_money(interaction.guild_id), interaction.user.id, amount
         await interaction.response.send_message(
             f"✅ Added ${amount}. You now have ${owner.dollars}.",
             ephemeral=True,

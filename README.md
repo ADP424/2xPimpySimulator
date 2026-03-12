@@ -156,7 +156,7 @@ DB_PORT=5432
 Apply the schema files in `src/database/schema/` to your PostgreSQL database, then load static data (breeds, mutations, name pools):
 
 ```bash
-python .\src\database\load\reset_db.py
+python .\src\database\load\reset_database.py
 
 python .\src\database\load\load_resources.py
 ```

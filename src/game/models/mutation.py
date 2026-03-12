@@ -1,6 +1,10 @@
-from dataclasses import dataclass
+from __future__ import annotations
 
-from database.models import Mutation as MutationORM
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.database.models import Mutation as MutationORM
 
 
 @dataclass(frozen=True)
@@ -22,6 +26,20 @@ class Mutation:
 
 
 async def to_mutation(mutation: MutationORM) -> Mutation:
+    """
+    Convert an ORM Mutation object to a game Mutation object.
+
+    Parameters
+    ----------
+    mutation: Mutation
+        The Mutation object to convert.
+
+    Returns
+    -------
+    Mutation
+        The converted Mutation dataclass object.
+    """
+
     return Mutation(
         id=mutation.id,
         name=mutation.name,

@@ -1,0 +1,8 @@
+{
+    "name": "Brittle Bone Disease",
+    "alt_name": "Osteogenesis Imperfecta",
+    "description": "This pooch's body is ready to snap at any second.",
+    "heritability": 0.2,
+    "health_impact": "SEVERE",
+    "rarity": "NOVEL"
+}

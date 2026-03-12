@@ -3,20 +3,18 @@ from typing import TYPE_CHECKING, Optional, Sequence
 import discord
 from discord.ui import Select, View
 
-from bot.constants import VIEW_TIMEOUT
-from bot.ui.util import (
+from src.bot.constants import VIEW_TIMEOUT
+from src.bot.ui.util import (
     InteractionResponder,
     mention,
 )
-from game import get_pooch_family
-from game.models.mutation import Mutation
-from game.models.pooch import PoochBreedInfo
+from src.game import get_pooch_family
+from src.game.models import Mutation, PoochBreedInfo
 
-from .components.breed_dropdown import build_breed_info_embed
-from .components.mutation_dropdown import build_mutation_info_embed
+from .components import build_breed_info_embed, build_mutation_info_embed
 
 if TYPE_CHECKING:
-    from game.models import Owner, Pooch, Server
+    from src.game.models import Owner, Pooch, Server
 
 
 class _FamilySelect(Select):
@@ -49,7 +47,7 @@ class _FamilySelect(Select):
         if value == "__none__":
             return
 
-        selected_id = int(value)
+        selected_id = value
         selected_member = next((m for m in self._members if m.id == selected_id), None)
         if selected_member is None:
             return
@@ -96,7 +94,7 @@ class _BreedSelect(Select):
         if value == "__none__":
             return
 
-        breed_id = int(value)
+        breed_id = value
         selected = next(
             (pooch_breed.breed for pooch_breed in self._pooch_breeds if pooch_breed.breed.id == breed_id), None
         )
@@ -134,7 +132,7 @@ class _MutationSelect(Select):
         if value == "__none__":
             return
 
-        mutation_id = int(value)
+        mutation_id = value
         selected = next((mutation for mutation in self._mutations if mutation.id == mutation_id), None)
         if selected is None:
             return

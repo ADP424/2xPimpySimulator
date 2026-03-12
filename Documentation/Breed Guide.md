@@ -4,7 +4,7 @@
 
 ### JSON
 
-Breeds are structured within resources/breeds.json, like:
+Breeds are structured within resources/breeds/**/*.jsonc, like:
 ```json
 "[category]": {
     "[breed name]": {

@@ -1,0 +1,9 @@
+{
+    "name": "Alpine Mastiff",
+    "alt_name": "Alpenmastiff",
+    "description": "The Alpine mastiff was a type of molosser, or flock-guardian phenotype with the same or similar ancestral origins as the Saint Bernard.",
+    "rarity": "REMARKABLE",
+    "advanced_options": {
+        "sold_by_vendors": 0
+    }
+}

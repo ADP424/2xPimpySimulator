@@ -2,7 +2,7 @@ import secrets
 
 from flask import Blueprint, current_app, redirect, request, session, url_for
 
-from web.discord_oauth import (
+from src.web.discord_oauth import (
     exchange_code,
     get_oauth_url,
     get_user,

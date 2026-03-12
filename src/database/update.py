@@ -1,9 +1,18 @@
-from typing import Optional
+from datetime import datetime, timezone
+from typing import Any, Optional
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from .constants import POOCH_HEALTH_LOSS_STARTING_AGE
-from .models import Kennel, Owner, Pooch, Server
+from .models import (
+    EventOccurrence,
+    Kennel,
+    Owner,
+    Pooch,
+    Server,
+    ServerEventOccurrence,
+    ServerEventParticipation,
+)
 from .session import session_scope
 
 
@@ -127,6 +136,112 @@ async def give_money_to_owner(owner_discord_id: int, dollars: int) -> Optional[O
     return owner
 
 
+async def modify_kennel_pooch_limit(kennel_id: int, amount: int) -> Optional[Kennel]:
+    """
+    Modify a kennel's pooch limit by a given amount.
+
+    Parameters
+    ----------
+    kennel_id: int
+        The ID of the kennel to modify.
+
+    amount: int
+        The amount to add to pooch limit (can be negative) to a minimum of 1.
+
+    Returns
+    -------
+    Kennel, optional
+        The updated Kennel, or None if not found.
+    """
+
+    async with session_scope() as session:
+        query = select(Kennel).where(Kennel.id == kennel_id)
+        result = await session.execute(query)
+        kennel = result.scalar_one_or_none()
+
+        if kennel is None:
+            return None
+
+        new_limit = max(1, kennel.pooch_limit + amount)
+        kennel.pooch_limit = new_limit
+
+        await session.flush()
+        return kennel
+
+
+async def modify_pooch_age(
+    pooch_id: int,
+    amount: int,
+    health_loss_starting_age: int = POOCH_HEALTH_LOSS_STARTING_AGE,
+) -> Optional[Pooch]:
+    """
+    Modify a pooch's age by a given amount.
+
+    Parameters
+    ----------
+    pooch_id: int
+        The ID of the pooch to modify.
+
+    amount: int
+        The amount to add to age (can be negative) to a minimum of 0.
+
+    health_loss_starting_age: int
+        The age at which a pooch starts losing health from age.
+
+    Returns
+    -------
+    Pooch, optional
+        The updated Pooch, or None if not found.
+    """
+
+    async with session_scope() as session:
+        query = select(Pooch).where(Pooch.id == pooch_id)
+        result = await session.execute(query)
+        pooch = result.scalar_one_or_none()
+
+        if pooch is None:
+            return None
+
+        pooch.age = max(0, pooch.age + amount)
+        pooch.health_loss_age = max(0, pooch.age - health_loss_starting_age)
+
+        await session.flush()
+        return pooch
+
+
+async def modify_pooch_base_health(pooch_id: int, amount: int) -> Optional[Pooch]:
+    """
+    Modify a pooch's base health by a given amount.
+
+    Parameters
+    ----------
+    pooch_id: int
+        The ID of the pooch to modify.
+
+    amount: int
+        The amount to add to base health (can be negative) to a minimum of 0.
+
+    Returns
+    -------
+    Pooch, optional
+        The updated Pooch, or None if not found.
+    """
+
+    async with session_scope() as session:
+        query = select(Pooch).where(Pooch.id == pooch_id)
+        result = await session.execute(query)
+        pooch = result.scalar_one_or_none()
+
+        if pooch is None:
+            return None
+
+        new_health = max(0, pooch.base_health + amount)
+        pooch.base_health = new_health
+
+        await session.flush()
+        return pooch
+
+
 async def rename_kennel(kennel_id: int, name: str) -> Optional[Kennel]:
     """
     Replace the name of the kennel with the given ID with a new one.
@@ -207,6 +322,49 @@ async def reset_begged_today() -> int:
         return len(owners)
 
 
+async def respond_to_active_owner_event(
+    active_owner_event_id: int,
+    option_id: Optional[int],
+    result_summary: dict[str, Any] = None,
+) -> Optional[EventOccurrence]:
+    """
+    Record a response to an active event.
+
+    Parameters
+    ----------
+    active_owner_event_id: int
+        The ID of the active event being responded to.
+
+    option_id: int, optional
+        The ID of the option selected (None if no option selected).
+
+    result_summary: dict, optional
+        Summary of what happened as a result.
+
+    Returns
+    -------
+    EventOccurrence, optional
+        The updated EventOccurrence, or None if not found.
+    """
+
+    if result_summary is None:
+        result_summary = {}
+
+    async with session_scope() as session:
+        query = (
+            update(EventOccurrence)
+            .where(EventOccurrence.id == active_owner_event_id, EventOccurrence.archived.is_(False))
+            .values(
+                responded_at=datetime.now(timezone.utc),
+                selected_option_id=option_id,
+                result_summary=result_summary,
+            )
+            .returning(EventOccurrence)
+        )
+        result = await session.execute(query)
+        return result.scalar_one_or_none()
+
+
 async def set_event_channel_discord_id(server_discord_id: int, channel_discord_id: int) -> Optional[Server]:
     """
     Set the channel for automated events to be sent to for the server with the given Discord ID.
@@ -232,6 +390,38 @@ async def set_event_channel_discord_id(server_discord_id: int, channel_discord_i
             server.event_channel_discord_id = channel_discord_id
 
     return server
+
+
+async def set_kennel_pooch_limit(kennel_id: int, limit: int) -> Optional[Kennel]:
+    """
+    Set a kennel's pooch limit to a specific value.
+
+    Parameters
+    ----------
+    kennel_id: int
+        The ID of the kennel to modify.
+
+    limit: int
+        The new pooch limit (minimum 1).
+
+    Returns
+    -------
+    Kennel, optional
+        The updated Kennel, or None if not found.
+    """
+
+    async with session_scope() as session:
+        query = select(Kennel).where(Kennel.id == kennel_id)
+        result = await session.execute(query)
+        kennel = result.scalar_one_or_none()
+
+        if kennel is None:
+            return None
+
+        kennel.pooch_limit = max(1, limit)
+
+        await session.flush()
+        return kennel
 
 
 async def set_owner_begged_today(owner_discord_id: int, begged_today: bool = True) -> Optional[Owner]:
@@ -408,3 +598,80 @@ async def transfer_pooch_to_vendor(pooch_id: int, vendor_id: int) -> Optional[Po
         pooch.owner_discord_id = None
 
     return pooch
+
+
+async def update_active_event_result(
+    active_owner_event_id: int, result_summary: dict[str, Any]
+) -> Optional[EventOccurrence]:
+    """
+    Update the result summary of an active event.
+
+    Parameters
+    ----------
+    active_owner_event_id: int
+        The ID of the active event to update.
+
+    result_summary: dict[str, Any]
+        The result summary to set.
+
+    Returns
+    -------
+    EventOccurrence, optional
+        The updated EventOccurrence, or None if not found.
+    """
+
+    async with session_scope() as session:
+        query = (
+            update(EventOccurrence)
+            .where(EventOccurrence.id == active_owner_event_id, EventOccurrence.archived.is_(False))
+            .values(result_summary=result_summary)
+            .returning(EventOccurrence)
+        )
+        result = await session.execute(query)
+        return result.scalar_one_or_none()
+
+
+async def set_server_event_occurrence_message_discord_id(
+    occurrence_id: int, message_discord_id: int | None
+) -> Optional[ServerEventOccurrence]:
+    async with session_scope() as session:
+        query = select(ServerEventOccurrence).where(ServerEventOccurrence.id == occurrence_id)
+        occurrence = (await session.execute(query)).scalar_one_or_none()
+        if occurrence is None:
+            return None
+        occurrence.message_discord_id = message_discord_id
+        await session.flush()
+        return occurrence
+
+
+async def resolve_server_event_occurrence(
+    occurrence_id: int, result_summary: dict[str, Any] | None = None
+) -> Optional[ServerEventOccurrence]:
+    async with session_scope() as session:
+        query = select(ServerEventOccurrence).where(ServerEventOccurrence.id == occurrence_id)
+        occurrence = (await session.execute(query)).scalar_one_or_none()
+        if occurrence is None:
+            return None
+        occurrence.result_summary = result_summary or {}
+        occurrence.resolved_at = datetime.now(timezone.utc)
+        occurrence.archived = True
+        await session.flush()
+        return occurrence
+
+
+async def finalize_server_event_participation(
+    participation_id: int,
+    resolution_result: dict[str, Any] | None = None,
+    score: float | None = None,
+    rank: int | None = None,
+) -> Optional[ServerEventParticipation]:
+    async with session_scope() as session:
+        query = select(ServerEventParticipation).where(ServerEventParticipation.id == participation_id)
+        participation = (await session.execute(query)).scalar_one_or_none()
+        if participation is None:
+            return None
+        participation.resolution_result = resolution_result or {}
+        participation.score = score
+        participation.rank = rank
+        await session.flush()
+        return participation

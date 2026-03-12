@@ -1,0 +1,26 @@
+{
+    "name": "Pooch Duplication", 
+    "description": "One of your pooches just made a copy of itself.",
+    "flavor_text": "Weird.",
+    "severity": "MAJOR",
+    "rarity": "UNPRECEDENTED",
+    "requires_response": false,
+    "filter": {
+        "pooches": [
+            { 
+                "min_count": 1,
+                "is_alive": true
+            }
+        ]
+    },
+    "actions": [
+        {
+            "action_type": "clone_pooch",
+            "target_type": "owner",
+            "parameters": {
+                "selector": "random",
+                "destination": "kennel"
+            }
+        }
+    ]
+}

@@ -1,11 +1,11 @@
 import discord
 from discord.ui import Button, Select, View
 
-from bot.constants import VIEW_TIMEOUT
-from bot.ui.util import InteractionResponder
+from src.bot.constants import VIEW_TIMEOUT
+from src.bot.ui.util import InteractionResponder
 
 from .church import ChurchView
-from .components.paginator import PaginatorView
+from .components import PaginatorView
 from .vendors import VendorsPageSource
 from .vet_clinic import VetClinicView
 
