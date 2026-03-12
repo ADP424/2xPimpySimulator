@@ -1,0 +1,793 @@
+{% extends "base.html" %}
+
+{% block title %}Family Tree - Pooch Breeder{% endblock %}
+
+{% block extra_head %}
+<style>
+    #tree-container {
+        width: 100%;
+        height: calc(100vh - 200px);
+        min-height: 500px;
+        border-radius: 0.75rem;
+        overflow: hidden;
+        position: relative;
+    }
+    #tree-svg {
+        width: 100%;
+        height: 100%;
+        cursor: grab;
+    }
+    #tree-svg:active { cursor: grabbing; }
+
+    .tree-node rect {
+        rx: 8;
+        ry: 8;
+        stroke-width: 2;
+        cursor: pointer;
+        transition: filter 0.15s;
+    }
+    .tree-node:hover rect { filter: brightness(1.3); }
+    .tree-node.sex-male rect { fill: #1e3a5f; stroke: #3b82f6; }
+    .tree-node.sex-female rect { fill: #5f1e3a; stroke: #ec4899; }
+    .tree-node.is-root rect { stroke-width: 3; }
+    .tree-node.is-root.sex-male rect { stroke: #60a5fa; }
+    .tree-node.is-root.sex-female rect { stroke: #f472b6; }
+    .tree-node.is-dead rect { opacity: 0.5; }
+    .tree-node .node-name {
+        fill: #e5e7eb;
+        font-size: 13px;
+        font-weight: 600;
+        text-anchor: middle;
+        pointer-events: none;
+    }
+    .tree-node .node-meta {
+        fill: #9ca3af;
+        font-size: 10px;
+        text-anchor: middle;
+        pointer-events: none;
+    }
+    .tree-node .node-sex {
+        fill: #d1d5db;
+        font-size: 11px;
+        pointer-events: none;
+    }
+    .tree-node .node-label {
+        fill: #6b7280;
+        font-size: 9px;
+        text-anchor: middle;
+        pointer-events: none;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    /* Pedigree connector lines */
+    .mating-line { stroke: #6b7280; stroke-width: 2; }
+    .mating-line.incest { stroke-width: 3; }
+    .descent-line { stroke: #4b5563; stroke-width: 2; }
+    .sibship-line { stroke: #4b5563; stroke-width: 2; }
+    .child-drop { stroke: #4b5563; stroke-width: 2; }
+
+    .incest-label {
+        font-size: 10px;
+        font-weight: 700;
+        text-anchor: middle;
+        pointer-events: none;
+    }
+
+    /* Fallback curved edges for circular/cross-gen links */
+    .tree-edge {
+        fill: none;
+        stroke: #4b5563;
+        stroke-width: 2;
+    }
+    .tree-edge.incest {
+        stroke-width: 2.5;
+        stroke-dasharray: 6 3;
+    }
+
+    .tree-controls {
+        position: absolute;
+        bottom: 1rem;
+        right: 1rem;
+        display: flex;
+        gap: 0.5rem;
+        z-index: 10;
+    }
+    .tree-legend {
+        position: absolute;
+        top: 1rem;
+        left: 1rem;
+        z-index: 10;
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        font-size: 0.75rem;
+        color: #9ca3af;
+        background: oklch(var(--b2) / 0.85);
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.5rem;
+    }
+    .tree-legend-item { display: flex; align-items: center; gap: 0.4rem; }
+    .tree-legend-swatch {
+        width: 16px;
+        height: 10px;
+        border-radius: 2px;
+        flex-shrink: 0;
+    }
+    .tree-legend-line {
+        width: 16px;
+        height: 0;
+        flex-shrink: 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="loading" class="flex items-center gap-3 text-base-content/50 py-8">
+    <span class="loading loading-spinner loading-md"></span>
+    <span>Loading family tree...</span>
+</div>
+
+<div id="tree-page" style="display: none;">
+    <div class="flex justify-between items-center mb-4 flex-wrap gap-3">
+        <div class="flex items-center gap-3">
+            <h1 class="text-2xl font-bold" id="tree-title">Family Tree</h1>
+            <span class="badge badge-neutral" id="tree-stats"></span>
+        </div>
+        <div class="flex gap-2">
+            <a id="back-to-pooch" href="#" class="btn btn-ghost btn-sm">View Pooch</a>
+            <button onclick="history.back()" class="btn btn-ghost btn-sm">Back</button>
+        </div>
+    </div>
+
+    <div id="tree-container" class="bg-base-200">
+        <div class="tree-legend" id="tree-legend">
+            <div class="tree-legend-item">
+                <span class="tree-legend-swatch" style="background:#3b82f6;"></span> Male
+            </div>
+            <div class="tree-legend-item">
+                <span class="tree-legend-swatch" style="background:#ec4899;"></span> Female
+            </div>
+            <div class="tree-legend-item">
+                <span class="tree-legend-line" style="border-top: 2px solid #6b7280;"></span> Mating pair
+            </div>
+            <div class="tree-legend-item">
+                <span class="tree-legend-line" style="border-top: 3px solid #ef4444;"></span> Incest pair (% shown)
+            </div>
+        </div>
+        <svg id="tree-svg"></svg>
+        <div class="tree-controls">
+            <button class="btn btn-sm btn-neutral" onclick="zoomFit()" title="Fit to screen">Fit</button>
+            <button class="btn btn-sm btn-neutral" onclick="zoomIn()" title="Zoom in">+</button>
+            <button class="btn btn-sm btn-neutral" onclick="zoomOut()" title="Zoom out">-</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+const PAGE_DATA = { poochId: {{ pooch_id }} };
+
+const NODE_W = 150;
+const NODE_H = 58;
+const H_GAP = 60;
+const V_GAP = 130;
+const COUPLE_GAP = 20; // tighter gap between mated pairs
+
+let svg, g, zoomBehavior;
+let treeData = null;
+
+document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        const resp = await fetch(`/api/pooches/${PAGE_DATA.poochId}/family-tree`);
+        if (!resp.ok) throw new Error('Failed to load');
+        treeData = await resp.json();
+
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('tree-page').style.display = 'block';
+        document.getElementById('back-to-pooch').href = `/pooch/${PAGE_DATA.poochId}`;
+
+        const rootNode = treeData.nodes.find(n => n.id === treeData.root_id);
+        if (rootNode) {
+            const sexEmoji = rootNode.sex === 'female' ? '\u2640\uFE0F' : '\u2642\uFE0F';
+            document.getElementById('tree-title').textContent = `${sexEmoji} ${rootNode.name}'s Family Tree`;
+        }
+        document.getElementById('tree-stats').textContent = `${treeData.nodes.length} members`;
+
+        renderTree(treeData);
+    } catch (err) {
+        document.getElementById('loading').innerHTML = '<span class="text-error">Failed to load family tree</span>';
+        console.error(err);
+    }
+});
+
+// Returns a color from green (0%) through yellow to red (50%+) for incest level
+function incestColor(level) {
+    const t = Math.min(level * 2, 1); // 0..1 where 0.5 incest = 1.0
+    const r = Math.round(239 * t + 100 * (1 - t));
+    const g = Math.round(68 * t + 200 * (1 - t));
+    const b = Math.round(68 * t + 80 * (1 - t));
+    return `rgb(${r},${g},${b})`;
+}
+
+function renderTree(data) {
+    svg = d3.select('#tree-svg');
+    svg.selectAll('*').remove();
+    g = svg.append('g');
+
+    // Build node map
+    const nodeMap = {};
+    data.nodes.forEach(n => { nodeMap[n.id] = { ...n, x: 0, y: 0 }; });
+
+    // Build incest lookup from API couples data: "minId-maxId" -> incest_level
+    const incestMap = {};
+    (data.couples || []).forEach(c => {
+        const key = Math.min(...c.parents) + '-' + Math.max(...c.parents);
+        incestMap[key] = c.incest_level;
+    });
+
+    // Build adjacency
+    const childrenOf = {};  // parent_id -> [child_id]
+    const parentsOf = {};   // child_id -> [parent_id]
+    data.edges.forEach(e => {
+        if (!childrenOf[e.source]) childrenOf[e.source] = [];
+        childrenOf[e.source].push(e.target);
+        if (!parentsOf[e.target]) parentsOf[e.target] = [];
+        parentsOf[e.target].push(e.source);
+    });
+
+    // Identify couples: pairs of parents that share at least one child
+    // Only create pedigree-style couples when BOTH parents are on the same generation
+    // Key: "minId-maxId", value: { parents: [id, id], children: [id, ...] }
+    const coupleMap = {};
+    const soloParentChildren = {}; // parent_id -> [child_ids with only one known parent]
+
+    // First pass: group children by parent pairs
+    const rawCouples = {};
+    data.edges.forEach(e => {
+        const childParents = parentsOf[e.target] || [];
+        if (childParents.length === 2) {
+            const key = Math.min(...childParents) + '-' + Math.max(...childParents);
+            if (!rawCouples[key]) {
+                rawCouples[key] = { parents: [Math.min(...childParents), Math.max(...childParents)], children: new Set() };
+            }
+            rawCouples[key].children.add(e.target);
+        } else if (childParents.length === 1) {
+            if (!soloParentChildren[e.source]) soloParentChildren[e.source] = new Set();
+            soloParentChildren[e.source].add(e.target);
+        }
+    });
+
+    // Second pass: only keep couples where both parents share the same generation
+    Object.entries(rawCouples).forEach(([key, couple]) => {
+        const [aId, bId] = couple.parents;
+        const aGen = nodeMap[aId]?.generation;
+        const bGen = nodeMap[bId]?.generation;
+        if (aGen === bGen) {
+            coupleMap[key] = couple;
+        }
+        // Cross-gen couples: edges fall through to curved rendering (not structured)
+    });
+
+    // Convert sets to arrays
+    Object.values(coupleMap).forEach(c => { c.children = [...c.children]; });
+    Object.keys(soloParentChildren).forEach(k => { soloParentChildren[k] = [...soloParentChildren[k]]; });
+
+    // Edges handled by pedigree connectors — track which edges are "structured"
+    const structuredEdges = new Set();
+    Object.values(coupleMap).forEach(couple => {
+        couple.children.forEach(childId => {
+            couple.parents.forEach(parentId => {
+                structuredEdges.add(parentId + '-' + childId);
+            });
+        });
+    });
+    Object.entries(soloParentChildren).forEach(([parentId, children]) => {
+        children.forEach(childId => {
+            structuredEdges.add(parentId + '-' + childId);
+        });
+    });
+
+    // Group nodes by generation
+    const generations = {};
+    data.nodes.forEach(n => {
+        const gen = n.generation;
+        if (!generations[gen]) generations[gen] = [];
+        generations[gen].push(nodeMap[n.id]);
+    });
+
+    const genKeys = Object.keys(generations).map(Number).sort((a, b) => b - a);
+
+    // Assign Y positions
+    const layerY = {};
+    genKeys.forEach((gen, i) => {
+        layerY[gen] = i * (NODE_H + V_GAP);
+    });
+
+    // Initial X positions
+    genKeys.forEach(gen => {
+        const layer = generations[gen];
+        layer.forEach((node, i) => {
+            node.x = i * (NODE_W + H_GAP);
+        });
+    });
+
+    // Group children by couple on each layer, so siblings stay together
+    // This must happen before barycenter so the ordering is coherent
+    genKeys.forEach(gen => {
+        const layer = generations[gen];
+        if (layer.length <= 2) return;
+
+        // Find which couple each node belongs to as a child
+        const nodeCoupleKey = {};
+        Object.values(coupleMap).forEach(couple => {
+            const key = couple.parents.join('-');
+            couple.children.forEach(childId => {
+                if (nodeMap[childId]?.generation === gen) {
+                    nodeCoupleKey[childId] = key;
+                }
+            });
+        });
+
+        // Stable sort: group by couple key, non-couple-children go to the end
+        const grouped = [];
+        const seen = new Set();
+        const coupleGroups = {};
+        layer.forEach(node => {
+            const ck = nodeCoupleKey[node.id];
+            if (ck) {
+                if (!coupleGroups[ck]) coupleGroups[ck] = [];
+                coupleGroups[ck].push(node);
+            }
+        });
+        // Add couple groups in order of first appearance
+        layer.forEach(node => {
+            if (seen.has(node.id)) return;
+            const ck = nodeCoupleKey[node.id];
+            if (ck && coupleGroups[ck]) {
+                coupleGroups[ck].forEach(n => { grouped.push(n); seen.add(n.id); });
+                delete coupleGroups[ck];
+            } else if (!ck) {
+                grouped.push(node); seen.add(node.id);
+            }
+        });
+        generations[gen] = grouped;
+    });
+
+    // Barycenter ordering passes (preserving couple groupings)
+    for (let pass = 0; pass < 6; pass++) {
+        for (let i = 0; i < genKeys.length; i++) {
+            orderLayerByBarycenter(generations[genKeys[i]], nodeMap, parentsOf, childrenOf, 'down');
+        }
+        for (let i = genKeys.length - 1; i >= 0; i--) {
+            orderLayerByBarycenter(generations[genKeys[i]], nodeMap, parentsOf, childrenOf, 'up');
+        }
+    }
+
+    // After barycenter, ensure couples are placed adjacent
+    Object.values(coupleMap).forEach(couple => {
+        const [aId, bId] = couple.parents;
+        const a = nodeMap[aId], b = nodeMap[bId];
+        if (!a || !b || a.generation !== b.generation) return;
+        const layer = generations[a.generation];
+        const aIdx = layer.indexOf(a);
+        const bIdx = layer.indexOf(b);
+        if (Math.abs(aIdx - bIdx) !== 1) {
+            layer.splice(bIdx, 1);
+            const newAIdx = layer.indexOf(a);
+            layer.splice(newAIdx + 1, 0, b);
+        }
+    });
+
+    // Reassign X after couple pairing, using tighter gap for couples
+    genKeys.forEach(gen => {
+        const layer = generations[gen];
+        const couplePartners = new Set();
+        Object.values(coupleMap).forEach(couple => {
+            const [aId, bId] = couple.parents;
+            if (nodeMap[aId]?.generation === gen && nodeMap[bId]?.generation === gen) {
+                couplePartners.add(bId); // second of the pair gets tight gap
+            }
+        });
+
+        let currentX = 0;
+        layer.forEach((node, i) => {
+            node.x = currentX;
+            const gap = couplePartners.has(layer[i + 1]?.id) ? COUPLE_GAP : H_GAP;
+            currentX += NODE_W + gap;
+        });
+    });
+
+    // Center-align all layers
+    let maxLayerWidth = 0;
+    genKeys.forEach(gen => {
+        const layer = generations[gen];
+        if (layer.length === 0) return;
+        const lastNode = layer[layer.length - 1];
+        const w = lastNode.x + NODE_W;
+        if (w > maxLayerWidth) maxLayerWidth = w;
+    });
+
+    genKeys.forEach(gen => {
+        const layer = generations[gen];
+        if (layer.length === 0) return;
+        const lastNode = layer[layer.length - 1];
+        const w = lastNode.x + NODE_W;
+        const offset = (maxLayerWidth - w) / 2;
+        layer.forEach(node => {
+            node.x += offset;
+            node.y = layerY[gen];
+        });
+    });
+
+    // Determine relationship labels relative to root
+    const rootGen = nodeMap[data.root_id].generation;
+    const nodeLabels = {};
+    data.nodes.forEach(n => {
+        if (n.id === data.root_id) return;
+        const genDiff = n.generation - rootGen;
+        const isParentOfRoot = (parentsOf[data.root_id] || []).includes(n.id);
+        const isChildOfRoot = (childrenOf[data.root_id] || []).includes(n.id);
+
+        // Check if sibling (shares parents with root)
+        const rootParents = (parentsOf[data.root_id] || []).sort().join(',');
+        const thisParents = (parentsOf[n.id] || []).sort().join(',');
+        const isSibling = rootParents && thisParents && rootParents === thisParents;
+
+        if (isParentOfRoot) {
+            nodeLabels[n.id] = n.sex === 'female' ? 'mother' : 'father';
+        } else if (isChildOfRoot) {
+            nodeLabels[n.id] = n.sex === 'female' ? 'daughter' : 'son';
+        } else if (isSibling) {
+            nodeLabels[n.id] = n.sex === 'female' ? 'sister' : 'brother';
+        } else if (genDiff === 2) {
+            nodeLabels[n.id] = n.sex === 'female' ? 'g-mother' : 'g-father';
+        } else if (genDiff > 2) {
+            const greats = genDiff - 2;
+            const prefix = greats === 1 ? 'great' : `${greats}x great`;
+            nodeLabels[n.id] = n.sex === 'female' ? `${prefix} g-ma` : `${prefix} g-pa`;
+        } else if (genDiff < -1) {
+            nodeLabels[n.id] = 'descendant';
+        }
+    });
+
+    // === DRAWING ===
+
+    const connectorGroup = g.append('g').attr('class', 'connectors');
+    const incestGroup = g.append('g').attr('class', 'incest-connectors');
+    const edgeGroup = g.append('g').attr('class', 'edges');
+    const nodeGroup = g.append('g').attr('class', 'nodes');
+
+    // Track bracket offsets per generation to prevent overlap
+    const bracketOffsetCounter = {};
+
+    // Draw pedigree-style connectors for couples
+    Object.values(coupleMap).forEach(couple => {
+        const [aId, bId] = couple.parents;
+        const a = nodeMap[aId], b = nodeMap[bId];
+        if (!a || !b) return;
+
+        const coupleKey = Math.min(aId, bId) + '-' + Math.max(aId, bId);
+        const incestLevel = incestMap[coupleKey] || 0;
+        const incestPct = Math.round(incestLevel * 100);
+        const matingColor = incestLevel > 0 ? incestColor(incestLevel) : null;
+
+        // Mating line: horizontal line between the two parents (at their vertical center)
+        const mateY = a.y + NODE_H / 2;
+        const leftX = Math.min(a.x + NODE_W, b.x + NODE_W);
+        const rightX = Math.max(a.x, b.x);
+        const midMateX = (a.x + NODE_W / 2 + b.x + NODE_W / 2) / 2;
+
+        // Horizontal mating bar — draw incest lines in a higher layer so they aren't hidden
+        const targetGroup = incestLevel > 0 ? incestGroup : connectorGroup;
+        const mateLine = targetGroup.append('line')
+            .attr('class', `mating-line ${incestLevel > 0 ? 'incest' : ''}`)
+            .attr('x1', Math.min(a.x + NODE_W / 2, b.x + NODE_W / 2))
+            .attr('y1', mateY)
+            .attr('x2', Math.max(a.x + NODE_W / 2, b.x + NODE_W / 2))
+            .attr('y2', mateY);
+        if (matingColor) mateLine.style('stroke', matingColor);
+
+        // Incest percentage label — positioned above the mating line, clear of nodes
+        if (incestLevel > 0) {
+            incestGroup.append('text')
+                .attr('class', 'incest-label')
+                .attr('x', midMateX)
+                .attr('y', a.y - 8)
+                .style('fill', matingColor)
+                .text(`${incestPct}% incest`);
+        }
+
+        // Sort children by x position
+        const childNodes = couple.children.map(id => nodeMap[id]).filter(Boolean);
+        childNodes.sort((x, y) => x.x - y.x);
+
+        if (childNodes.length === 0) return;
+
+        // Offset bracket Y per generation so multiple couples' brackets don't overlap
+        const bracketGen = a.generation;
+        if (!bracketOffsetCounter[bracketGen]) bracketOffsetCounter[bracketGen] = 0;
+        const bracketIdx = bracketOffsetCounter[bracketGen]++;
+        const baseDropY = mateY + (V_GAP + NODE_H) / 2 + 4;
+        const dropY = baseDropY + bracketIdx * 10;
+        connectorGroup.append('line')
+            .attr('class', 'descent-line')
+            .attr('x1', midMateX)
+            .attr('y1', mateY)
+            .attr('x2', midMateX)
+            .attr('y2', dropY);
+
+        if (childNodes.length === 1) {
+            // Single child: straight drop
+            const child = childNodes[0];
+            connectorGroup.append('line')
+                .attr('class', 'child-drop')
+                .attr('x1', midMateX)
+                .attr('y1', dropY)
+                .attr('x2', child.x + NODE_W / 2)
+                .attr('y2', dropY);
+            connectorGroup.append('line')
+                .attr('class', 'child-drop')
+                .attr('x1', child.x + NODE_W / 2)
+                .attr('y1', dropY)
+                .attr('x2', child.x + NODE_W / 2)
+                .attr('y2', child.y);
+        } else {
+            // Multiple children: sibship bracket
+            const leftChild = childNodes[0];
+            const rightChild = childNodes[childNodes.length - 1];
+
+            // Horizontal sibship line
+            connectorGroup.append('line')
+                .attr('class', 'sibship-line')
+                .attr('x1', leftChild.x + NODE_W / 2)
+                .attr('y1', dropY)
+                .attr('x2', rightChild.x + NODE_W / 2)
+                .attr('y2', dropY);
+
+            // Connect descent line to sibship line if midpoint isn't on it
+            if (midMateX < leftChild.x + NODE_W / 2 || midMateX > rightChild.x + NODE_W / 2) {
+                const nearestX = midMateX < leftChild.x + NODE_W / 2
+                    ? leftChild.x + NODE_W / 2
+                    : rightChild.x + NODE_W / 2;
+                connectorGroup.append('line')
+                    .attr('class', 'descent-line')
+                    .attr('x1', midMateX)
+                    .attr('y1', dropY)
+                    .attr('x2', nearestX)
+                    .attr('y2', dropY);
+            }
+
+            // Vertical drops to each child
+            childNodes.forEach(child => {
+                connectorGroup.append('line')
+                    .attr('class', 'child-drop')
+                    .attr('x1', child.x + NODE_W / 2)
+                    .attr('y1', dropY)
+                    .attr('x2', child.x + NODE_W / 2)
+                    .attr('y2', child.y);
+            });
+        }
+    });
+
+    // Draw connectors for solo parents (one known parent)
+    Object.entries(soloParentChildren).forEach(([parentId, children]) => {
+        const parent = nodeMap[parseInt(parentId)];
+        if (!parent) return;
+
+        const childNodes = children.map(id => nodeMap[id]).filter(Boolean);
+        childNodes.sort((a, b) => a.x - b.x);
+        if (childNodes.length === 0) return;
+
+        const dropY = parent.y + NODE_H + (V_GAP - NODE_H) / 2 + NODE_H / 2;
+        const parentCx = parent.x + NODE_W / 2;
+
+        connectorGroup.append('line')
+            .attr('class', 'descent-line')
+            .attr('x1', parentCx)
+            .attr('y1', parent.y + NODE_H)
+            .attr('x2', parentCx)
+            .attr('y2', dropY);
+
+        if (childNodes.length === 1) {
+            const child = childNodes[0];
+            connectorGroup.append('line')
+                .attr('class', 'child-drop')
+                .attr('x1', parentCx)
+                .attr('y1', dropY)
+                .attr('x2', child.x + NODE_W / 2)
+                .attr('y2', dropY);
+            connectorGroup.append('line')
+                .attr('class', 'child-drop')
+                .attr('x1', child.x + NODE_W / 2)
+                .attr('y1', dropY)
+                .attr('x2', child.x + NODE_W / 2)
+                .attr('y2', child.y);
+        } else {
+            const leftChild = childNodes[0];
+            const rightChild = childNodes[childNodes.length - 1];
+            connectorGroup.append('line')
+                .attr('class', 'sibship-line')
+                .attr('x1', leftChild.x + NODE_W / 2)
+                .attr('y1', dropY)
+                .attr('x2', rightChild.x + NODE_W / 2)
+                .attr('y2', dropY);
+            childNodes.forEach(child => {
+                connectorGroup.append('line')
+                    .attr('class', 'child-drop')
+                    .attr('x1', child.x + NODE_W / 2)
+                    .attr('y1', dropY)
+                    .attr('x2', child.x + NODE_W / 2)
+                    .attr('y2', child.y);
+            });
+        }
+    });
+
+    // Draw remaining edges as curved lines (cross-generation / circular links)
+    const drawnIncestLabels = new Set();
+    data.edges.forEach(e => {
+        const key = e.source + '-' + e.target;
+        if (structuredEdges.has(key)) return; // already drawn as pedigree connector
+
+        const src = nodeMap[e.source];
+        const tgt = nodeMap[e.target];
+        if (!src || !tgt) return;
+
+        // Check if this edge is part of an incestuous couple
+        const childParents = parentsOf[e.target] || [];
+        let edgeIncest = 0;
+        if (childParents.length === 2) {
+            const ck = Math.min(...childParents) + '-' + Math.max(...childParents);
+            edgeIncest = incestMap[ck] || 0;
+        }
+
+        const x1 = src.x + NODE_W / 2;
+        const y1 = src.y + NODE_H;
+        const x2 = tgt.x + NODE_W / 2;
+        const y2 = tgt.y;
+        const midY = (y1 + y2) / 2;
+
+        const path = edgeGroup.append('path')
+            .attr('class', `tree-edge ${edgeIncest > 0 ? 'incest' : ''}`)
+            .attr('d', `M${x1},${y1} C${x1},${midY} ${x2},${midY} ${x2},${y2}`);
+        if (edgeIncest > 0) {
+            path.style('stroke', incestColor(edgeIncest));
+            // Show incest % label once per couple (only on the first edge)
+            const labelKey = Math.min(...childParents) + '-' + Math.max(...childParents);
+            if (!drawnIncestLabels.has(labelKey)) {
+                drawnIncestLabels.add(labelKey);
+                const pct = Math.round(edgeIncest * 100);
+                edgeGroup.append('text')
+                    .attr('class', 'incest-label')
+                    .attr('x', (x1 + x2) / 2 + 12)
+                    .attr('y', midY)
+                    .style('fill', incestColor(edgeIncest))
+                    .text(`${pct}%`);
+            }
+        }
+    });
+
+    // Draw nodes
+    data.nodes.forEach(n => {
+        const node = nodeMap[n.id];
+        const isRoot = n.id === data.root_id;
+        const sexClass = n.sex === 'female' ? 'sex-female' : 'sex-male';
+        const deadClass = !n.alive ? 'is-dead' : '';
+        const rootClass = isRoot ? 'is-root' : '';
+        const label = nodeLabels[n.id];
+
+        const nodeG = nodeGroup.append('g')
+            .attr('class', `tree-node ${sexClass} ${deadClass} ${rootClass}`)
+            .attr('transform', `translate(${node.x}, ${node.y})`)
+            .on('click', () => { window.location.href = `/pooch/${n.id}/family-tree`; });
+
+        nodeG.append('rect')
+            .attr('width', NODE_W)
+            .attr('height', NODE_H);
+
+        const sexEmoji = n.sex === 'female' ? '\u2640' : '\u2642';
+        nodeG.append('text')
+            .attr('class', 'node-sex')
+            .attr('x', 10)
+            .attr('y', 20)
+            .text(sexEmoji);
+
+        const displayName = n.name.length > 18 ? n.name.substring(0, 17) + '\u2026' : n.name;
+        nodeG.append('text')
+            .attr('class', 'node-name')
+            .attr('x', NODE_W / 2 + 4)
+            .attr('y', 22)
+            .text(displayName);
+
+        // Second line: age/status + relationship label
+        const statusText = !n.alive ? '\uD83D\uDC80' : `${n.age}d`;
+        const metaText = label ? `${statusText} \u00B7 ${label}` : statusText;
+        nodeG.append('text')
+            .attr('class', 'node-meta')
+            .attr('x', NODE_W / 2 + 4)
+            .attr('y', 38)
+            .text(metaText);
+
+        // "YOU" badge on root
+        if (isRoot) {
+            nodeG.append('text')
+                .attr('class', 'node-label')
+                .attr('x', NODE_W / 2)
+                .attr('y', NODE_H + 12)
+                .style('fill', '#60a5fa')
+                .text('\u25B2 ROOT');
+        }
+    });
+
+    // Setup zoom
+    zoomBehavior = d3.zoom()
+        .scaleExtent([0.1, 3])
+        .on('zoom', (event) => {
+            g.attr('transform', event.transform);
+        });
+
+    svg.call(zoomBehavior);
+    requestAnimationFrame(() => zoomFit());
+}
+
+function orderLayerByBarycenter(layer, nodeMap, parentsOf, childrenOf, direction) {
+    if (layer.length <= 1) return;
+
+    layer.forEach(node => {
+        const connected = direction === 'down'
+            ? (childrenOf[node.id] || [])
+            : (parentsOf[node.id] || []);
+
+        if (connected.length > 0) {
+            const positions = connected
+                .map(id => nodeMap[id]?.x)
+                .filter(x => x !== undefined);
+            if (positions.length > 0) {
+                node._bary = positions.reduce((a, b) => a + b, 0) / positions.length;
+            } else {
+                node._bary = node.x;
+            }
+        } else {
+            node._bary = node.x;
+        }
+    });
+
+    layer.sort((a, b) => a._bary - b._bary);
+    layer.forEach((node, i) => {
+        node.x = i * (NODE_W + H_GAP);
+    });
+}
+
+function zoomFit() {
+    const container = document.getElementById('tree-container');
+    const bounds = g.node().getBBox();
+    if (bounds.width === 0 || bounds.height === 0) return;
+
+    const fullW = container.clientWidth;
+    const fullH = container.clientHeight;
+    const padding = 60;
+
+    const scale = Math.min(
+        (fullW - padding * 2) / bounds.width,
+        (fullH - padding * 2) / bounds.height,
+        1.5
+    );
+
+    const tx = fullW / 2 - (bounds.x + bounds.width / 2) * scale;
+    const ty = fullH / 2 - (bounds.y + bounds.height / 2) * scale;
+
+    svg.transition().duration(500)
+        .call(zoomBehavior.transform, d3.zoomIdentity.translate(tx, ty).scale(scale));
+}
+
+function zoomIn() {
+    svg.transition().duration(300).call(zoomBehavior.scaleBy, 1.3);
+}
+
+function zoomOut() {
+    svg.transition().duration(300).call(zoomBehavior.scaleBy, 0.7);
+}
+</script>
+{% endblock %}
