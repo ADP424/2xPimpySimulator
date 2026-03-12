@@ -14,8 +14,11 @@ from src.database import (
     get_owner_server,
     give_money_to_owner,
     list_kennels_for_owner,
+    list_owners,
     set_owner_begged_today,
+    update_owner_discord_name,
 )
+from logger import get_logger
 
 from .constants import BEG_DOLLARS_RANGE, BEG_MAX_DOLLARS
 from .exceptions import OwnerNotFound
@@ -24,6 +27,8 @@ from .models import to_kennel, to_owner
 
 if TYPE_CHECKING:
     from .models import Kennel, Owner
+
+logger = get_logger("game/manage_owners")
 
 
 async def add_money(server_discord_id: int, owner_discord_id: int, amount: int) -> Owner:
@@ -162,3 +167,47 @@ async def list_owner_kennels(owner_discord_id: int) -> list[Kennel]:
 
     kennels = await list_kennels_for_owner(owner_discord_id)
     return [(await to_kennel(kennel)) for kennel in kennels]
+
+
+async def list_all_owners() -> list[Owner]:
+    """
+    List all owners in the database.
+
+    Returns
+    -------
+    list[Owner]
+        A list of every Owner as a game dataclass.
+    """
+
+    owners = await list_owners()
+    return [await to_owner(owner) for owner in owners]
+
+
+async def update_owner_names(names: dict[int, str]) -> int:
+    """
+    Update cached Discord display names for owners.
+
+    Parameters
+    ----------
+    names: dict[int, str]
+        Mapping of owner Discord IDs to their current display names.
+
+    Returns
+    -------
+    int
+        The number of owners whose names were actually changed.
+    """
+
+    owners = await list_owners()
+    owners_by_id = {o.discord_id: o for o in owners}
+
+    updated = 0
+    for discord_id, name in names.items():
+        owner = owners_by_id.get(discord_id)
+        if owner is None or owner.discord_name == name:
+            continue
+        await update_owner_discord_name(discord_id, name)
+        updated += 1
+
+    logger.info(f"Updated {updated}/{len(owners)} owner display names")
+    return updated

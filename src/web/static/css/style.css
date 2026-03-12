@@ -1,3 +1,14 @@
+/* Windows 11 Emoji Font */
+@font-face {
+    font-family: "Segoe UI Emoji";
+    src: url("/static/fonts/SEGUIEMJ.TTF") format("truetype");
+    font-display: swap;
+}
+
+body {
+    font-family: ui-sans-serif, system-ui, sans-serif, "Segoe UI Emoji", "Noto Color Emoji";
+}
+
 /* ===== Dark Theme Override (v4 colors for v5) ===== */
 /* https://github.com/daisyui/v4-themes-for-v5 */
 [data-theme="dark"] {

@@ -396,6 +396,23 @@ async def list_living_pooches() -> list[Pooch]:
     return list(response.scalars().all())
 
 
+async def list_owners() -> list[Owner]:
+    """
+    List all owners in the database.
+
+    Returns
+    -------
+    list[Owner]
+        A list of every Owner ORM object.
+    """
+
+    async with session_scope() as session:
+        query = select(Owner)
+        response = await session.execute(query)
+
+    return list(response.scalars().all())
+
+
 async def list_owner_servers(owner_discord_id: int) -> list[Server]:
     """
     Fetch a list of all the servers the owner with the given Discord ID is in.

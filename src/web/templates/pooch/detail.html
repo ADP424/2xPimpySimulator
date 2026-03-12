@@ -105,7 +105,7 @@ async function submitRenamePooch() {
         });
         const result = await resp.json();
         if (result.success) {
-            App.showNotification('Pooch renamed!', 'success');
+            App.queueNotification('Pooch renamed!', 'success');
             window.location.reload();
         } else {
             App.showNotification(result.error || 'Rename failed', 'error');

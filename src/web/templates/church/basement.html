@@ -158,7 +158,8 @@ async function confirmSacrifice() {
         const resp = await fetch(`/api/pooches/${selectedPoochId}/sacrifice`, { method: 'POST' });
         const result = await resp.json();
         if (result.success) {
-            App.showNotification(result.message, 'success');
+            App.rumble();
+            App.showNotification(result.message, 'info');
             document.getElementById('sacrifice-select').value = '';
             document.getElementById('sacrifice-value').style.display = 'none';
             document.getElementById('sacrifice-btn').disabled = true;
@@ -178,6 +179,7 @@ async function confirmSacrifice() {
 function setRolls(n) {
     currentRolls = n;
     document.getElementById('rolls-input').value = n;
+    App.haptics.trigger('selection');
     updateSummonCost();
 }
 
@@ -211,7 +213,8 @@ async function confirmSummon() {
         });
         const result = await resp.json();
         if (result.success) {
-            App.showNotification(result.message, 'success');
+            App.rumble();
+            App.showNotification(result.message, 'info');
             await loadMyPooches();
         } else {
             App.showNotification(result.message || result.error || 'Summon failed', 'error');
@@ -249,7 +252,11 @@ async function loadHell() {
 
 function createHellCard(pooch) {
     const sexEmoji = pooch.sex === 'female' ? '♀️' : '♂️';
-    const breedNames = (pooch.breeds || []).map(b => b.breed.name).join(', ') || 'Unknown';
+    const breedsHtml = (pooch.breeds || []).length > 0
+        ? (pooch.breeds || []).map((b, i) =>
+            `<span class="rarity-text-${(b.breed.rarity || '').toLowerCase()}">${escapeHtml(b.breed.name)}${i < pooch.breeds.length - 1 ? ',' : ''}</span>`
+          ).join(' ')
+        : `<span>Unknown</span>`;
 
     const mutationsHtml = (pooch.mutations || []).length > 0
         ? `<div class="flex flex-wrap gap-1 mt-1">
@@ -268,12 +275,14 @@ function createHellCard(pooch) {
                 </div>
                 <div class="text-xs text-base-content/50 flex flex-col gap-0.5">
                     <div class="flex gap-2">
-                        <span class="shrink-0">Breeds:</span>
-                        <span class="text-base-content/70">${escapeHtml(breedNames)}</span>
+                        <span class="shrink-0">Age:</span><span>${pooch.age} days</span>
                     </div>
-                    <div class="flex justify-between gap-2">
-                        <span>Age:</span><span>${pooch.age} days</span>
+                    <div class="flex gap-2">
+                        <span class="shrink-0">Breeds:</span><span class="text-base-content/70">${breedsHtml}</span>
                     </div>
+                    ${pooch.owner ? `<div class="flex gap-2">
+                        <span class="shrink-0">Sacrificed by:</span><span class="text-base-content/70">${escapeHtml(pooch.owner.discord_name || 'Unknown')}</span>
+                    </div>` : ''}
                 </div>
                 ${mutationsHtml}
             </div>

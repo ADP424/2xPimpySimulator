@@ -87,6 +87,7 @@ async function doBeg() {
         resultSection.style.display = 'block';
 
         if (result.success) {
+            App.haptics.trigger('success');
             resultAlert.className = 'alert alert-success text-sm';
             resultAlert.textContent = result.message;
             const dollarsEl = document.getElementById('owner-dollars');
@@ -95,12 +96,14 @@ async function doBeg() {
             dollarsEl.textContent = formatCurrency(newTotal);
             document.getElementById('eligible-section').style.display = 'none';
         } else {
+            App.haptics.trigger('warning');
             resultAlert.className = 'alert alert-warning text-sm';
             resultAlert.textContent = result.message;
             btn.disabled = false;
             btn.classList.remove('loading');
         }
     } catch (e) {
+        App.haptics.trigger('error');
         App.showNotification('Something went wrong.', 'error');
         btn.disabled = false;
         btn.classList.remove('loading');

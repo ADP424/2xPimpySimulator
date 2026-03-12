@@ -13,10 +13,11 @@ def run():
 
     socketio.run(
         app,
-        host="localhost",
+        host="0.0.0.0",
         port=port,
         debug=debug,
         use_reloader=False,
+        allow_unsafe_werkzeug=True
     )
 
 

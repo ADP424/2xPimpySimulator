@@ -137,7 +137,7 @@ async function buyPooch(poochId) {
         const result = await response.json();
 
         if (result.success) {
-            App.showNotification('Purchase successful!', 'success');
+            App.queueNotification('Purchase successful!', 'success');
             window.location.reload();
         } else {
             App.showNotification(result.message || result.error || 'Purchase failed', 'error');

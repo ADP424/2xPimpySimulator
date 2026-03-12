@@ -97,7 +97,7 @@ async function submitRenameKennel() {
         });
         const result = await resp.json();
         if (result.success) {
-            App.showNotification('Kennel renamed!', 'success');
+            App.queueNotification('Kennel renamed!', 'success');
             window.location.reload();
         } else {
             App.showNotification(result.error || 'Rename failed', 'error');

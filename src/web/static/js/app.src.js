@@ -1,4 +1,10 @@
+import { WebHaptics } from "web-haptics";
+
+const haptics = new WebHaptics({ debug: true });
+
 const App = {
+    haptics,
+
     socket: null,
 
     _subscribedServers: new Set(),
@@ -8,6 +14,27 @@ const App = {
     init() {
         this.initSocket();
         this.initTheme();
+        this.checkPendingNotification();
+    },
+
+    queueNotification(message, type = 'info') {
+        const hapticMap = { success: 'success', error: 'error', warning: 'warning' };
+        if (hapticMap[type]) haptics.trigger(hapticMap[type]);
+        sessionStorage.setItem('pending_notification', JSON.stringify({ message, type }));
+    },
+
+    checkPendingNotification() {
+        const raw = sessionStorage.getItem('pending_notification');
+        if (!raw) return;
+        sessionStorage.removeItem('pending_notification');
+        try {
+            const { message, type } = JSON.parse(raw);
+            this.showNotification(message, type, true);
+        } catch {}
+    },
+
+    rumble() {
+        haptics.trigger([100, 30, 150, 50, 200, 30, 80, 40, 250]);
     },
 
     initTheme() {
@@ -18,7 +45,10 @@ const App = {
         radios.forEach(radio => {
             if (radio.value === saved) radio.checked = true;
             radio.addEventListener('change', () => {
-                if (radio.checked) localStorage.setItem('theme', radio.value);
+                if (radio.checked) {
+                    document.documentElement.setAttribute('data-theme', radio.value);
+                    localStorage.setItem('theme', radio.value);
+                }
             });
         });
     },
@@ -47,6 +77,7 @@ const App = {
         if (!this.socket || this._dayChangeListenerInstalled) return;
 
         this.socket.on('day_change', (data) => {
+            haptics.trigger('warning');
             for (const handler of this._dayChangeHandlers) {
                 try {
                     handler(data);
@@ -89,7 +120,12 @@ const App = {
         }
     },
 
-    showNotification(message, type = 'info') {
+    showNotification(message, type = 'info', skipHaptics = false) {
+        if (!skipHaptics) {
+            const hapticMap = { success: 'success', error: 'error', warning: 'warning' };
+            if (hapticMap[type]) haptics.trigger(hapticMap[type]);
+        }
+
         const container = document.getElementById('notification-container');
         if (!container) return;
 
@@ -166,6 +202,11 @@ function formatCurrency(amount) {
         minimumFractionDigits: 0,
     }).format(amount);
 }
+
+// Expose globals for inline template scripts
+window.App = App;
+window.escapeHtml = escapeHtml;
+window.formatCurrency = formatCurrency;
 
 // Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', () => {

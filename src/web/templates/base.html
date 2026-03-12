@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Pooch Breeder{% endblock %}</title>
     <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');</script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
@@ -57,6 +58,12 @@
 
         <div class="navbar-end gap-2">
             {% if session.get('discord_id') %}
+            {% if session.get('current_server_id') %}
+            <div id="navbar-currencies" class="hidden sm:flex items-center gap-3 text-sm mr-1" style="display: none;">
+                <span class="text-success font-semibold" id="nav-dollars">—</span>
+                <span class="text-error font-semibold" id="nav-bloodskulls">—</span>
+            </div>
+            {% endif %}
             <a href="{{ url_for('main.select_server') }}" class="btn btn-ghost btn-sm hidden lg:flex">
                 {% if session.get('current_server_name') %}
                     {{ session.get('current_server_name') }} ▾
@@ -92,7 +99,22 @@
     <div id="notification-container" class="toast toast-top toast-end z-[1500]"></div>
 
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
-    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/app.bundle.js') }}"></script>
+    {% if session.get('current_server_id') %}
+    <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+        try {
+            const resp = await fetch('/api/owner');
+            const owner = await resp.json();
+            const el = document.getElementById('navbar-currencies');
+            if (!el) return;
+            document.getElementById('nav-dollars').textContent = `$${owner.dollars.toLocaleString()}`;
+            document.getElementById('nav-bloodskulls').textContent = `💀 ${owner.bloodskulls.toLocaleString()}`;
+            el.style.display = '';
+        } catch {}
+    });
+    </script>
+    {% endif %}
     {% block extra_scripts %}{% endblock %}
 </body>
 </html>
