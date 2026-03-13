@@ -1,0 +1,62 @@
+{
+    "name": "The Pooch In Black",
+    "description": "A black dog has shown up in your darkest moment.",
+    "flavor_text": "Hopfuly you can get back on your two feet.",
+    "severity": "MAJOR",
+    "rarity": "COMMON",
+    "requires_response": false,
+    "filter": {
+        "max_money": -1,
+        "pooches": [
+            {
+                "max_count": 0,
+                "is_alive": true
+            }
+        ],
+        "kennels": [
+            {
+                "max_count": 1,
+                "max_capacity": 5
+            }
+        ]
+    },
+    "actions": [
+        {
+            "action_type": "create_pooch", 
+            "target_type": "owner",
+            "parameters": {
+                "name": "The Pooch In Black",
+                "sex": "male",
+                "age": 3,
+                "breeding_cooldown": 0,
+                "destination": "kennel",
+                "save_as": "black_pooch"
+            }
+        },
+        {
+            "action_type": "add_breed",
+            "target_type": "pooch",
+            "parameters": {
+                "use_saved": "black_pooch",
+                "breed": "mexican_hairless_dog",
+                "weight": 0.75
+            }
+        },
+        {
+            "action_type": "add_mutation",
+            "target_type": "pooch",
+            "parameters": {
+                "use_saved": "black_pooch",
+                "selector": "selected", //not sure if this is right
+                "mutation": "sent_by_death"
+            }
+        },
+        {
+            "action_type": "modify_money",
+            "target_type": "owner",
+            "parameters": {
+                "amount": 100 //TODO. Set to pay off your debt.
+            }
+        }
+    ]
+}

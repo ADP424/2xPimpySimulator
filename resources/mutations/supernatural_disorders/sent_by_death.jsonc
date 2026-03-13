@@ -1,0 +1,11 @@
+{
+    "name": "Sent by Death",
+    "alt_name": "Poochus Reaperus",
+    "description": "This pooch has been sent by death to save the living.",
+    "heritability": 0.0,
+    "health_impact": "HEALTHY",
+    "rarity": "UNIQUE",
+    "advanced_options": {
+        "bloodskull_value_mult": 0 //TODO. This should really only apear on pooches from The Pooch In Black event and venders shouldn't want it. 
+    }
+}

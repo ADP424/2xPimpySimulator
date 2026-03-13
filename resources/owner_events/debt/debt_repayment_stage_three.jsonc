@@ -1,0 +1,39 @@
+{
+    "name": "Debt Repayment Still",
+    "description": "The bank has come for it's money.",
+    "flavor_text": "They will keep taking until your debt improves.",
+    "severity": "MAJOR",
+    "rarity": "COMMON",
+    "requires_response": false,
+    "filter": {
+        "max_money": -1,
+        "pooches": [
+            {
+                "max_count": 0,
+                "is_alive": true
+            }
+        ],
+        "kennels": [
+            {
+                "max_count": 1,
+                "min_capacity": 10
+            }
+        ]
+    },
+    "actions": [
+        {
+            "action_type": "modify_kennel_capacity",
+            "target_type": "owner",
+            "parameters": {
+                "amount": -5
+            }
+        },
+        {
+            "action_type": "modify_money",
+            "target_type": "owner",
+            "parameters": {
+                "amount": 100 //TODO. Set to however expenive half a kennel expansion is.
+            }
+        }
+    ]
+}
