@@ -72,9 +72,14 @@ async def get_pooch_family_tree(pooch_id: int, ancestor_depth: int = 5, descenda
             father, mother = await get_pooch_parents(child.id)
             for parent in (father, mother):
                 if parent is not None and parent.id != pid:
-                    # Place the mate at the same generation as pid (they're partners)
-                    mate_gen = node_generation.get(pid, 0)
-                    await _add_node(parent, mate_gen)
+                    # Place the mate at the same generation as pid, but don't
+                    # override if the node already has a generation (e.g. it's
+                    # also a descendant placed at a lower generation)
+                    if parent.id in node_generation:
+                        await _add_node(parent, node_generation[parent.id])
+                    else:
+                        mate_gen = node_generation.get(pid, 0)
+                        await _add_node(parent, mate_gen)
                     edges.add((parent.id, child.id))
 
             # Only recurse if this is a new node or placed at a lower generation
@@ -102,6 +107,20 @@ async def get_pooch_family_tree(pooch_id: int, ancestor_depth: int = 5, descenda
             edges.add((father.id, sibling.id))
         if mother:
             edges.add((mother.id, sibling.id))
+
+    # Ensure every child is strictly below ALL its parents.
+    # When cross-generation mating occurs, a child may have been placed at the
+    # same generation as one parent.  Iteratively push children down until the
+    # constraint holds for every edge.
+    changed = True
+    while changed:
+        changed = False
+        for source, target in edges:
+            parent_gen = node_generation.get(source, 0)
+            child_gen = node_generation.get(target, 0)
+            if child_gen >= parent_gen:
+                node_generation[target] = parent_gen - 1
+                changed = True
 
     # Attach generation to each node
     for pid, node in nodes.items():

@@ -60,6 +60,12 @@
         letter-spacing: 0.5px;
     }
 
+    /* Hover highlighting: dim everything, then un-dim connected elements */
+    #tree-svg.highlight-active .tree-node { opacity: 0.15; transition: opacity 0.15s; }
+    #tree-svg.highlight-active .tree-edge-el { opacity: 0.06; transition: opacity 0.15s; }
+    #tree-svg.highlight-active .tree-node.hl-active { opacity: 1; }
+    #tree-svg.highlight-active .tree-edge-el.hl-active { opacity: 1; }
+
     /* Pedigree connector lines */
     .mating-line { stroke: #6b7280; stroke-width: 2; }
     .mating-line.incest { stroke-width: 3; }
@@ -172,9 +178,9 @@ const PAGE_DATA = { poochId: {{ pooch_id }} };
 
 const NODE_W = 150;
 const NODE_H = 58;
-const H_GAP = 60;
-const V_GAP = 130;
-const COUPLE_GAP = 20; // tighter gap between mated pairs
+const H_GAP = 45;
+const V_GAP = 110;
+const COUPLE_GAP = 18; // tighter gap between mated pairs
 
 let svg, g, zoomBehavior;
 let treeData = null;
@@ -260,15 +266,9 @@ function renderTree(data) {
         }
     });
 
-    // Second pass: only keep couples where both parents share the same generation
+    // Second pass: keep all couples (including cross-generation)
     Object.entries(rawCouples).forEach(([key, couple]) => {
-        const [aId, bId] = couple.parents;
-        const aGen = nodeMap[aId]?.generation;
-        const bGen = nodeMap[bId]?.generation;
-        if (aGen === bGen) {
-            coupleMap[key] = couple;
-        }
-        // Cross-gen couples: edges fall through to curved rendering (not structured)
+        coupleMap[key] = couple;
     });
 
     // Convert sets to arrays
@@ -300,10 +300,12 @@ function renderTree(data) {
 
     const genKeys = Object.keys(generations).map(Number).sort((a, b) => b - a);
 
-    // Assign Y positions
+    // Assign Y positions: root generation at center, ancestors up, descendants down
+    const rootGen = nodeMap[data.root_id].generation;
     const layerY = {};
-    genKeys.forEach((gen, i) => {
-        layerY[gen] = i * (NODE_H + V_GAP);
+    genKeys.forEach(gen => {
+        // ancestors (higher gen) → negative Y (up), descendants (lower gen) → positive Y (down)
+        layerY[gen] = (rootGen - gen) * (NODE_H + V_GAP);
     });
 
     // Initial X positions
@@ -423,7 +425,6 @@ function renderTree(data) {
     });
 
     // Determine relationship labels relative to root
-    const rootGen = nodeMap[data.root_id].generation;
     const nodeLabels = {};
     data.nodes.forEach(n => {
         if (n.id === data.root_id) return;
@@ -473,31 +474,55 @@ function renderTree(data) {
         const incestLevel = incestMap[coupleKey] || 0;
         const incestPct = Math.round(incestLevel * 100);
         const matingColor = incestLevel > 0 ? incestColor(incestLevel) : null;
+        const sameGen = a.generation === b.generation;
 
-        // Mating line: horizontal line between the two parents (at their vertical center)
-        const mateY = a.y + NODE_H / 2;
-        const leftX = Math.min(a.x + NODE_W, b.x + NODE_W);
-        const rightX = Math.max(a.x, b.x);
-        const midMateX = (a.x + NODE_W / 2 + b.x + NODE_W / 2) / 2;
-
-        // Horizontal mating bar — draw incest lines in a higher layer so they aren't hidden
+        // All node IDs involved in this couple (parents + children)
+        const allCoupleIds = [aId, bId, ...couple.children].join(',');
         const targetGroup = incestLevel > 0 ? incestGroup : connectorGroup;
-        const mateLine = targetGroup.append('line')
-            .attr('class', `mating-line ${incestLevel > 0 ? 'incest' : ''}`)
-            .attr('x1', Math.min(a.x + NODE_W / 2, b.x + NODE_W / 2))
-            .attr('y1', mateY)
-            .attr('x2', Math.max(a.x + NODE_W / 2, b.x + NODE_W / 2))
-            .attr('y2', mateY);
-        if (matingColor) mateLine.style('stroke', matingColor);
 
-        // Incest percentage label — positioned above the mating line, clear of nodes
-        if (incestLevel > 0) {
-            incestGroup.append('text')
-                .attr('class', 'incest-label')
-                .attr('x', midMateX)
-                .attr('y', a.y - 8)
-                .style('fill', matingColor)
-                .text(`${incestPct}% incest`);
+        const aCx = a.x + NODE_W / 2, aCy = a.y + NODE_H / 2;
+        const bCx = b.x + NODE_W / 2, bCy = b.y + NODE_H / 2;
+        const midMateX = (aCx + bCx) / 2;
+
+        if (sameGen) {
+            // Same-generation: horizontal mating bar
+            const mateY = aCy;
+            const mateLine = targetGroup.append('line')
+                .attr('class', `mating-line tree-edge-el ${incestLevel > 0 ? 'incest' : ''}`)
+                .attr('data-nodes', allCoupleIds)
+                .attr('x1', Math.min(aCx, bCx)).attr('y1', mateY)
+                .attr('x2', Math.max(aCx, bCx)).attr('y2', mateY);
+            if (matingColor) mateLine.style('stroke', matingColor);
+
+            if (incestLevel > 0) {
+                targetGroup.append('text')
+                    .attr('class', 'incest-label tree-edge-el')
+                    .attr('data-nodes', allCoupleIds)
+                    .attr('x', midMateX).attr('y', a.y - 14)
+                    .style('fill', matingColor)
+                    .text(`${incestPct}% incest`);
+            }
+        } else {
+            // Cross-generation: curved mating connector between parent centers
+            const midY = (aCy + bCy) / 2;
+            const mateLine = targetGroup.append('path')
+                .attr('class', `mating-line tree-edge-el ${incestLevel > 0 ? 'incest' : ''}`)
+                .attr('data-nodes', allCoupleIds)
+                .attr('fill', 'none')
+                .attr('d', `M${aCx},${aCy} C${aCx},${midY} ${bCx},${midY} ${bCx},${bCy}`);
+            if (matingColor) mateLine.style('stroke', matingColor);
+
+            if (incestLevel > 0) {
+                // Place label to the side of the curve, not on top of nodes
+                const labelX = Math.max(aCx, bCx) + NODE_W / 2 + 10;
+                const labelY = midY;
+                targetGroup.append('text')
+                    .attr('class', 'incest-label tree-edge-el')
+                    .attr('data-nodes', allCoupleIds)
+                    .attr('x', labelX).attr('y', labelY)
+                    .style('fill', matingColor)
+                    .text(`${incestPct}% incest`);
+            }
         }
 
         // Sort children by x position
@@ -506,86 +531,93 @@ function renderTree(data) {
 
         if (childNodes.length === 0) return;
 
+        // The drop starts from the lower parent's bottom edge
+        const lowerParentY = Math.max(a.y, b.y);
+        const mateBottomY = lowerParentY + NODE_H;
+
         // Offset bracket Y per generation so multiple couples' brackets don't overlap
-        const bracketGen = a.generation;
+        const bracketGen = Math.min(a.generation, b.generation);
         if (!bracketOffsetCounter[bracketGen]) bracketOffsetCounter[bracketGen] = 0;
         const bracketIdx = bracketOffsetCounter[bracketGen]++;
-        const baseDropY = mateY + (V_GAP + NODE_H) / 2 + 4;
+
+        // dropY: halfway between the lower parent bottom and the children top
+        const firstChildY = childNodes[0].y;
+        const baseDropY = mateBottomY + (firstChildY - mateBottomY) / 2;
         const dropY = baseDropY + bracketIdx * 10;
+
+        // For same-gen: drop from midpoint of mating bar
+        // For cross-gen: drop from the lower parent's center X (where the curve ends)
+        const lowerParent = a.y > b.y ? a : b;
+        const dropX = sameGen ? midMateX : lowerParent.x + NODE_W / 2;
+        // Vertical descent from mating connector to bracket
+        const descentStartY = sameGen ? (lowerParentY + NODE_H / 2) : mateBottomY;
         connectorGroup.append('line')
-            .attr('class', 'descent-line')
-            .attr('x1', midMateX)
-            .attr('y1', mateY)
-            .attr('x2', midMateX)
-            .attr('y2', dropY);
+            .attr('class', 'descent-line tree-edge-el')
+            .attr('data-nodes', allCoupleIds)
+            .attr('x1', dropX).attr('y1', descentStartY)
+            .attr('x2', dropX).attr('y2', dropY);
 
         if (childNodes.length === 1) {
-            // Single child: straight drop
             const child = childNodes[0];
             connectorGroup.append('line')
-                .attr('class', 'child-drop')
-                .attr('x1', midMateX)
-                .attr('y1', dropY)
-                .attr('x2', child.x + NODE_W / 2)
-                .attr('y2', dropY);
+                .attr('class', 'child-drop tree-edge-el')
+                .attr('data-nodes', allCoupleIds)
+                .attr('x1', dropX).attr('y1', dropY)
+                .attr('x2', child.x + NODE_W / 2).attr('y2', dropY);
             connectorGroup.append('line')
-                .attr('class', 'child-drop')
-                .attr('x1', child.x + NODE_W / 2)
-                .attr('y1', dropY)
-                .attr('x2', child.x + NODE_W / 2)
-                .attr('y2', child.y);
+                .attr('class', 'child-drop tree-edge-el')
+                .attr('data-nodes', allCoupleIds)
+                .attr('x1', child.x + NODE_W / 2).attr('y1', dropY)
+                .attr('x2', child.x + NODE_W / 2).attr('y2', child.y);
         } else {
-            // Multiple children: sibship bracket
             const leftChild = childNodes[0];
             const rightChild = childNodes[childNodes.length - 1];
 
-            // Horizontal sibship line
             connectorGroup.append('line')
-                .attr('class', 'sibship-line')
-                .attr('x1', leftChild.x + NODE_W / 2)
-                .attr('y1', dropY)
-                .attr('x2', rightChild.x + NODE_W / 2)
-                .attr('y2', dropY);
+                .attr('class', 'sibship-line tree-edge-el')
+                .attr('data-nodes', allCoupleIds)
+                .attr('x1', leftChild.x + NODE_W / 2).attr('y1', dropY)
+                .attr('x2', rightChild.x + NODE_W / 2).attr('y2', dropY);
 
-            // Connect descent line to sibship line if midpoint isn't on it
-            if (midMateX < leftChild.x + NODE_W / 2 || midMateX > rightChild.x + NODE_W / 2) {
-                const nearestX = midMateX < leftChild.x + NODE_W / 2
+            // Connect descent to sibship if needed
+            if (dropX < leftChild.x + NODE_W / 2 || dropX > rightChild.x + NODE_W / 2) {
+                const nearestX = dropX < leftChild.x + NODE_W / 2
                     ? leftChild.x + NODE_W / 2
                     : rightChild.x + NODE_W / 2;
                 connectorGroup.append('line')
-                    .attr('class', 'descent-line')
-                    .attr('x1', midMateX)
-                    .attr('y1', dropY)
-                    .attr('x2', nearestX)
-                    .attr('y2', dropY);
+                    .attr('class', 'descent-line tree-edge-el')
+                    .attr('data-nodes', allCoupleIds)
+                    .attr('x1', dropX).attr('y1', dropY)
+                    .attr('x2', nearestX).attr('y2', dropY);
             }
 
-            // Vertical drops to each child
             childNodes.forEach(child => {
                 connectorGroup.append('line')
-                    .attr('class', 'child-drop')
-                    .attr('x1', child.x + NODE_W / 2)
-                    .attr('y1', dropY)
-                    .attr('x2', child.x + NODE_W / 2)
-                    .attr('y2', child.y);
+                    .attr('class', 'child-drop tree-edge-el')
+                    .attr('data-nodes', allCoupleIds)
+                    .attr('x1', child.x + NODE_W / 2).attr('y1', dropY)
+                    .attr('x2', child.x + NODE_W / 2).attr('y2', child.y);
             });
         }
     });
 
     // Draw connectors for solo parents (one known parent)
     Object.entries(soloParentChildren).forEach(([parentId, children]) => {
-        const parent = nodeMap[parseInt(parentId)];
+        const pId = parseInt(parentId);
+        const parent = nodeMap[pId];
         if (!parent) return;
 
         const childNodes = children.map(id => nodeMap[id]).filter(Boolean);
         childNodes.sort((a, b) => a.x - b.x);
         if (childNodes.length === 0) return;
 
+        const soloIds = [pId, ...children].join(',');
         const dropY = parent.y + NODE_H + (V_GAP - NODE_H) / 2 + NODE_H / 2;
         const parentCx = parent.x + NODE_W / 2;
 
         connectorGroup.append('line')
-            .attr('class', 'descent-line')
+            .attr('class', 'descent-line tree-edge-el')
+            .attr('data-nodes', soloIds)
             .attr('x1', parentCx)
             .attr('y1', parent.y + NODE_H)
             .attr('x2', parentCx)
@@ -594,13 +626,15 @@ function renderTree(data) {
         if (childNodes.length === 1) {
             const child = childNodes[0];
             connectorGroup.append('line')
-                .attr('class', 'child-drop')
+                .attr('class', 'child-drop tree-edge-el')
+                .attr('data-nodes', soloIds)
                 .attr('x1', parentCx)
                 .attr('y1', dropY)
                 .attr('x2', child.x + NODE_W / 2)
                 .attr('y2', dropY);
             connectorGroup.append('line')
-                .attr('class', 'child-drop')
+                .attr('class', 'child-drop tree-edge-el')
+                .attr('data-nodes', soloIds)
                 .attr('x1', child.x + NODE_W / 2)
                 .attr('y1', dropY)
                 .attr('x2', child.x + NODE_W / 2)
@@ -609,14 +643,16 @@ function renderTree(data) {
             const leftChild = childNodes[0];
             const rightChild = childNodes[childNodes.length - 1];
             connectorGroup.append('line')
-                .attr('class', 'sibship-line')
+                .attr('class', 'sibship-line tree-edge-el')
+                .attr('data-nodes', soloIds)
                 .attr('x1', leftChild.x + NODE_W / 2)
                 .attr('y1', dropY)
                 .attr('x2', rightChild.x + NODE_W / 2)
                 .attr('y2', dropY);
             childNodes.forEach(child => {
                 connectorGroup.append('line')
-                    .attr('class', 'child-drop')
+                    .attr('class', 'child-drop tree-edge-el')
+                    .attr('data-nodes', soloIds)
                     .attr('x1', child.x + NODE_W / 2)
                     .attr('y1', dropY)
                     .attr('x2', child.x + NODE_W / 2)
@@ -649,8 +685,10 @@ function renderTree(data) {
         const y2 = tgt.y;
         const midY = (y1 + y2) / 2;
 
+        const edgeNodeIds = `${e.source},${e.target}`;
         const path = edgeGroup.append('path')
-            .attr('class', `tree-edge ${edgeIncest > 0 ? 'incest' : ''}`)
+            .attr('class', `tree-edge tree-edge-el ${edgeIncest > 0 ? 'incest' : ''}`)
+            .attr('data-nodes', edgeNodeIds)
             .attr('d', `M${x1},${y1} C${x1},${midY} ${x2},${midY} ${x2},${y2}`);
         if (edgeIncest > 0) {
             path.style('stroke', incestColor(edgeIncest));
@@ -660,7 +698,8 @@ function renderTree(data) {
                 drawnIncestLabels.add(labelKey);
                 const pct = Math.round(edgeIncest * 100);
                 edgeGroup.append('text')
-                    .attr('class', 'incest-label')
+                    .attr('class', 'incest-label tree-edge-el')
+                    .attr('data-nodes', edgeNodeIds)
                     .attr('x', (x1 + x2) / 2 + 12)
                     .attr('y', midY)
                     .style('fill', incestColor(edgeIncest))
@@ -680,8 +719,11 @@ function renderTree(data) {
 
         const nodeG = nodeGroup.append('g')
             .attr('class', `tree-node ${sexClass} ${deadClass} ${rootClass}`)
+            .attr('data-id', n.id)
             .attr('transform', `translate(${node.x}, ${node.y})`)
-            .on('click', () => { window.location.href = `/pooch/${n.id}/family-tree`; });
+            .on('click', () => { window.location.href = `/pooch/${n.id}/family-tree`; })
+            .on('mouseenter', () => highlightNode(n.id, nodeMap, parentsOf, childrenOf))
+            .on('mouseleave', clearHighlight);
 
         nodeG.append('rect')
             .attr('width', NODE_W)
@@ -730,6 +772,36 @@ function renderTree(data) {
 
     svg.call(zoomBehavior);
     requestAnimationFrame(() => zoomFit());
+}
+
+function highlightNode(id, nodeMap, parentsOf, childrenOf) {
+    const svgEl = document.getElementById('tree-svg');
+    svgEl.classList.add('highlight-active');
+
+    // Collect connected node IDs: parents + children (direct)
+    const connected = new Set([id]);
+    (parentsOf[id] || []).forEach(pid => connected.add(pid));
+    (childrenOf[id] || []).forEach(cid => connected.add(cid));
+
+    // Highlight connected nodes
+    d3.selectAll('.tree-node').each(function() {
+        const nid = +this.getAttribute('data-id');
+        if (connected.has(nid)) d3.select(this).classed('hl-active', true);
+    });
+
+    // Highlight edges that involve the hovered node
+    d3.selectAll('.tree-edge-el').each(function() {
+        const nodeIds = (this.getAttribute('data-nodes') || '').split(',').map(Number);
+        if (nodeIds.some(nid => connected.has(nid))) {
+            d3.select(this).classed('hl-active', true);
+        }
+    });
+}
+
+function clearHighlight() {
+    const svgEl = document.getElementById('tree-svg');
+    svgEl.classList.remove('highlight-active');
+    d3.selectAll('.tree-node, .tree-edge-el').classed('hl-active', false);
 }
 
 function orderLayerByBarycenter(layer, nodeMap, parentsOf, childrenOf, direction) {
