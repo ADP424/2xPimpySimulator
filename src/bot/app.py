@@ -46,7 +46,10 @@ def run(update_names_only: bool = False, skip_startup_day_change: bool = False):
     async def on_ready():
         if stage == "dev":
             for guild in GUILDS:
-                await tree.sync(guild=guild)
+                try:
+                    await tree.sync(guild=guild)
+                except discord.Forbidden:
+                    logger.warning(f"Cannot sync commands to guild {guild.id} (missing access)")
         else:
             await tree.sync()
         for guild in GUILDS:
