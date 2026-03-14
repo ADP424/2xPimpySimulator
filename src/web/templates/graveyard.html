@@ -102,7 +102,11 @@ function renderGrid(pooches) {
 
 function createGraveyardCard(pooch) {
     const sexEmoji = pooch.sex === 'female' ? '♀️' : '♂️';
-    const breedNames = (pooch.breeds || []).map(b => b.breed.name).join(', ') || 'Unknown';
+    const breedsHtml = (pooch.breeds || []).length > 0
+        ? (pooch.breeds || []).map((b, i) =>
+            `<span class="rarity-text-${(b.breed.rarity || '').toLowerCase()}">${escapeHtml(b.breed.name)}${i < pooch.breeds.length - 1 ? ',' : ''}</span>`
+          ).join(' ')
+        : `<span>Unknown</span>`;
 
     let buriedText = '—';
     if (pooch.buried_at) {
@@ -126,14 +130,14 @@ function createGraveyardCard(pooch) {
                     <span class="text-lg">${sexEmoji}</span>
                 </div>
                 <div class="text-xs text-base-content/50 flex flex-col gap-0.5">
-                    <div class="flex justify-between gap-2">
+                    <div class="flex gap-2">
                         <span class="shrink-0">Age at death:</span><span>${pooch.age} days</span>
                     </div>
                     <div class="flex gap-2">
-                        <span class="shrink-0">Breeds:</span><span class="text-base-content/70">${escapeHtml(breedNames)}</span>
+                        <span class="shrink-0">Breeds:</span><span class="text-base-content/70">${breedsHtml}</span>
                     </div>
                     ${mutationsHtml}
-                    <div class="flex justify-between gap-2">
+                    <div class="flex gap-2">
                         <span class="shrink-0">Buried:</span><span>${buriedText}</span>
                     </div>
                 </div>
