@@ -755,7 +755,7 @@ For `pooch` and `kennel` targets, use `parameters.selector` to control which ent
 - `"all"` — every matching entity owned by the player
 - `"random_exclude"` — all matching entities except a randomly chosen subset (use with `count`)
 
-When `target_type` is `"kennel"` on a **pooch action** (e.g. `kill_pooch`, `modify_pooch_health`), the action applies to pooches *inside* the targeted kennel(s) rather than to the kennel itself. An optional `pooch_filter` parameter can narrow which pooches inside the kennel are affected.
+When `target_type` is `"kennel"` on a **pooch action** (e.g. `kill_pooch`, `modify_pooch_health`), the action applies to pooches *inside* the targeted kennel(s) rather than to the kennel itself. An optional `pooch_filter` parameter can narrow which pooches inside the kennel are affected. Use `pooch_selector` and `pooch_count` to further control which pooches within each resolved kennel are targeted — for example, `pooch_selector: "random_exclude", pooch_count: 1` affects all pooches except one randomly spared survivor.
 
 When `target_type` is `"owner"` on a **pooch action**, the action applies to *all pooches* the owner has, optionally narrowed by a `filter` (pooch filter). When used on a **kennel action**, it applies to all kennels the owner has, optionally narrowed by a `filter` (kennel filter). No `selector` is needed or accepted in either case.
 
@@ -845,9 +845,22 @@ Slots persist for the lifetime of the action list they're in (event-level, optio
 
 | Parameter | Type | Required | Notes |
 |-----------|------|----------|-------|
-| `amount` | int | one of | Fixed delta (can be negative) |
-| `min_amount` / `max_amount` | int | one of | Random delta in range |
+| `amount` | int | one of | Fixed delta (can be negative); or an absolute value when `mode` is `"set"` |
+| `min_amount` / `max_amount` | int | one of | Random delta in range; or random absolute value when `mode` is `"set"` |
 | `roll_once` | bool | no | If true, roll the random amount once and apply to all targets |
+| `mode` | string | no | `"modify"` (default) — add/subtract the amount; `"set"` — set the value to exactly `amount` |
+
+```jsonc
+// Set the owner's money to 0 (wipe them out)
+{
+    "action_type": "modify_money",
+    "target_type": "owner",
+    "parameters": {
+        "amount": 0,
+        "mode": "set"
+    }
+}
+```
 
 ---
 
@@ -873,12 +886,38 @@ Slots persist for the lifetime of the action list they're in (event-level, optio
 | `count` | int | no | With `"random"`: number of pooches to pick. With `"random_exclude"`: number to exclude. |
 | `filter` | object | no | Pooch filter (`pooch`/`owner`), or kennel filter (`kennel`) |
 | `pooch_filter` | object | no | Pooch filter when `target_type` is `"kennel"` |
-| `amount` | int | one of | Fixed delta |
-| `min_amount` / `max_amount` | int | one of | Random delta in range |
+| `pooch_selector` | string | no | When `target_type` is `"kennel"`: how to pick pooches within each kennel — `"random"`, `"random_exclude"`, or `"all"` (default) |
+| `pooch_count` | int | no | When `target_type` is `"kennel"`: with `"random"`: number of pooches per kennel to pick; with `"random_exclude"`: number per kennel to spare |
+| `amount` | int | one of | Fixed delta; or absolute value when `mode` is `"set"` |
+| `min_amount` / `max_amount` | int | one of | Random delta in range; or random absolute value when `mode` is `"set"` |
 | `roll_once` | bool | no | Roll once for all targets instead of per-target |
+| `mode` | string | no | `"modify"` (default) — add/subtract the amount; `"set"` — set the stat to exactly `amount` |
 | `save_as` | string | no | Save resolved target IDs into a named slot for later actions |
 | `save_kennel` | bool | no | Also save kennel IDs of resolved pooches into the slot (requires `save_as`) |
 | `use_saved` | string | no | Use IDs from a named slot instead of resolving via `selector` (cannot combine with `selector`) |
+
+```jsonc
+// Kill all pooches in a random kennel except one randomly spared survivor
+{
+    "action_type": "kill_pooch",
+    "target_type": "kennel",
+    "parameters": {
+        "selector": "random",
+        "pooch_selector": "random_exclude",
+        "pooch_count": 1
+    }
+}
+
+// Set all pooches' health to exactly 1
+{
+    "action_type": "modify_pooch_health",
+    "target_type": "owner",
+    "parameters": {
+        "amount": 1,
+        "mode": "set"
+    }
+}
+```
 
 ---
 
@@ -1055,9 +1094,10 @@ Examples:
 | `selector` | string | yes (except `owner`) | `"random"`, `"selected"`, `"all"`, or `"random_exclude"` |
 | `count` | int | no | Number of kennels to pick or exclude |
 | `filter` | object | no | Kennel filter (`kennel`/`owner`) |
-| `amount` | int | one of | Fixed delta |
-| `min_amount` / `max_amount` | int | one of | Random delta in range |
+| `amount` | int | one of | Fixed delta; or absolute value when `mode` is `"set"` |
+| `min_amount` / `max_amount` | int | one of | Random delta in range; or random absolute value when `mode` is `"set"` |
 | `roll_once` | bool | no | Roll once for all kennels |
+| `mode` | string | no | `"modify"` (default) — add/subtract the amount; `"set"` — set the capacity to exactly `amount` |
 | `save_as` | string | no | Save resolved kennel IDs into a named slot |
 | `use_saved` | string | no | Use kennel IDs from a named slot instead of `selector` |
 
@@ -1118,7 +1158,7 @@ Selects two of the owner's pooches and breeds them. Calls the same breeding logi
 | `first_filter` | object | no | Pooch filter applied to the first pooch selection |
 | `second_selector` | string | no | Same as above for the second pooch |
 | `second_filter` | object | no | Pooch filter applied to the second pooch selection |
-| `require_unique` | bool | no | If `true`, skip breeding when both selectors resolve to the same pooch (default: `false`) |
+| `require_unique` | bool | no | If `true`, the second pooch is picked from the pool with the first pooch excluded — if no second distinct pooch can be found, breeding is skipped (default: `false`) |
 | `require_same` | bool | no | If `true`, force the second parent to be the same pooch as the first (ignores `second_selector`) |
 | `baby_name` | string | no | Override the generated baby name |
 | `baby_sex` | string | no | `"male"` or `"female"` — random if omitted |
@@ -1127,7 +1167,7 @@ Selects two of the owner's pooches and breeds them. Calls the same breeding logi
 | `baby_breeding_cooldown` | int | no | Override the baby's initial breeding cooldown |
 | `save_as` | string or list | no | Save one or more participants into named slots (see below) |
 
-This action bypasses the usual restrictions for which pooches can breed (i.e. different sexes, no breeding cooldown, etc.). Use filters to add the desired restrictions. `require_unique` adds an extra guard for when the same filter is used for both parents and you want to ensure they are distinct pooches.
+This action bypasses the usual restrictions for which pooches can breed (i.e. different sexes, no breeding cooldown, etc.). Use filters to add the desired restrictions. `require_unique` guarantees distinct parents by removing the first selected pooch from the pool before picking the second — if no second distinct pooch is found after exclusion, the entire action is skipped.
 
 ##### `save_as` for `breed_pooches`
 

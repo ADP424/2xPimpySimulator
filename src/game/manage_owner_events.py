@@ -56,6 +56,11 @@ from src.database import (
     remove_random_mutation_from_pooch,
     rename_pooch,
     respond_to_active_owner_event,
+    set_kennel_pooch_limit,
+    set_owner_bloodskulls,
+    set_owner_dollars,
+    set_pooch_age,
+    set_pooch_base_health,
     set_pooch_breeding_cooldown,
     set_pooch_dead,
     transfer_pooch_to_owner,
@@ -549,6 +554,11 @@ async def _execute_single_action(
             return _get_amount_from_parameters(parameters, rng), True
         return None, False
 
+    def _get_mode(parameters: dict[str, Any]) -> str:
+        """Return 'set' or 'modify' (default)."""
+        raw = parameters.get("mode", "modify")
+        return "set" if isinstance(raw, str) and raw.strip().lower() == "set" else "modify"
+
     async def _get_target_pooch_ids(target_type: str, selector: str, parameters: dict[str, Any]) -> list[int]:
         action_filter = parameters.get("filter", {})
         filter_spec = action_filter if isinstance(action_filter, dict) else {}
@@ -621,9 +631,26 @@ async def _execute_single_action(
             else:
                 kennel_ids = []
 
+            # pooch_selector/pooch_count: control which pooches within the resolved kennels are targeted
+            raw_pooch_selector = parameters.get("pooch_selector")
+            pooch_selector = str(raw_pooch_selector).strip().lower() if isinstance(raw_pooch_selector, str) else None
+            pooch_count_raw = parameters.get("pooch_count")
+            pooch_count = int(pooch_count_raw) if isinstance(pooch_count_raw, int) and pooch_count_raw > 0 else None
+
             pooch_ids = []
             for kennel_id in kennel_ids:
-                pooch_ids.extend(await list_matching_pooch_ids_in_kennel(owner_discord_id, kennel_id, pooch_filter))
+                kennel_pooches = await list_matching_pooch_ids_in_kennel(owner_discord_id, kennel_id, pooch_filter)
+                if pooch_selector == "random":
+                    n = pooch_count if pooch_count is not None else 1
+                    pooch_ids.extend(rng.sample(kennel_pooches, min(n, len(kennel_pooches))) if kennel_pooches else [])
+                elif pooch_selector == "random_exclude":
+                    n = pooch_count if pooch_count is not None else 1
+                    if n < len(kennel_pooches):
+                        excluded = set(rng.sample(kennel_pooches, n))
+                        pooch_ids.extend(pid for pid in kennel_pooches if pid not in excluded)
+                    # if count >= len, nothing survives the exclusion — pooch_ids stays empty for this kennel
+                else:
+                    pooch_ids.extend(kennel_pooches)
 
         # save_as: store resolved IDs (and optionally kennel IDs) into a named slot
         save_as = parameters.get("save_as")
@@ -695,13 +722,19 @@ async def _execute_single_action(
         # Owner Actions
         if action_type == "modify_money":
             amount = _get_amount_from_parameters(parameters, rng)
-            await give_money_to_owner(owner_discord_id, amount)
+            if _get_mode(parameters) == "set":
+                await set_owner_dollars(owner_discord_id, amount)
+            else:
+                await give_money_to_owner(owner_discord_id, amount)
             result.money_changed = amount
             result.message = f"{amount:+d} dollars"
 
         elif action_type == "modify_bloodskulls":
             amount = _get_amount_from_parameters(parameters, rng)
-            await give_bloodskulls_to_owner(owner_discord_id, amount)
+            if _get_mode(parameters) == "set":
+                await set_owner_bloodskulls(owner_discord_id, amount)
+            else:
+                await give_bloodskulls_to_owner(owner_discord_id, amount)
             result.bloodskulls_changed = amount
             result.message = f"{amount:+d} bloodskulls"
 
@@ -820,9 +853,13 @@ async def _execute_single_action(
         elif action_type == "modify_kennel_capacity":
             kennel_ids = await _get_target_kennel_ids(target_type, selector, parameters)
             pre_rolled, roll_once = _resolve_amount(parameters, rng)
+            mode = _get_mode(parameters)
             for kennel_id in kennel_ids:
                 amount = pre_rolled if roll_once else _get_amount_from_parameters(parameters, rng)
-                kennel = await modify_kennel_pooch_limit(kennel_id, amount)
+                if mode == "set":
+                    kennel = await set_kennel_pooch_limit(kennel_id, amount)
+                else:
+                    kennel = await modify_kennel_pooch_limit(kennel_id, amount)
                 if kennel:
                     if kennel_id not in context.affected_kennel_ids:
                         context.affected_kennel_ids.append(kennel_id)
@@ -832,9 +869,13 @@ async def _execute_single_action(
         elif action_type == "modify_pooch_health":
             pooch_ids = await _get_target_pooch_ids(target_type, selector, parameters)
             pre_rolled, roll_once = _resolve_amount(parameters, rng)
+            mode = _get_mode(parameters)
             for pooch_id in pooch_ids:
                 amount = pre_rolled if roll_once else _get_amount_from_parameters(parameters, rng)
-                pooch = await modify_pooch_base_health(pooch_id, amount)
+                if mode == "set":
+                    pooch = await set_pooch_base_health(pooch_id, amount)
+                else:
+                    pooch = await modify_pooch_base_health(pooch_id, amount)
                 if pooch:
                     result.pooches_affected.append(pooch_id)
                     result.extra_data.setdefault("health_changes", {})[pooch_id] = amount
@@ -842,9 +883,13 @@ async def _execute_single_action(
         elif action_type == "modify_pooch_age":
             pooch_ids = await _get_target_pooch_ids(target_type, selector, parameters)
             pre_rolled, roll_once = _resolve_amount(parameters, rng)
+            mode = _get_mode(parameters)
             for pooch_id in pooch_ids:
                 amount = pre_rolled if roll_once else _get_amount_from_parameters(parameters, rng)
-                pooch = await modify_pooch_age(pooch_id, amount)
+                if mode == "set":
+                    pooch = await set_pooch_age(pooch_id, amount)
+                else:
+                    pooch = await modify_pooch_age(pooch_id, amount)
                 if pooch:
                     result.pooches_affected.append(pooch_id)
                     result.extra_data.setdefault("age_changes", {})[pooch_id] = amount
@@ -941,13 +986,19 @@ async def _execute_single_action(
             second_filter_raw = parameters.get("second_filter", {})
             second_filter = second_filter_raw if isinstance(second_filter_raw, dict) else {}
 
-            async def _resolve_breed_pooch_id(sel: str, filt: dict) -> int | None:
+            async def _resolve_breed_pooch_id(sel: str, filt: dict, exclude_id: int | None = None) -> int | None:
                 if sel == "selected":
-                    return context.selected_pooch_id
+                    pid = context.selected_pooch_id
+                    return None if (exclude_id is not None and pid == exclude_id) else pid
                 elif sel == "random":
-                    return await get_random_matching_pooch_id(owner_discord_id, filt, rng)
+                    ids = await list_matching_pooch_ids(owner_discord_id, filt)
+                    if exclude_id is not None:
+                        ids = [i for i in ids if i != exclude_id]
+                    return rng.choice(ids) if ids else None
                 elif sel == "all":
                     ids = await list_matching_pooch_ids(owner_discord_id, filt)
+                    if exclude_id is not None:
+                        ids = [i for i in ids if i != exclude_id]
                     return rng.choice(ids) if ids else None
                 return None
 
@@ -958,14 +1009,11 @@ async def _execute_single_action(
             if require_same:
                 second_pooch_id = first_pooch_id
             else:
-                second_pooch_id = await _resolve_breed_pooch_id(second_selector, second_filter)
+                exclude = first_pooch_id if require_unique else None
+                second_pooch_id = await _resolve_breed_pooch_id(second_selector, second_filter, exclude_id=exclude)
 
             if first_pooch_id is None or second_pooch_id is None:
                 logger.warning("breed_pooches: could not resolve one or both pooches; skipping")
-            elif require_unique and first_pooch_id == second_pooch_id:
-                logger.warning(
-                    "breed_pooches: require_unique is set but both selectors resolved to the same pooch; skipping"
-                )
             else:
                 try:
                     baby_ids = await breed_pooches(

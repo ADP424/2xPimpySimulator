@@ -20,7 +20,8 @@
             "parameters": {
                 "selector": "all",
                 "min_amount": -4,
-                "max_amount": 4, // Add option so 0 isn't included
+                "max_amount": 4,
+                "exclude_age": [0],
                 "roll_once": true,
                 "filter": {
                     "min_pooches": 1

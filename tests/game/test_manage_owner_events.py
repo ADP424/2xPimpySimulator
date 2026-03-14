@@ -783,11 +783,10 @@ async def test_breed_pooches_require_unique_skips_when_same(context, rng):
         breed_called = True
         return MagicMock()
 
-    # Both selectors resolve to pooch 5 → should be skipped
+    # Only one pooch available — after excluding first, second pick returns None
     with (
-        patch("src.game.manage_owner_events.get_random_matching_pooch_id", new=AsyncMock(return_value=5)),
+        patch("src.game.manage_owner_events.list_matching_pooch_ids", new=AsyncMock(return_value=[5])),
         patch("src.game.manage_owner_events.breed_pooches", new=AsyncMock(side_effect=fake_breed)),
-        patch("src.game.manage_owner_events.get_pooch_by_id", new=AsyncMock(return_value=MagicMock(sex="male"))),
     ):
         await _execute_single_action(1, action, context, rng)
 
@@ -807,24 +806,21 @@ async def test_breed_pooches_require_same_forces_same_pooch(context, rng):
         },
     )
 
-    resolved_ids = []
+    breed_call_args = []
 
-    async def fake_get_pooch(pooch_id):
-        resolved_ids.append(pooch_id)
-        pooch = MagicMock()
-        pooch.id = pooch_id
-        pooch.sex = "male"
-        return pooch
+    async def fake_breed(first_id, second_id, **kwargs):
+        breed_call_args.extend([first_id, second_id])
+        return [99]
 
     with (
-        patch("src.game.manage_owner_events.get_random_matching_pooch_id", new=AsyncMock(return_value=7)),
-        patch("src.game.manage_owner_events.get_pooch_by_id", new=AsyncMock(side_effect=fake_get_pooch)),
-        patch("src.game.manage_owner_events.breed_pooches", new=AsyncMock(return_value=MagicMock())),
+        patch("src.game.manage_owner_events.list_matching_pooch_ids", new=AsyncMock(return_value=[7, 8])),
+        patch("src.game.manage_owner_events.breed_pooches", new=AsyncMock(side_effect=fake_breed)),
     ):
         await _execute_single_action(1, action, context, rng)
 
-    # Both pooches should be ID 7
-    assert all(pid == 7 for pid in resolved_ids)
+    # Both pooches should be the same ID (first pick, duplicated)
+    assert len(breed_call_args) == 2
+    assert breed_call_args[0] == breed_call_args[1]
 
 
 # ---------------------------------------------------------------------------
@@ -1531,11 +1527,7 @@ async def test_breed_pooches_save_as_string_saves_baby(context, rng):
     parent_b.sex = "female"
 
     with (
-        patch(
-            "src.game.manage_owner_events.get_random_matching_pooch_id",
-            new=AsyncMock(side_effect=[1, 2]),
-        ),
-        patch("src.game.manage_owner_events.get_pooch_by_id", new=AsyncMock(side_effect=[parent_a, parent_b])),
+        patch("src.game.manage_owner_events.list_matching_pooch_ids", new=AsyncMock(return_value=[1, 2])),
         patch("src.game.manage_owner_events.breed_pooches", new=AsyncMock(return_value=[100])),
     ):
         await _execute_single_action(1, action, context, rng)
@@ -1568,18 +1560,21 @@ async def test_breed_pooches_save_as_list_saves_parents_and_baby(context, rng):
     parent_b.id = 4
     parent_b.sex = "female"
 
+    breed_call_ids: list[int] = []
+
+    async def fake_breed(first_id, second_id, **kwargs):
+        breed_call_ids.extend([first_id, second_id])
+        return [200]
+
     with (
-        patch(
-            "src.game.manage_owner_events.get_random_matching_pooch_id",
-            new=AsyncMock(side_effect=[3, 4]),
-        ),
-        patch("src.game.manage_owner_events.get_pooch_by_id", new=AsyncMock(side_effect=[parent_a, parent_b])),
-        patch("src.game.manage_owner_events.breed_pooches", new=AsyncMock(return_value=[200])),
+        patch("src.game.manage_owner_events.list_matching_pooch_ids", new=AsyncMock(return_value=[3, 4])),
+        patch("src.game.manage_owner_events.breed_pooches", new=AsyncMock(side_effect=fake_breed)),
     ):
         await _execute_single_action(1, action, context, rng)
 
-    assert context.extra_data["parent_one"] == {"pooch_ids": [3]}
-    assert context.extra_data["parent_two"] == {"pooch_ids": [4]}
+    first_id, second_id = breed_call_ids
+    assert context.extra_data["parent_one"] == {"pooch_ids": [first_id]}
+    assert context.extra_data["parent_two"] == {"pooch_ids": [second_id]}
     assert context.extra_data["offspring"] == {"pooch_ids": [200]}
 
 
@@ -2378,15 +2373,34 @@ async def test_breed_pooches_unknown_selector_resolves_none_skips(context, rng):
 
 
 @pytest.mark.asyncio
-async def test_breed_pooches_require_unique_same_pooch_skips(context, rng):
-    """breed_pooches with require_unique=True and both resolving to the same pooch skips."""
+async def test_breed_pooches_require_unique_excludes_first_from_second(context, rng):
+    """breed_pooches with require_unique=True should exclude the first pooch when picking the second."""
     action = _make_action(
         "breed_pooches",
         "owner",
         {"first_selector": "random", "second_selector": "random", "require_unique": True},
     )
+    # Two pooches available; first pick gets pooch 7, second pick should exclude 7 and pick 8
     with (
-        patch("src.game.manage_owner_events.get_random_matching_pooch_id", new=AsyncMock(return_value=7)),
+        patch("src.game.manage_owner_events.list_matching_pooch_ids", new=AsyncMock(return_value=[7, 8])),
+        patch("src.game.manage_owner_events.breed_pooches", new=AsyncMock(return_value=[99])) as mock_breed,
+    ):
+        result = await _execute_single_action(1, action, context, rng)
+    mock_breed.assert_awaited_once()
+    assert 99 in result.pooches_created
+
+
+@pytest.mark.asyncio
+async def test_breed_pooches_require_unique_no_second_available_skips(context, rng):
+    """breed_pooches with require_unique=True skips when only one pooch matches (no second available)."""
+    action = _make_action(
+        "breed_pooches",
+        "owner",
+        {"first_selector": "random", "second_selector": "random", "require_unique": True},
+    )
+    # Only one pooch available — after excluding first, second pick has nothing
+    with (
+        patch("src.game.manage_owner_events.list_matching_pooch_ids", new=AsyncMock(return_value=[7])),
         patch("src.game.manage_owner_events.breed_pooches", new=AsyncMock()) as mock_breed,
     ):
         await _execute_single_action(1, action, context, rng)
@@ -2410,7 +2424,7 @@ async def test_breed_pooches_with_baby_params(context, rng):
         },
     )
     with (
-        patch("src.game.manage_owner_events.get_random_matching_pooch_id", new=AsyncMock(side_effect=[1, 2])),
+        patch("src.game.manage_owner_events.list_matching_pooch_ids", new=AsyncMock(return_value=[1, 2])),
         patch("src.game.manage_owner_events.breed_pooches", new=AsyncMock(return_value=[77])),
         patch("src.game.manage_owner_events.rename_pooch", new=AsyncMock()) as mock_rename,
         patch("src.game.manage_owner_events.modify_pooch_age", new=AsyncMock()) as mock_age,
@@ -2434,7 +2448,7 @@ async def test_breed_pooches_save_as_invalid_type_is_noop(context, rng):
         {"first_selector": "random", "second_selector": "random", "require_unique": False, "save_as": 123},
     )
     with (
-        patch("src.game.manage_owner_events.get_random_matching_pooch_id", new=AsyncMock(side_effect=[1, 2])),
+        patch("src.game.manage_owner_events.list_matching_pooch_ids", new=AsyncMock(return_value=[1, 2])),
         patch("src.game.manage_owner_events.breed_pooches", new=AsyncMock(return_value=[88])),
     ):
         await _execute_single_action(1, action, context, rng)
@@ -2455,7 +2469,7 @@ async def test_breed_pooches_save_as_list_empty_slot_skips(context, rng):
         },
     )
     with (
-        patch("src.game.manage_owner_events.get_random_matching_pooch_id", new=AsyncMock(side_effect=[3, 4])),
+        patch("src.game.manage_owner_events.list_matching_pooch_ids", new=AsyncMock(return_value=[3, 4])),
         patch("src.game.manage_owner_events.breed_pooches", new=AsyncMock(return_value=[55])),
     ):
         await _execute_single_action(1, action, context, rng)
@@ -2471,7 +2485,7 @@ async def test_breed_pooches_raises_value_error_logs_warning(context, rng):
         {"first_selector": "random", "second_selector": "random", "require_unique": False},
     )
     with (
-        patch("src.game.manage_owner_events.get_random_matching_pooch_id", new=AsyncMock(side_effect=[5, 6])),
+        patch("src.game.manage_owner_events.list_matching_pooch_ids", new=AsyncMock(return_value=[5, 6])),
         patch("src.game.manage_owner_events.breed_pooches", new=AsyncMock(side_effect=ValueError("incompatible"))),
     ):
         result = await _execute_single_action(1, action, context, rng)
@@ -2876,6 +2890,186 @@ async def test_kennel_target_random_exclude_count_gte_len_pooches_yields_empty(c
         result = await _execute_single_action(1, action, context, rng)
     mock_modify.assert_not_awaited()
     assert result.pooches_affected == []
+
+
+# ---------------------------------------------------------------------------
+# mode='set' on modify_* actions
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_modify_money_set_mode_calls_set_owner_dollars(context, rng):
+    """modify_money with mode='set' should call set_owner_dollars instead of give_money_to_owner."""
+    action = _make_action("modify_money", "owner", {"amount": 0, "mode": "set"})
+    with (
+        patch("src.game.manage_owner_events.set_owner_dollars", new=AsyncMock()) as mock_set,
+        patch("src.game.manage_owner_events.give_money_to_owner", new=AsyncMock()) as mock_give,
+    ):
+        result = await _execute_single_action(1, action, context, rng)
+    mock_set.assert_awaited_once_with(1, 0)
+    mock_give.assert_not_awaited()
+    assert result.money_changed == 0
+
+
+@pytest.mark.asyncio
+async def test_modify_bloodskulls_set_mode_calls_set_owner_bloodskulls(context, rng):
+    """modify_bloodskulls with mode='set' should call set_owner_bloodskulls."""
+    action = _make_action("modify_bloodskulls", "owner", {"amount": 5, "mode": "set"})
+    with (
+        patch("src.game.manage_owner_events.set_owner_bloodskulls", new=AsyncMock()) as mock_set,
+        patch("src.game.manage_owner_events.give_bloodskulls_to_owner", new=AsyncMock()) as mock_give,
+    ):
+        result = await _execute_single_action(1, action, context, rng)
+    mock_set.assert_awaited_once_with(1, 5)
+    mock_give.assert_not_awaited()
+    assert result.bloodskulls_changed == 5
+
+
+@pytest.mark.asyncio
+async def test_modify_pooch_health_set_mode_calls_set_pooch_base_health(context, rng):
+    """modify_pooch_health with mode='set' should call set_pooch_base_health."""
+    action = _make_action("modify_pooch_health", "pooch", {"selector": "random", "amount": 100, "mode": "set"})
+    with (
+        patch("src.game.manage_owner_events.list_matching_pooch_ids", new=AsyncMock(return_value=[7])),
+        patch(
+            "src.game.manage_owner_events.set_pooch_base_health",
+            new=AsyncMock(return_value=_make_pooch(7)),
+        ) as mock_set,
+        patch("src.game.manage_owner_events.modify_pooch_base_health", new=AsyncMock()) as mock_modify,
+    ):
+        result = await _execute_single_action(1, action, context, rng)
+    mock_set.assert_awaited_once_with(7, 100)
+    mock_modify.assert_not_awaited()
+    assert 7 in result.pooches_affected
+
+
+@pytest.mark.asyncio
+async def test_modify_pooch_age_set_mode_calls_set_pooch_age(context, rng):
+    """modify_pooch_age with mode='set' should call set_pooch_age."""
+    action = _make_action("modify_pooch_age", "pooch", {"selector": "random", "amount": 3, "mode": "set"})
+    with (
+        patch("src.game.manage_owner_events.list_matching_pooch_ids", new=AsyncMock(return_value=[9])),
+        patch(
+            "src.game.manage_owner_events.set_pooch_age",
+            new=AsyncMock(return_value=_make_pooch(9)),
+        ) as mock_set,
+        patch("src.game.manage_owner_events.modify_pooch_age", new=AsyncMock()) as mock_modify,
+    ):
+        result = await _execute_single_action(1, action, context, rng)
+    mock_set.assert_awaited_once_with(9, 3)
+    mock_modify.assert_not_awaited()
+    assert 9 in result.pooches_affected
+
+
+@pytest.mark.asyncio
+async def test_modify_kennel_capacity_set_mode_calls_set_kennel_pooch_limit(context, rng):
+    """modify_kennel_capacity with mode='set' should call set_kennel_pooch_limit."""
+    action = _make_action("modify_kennel_capacity", "kennel", {"selector": "random", "amount": 10, "mode": "set"})
+    with (
+        patch("src.game.manage_owner_events.list_matching_kennel_ids", new=AsyncMock(return_value=[5])),
+        patch("src.game.manage_owner_events.get_random_matching_kennel_id", new=AsyncMock(return_value=5)),
+        patch(
+            "src.game.manage_owner_events.set_kennel_pooch_limit",
+            new=AsyncMock(return_value=_make_kennel(5)),
+        ) as mock_set,
+        patch("src.game.manage_owner_events.modify_kennel_pooch_limit", new=AsyncMock()) as mock_modify,
+    ):
+        await _execute_single_action(1, action, context, rng)
+    mock_set.assert_awaited_once_with(5, 10)
+    mock_modify.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------------
+# pooch_selector / pooch_count on kennel target
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_kennel_pooch_selector_random_picks_one_pooch(context, rng):
+    """pooch_selector='random' on kennel target picks one random pooch from the kennel."""
+    action = _make_action(
+        "modify_pooch_health",
+        "kennel",
+        {"selector": "random", "amount": -1, "pooch_selector": "random"},
+    )
+    with (
+        patch("src.game.manage_owner_events.list_matching_kennel_ids", new=AsyncMock(return_value=[])),
+        patch("src.game.manage_owner_events.get_random_matching_kennel_id", new=AsyncMock(return_value=10)),
+        patch("src.game.manage_owner_events.list_matching_pooch_ids_in_kennel", new=AsyncMock(return_value=[1, 2, 3])),
+        patch(
+            "src.game.manage_owner_events.modify_pooch_base_health",
+            new=AsyncMock(side_effect=lambda pid, amt: _make_pooch(pid)),
+        ),
+    ):
+        result = await _execute_single_action(1, action, context, rng)
+    assert len(result.pooches_affected) == 1
+
+
+@pytest.mark.asyncio
+async def test_kennel_pooch_selector_random_with_count(context, rng):
+    """pooch_selector='random' + pooch_count=2 picks exactly 2 pooches from the kennel."""
+    action = _make_action(
+        "modify_pooch_health",
+        "kennel",
+        {"selector": "random", "amount": -1, "pooch_selector": "random", "pooch_count": 2},
+    )
+    with (
+        patch("src.game.manage_owner_events.list_matching_kennel_ids", new=AsyncMock(return_value=[])),
+        patch("src.game.manage_owner_events.get_random_matching_kennel_id", new=AsyncMock(return_value=10)),
+        patch(
+            "src.game.manage_owner_events.list_matching_pooch_ids_in_kennel",
+            new=AsyncMock(return_value=[1, 2, 3, 4]),
+        ),
+        patch(
+            "src.game.manage_owner_events.modify_pooch_base_health",
+            new=AsyncMock(side_effect=lambda pid, amt: _make_pooch(pid)),
+        ),
+    ):
+        result = await _execute_single_action(1, action, context, rng)
+    assert len(result.pooches_affected) == 2
+
+
+@pytest.mark.asyncio
+async def test_kennel_pooch_selector_random_exclude_kills_all_but_one(context, rng):
+    """pooch_selector='random_exclude' + pooch_count=1 kills all pooches in kennel except one."""
+    action = _make_action(
+        "kill_pooch",
+        "kennel",
+        {"selector": "random", "pooch_selector": "random_exclude", "pooch_count": 1},
+    )
+    with (
+        patch("src.game.manage_owner_events.list_matching_kennel_ids", new=AsyncMock(return_value=[])),
+        patch("src.game.manage_owner_events.get_random_matching_kennel_id", new=AsyncMock(return_value=10)),
+        patch(
+            "src.game.manage_owner_events.list_matching_pooch_ids_in_kennel", new=AsyncMock(return_value=[1, 2, 3, 4])
+        ),
+        patch(
+            "src.game.manage_owner_events.set_pooch_dead",
+            new=AsyncMock(side_effect=lambda pid: _make_pooch(pid)),
+        ),
+    ):
+        result = await _execute_single_action(1, action, context, rng)
+    # 4 pooches, exclude 1 randomly → 3 killed
+    assert len(result.pooches_killed) == 3
+
+
+@pytest.mark.asyncio
+async def test_kennel_pooch_selector_random_exclude_count_gte_len_spares_all(context, rng):
+    """pooch_selector='random_exclude' when pooch_count >= kennel size affects no pooches."""
+    action = _make_action(
+        "kill_pooch",
+        "kennel",
+        {"selector": "random", "pooch_selector": "random_exclude", "pooch_count": 5},
+    )
+    with (
+        patch("src.game.manage_owner_events.list_matching_kennel_ids", new=AsyncMock(return_value=[])),
+        patch("src.game.manage_owner_events.get_random_matching_kennel_id", new=AsyncMock(return_value=10)),
+        patch("src.game.manage_owner_events.list_matching_pooch_ids_in_kennel", new=AsyncMock(return_value=[1, 2, 3])),
+        patch("src.game.manage_owner_events.set_pooch_dead", new=AsyncMock()) as mock_kill,
+    ):
+        result = await _execute_single_action(1, action, context, rng)
+    mock_kill.assert_not_awaited()
+    assert result.pooches_killed == []
 
 
 # ---------------------------------------------------------------------------

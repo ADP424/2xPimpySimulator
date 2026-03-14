@@ -17,37 +17,34 @@
     "options": [
         {
             "label": "Sell them",
-            "description": "Sell the pooch for 10x normal value",
+            "description": "Sell the pooch for 10x the normal value",
             "default": true,
             "visible": true,
             "actions": [
                 {
-                    "action_type": "modify_money",
-                    "target_type": "owner",
+                    "action_type": "sell_pooch",
+                    "target_type": "pooch",
                     "parameters": {
-                        "amount": 1000 // TODO: Sell the pooch with 10 times normal value.
+                        "selector": "random",
+                        "value_multiplier": 10.0
                     }
                 }
             ]
         },
         {
             "label": "Try to save them!",
-            "description": "This might save the pooch but lower it's value if failed.",
+            "description": "This might save the pooch but will lower its value if failed.",
             "outcomes": [
                 {
                     "chance": 0.8,
                     "message": "You couldn't do it. Guess you'll have to sell them.",
                     "actions": [
                         {
-                            "action_type": "modify_pooch_health", // TODO: Sell the pooch with 8 time normal value.
+                            "action_type": "sell_pooch",
                             "target_type": "pooch",
                             "parameters": {
-                                "min_amount": -5,
-                                "max_amount": -1,
                                 "selector": "random",
-                                "filter": {
-                                    "is_alive": true
-                                }
+                                "value_multiplier": 8.0
                             }
                         }
                     ]
@@ -60,7 +57,7 @@
         },
         {
             "label": "Try to save them with demonic powers!",
-            "description": "This might save the pooch but significantly lower it's value if failed.",
+            "description": "This might save the pooch but will significantly lower its value if failed.",
             "filter": {
                 "min_bloodskulls": 6
             },
@@ -70,15 +67,11 @@
                     "message": "You couldn't do it. Guess you'll have to sell them.",
                     "actions": [
                         {
-                            "action_type": "modify_pooch_health", // TODO: Sell the pooch with 4 time normal value.
+                            "action_type": "sell_pooch",
                             "target_type": "pooch",
                             "parameters": {
-                                "min_amount": -5,
-                                "max_amount": -1,
                                 "selector": "random",
-                                "filter": {
-                                    "is_alive": true
-                                }
+                                "value_multiplier": 4.0
                             }
                         },
                         {

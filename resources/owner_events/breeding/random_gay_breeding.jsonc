@@ -24,7 +24,7 @@
             "action_type": "breed_pooches",
             "target_type": "owner",
             "parameters": {
-                "first_selector": "random", // TODO: Not sure if this would target the same pooch twice.
+                "first_selector": "random",
                 "first_filter": {
                     "sex": "female",
                     "is_alive": true,
@@ -35,7 +35,8 @@
                     "sex": "female",
                     "is_alive": true,
                     "max_breeding_cooldown": 0
-                }
+                },
+                "require_unique": true
             }
         }
     ]

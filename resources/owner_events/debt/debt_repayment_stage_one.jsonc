@@ -16,11 +16,11 @@
     },
     "actions": [
         {
-            "action_type": "modify_money", // TODO: Should force sell a random pooch you own.
-            "target_type": "owner",
+            "action_type": "sell_pooch",
+            "target_type": "pooch",
             "parameters": {
-                "min_amount": 100,
-                "max_amount": 500
+                "selector": "random",
+                "value_multiplier": 1.5
             }
         }
     ]

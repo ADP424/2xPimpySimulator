@@ -276,7 +276,16 @@ class BaseEventValidator:
             self._validate_optional_string(params_path, parameters, "save_as", allow_blank=False)
             self._validate_optional_bool(params_path, parameters, "save_kennel")
         elif target_type == "kennel":
-            common_allowed |= {"selector", "count", "filter", "pooch_filter", "save_as", "use_saved"}
+            common_allowed |= {
+                "selector",
+                "count",
+                "filter",
+                "pooch_filter",
+                "pooch_selector",
+                "pooch_count",
+                "save_as",
+                "use_saved",
+            }
             if "use_saved" not in parameters:
                 self._validate_entity_selector(params_path, parameters, "selector")
             else:
@@ -293,6 +302,11 @@ class BaseEventValidator:
                     allow_counts=False,
                     allow_location=True,
                 )
+            if "pooch_selector" in parameters:
+                raw_ps = parameters["pooch_selector"]
+                if not isinstance(raw_ps, str) or raw_ps.strip().lower() not in {"random", "random_exclude", "all"}:
+                    self.error(params_path, "'pooch_selector' must be 'random', 'random_exclude', or 'all'")
+            self._validate_optional_int(params_path, parameters, "pooch_count", minimum=1)
             self._validate_optional_string(params_path, parameters, "save_as", allow_blank=False)
         elif target_type == "owner":
             # Pooch/kennel actions that target "owner" apply to all pooches/kennels owned.
@@ -337,20 +351,24 @@ class BaseEventValidator:
 
         if action_type in {"modify_money", "modify_bloodskulls"}:
             self._validate_allowed_keys(
-                params_path, parameters, common_allowed | {"amount", "min_amount", "max_amount", "roll_once"}
+                params_path, parameters, common_allowed | {"amount", "min_amount", "max_amount", "roll_once", "mode"}
             )
             self._validate_requires_one_of(params_path, parameters, [("amount",), ("min_amount", "max_amount")])
             self._validate_amount_group(params_path, parameters)
             self._validate_optional_bool(params_path, parameters, "roll_once")
+            if "mode" in parameters and parameters["mode"] not in {"modify", "set"}:
+                self.error(params_path, "'mode' must be 'modify' or 'set'")
             self._validate_target_type(path, action_type, target_type, {"owner"})
 
         elif action_type in {"modify_pooch_health", "modify_pooch_age"}:
             self._validate_allowed_keys(
-                params_path, parameters, common_allowed | {"amount", "min_amount", "max_amount", "roll_once"}
+                params_path, parameters, common_allowed | {"amount", "min_amount", "max_amount", "roll_once", "mode"}
             )
             self._validate_requires_one_of(params_path, parameters, [("amount",), ("min_amount", "max_amount")])
             self._validate_amount_group(params_path, parameters)
             self._validate_optional_bool(params_path, parameters, "roll_once")
+            if "mode" in parameters and parameters["mode"] not in {"modify", "set"}:
+                self.error(params_path, "'mode' must be 'modify' or 'set'")
             self._validate_target_type(path, action_type, target_type, {"pooch", "kennel", "owner"})
 
         elif action_type == "kill_pooch":
@@ -425,11 +443,13 @@ class BaseEventValidator:
 
         elif action_type == "modify_kennel_capacity":
             self._validate_allowed_keys(
-                params_path, parameters, common_allowed | {"amount", "min_amount", "max_amount", "roll_once"}
+                params_path, parameters, common_allowed | {"amount", "min_amount", "max_amount", "roll_once", "mode"}
             )
             self._validate_requires_one_of(params_path, parameters, [("amount",), ("min_amount", "max_amount")])
             self._validate_amount_group(params_path, parameters)
             self._validate_optional_bool(params_path, parameters, "roll_once")
+            if "mode" in parameters and parameters["mode"] not in {"modify", "set"}:
+                self.error(params_path, "'mode' must be 'modify' or 'set'")
             self._validate_target_type(path, action_type, target_type, {"kennel", "owner"})
 
         elif action_type == "rename_pooch":

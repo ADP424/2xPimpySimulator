@@ -19,18 +19,13 @@
             "action_type": "breed_pooches",
             "target_type": "owner",
             "parameters": {
-                "first_selector": "random", // TODO: Make the same pooch breed with it self.
+                "first_selector": "random",
                 "first_filter": {
                     "sex": "female",
                     "is_alive": true,
                     "max_breeding_cooldown": 0
                 },
-                "second_selector": "random",
-                "second_filter": {
-                    "sex": "female",
-                    "is_alive": true,
-                    "max_breeding_cooldown": 0
-                }
+                "require_same": true // Makes second pooch the same as the first, so no need for second_selector
             }
         }
     ]

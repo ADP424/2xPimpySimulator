@@ -15,13 +15,24 @@
     },
     "actions": [
         {
-            "action_type": "add_mutation", // TODO: I'm not sure how to kill all but one pooch in a kennel so do that.
-            "target_type": "pooch",
+            "action_type": "kill_pooch",
+            "target_type": "kennel",
             "parameters": {
                 "selector": "random",
                 "filter": {
-                    "is_alive": true
+                    "min_count": 1,
+                    "min_pooches": 5
                 },
+                "save_as": "god_kennel",
+                "pooch_selector": "random_exclude",
+                "pooch_count": 1
+            }
+        },
+        {
+            "action_type": "add_mutation",
+            "target_type": "kennel",
+            "parameters": {
+                "use_saved": "god_kennel",
                 "mutation": "God Syndrome"
             }
         }

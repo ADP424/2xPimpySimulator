@@ -272,6 +272,71 @@ async def modify_pooch_base_health(pooch_id: int, amount: int) -> Optional[Pooch
         return pooch
 
 
+async def set_pooch_base_health(pooch_id: int, health: int) -> Optional[Pooch]:
+    """Set a pooch's base health to a specific value (minimum 0)."""
+
+    async with session_scope() as session:
+        query = select(Pooch).where(Pooch.id == pooch_id)
+        result = await session.execute(query)
+        pooch = result.scalar_one_or_none()
+
+        if pooch is None:
+            return None
+
+        pooch.base_health = max(0, health)
+
+        await session.flush()
+        return pooch
+
+
+async def set_pooch_age(pooch_id: int, age: int) -> Optional[Pooch]:
+    """Set a pooch's age to a specific value (minimum 0)."""
+
+    async with session_scope() as session:
+        query = select(Pooch).where(Pooch.id == pooch_id)
+        result = await session.execute(query)
+        pooch = result.scalar_one_or_none()
+
+        if pooch is None:
+            return None
+
+        pooch.age = max(0, age)
+        pooch.health_loss_age = max(0, age - POOCH_HEALTH_LOSS_STARTING_AGE)
+
+        await session.flush()
+        return pooch
+
+
+async def set_owner_dollars(owner_discord_id: int, dollars: int) -> Optional[Owner]:
+    """Set an owner's dollars to a specific value."""
+
+    async with session_scope() as session:
+        query = select(Owner).where(Owner.discord_id == owner_discord_id)
+        owner = (await session.execute(query)).scalar_one_or_none()
+
+        if owner is None:
+            return None
+
+        owner.dollars = dollars
+
+    return owner
+
+
+async def set_owner_bloodskulls(owner_discord_id: int, bloodskulls: int) -> Optional[Owner]:
+    """Set an owner's bloodskulls to a specific value."""
+
+    async with session_scope() as session:
+        query = select(Owner).where(Owner.discord_id == owner_discord_id)
+        owner = (await session.execute(query)).scalar_one_or_none()
+
+        if owner is None:
+            return None
+
+        owner.bloodskulls = bloodskulls
+
+    return owner
+
+
 async def rename_kennel(kennel_id: int, name: str) -> Optional[Kennel]:
     """
     Replace the name of the kennel with the given ID with a new one.

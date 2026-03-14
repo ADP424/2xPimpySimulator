@@ -54,7 +54,8 @@
             "action_type": "modify_money",
             "target_type": "owner",
             "parameters": {
-                "amount": 100 // TODO: Set to pay off your debt.
+                "amount": 0,
+                "mode": "set"
             }
         }
     ]
