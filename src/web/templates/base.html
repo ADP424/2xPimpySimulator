@@ -47,7 +47,7 @@
                 </ul>
             </div>
             {% endif %}
-            <a href="{{ url_for('main.index') }}" class="btn btn-ghost text-xl font-bold">🐕 Pooch Breeder</a>
+            <a href="{{ url_for('main.index') }}" class="btn btn-ghost text-sm sm:text-xl font-bold px-1 sm:px-3">🐕 Pooch Breeder</a>
         </div>
 
         {% if session.get('discord_id') %}
@@ -68,7 +68,7 @@
         <div class="navbar-end gap-2">
             {% if session.get('discord_id') %}
             {% if session.get('current_server_id') %}
-            <div id="navbar-currencies" class="hidden sm:flex items-center gap-3 text-sm mr-1" style="display: none;">
+            <div id="navbar-currencies" class="flex items-center gap-2 text-xs sm:text-sm sm:gap-3 mr-1" style="display: none;">
                 <span class="text-success font-semibold" id="nav-dollars">—</span>
                 <span class="text-error font-semibold" id="nav-bloodskulls">—</span>
             </div>
