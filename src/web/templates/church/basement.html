@@ -267,7 +267,7 @@ function createHellCard(pooch) {
         : '';
 
     return `
-        <div class="card bg-base-300 shadow-sm border border-error/20">
+        <a href="/pooch/${pooch.id}" class="card bg-base-300 shadow-sm border border-error/20 hover:-translate-y-1 hover:shadow-md transition-all text-base-content no-underline">
             <div class="card-body py-4 px-4 gap-2">
                 <div class="flex justify-between items-center">
                     <span class="font-bold text-error/80">${escapeHtml(pooch.name)}</span>
@@ -286,7 +286,7 @@ function createHellCard(pooch) {
                 </div>
                 ${mutationsHtml}
             </div>
-        </div>
+        </a>
     `;
 }
 </script>
