@@ -2774,6 +2774,7 @@ async def test_create_and_execute_event_requires_response_does_not_archive():
         ),
         patch("src.game.manage_owner_events.create_active_owner_event", new=AsyncMock(return_value=active_event)),
         patch("src.game.manage_owner_events.update_active_event_result", new=AsyncMock()),
+        patch("src.game.manage_owner_events.update_active_event_context", new=AsyncMock()),
         patch("src.game.manage_owner_events.archive_active_event", new=AsyncMock()) as mock_archive,
         patch("src.game.manage_owner_events.to_triggered_event", new=AsyncMock(return_value=triggered)),
     ):
@@ -2977,6 +2978,35 @@ async def test_modify_kennel_capacity_set_mode_calls_set_kennel_pooch_limit(cont
         await _execute_single_action(1, action, context, rng)
     mock_set.assert_awaited_once_with(5, 10)
     mock_modify.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------------
+# exclude_amount on modify_* actions
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_modify_money_exclude_amount_never_rolls_excluded_value(context, rng):
+    """exclude_amount ensures the rolled amount is never in the exclusion list."""
+    # Range is [1, 3], exclude [2] → only 1 or 3 are valid
+    action = _make_action("modify_money", "owner", {"min_amount": 1, "max_amount": 3, "exclude_amount": [2]})
+    amounts_seen = set()
+    with patch("src.game.manage_owner_events.give_money_to_owner", new=AsyncMock()) as mock_give:
+        for _ in range(20):
+            await _execute_single_action(1, action, context, rng)
+        for call in mock_give.await_args_list:
+            amounts_seen.add(call.args[1])
+    assert 2 not in amounts_seen
+    assert amounts_seen <= {1, 3}
+
+
+@pytest.mark.asyncio
+async def test_modify_money_exclude_amount_all_excluded_falls_back_to_min(context, rng):
+    """When all values in range are excluded, falls back to min_amount."""
+    action = _make_action("modify_money", "owner", {"min_amount": 5, "max_amount": 5, "exclude_amount": [5]})
+    with patch("src.game.manage_owner_events.give_money_to_owner", new=AsyncMock()) as mock_give:
+        await _execute_single_action(1, action, context, rng)
+    mock_give.assert_awaited_once_with(1, 5)
 
 
 # ---------------------------------------------------------------------------

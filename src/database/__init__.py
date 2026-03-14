@@ -122,6 +122,7 @@ from .update import (
     set_server_event_occurrence_message_discord_id,
     transfer_pooch_to_owner,
     transfer_pooch_to_vendor,
+    update_active_event_context,
     update_active_event_result,
     update_owner_discord_name,
 )
@@ -250,6 +251,7 @@ __all__ = [
     "set_pooch_virgin",
     "transfer_pooch_to_owner",
     "transfer_pooch_to_vendor",
+    "update_active_event_context",
     "update_active_event_result",
     "update_owner_discord_name",
 ]

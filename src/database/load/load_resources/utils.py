@@ -351,7 +351,9 @@ class BaseEventValidator:
 
         if action_type in {"modify_money", "modify_bloodskulls"}:
             self._validate_allowed_keys(
-                params_path, parameters, common_allowed | {"amount", "min_amount", "max_amount", "roll_once", "mode"}
+                params_path,
+                parameters,
+                common_allowed | {"amount", "min_amount", "max_amount", "exclude_amount", "roll_once", "mode"},
             )
             self._validate_requires_one_of(params_path, parameters, [("amount",), ("min_amount", "max_amount")])
             self._validate_amount_group(params_path, parameters)
@@ -362,7 +364,9 @@ class BaseEventValidator:
 
         elif action_type in {"modify_pooch_health", "modify_pooch_age"}:
             self._validate_allowed_keys(
-                params_path, parameters, common_allowed | {"amount", "min_amount", "max_amount", "roll_once", "mode"}
+                params_path,
+                parameters,
+                common_allowed | {"amount", "min_amount", "max_amount", "exclude_amount", "roll_once", "mode"},
             )
             self._validate_requires_one_of(params_path, parameters, [("amount",), ("min_amount", "max_amount")])
             self._validate_amount_group(params_path, parameters)
@@ -443,7 +447,9 @@ class BaseEventValidator:
 
         elif action_type == "modify_kennel_capacity":
             self._validate_allowed_keys(
-                params_path, parameters, common_allowed | {"amount", "min_amount", "max_amount", "roll_once", "mode"}
+                params_path,
+                parameters,
+                common_allowed | {"amount", "min_amount", "max_amount", "exclude_amount", "roll_once", "mode"},
             )
             self._validate_requires_one_of(params_path, parameters, [("amount",), ("min_amount", "max_amount")])
             self._validate_amount_group(params_path, parameters)
@@ -732,6 +738,13 @@ class BaseEventValidator:
             self.error(path, "'min_amount' and 'max_amount' must either both be present or both be omitted")
         if min_amount is not None and max_amount is not None and min_amount > max_amount:
             self.error(path, "'min_amount' cannot be greater than 'max_amount'")
+
+        if "exclude_amount" in value:
+            if not (min_present and max_present):
+                self.error(path, "'exclude_amount' is only valid when 'min_amount' and 'max_amount' are both set")
+            exclude = value["exclude_amount"]
+            if not isinstance(exclude, list) or not all(isinstance(v, int) for v in exclude):
+                self.error(path, "'exclude_amount' must be a list of integers")
 
     def _validate_min_max_pair(
         self,

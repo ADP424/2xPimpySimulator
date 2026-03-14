@@ -65,6 +65,7 @@ from src.database import (
     set_pooch_dead,
     transfer_pooch_to_owner,
     transfer_pooch_to_vendor,
+    update_active_event_context,
     update_active_event_result,
 )
 
@@ -544,7 +545,11 @@ async def _execute_single_action(
 
     def _get_amount_from_parameters(parameters: dict[str, Any], rng: random.Random) -> int:
         if "min_amount" in parameters and "max_amount" in parameters:
-            return rng.randint(parameters["min_amount"], parameters["max_amount"])
+            exclude = parameters.get("exclude_amount", [])
+            exclude_set = set(exclude) if isinstance(exclude, list) else set()
+            lo, hi = parameters["min_amount"], parameters["max_amount"]
+            candidates = [v for v in range(lo, hi + 1) if v not in exclude_set]
+            return rng.choice(candidates) if candidates else lo
         return parameters.get("amount", 0)
 
     def _resolve_amount(parameters: dict[str, Any], rng: random.Random) -> tuple[int | None, bool]:
@@ -1248,6 +1253,10 @@ async def _create_and_execute_event(
     # Event-level actions always fire immediately at trigger time (before the user picks)
     result = await _execute_event_actions(owner_discord_id, event.actions, context, rng)
     await update_active_event_result(active_event.id, result.to_dict())
+    # Persist the updated context so named slots written by trigger-time actions
+    # (via save_as) survive to response/expiry time when context is reloaded from DB.
+    if event.requires_response:
+        await update_active_event_context(active_event.id, context.to_dict())
 
     if not event.requires_response:
         await archive_active_event(active_event.id)

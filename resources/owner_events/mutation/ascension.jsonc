@@ -20,7 +20,6 @@
             "parameters": {
                 "selector": "random",
                 "filter": {
-                    "min_count": 1,
                     "min_pooches": 5
                 },
                 "save_as": "god_kennel",

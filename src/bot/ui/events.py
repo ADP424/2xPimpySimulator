@@ -60,7 +60,7 @@ def _discord_timestamp(value: datetime | str | None, style: str = "f") -> str:
         value = datetime.fromisoformat(value)
     if value.tzinfo is None:
         value = value.replace(tzinfo=timezone.utc)
-    return f"<t:{value.timestamp()}:{style}>"
+    return f"<t:{int(value.timestamp())}:{style}>"
 
 
 def _format_option_line(option: EventOption) -> str:
@@ -141,11 +141,22 @@ def _entity_reference_lines(context: EventContext, entity_references: EventEntit
     return lines
 
 
-def _format_result_summary(result: Optional[EventResult]) -> str:
+def _format_result_summary(
+    result: Optional[EventResult],
+    entity_references: Optional[EventEntityReferences] = None,
+) -> str:
     if result is None:
         return "No recorded outcome."
 
     extra_data = result.extra_data or {}
+
+    def _pooch_name(pooch_id: Any) -> str:
+        if entity_references is not None:
+            for ref in entity_references.pooches:
+                if ref.id == pooch_id or str(ref.id) == str(pooch_id):
+                    return ref.label
+        return f"Pooch #{pooch_id}"
+
     selected_outcome = (
         extra_data.get("selected_outcome") if isinstance(extra_data.get("selected_outcome"), dict) else None
     )
@@ -169,7 +180,7 @@ def _format_result_summary(result: Optional[EventResult]) -> str:
     for entry in extra_data.get("created_pooches", []):
         if not isinstance(entry, dict):
             continue
-        pooch_label = entry.get("pooch_name") or f"Pooch #{entry.get('pooch_id', '?')}"
+        pooch_label = entry.get("pooch_name") or _pooch_name(entry.get("pooch_id", "?"))
         text = f"Created pooch: {pooch_label}"
         sex = entry.get("sex")
         age = entry.get("age")
@@ -188,13 +199,13 @@ def _format_result_summary(result: Optional[EventResult]) -> str:
         lines.append(f"Pooches created: {len(result.pooches_created)}")
 
     for entry in _detail_entries(extra_data.get("health_changes"), id_key="pooch_id", value_key="amount"):
-        name = entry.get("pooch_name") or f"Pooch #{entry.get('pooch_id', '?')}"
+        name = entry.get("pooch_name") or _pooch_name(entry.get("pooch_id", "?"))
         amount = entry.get("amount", 0)
         suffix = f" (base now {entry['new_base_health']})" if entry.get("new_base_health") is not None else ""
         lines.append(f"Health: {name} {_signed(amount)}{suffix}")
 
     for entry in _detail_entries(extra_data.get("age_changes"), id_key="pooch_id", value_key="amount"):
-        name = entry.get("pooch_name") or f"Pooch #{entry.get('pooch_id', '?')}"
+        name = entry.get("pooch_name") or _pooch_name(entry.get("pooch_id", "?"))
         amount = entry.get("amount", 0)
         suffix = f" (now age {entry['new_age']})" if entry.get("new_age") is not None else ""
         lines.append(f"Age: {name} {_signed(amount)}{suffix}")
@@ -202,7 +213,7 @@ def _format_result_summary(result: Optional[EventResult]) -> str:
     for entry in extra_data.get("breeding_cooldown_changes", []):
         if not isinstance(entry, dict):
             continue
-        name = entry.get("pooch_name") or f"Pooch #{entry.get('pooch_id', '?')}"
+        name = entry.get("pooch_name") or _pooch_name(entry.get("pooch_id", "?"))
         lines.append(f"Breeding cooldown: {name} set to {entry.get('cooldown', 0)}")
 
     for entry in extra_data.get("renamed_pooches", []):
@@ -213,7 +224,7 @@ def _format_result_summary(result: Optional[EventResult]) -> str:
     for entry in extra_data.get("transferred_pooches", []):
         if not isinstance(entry, dict):
             continue
-        name = entry.get("pooch_name") or f"Pooch #{entry.get('pooch_id', '?')}"
+        name = entry.get("pooch_name") or _pooch_name(entry.get("pooch_id", "?"))
         destination = entry.get("destination") or "new owner"
         lines.append(f"Transferred: {name} → {destination}")
 
@@ -287,7 +298,9 @@ def build_triggered_event_embed(event: TriggeredEvent) -> discord.Embed:
         embed.add_field(name="Response Options", value=_truncate(options_value), inline=False)
         embed.set_footer(text="Choose an option from the menu below.")
     elif event.result is not None:
-        embed.add_field(name="Outcome", value=_format_result_summary(event.result), inline=False)
+        embed.add_field(
+            name="Outcome", value=_format_result_summary(event.result, event.entity_references), inline=False
+        )
         embed.set_footer(text="This event resolved automatically.")
 
     return embed
@@ -303,7 +316,7 @@ def build_resolved_event_embed(
     embed = build_triggered_event_embed(event)
     if selected_option_label:
         embed.add_field(name="Selected Option", value=selected_option_label, inline=False)
-    embed.add_field(name="Outcome", value=_format_result_summary(result), inline=False)
+    embed.add_field(name="Outcome", value=_format_result_summary(result, event.entity_references), inline=False)
     embed.set_footer(text=status_text)
     return embed
 
@@ -340,7 +353,9 @@ def build_history_embed(record: EventHistory, page_index: int, page_count: int) 
     if entity_lines:
         embed.add_field(name="Related", value=_truncate("\n".join(entity_lines)), inline=False)
 
-    embed.add_field(name="Outcome", value=_format_result_summary(record.result_summary), inline=False)
+    embed.add_field(
+        name="Outcome", value=_format_result_summary(record.result_summary, record.entity_references), inline=False
+    )
     embed.set_footer(text=f"History entry {page_index + 1}/{page_count}")
     return embed
 
@@ -437,7 +452,7 @@ class EventEntityControls:
         async def callback(interaction: discord.Interaction):
             value = self.selects[kind].values[0]
             self.selected_kind = kind
-            self.selected_id = value
+            self.selected_id = int(value)
             self.selected_label = next(
                 (item.label for item in self.entity_references.for_kind(kind) if item.id == self.selected_id),
                 f"{kind[:-1].title()} #{value}",
@@ -523,7 +538,7 @@ class EventResponseSelect(discord.ui.Select):
             await interaction.response.send_message("This event is not yours.", ephemeral=True)
             return
 
-        option_id = self.values[0]
+        option_id = int(self.values[0])
         option = next((item for item in self.event.options if item.id == option_id), None)
         success, message, result = await respond_to_event(
             interaction.user.id, self.event.active_owner_event_id, option_id

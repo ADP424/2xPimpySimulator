@@ -726,6 +726,38 @@ async def update_active_event_result(
         return result.scalar_one_or_none()
 
 
+async def update_active_event_context(active_owner_event_id: int, context: dict[str, Any]) -> Optional[EventOccurrence]:
+    """
+    Update the context of an active event.
+
+    Used to persist named slots written by trigger-time actions so they are
+    available when the player responds or the event expires.
+
+    Parameters
+    ----------
+    active_owner_event_id: int
+        The ID of the active event to update.
+
+    context: dict[str, Any]
+        The updated context to store.
+
+    Returns
+    -------
+    EventOccurrence, optional
+        The updated EventOccurrence, or None if not found.
+    """
+
+    async with session_scope() as session:
+        query = (
+            update(EventOccurrence)
+            .where(EventOccurrence.id == active_owner_event_id, EventOccurrence.archived.is_(False))
+            .values(context=context)
+            .returning(EventOccurrence)
+        )
+        result = await session.execute(query)
+        return result.scalar_one_or_none()
+
+
 async def set_server_event_occurrence_message_discord_id(
     occurrence_id: int, message_discord_id: int | None
 ) -> Optional[ServerEventOccurrence]:

@@ -1,7 +1,7 @@
 {
     "name": "Escaped Pooch",
     "description": "One of your pooches has escaped from the kennel!",
-    "flavor_text": "Quick, what do you do!",
+    "flavor_text": "Quick, what do you do!?",
     "severity": "MAJOR",
     "rarity": "UNCOMMON",
     "requires_response": true,
@@ -13,7 +13,19 @@
                 "min_pooches": 1
             }
         ]
-    }, // TODO: Add default event-level action removing pooch from kennel, then carry that pooch forward to options to conditionally return it, or make it a stray
+    },
+    "actions": [
+        {
+            "action_type": "kill_pooch",
+            "target_type": "pooch",
+            "parameters": {
+                "selector": "random",
+                "filter": {
+                    "location": "kennel"
+                }
+            }
+        }
+    ],
     "options": [
         {
             "label": "Hire a search party",

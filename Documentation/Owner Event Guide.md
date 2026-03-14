@@ -825,7 +825,7 @@ Instead of resolving targets via `selector`/`filter`, pull IDs directly from the
 }
 ```
 
-Slots persist for the lifetime of the action list they're in (event-level, option, or outcome). They do not carry across phases (e.g. a slot written during event-level actions is not available during outcome actions).
+Slots persist for the lifetime of the event, and you can use them between phases (for instance, using `"save_as": "pooch"` in the event-level action list, then using `"use_saved": "pooch"` in an outcome-level action list).
 
 ---
 
@@ -847,6 +847,7 @@ Slots persist for the lifetime of the action list they're in (event-level, optio
 |-----------|------|----------|-------|
 | `amount` | int | one of | Fixed delta (can be negative); or an absolute value when `mode` is `"set"` |
 | `min_amount` / `max_amount` | int | one of | Random delta in range; or random absolute value when `mode` is `"set"` |
+| `exclude_amount` | list[int] | no | Values to exclude from the random range — only valid with `min_amount`/`max_amount`. If all values are excluded, falls back to `min_amount`. |
 | `roll_once` | bool | no | If true, roll the random amount once and apply to all targets |
 | `mode` | string | no | `"modify"` (default) — add/subtract the amount; `"set"` — set the value to exactly `amount` |
 
@@ -890,6 +891,7 @@ Slots persist for the lifetime of the action list they're in (event-level, optio
 | `pooch_count` | int | no | When `target_type` is `"kennel"`: with `"random"`: number of pooches per kennel to pick; with `"random_exclude"`: number per kennel to spare |
 | `amount` | int | one of | Fixed delta; or absolute value when `mode` is `"set"` |
 | `min_amount` / `max_amount` | int | one of | Random delta in range; or random absolute value when `mode` is `"set"` |
+| `exclude_amount` | list[int] | no | Values to exclude from the random range — only valid with `min_amount`/`max_amount`. Falls back to `min_amount` if all values are excluded. |
 | `roll_once` | bool | no | Roll once for all targets instead of per-target |
 | `mode` | string | no | `"modify"` (default) — add/subtract the amount; `"set"` — set the stat to exactly `amount` |
 | `save_as` | string | no | Save resolved target IDs into a named slot for later actions |
@@ -1096,6 +1098,7 @@ Examples:
 | `filter` | object | no | Kennel filter (`kennel`/`owner`) |
 | `amount` | int | one of | Fixed delta; or absolute value when `mode` is `"set"` |
 | `min_amount` / `max_amount` | int | one of | Random delta in range; or random absolute value when `mode` is `"set"` |
+| `exclude_amount` | list[int] | no | Values to exclude from the random range — only valid with `min_amount`/`max_amount`. Falls back to `min_amount` if all values are excluded. |
 | `roll_once` | bool | no | Roll once for all kennels |
 | `mode` | string | no | `"modify"` (default) — add/subtract the amount; `"set"` — set the capacity to exactly `amount` |
 | `save_as` | string | no | Save resolved kennel IDs into a named slot |
