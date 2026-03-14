@@ -1,17 +1,21 @@
 {
     "name": "Random Gay Breeding",
     "description": "Two of your pooches bred without permission.",
-    "flavor_text": "Your not sure how they managed to get pregnent.",
+    "flavor_text": "You're not sure how they managed to get pregnent.",
     "severity": "MODERATE",
     "rarity": "UNPRECEDENTED",
     "requires_response": false,
     "filter": {
-        "pooches": [ // TODO: Make in kennel
+        "kennels": [
             {
-                "num_pooches": 2,
-                "sex": "female",
-                "is_alive": true,
-                "max_breeding_cooldown": 0
+                "pooches": [
+                    {
+                        "min_count": 2,
+                        "sex": "female",
+                        "is_alive": true,
+                        "max_breeding_cooldown": 0
+                    }
+                ]
             }
         ]
     },

@@ -25,7 +25,7 @@
                     "action_type": "modify_money",
                     "target_type": "owner",
                     "parameters": {
-                        "amount": 1000 //TODO. Sell the pooch with 10 times normal value.
+                        "amount": 1000 // TODO: Sell the pooch with 10 times normal value.
                     }
                 }
             ]
@@ -39,7 +39,7 @@
                     "message": "You couldn't do it. Guess you'll have to sell them.",
                     "actions": [
                         {
-                            "action_type": "modify_pooch_health", //TODO. Sell the pooch with 8 time normal value.
+                            "action_type": "modify_pooch_health", // TODO: Sell the pooch with 8 time normal value.
                             "target_type": "pooch",
                             "parameters": {
                                 "min_amount": -5,
@@ -70,7 +70,7 @@
                     "message": "You couldn't do it. Guess you'll have to sell them.",
                     "actions": [
                         {
-                            "action_type": "modify_pooch_health", //TODO. Sell the pooch with 4 time normal value.
+                            "action_type": "modify_pooch_health", // TODO: Sell the pooch with 4 time normal value.
                             "target_type": "pooch",
                             "parameters": {
                                 "min_amount": -5,

@@ -52,6 +52,7 @@ class EventAction(Base):
     action_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     action_type: Mapped[str] = mapped_column(EVENT_ACTION_TYPE, nullable=False)
     target_type: Mapped[str] = mapped_column(EVENT_TARGET_TYPE, nullable=False, server_default=text("'owner'"))
+    repeat: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))
 
     parameters: Mapped[EventActionParameters] = mapped_column(JSONB, nullable=False, default=dict)
 

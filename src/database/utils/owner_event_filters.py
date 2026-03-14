@@ -28,6 +28,15 @@ if TYPE_CHECKING:
     )
 
 _FILTER_META_KEYS = {"min_count", "max_count", "description"}
+_POOCH_FILTER_EXCLUSION_KEYS = {"exclude_age", "exclude_health", "exclude_breeding_cooldown"}
+_KENNEL_FILTER_EXCLUSION_KEYS = {"exclude_capacity", "exclude_pooches"}
+_OWNER_FILTER_EXCLUSION_KEYS = {"exclude_money", "exclude_bloodskulls", "exclude_pooches", "exclude_kennels"}
+
+
+def _is_excluded(value: int | float, exclude_list: list | None) -> bool:
+    if not exclude_list:
+        return False
+    return int(value) in exclude_list
 
 
 def _normalize_name(value: str) -> str:
@@ -83,11 +92,17 @@ async def _build_pooch_query(
         conditions.append(Pooch.age >= filter_spec["min_age"])
     if filter_spec.get("max_age") is not None:
         conditions.append(Pooch.age <= filter_spec["max_age"])
+    if filter_spec.get("exclude_age"):
+        conditions.append(Pooch.age.not_in(filter_spec["exclude_age"]))
 
     if filter_spec.get("sex") is not None:
         conditions.append(Pooch.sex == str(filter_spec["sex"]).strip().lower())
 
-    if filter_spec.get("min_health") is not None or filter_spec.get("max_health") is not None:
+    if (
+        filter_spec.get("min_health") is not None
+        or filter_spec.get("max_health") is not None
+        or filter_spec.get("exclude_health")
+    ):
         mutation_health_subquery = (
             select(func.coalesce(func.sum(HealthImpactWeight.weight), 0))
             .join(Mutation, Mutation.health_impact == HealthImpactWeight.health_impact)
@@ -101,6 +116,8 @@ async def _build_pooch_query(
             conditions.append(effective_health >= filter_spec["min_health"])
         if filter_spec.get("max_health") is not None:
             conditions.append(effective_health <= filter_spec["max_health"])
+        if filter_spec.get("exclude_health"):
+            conditions.append(effective_health.not_in(filter_spec["exclude_health"]))
 
     if filter_spec.get("is_virgin") is not None:
         conditions.append(Pooch.virgin.is_(bool(filter_spec["is_virgin"])))
@@ -111,6 +128,8 @@ async def _build_pooch_query(
         conditions.append(Pooch.breeding_cooldown >= filter_spec["min_breeding_cooldown"])
     if filter_spec.get("max_breeding_cooldown") is not None:
         conditions.append(Pooch.breeding_cooldown <= filter_spec["max_breeding_cooldown"])
+    if filter_spec.get("exclude_breeding_cooldown"):
+        conditions.append(Pooch.breeding_cooldown.not_in(filter_spec["exclude_breeding_cooldown"]))
 
     location = filter_spec.get("location")
     if isinstance(location, str):
@@ -232,6 +251,8 @@ async def _get_candidate_kennel_ids_for_owner(
         conditions.append(Kennel.pooch_limit >= filter_spec["min_capacity"])
     if filter_spec.get("max_capacity") is not None:
         conditions.append(Kennel.pooch_limit <= filter_spec["max_capacity"])
+    if filter_spec.get("exclude_capacity"):
+        conditions.append(Kennel.pooch_limit.not_in(filter_spec["exclude_capacity"]))
 
     query = select(Kennel.id).where(and_(*conditions))
 
@@ -242,6 +263,7 @@ async def _get_candidate_kennel_ids_for_owner(
     )
     min_pooches = filter_spec.get("min_pooches")
     max_pooches = filter_spec.get("max_pooches")
+    exclude_pooches = filter_spec.get("exclude_pooches")
     if min_pooches is not None:
         query = query.where(
             Kennel.id.in_(
@@ -264,6 +286,12 @@ async def _get_candidate_kennel_ids_for_owner(
                     select(pooch_count_subquery.c.kennel_id).where(pooch_count_subquery.c.pooch_count > max_pooches)
                 )
             )
+    if exclude_pooches:
+        query = query.where(
+            Kennel.id.not_in(
+                select(pooch_count_subquery.c.kennel_id).where(pooch_count_subquery.c.pooch_count.in_(exclude_pooches))
+            )
+        )
 
     result = await session.execute(query)
     return [kennel_id for kennel_id in result.scalars().all()]
@@ -353,18 +381,26 @@ async def check_owner_event_filter(
         return False
     if filter_spec.get("max_money") is not None and owner.dollars > filter_spec["max_money"]:
         return False
+    if _is_excluded(owner.dollars, filter_spec.get("exclude_money")):
+        return False
     if filter_spec.get("min_bloodskulls") is not None and owner.bloodskulls < filter_spec["min_bloodskulls"]:
         return False
     if filter_spec.get("max_bloodskulls") is not None and owner.bloodskulls > filter_spec["max_bloodskulls"]:
+        return False
+    if _is_excluded(owner.bloodskulls, filter_spec.get("exclude_bloodskulls")):
         return False
 
     if filter_spec.get("min_pooches") is not None and pooch_count < filter_spec["min_pooches"]:
         return False
     if filter_spec.get("max_pooches") is not None and pooch_count > filter_spec["max_pooches"]:
         return False
+    if _is_excluded(pooch_count, filter_spec.get("exclude_pooches")):
+        return False
     if filter_spec.get("min_kennels") is not None and kennel_count < filter_spec["min_kennels"]:
         return False
     if filter_spec.get("max_kennels") is not None and kennel_count > filter_spec["max_kennels"]:
+        return False
+    if _is_excluded(kennel_count, filter_spec.get("exclude_kennels")):
         return False
 
     for kennel_filter in list(filter_spec.get("kennels", [])):

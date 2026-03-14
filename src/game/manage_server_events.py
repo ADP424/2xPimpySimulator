@@ -28,7 +28,7 @@ from src.database import (
 )
 from src.logger import get_logger
 
-from .manage_events import _execute_event_actions
+from .manage_owner_events import _execute_event_actions
 from .manage_owners import get_or_create_owner
 from .models.events import (
     EventContext,

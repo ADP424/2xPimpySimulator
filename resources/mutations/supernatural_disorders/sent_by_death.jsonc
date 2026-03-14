@@ -6,6 +6,8 @@
     "health_impact": "HEALTHY",
     "rarity": "UNIQUE",
     "advanced_options": {
-        "bloodskull_value_mult": 0 //TODO. This should really only apear on pooches from The Pooch In Black event and venders shouldn't want it. 
+        "bloodskull_value_mult": 0.0,
+        "sold_by_vendors": 0,
+        "born_from_ritual": 0
     }
 }

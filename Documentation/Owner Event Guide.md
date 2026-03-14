@@ -341,12 +341,16 @@ These fields live directly inside the root `filter` object:
 
 - `min_money`
 - `max_money`
+- `exclude_money`
 - `min_bloodskulls`
 - `max_bloodskulls`
+- `exclude_bloodskulls`
 - `min_pooches`
 - `max_pooches`
+- `exclude_pooches`
 - `min_kennels`
 - `max_kennels`
+- `exclude_kennels`
 - `kennels`
 - `pooches`
 
@@ -354,6 +358,20 @@ These fields live directly inside the root `filter` object:
 
 - `min_pooches` / `max_pooches` count all pooches owned by the owner, regardless of kennel placement
 - `min_kennels` / `max_kennels` count all kennels owned by the owner
+
+### Exclusion Lists
+
+Any numeric range field has a corresponding `exclude_*` list that explicitly disqualifies owners whose value matches any entry in the list.
+
+```json
+"filter": {
+    "min_pooches": 4,
+    "max_pooches": 7,
+    "exclude_pooches": [5, 6]
+}
+```
+
+That matches owners with exactly 4 or 7 pooches, but not 5 or 6.
 
 ---
 
@@ -367,8 +385,10 @@ Kennel filter objects live inside `filter.kennels`.
     "max_count": 3,
     "min_capacity": 2,
     "max_capacity": 8,
+    "exclude_capacity": [3, 7],
     "min_pooches": 1,
     "max_pooches": 5,
+    "exclude_pooches": [2],
     "pooches": []
 }
 ```
@@ -380,8 +400,10 @@ Kennel filter objects live inside `filter.kennels`.
 - `description`
 - `min_capacity`
 - `max_capacity`
+- `exclude_capacity`
 - `min_pooches`
 - `max_pooches`
+- `exclude_pooches`
 - `pooches`
 
 ### Kennel Semantics
@@ -389,6 +411,7 @@ Kennel filter objects live inside `filter.kennels`.
 - `min_count` / `max_count` apply to the number of kennels matching that kennel filter
 - `min_pooches` / `max_pooches` apply to the number of pooches currently in an individual kennel
 - `max_pooches` can be set to `"capacity - [X]"` to set the max relative to the kennel's capacity, like `"capacity - 1"`
+- `exclude_capacity` / `exclude_pooches` are integer lists that exclude kennels whose capacity or pooch count equals any value in the list
 - nested `pooches` filters apply only to pooches inside that kennel
 
 ---
@@ -406,13 +429,16 @@ Pooch filter objects live either:
     "max_count": 3,
     "min_age": 5,
     "max_age": 10,
+    "exclude_age": [7],
     "sex": "female",
     "min_health": 3,
     "max_health": 8,
+    "exclude_health": [5],
     "is_virgin": true,
     "is_alive": true,
     "min_breeding_cooldown": 0,
     "max_breeding_cooldown": 2,
+    "exclude_breeding_cooldown": [1],
     "has_any_breed": ["Husky", "Poodle"],
     "has_all_breeds": ["Wolfhound"],
     "exclude_breeds": ["Chihuahua"],
@@ -430,13 +456,16 @@ Pooch filter objects live either:
 - `description`
 - `min_age`
 - `max_age`
+- `exclude_age`
 - `sex`
 - `min_health`
 - `max_health`
+- `exclude_health`
 - `is_virgin`
 - `is_alive`
 - `min_breeding_cooldown`
 - `max_breeding_cooldown`
+- `exclude_breeding_cooldown`
 - `has_any_breed`
 - `has_all_breeds`
 - `exclude_breeds`
@@ -541,13 +570,45 @@ Dynamic runtime entities such as pooches and kennels should never be referenced 
 
 Instead, `target_type: "pooch"` and `target_type: "kennel"` actions use a `selector` parameter:
 
-- `"random"`: choose a random matching target at action execution time
+- `"random"` (default): choose one random matching target at action execution time
 - `"selected"`: use the event's pre-selected contextual target (resolved once at trigger time)
 - `"all"`: apply the action to every matching target
+- `"random_exclude"`: apply the action to all matching targets **except** a randomly chosen subset
 
 `"random"` is the default if `selector` is omitted.
 
 `"selected"` is especially useful for events that need to refer to the same target across option branches and outcomes.
+
+### `count` parameter
+
+The `count` parameter controls how many entities the selector picks. It is available alongside `selector` on pooch and kennel actions.
+
+- **With `"random"`**: picks exactly `count` random entities. If fewer than `count` matching entities exist, all of them are used.
+- **With `"random_exclude"`**: randomly excludes exactly `count` entities from the affected set. If `count` is not set, or is ≥ the total number of matching entities, the action affects nobody.
+
+```jsonc
+// Pick 3 random pooches
+{
+    "action_type": "modify_pooch_health",
+    "target_type": "pooch",
+    "parameters": {
+        "selector": "random",
+        "count": 3,
+        "amount": -1
+    }
+}
+
+// Affect all pooches except 2 randomly spared ones
+{
+    "action_type": "modify_pooch_health",
+    "target_type": "pooch",
+    "parameters": {
+        "selector": "random_exclude",
+        "count": 2,
+        "amount": -5
+    }
+}
+```
 
 ---
 
@@ -636,7 +697,25 @@ Actions are structured as:
 {
     "action_type": "string",
     "target_type": "string",
+    "repeat": 1,
     "parameters": {}
+}
+```
+
+### `repeat`
+
+An optional integer column (default: `1`) that controls how many times in a row the action is executed. Each repetition is fully independent — random amounts are re-rolled, random targets are re-selected, etc.
+
+```jsonc
+// Apply a -5 health hit to a random pooch 3 times (could hit the same pooch multiple times)
+{
+    "action_type": "modify_pooch_health",
+    "target_type": "pooch",
+    "repeat": 3,
+    "parameters": {
+        "selector": "random",
+        "amount": -5
+    }
 }
 ```
 
@@ -660,6 +739,8 @@ Actions are structured as:
 | `set_breeding_cooldown` | `pooch`, `kennel`, `owner` | Sets breeding cooldown |
 | `modify_kennel_capacity` | `kennel`, `owner` | Adjusts the kennel's pooch limit |
 | `breed_pooches` | `owner` | Breeds two of the owner's pooches together |
+| `sell_pooch` | `pooch`, `kennel`, `owner` | Sells a pooch, crediting the owner |
+| `buy_pooch` | `owner` | Buys a pooch from a vendor |
 
 ### Supported Target Types
 
@@ -672,6 +753,7 @@ For `pooch` and `kennel` targets, use `parameters.selector` to control which ent
 - `"random"` (default) — one random matching entity
 - `"selected"` — the event's pre-selected contextual entity
 - `"all"` — every matching entity owned by the player
+- `"random_exclude"` — all matching entities except a randomly chosen subset (use with `count`)
 
 When `target_type` is `"kennel"` on a **pooch action** (e.g. `kill_pooch`, `modify_pooch_health`), the action applies to pooches *inside* the targeted kennel(s) rather than to the kennel itself. An optional `pooch_filter` parameter can narrow which pooches inside the kennel are affected.
 
@@ -787,7 +869,8 @@ Slots persist for the lifetime of the action list they're in (event-level, optio
 
 | Parameter | Type | Required | Notes |
 |-----------|------|----------|-------|
-| `selector` | string | yes (except `owner`) | `"random"`, `"selected"`, or `"all"` — not used when `target_type` is `"owner"` or `use_saved` is set |
+| `selector` | string | yes (except `owner`) | `"random"`, `"selected"`, `"all"`, or `"random_exclude"` — not used when `target_type` is `"owner"` or `use_saved` is set |
+| `count` | int | no | With `"random"`: number of pooches to pick. With `"random_exclude"`: number to exclude. |
 | `filter` | object | no | Pooch filter (`pooch`/`owner`), or kennel filter (`kennel`) |
 | `pooch_filter` | object | no | Pooch filter when `target_type` is `"kennel"` |
 | `amount` | int | one of | Fixed delta |
@@ -814,7 +897,8 @@ Slots persist for the lifetime of the action list they're in (event-level, optio
 
 | Parameter | Type | Required | Notes |
 |-----------|------|----------|-------|
-| `selector` | string | yes (except `owner`) | `"random"`, `"selected"`, or `"all"` |
+| `selector` | string | yes (except `owner`) | `"random"`, `"selected"`, `"all"`, or `"random_exclude"` |
+| `count` | int | no | Number of pooches to pick (`"random"`) or exclude (`"random_exclude"`) |
 | `filter` | object | no | Pooch filter (`pooch`/`owner`), or kennel filter (`kennel`) |
 | `pooch_filter` | object | no | Pooch filter when `target_type` is `"kennel"` |
 | `save_as` | string | no | Save resolved pooch IDs (and optionally kennel) into a named slot |
@@ -838,9 +922,10 @@ Slots persist for the lifetime of the action list they're in (event-level, optio
 
 | Parameter | Type | Required | Notes |
 |-----------|------|----------|-------|
-| `selector` | string | yes (except `owner`) | `"random"`, `"selected"`, or `"all"` |
+| `selector` | string | yes (except `owner`) | `"random"`, `"selected"`, `"all"`, or `"random_exclude"` |
+| `count` | int | no | Number to pick (`"random"`) or exclude (`"random_exclude"`) |
 | `filter` / `pooch_filter` | object | no | Filters |
-| `mutation` | string | no | Mutation name — omit for a random mutation |
+| `mutation_id` | int | no | Internal mutation ID to add/remove — omit for a random mutation |
 
 ---
 
@@ -848,7 +933,8 @@ Slots persist for the lifetime of the action list they're in (event-level, optio
 
 | Parameter | Type | Required | Notes |
 |-----------|------|----------|-------|
-| `selector` | string | yes (except `owner`) | |
+| `selector` | string | yes (except `owner`) | `"random"`, `"selected"`, `"all"`, or `"random_exclude"` |
+| `count` | int | no | Number to pick or exclude |
 | `filter` / `pooch_filter` | object | no | |
 | `breed` | string | no | Breed name — omit for a random breed |
 | `weight` | float | no | Breed weight, must be > 0 (default: 0.5) |
@@ -859,7 +945,8 @@ Slots persist for the lifetime of the action list they're in (event-level, optio
 
 | Parameter | Type | Required | Notes |
 |-----------|------|----------|-------|
-| `selector` | string | yes (except `owner`) | |
+| `selector` | string | yes (except `owner`) | `"random"`, `"selected"`, `"all"`, or `"random_exclude"` |
+| `count` | int | no | Number to pick or exclude |
 | `filter` / `pooch_filter` | object | no | |
 | `new_owner_discord_id` | int | one of | Transfer to this owner |
 | `vendor_id` | int | one of | Transfer to this vendor |
@@ -923,7 +1010,7 @@ Duplicates an existing pooch, inheriting its name, stats, breeds, and mutations.
 
 | Parameter | Type | Required | Notes |
 |-----------|------|----------|-------|
-| `selector` | string | yes (except `owner`) | `"random"`, `"selected"`, or `"all"` (picks first) — selects the source pooch |
+| `selector` | string | yes (pooch/kennel target; also accepted with owner target) | `"random"`, `"selected"`, or `"all"` (picks first) — selects the source pooch |
 | `filter` / `pooch_filter` | object | no | Filters for source pooch selection |
 | `name` | string | no | Override — defaults to source's name |
 | `sex` | string | no | Override — defaults to source's sex |
@@ -934,6 +1021,8 @@ Duplicates an existing pooch, inheriting its name, stats, breeds, and mutations.
 | `save_as` | string or list | no | Save clone and/or source into named slots (see below) |
 
 The clone always starts as a virgin with `alive = true`, regardless of the source's state.
+
+When `target_type` is `"owner"`, a `selector` and optional `filter` must be provided to choose which of the owner's pooches to clone (unlike other owner-target actions that affect all pooches, `clone_pooch` needs to identify a single source).
 
 ##### `save_as` for `clone_pooch`
 
@@ -963,11 +1052,14 @@ Examples:
 
 | Parameter | Type | Required | Notes |
 |-----------|------|----------|-------|
-| `selector` | string | yes (except `owner`) | |
+| `selector` | string | yes (except `owner`) | `"random"`, `"selected"`, `"all"`, or `"random_exclude"` |
+| `count` | int | no | Number of kennels to pick or exclude |
 | `filter` | object | no | Kennel filter (`kennel`/`owner`) |
 | `amount` | int | one of | Fixed delta |
 | `min_amount` / `max_amount` | int | one of | Random delta in range |
 | `roll_once` | bool | no | Roll once for all kennels |
+| `save_as` | string | no | Save resolved kennel IDs into a named slot |
+| `use_saved` | string | no | Use kennel IDs from a named slot instead of `selector` |
 
 ---
 
@@ -975,7 +1067,8 @@ Examples:
 
 | Parameter | Type | Required | Notes |
 |-----------|------|----------|-------|
-| `selector` | string | yes (except `owner`) | |
+| `selector` | string | yes (except `owner`) | `"random"`, `"selected"`, `"all"`, or `"random_exclude"` |
+| `count` | int | no | Number to pick or exclude |
 | `filter` / `pooch_filter` | object | no | |
 | `name` | string | yes | New name for the pooch |
 
@@ -985,7 +1078,8 @@ Examples:
 
 | Parameter | Type | Required | Notes |
 |-----------|------|----------|-------|
-| `selector` | string | yes (except `owner`) | |
+| `selector` | string | yes (except `owner`) | `"random"`, `"selected"`, `"all"`, or `"random_exclude"` |
+| `count` | int | no | Number to pick or exclude |
 | `filter` / `pooch_filter` | object | no | |
 | `cooldown` | int or `"base"` | yes | Days to set; `"base"` resets to the pooch's mutation-adjusted base cooldown |
 
@@ -1024,6 +1118,8 @@ Selects two of the owner's pooches and breeds them. Calls the same breeding logi
 | `first_filter` | object | no | Pooch filter applied to the first pooch selection |
 | `second_selector` | string | no | Same as above for the second pooch |
 | `second_filter` | object | no | Pooch filter applied to the second pooch selection |
+| `require_unique` | bool | no | If `true`, skip breeding when both selectors resolve to the same pooch (default: `false`) |
+| `require_same` | bool | no | If `true`, force the second parent to be the same pooch as the first (ignores `second_selector`) |
 | `baby_name` | string | no | Override the generated baby name |
 | `baby_sex` | string | no | `"male"` or `"female"` — random if omitted |
 | `baby_age` | int | no | Override the baby's starting age |
@@ -1031,7 +1127,7 @@ Selects two of the owner's pooches and breeds them. Calls the same breeding logi
 | `baby_breeding_cooldown` | int | no | Override the baby's initial breeding cooldown |
 | `save_as` | string or list | no | Save one or more participants into named slots (see below) |
 
-If the two selectors resolve to the same pooch, or if both pooches are the same sex, the action is silently skipped. Use filters to prevent this.
+This action bypasses the usual restrictions for which pooches can breed (i.e. different sexes, no breeding cooldown, etc.). Use filters to add the desired restrictions. `require_unique` adds an extra guard for when the same filter is used for both parents and you want to ensure they are distinct pooches.
 
 ##### `save_as` for `breed_pooches`
 
@@ -1056,3 +1152,64 @@ Examples:
     { "slot": "the_mother", "target": "second_parent" }
 ]
 ```
+
+---
+
+#### `sell_pooch`
+
+Sells one or more of the owner's pooches, crediting the owner with the sale price. The pooch is removed from the owner's collection.
+
+```json
+{
+    "action_type": "sell_pooch",
+    "target_type": "pooch",
+    "parameters": {
+        "selector": "random",
+        "filter": { "min_age": 5 },
+        "value_multiplier": 1.5
+    }
+}
+```
+
+| Parameter | Type | Required | Notes |
+|-----------|------|----------|-------|
+| `selector` | string | yes (except `owner`) | `"random"`, `"selected"`, `"all"`, or `"random_exclude"` |
+| `count` | int | no | Number to pick (`"random"`) or exclude (`"random_exclude"`) |
+| `filter` / `pooch_filter` | object | no | Filters for source pooch selection |
+| `use_saved` | string | no | Use IDs from a named slot instead of `selector` |
+| `vendor_id` | int | no | Sell to this specific vendor (credits the vendor's stock) |
+| `vendor_selector` | string | no | `"random"` — pick a random vendor from the owner's servers to sell to |
+| `value_multiplier` | float | no | Multiply the pooch's sale price by this factor (default: `1.0`) |
+
+If neither `vendor_id` nor `vendor_selector` is provided, the pooch is sold for its base price with no vendor involved.
+
+---
+
+#### `buy_pooch`
+
+Buys a pooch from a vendor and delivers it to the owner.
+
+```json
+{
+    "action_type": "buy_pooch",
+    "target_type": "owner",
+    "parameters": {
+        "vendor_selector": "random",
+        "pooch_filter": { "min_health": 50 },
+        "destination": "kennel",
+        "value_multiplier": 0.8
+    }
+}
+```
+
+| Parameter | Type | Required | Notes |
+|-----------|------|----------|-------|
+| `vendor_id` | int | one of | Buy from this specific vendor |
+| `vendor_selector` | string | one of | `"random"` — pick a random vendor from the owner's servers |
+| `pooch_selector` | string | no | `"random"` (default) or `"selected"` — which pooch from the vendor's stock to buy |
+| `pooch_filter` | object | no | Filter to narrow vendor stock candidates |
+| `value_multiplier` | float | no | Multiply the purchase price by this factor (default: `1.0`) |
+| `destination` | string | no | Where to deliver the pooch — same values as `create_pooch` (default: `"town"`) |
+| `save_as` | string | no | Save the purchased pooch's ID into a named slot |
+
+If no matching vendor or pooch is found, the action is a no-op.

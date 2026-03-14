@@ -20,20 +20,24 @@ logger = get_logger("database/load/load_resources")
 RESOURCE_ROOT = Path("resources")
 VENDOR_NAMES_ROOT = RESOURCE_ROOT / "vendor_names"
 
-_SELECTOR_TOKENS = {"selected", "random", "all"}
+_SELECTOR_TOKENS = {"selected", "random", "all", "random_exclude"}
 _JSONC_SUFFIXES = {".jsonc", ".json"}
 
-_ACTION_ALLOWED_KEYS = {"action_type", "target_type", "parameters"}
+_ACTION_ALLOWED_KEYS = {"action_type", "target_type", "parameters", "repeat"}
 
 _OWNER_FILTER_ALLOWED_KEYS = {
     "min_money",
     "max_money",
+    "exclude_money",
     "min_bloodskulls",
     "max_bloodskulls",
+    "exclude_bloodskulls",
     "min_pooches",
     "max_pooches",
+    "exclude_pooches",
     "min_kennels",
     "max_kennels",
+    "exclude_kennels",
     "kennels",
     "pooches",
 }
@@ -43,8 +47,10 @@ _KENNEL_FILTER_ALLOWED_KEYS = {
     "description",
     "min_capacity",
     "max_capacity",
+    "exclude_capacity",
     "min_pooches",
     "max_pooches",
+    "exclude_pooches",
     "pooches",
 }
 _POOCH_FILTER_ALLOWED_KEYS = {
@@ -53,13 +59,16 @@ _POOCH_FILTER_ALLOWED_KEYS = {
     "description",
     "min_age",
     "max_age",
+    "exclude_age",
     "sex",
     "min_health",
     "max_health",
+    "exclude_health",
     "is_virgin",
     "is_alive",
     "min_breeding_cooldown",
     "max_breeding_cooldown",
+    "exclude_breeding_cooldown",
     "has_any_breed",
     "has_all_breeds",
     "exclude_breeds",
@@ -222,6 +231,9 @@ class BaseEventValidator:
             self._validate_unknown_keys(current_path, action, _ACTION_ALLOWED_KEYS)
             action_type = self._validate_enum_string(current_path, action, "action_type", EVENT_ACTION_VALUES)
             target_type = self._validate_enum_string(current_path, action, "target_type", EVENT_TARGET_VALUES)
+            repeat = self._validate_optional_int(current_path, action, "repeat", minimum=1)
+            if repeat is not None and repeat < 1:
+                self.error(f"{current_path}.repeat", "must be at least 1")
             parameters = action.get("parameters", {})
             if not isinstance(parameters, dict):
                 self.error(f"{current_path}.parameters", "must be an object")
@@ -246,13 +258,14 @@ class BaseEventValidator:
         common_allowed: set[str] = set()
 
         if target_type == "pooch":
-            common_allowed |= {"selector", "filter", "save_as", "save_kennel", "use_saved"}
+            common_allowed |= {"selector", "count", "filter", "save_as", "save_kennel", "use_saved"}
             if "use_saved" not in parameters:
                 self._validate_entity_selector(params_path, parameters, "selector")
             else:
                 self._validate_optional_string(params_path, parameters, "use_saved", allow_blank=False)
                 if "selector" in parameters:
                     self.error(params_path, "'selector' and 'use_saved' cannot both be present")
+            self._validate_optional_int(params_path, parameters, "count", minimum=1)
             if "filter" in parameters:
                 self._validate_pooch_filter(
                     f"{params_path}.filter",
@@ -263,13 +276,14 @@ class BaseEventValidator:
             self._validate_optional_string(params_path, parameters, "save_as", allow_blank=False)
             self._validate_optional_bool(params_path, parameters, "save_kennel")
         elif target_type == "kennel":
-            common_allowed |= {"selector", "filter", "pooch_filter", "save_as", "use_saved"}
+            common_allowed |= {"selector", "count", "filter", "pooch_filter", "save_as", "use_saved"}
             if "use_saved" not in parameters:
                 self._validate_entity_selector(params_path, parameters, "selector")
             else:
                 self._validate_optional_string(params_path, parameters, "use_saved", allow_blank=False)
                 if "selector" in parameters:
                     self.error(params_path, "'selector' and 'use_saved' cannot both be present")
+            self._validate_optional_int(params_path, parameters, "count", minimum=1)
             if "filter" in parameters:
                 self._validate_kennel_filter(f"{params_path}.filter", parameters["filter"], allow_counts=False)
             if "pooch_filter" in parameters:
@@ -283,9 +297,22 @@ class BaseEventValidator:
         elif target_type == "owner":
             # Pooch/kennel actions that target "owner" apply to all pooches/kennels owned.
             # An optional filter narrows which ones are affected; no selector is needed.
+            # Exception: clone_pooch with target_type "owner" needs a selector to pick which pooch to clone.
             _kennel_only_actions = {"modify_kennel_capacity"}
+            _selector_picking_actions = {"clone_pooch"}
             _is_kennel_action = action_type in _kennel_only_actions
+            _needs_selector = action_type in _selector_picking_actions
             common_allowed |= {"filter", "pooch_filter", "save_as"}
+            if _needs_selector:
+                common_allowed |= {"selector", "count", "use_saved"}
+                if "use_saved" not in parameters:
+                    if "selector" in parameters:
+                        self._validate_entity_selector(params_path, parameters, "selector")
+                    self._validate_optional_int(params_path, parameters, "count", minimum=1)
+                else:
+                    self._validate_optional_string(params_path, parameters, "use_saved", allow_blank=False)
+                    if "selector" in parameters:
+                        self.error(params_path, "'selector' and 'use_saved' cannot both be present")
             if "filter" in parameters:
                 if _is_kennel_action:
                     self._validate_kennel_filter(f"{params_path}.filter", parameters["filter"], allow_counts=False)
@@ -434,6 +461,8 @@ class BaseEventValidator:
                     "first_filter",
                     "second_selector",
                     "second_filter",
+                    "require_unique",
+                    "require_same",
                     "baby_name",
                     "baby_sex",
                     "baby_age",
@@ -454,12 +483,63 @@ class BaseEventValidator:
                 self._validate_pooch_filter(
                     f"{params_path}.second_filter", parameters["second_filter"], allow_counts=False, allow_location=True
                 )
+            require_unique = self._validate_optional_bool(params_path, parameters, "require_unique")
+            require_same = self._validate_optional_bool(params_path, parameters, "require_same")
+            if require_unique is True and require_same is True:
+                self.error(params_path, "'require_unique' and 'require_same' cannot both be true")
             self._validate_optional_string(params_path, parameters, "baby_name", allow_blank=False)
             self._validate_enum_string(params_path, parameters, "baby_sex", SEX_VALUES)
             self._validate_optional_int(params_path, parameters, "baby_age", minimum=0)
             self._validate_optional_int(params_path, parameters, "baby_base_health")
             self._validate_optional_int(params_path, parameters, "baby_breeding_cooldown", minimum=0)
             self._validate_save_as_with_targets(params_path, parameters, {"baby", "first_parent", "second_parent"})
+            self._validate_target_type(path, action_type, target_type, {"owner"})
+
+        elif action_type == "sell_pooch":
+            self._validate_allowed_keys(
+                params_path,
+                parameters,
+                common_allowed | {"vendor_id", "vendor_selector", "value_multiplier"},
+            )
+            self._validate_optional_int(params_path, parameters, "vendor_id", minimum=1)
+            if "vendor_selector" in parameters:
+                self._validate_enum_string(params_path, parameters, "vendor_selector", {"random"})
+            if "vendor_id" in parameters and "vendor_selector" in parameters:
+                self.error(params_path, "'vendor_id' and 'vendor_selector' cannot both be present")
+            self._validate_optional_number(params_path, parameters, "value_multiplier", minimum_exclusive=0)
+            self._validate_target_type(path, action_type, target_type, {"pooch", "kennel", "owner"})
+
+        elif action_type == "buy_pooch":
+            self._validate_allowed_keys(
+                params_path,
+                parameters,
+                {
+                    "vendor_id",
+                    "vendor_selector",
+                    "pooch_selector",
+                    "pooch_filter",
+                    "value_multiplier",
+                    "destination",
+                    "save_as",
+                },
+            )
+            self._validate_optional_int(params_path, parameters, "vendor_id", minimum=1)
+            if "vendor_selector" in parameters:
+                self._validate_enum_string(params_path, parameters, "vendor_selector", {"random"})
+            if "vendor_id" in parameters and "vendor_selector" in parameters:
+                self.error(params_path, "'vendor_id' and 'vendor_selector' cannot both be present")
+            if "pooch_selector" in parameters:
+                self._validate_enum_string(params_path, parameters, "pooch_selector", {"random"})
+            if "pooch_filter" in parameters:
+                self._validate_pooch_filter(
+                    f"{params_path}.pooch_filter",
+                    parameters["pooch_filter"],
+                    allow_counts=False,
+                    allow_location=False,
+                )
+            self._validate_optional_number(params_path, parameters, "value_multiplier", minimum_exclusive=0)
+            self._validate_enum_string(params_path, parameters, "destination", {"kennel", "graveyard", "hell", "town"})
+            self._validate_optional_string(params_path, parameters, "save_as", allow_blank=False)
             self._validate_target_type(path, action_type, target_type, {"owner"})
 
         else:
@@ -481,8 +561,10 @@ class BaseEventValidator:
             self._validate_optional_string(path, filter_data, "description")
 
         self._validate_min_max_pair(path, filter_data, "min_capacity", "max_capacity", minimum=0)
+        self._validate_int_list(path, filter_data, "exclude_capacity")
         if isinstance(filter_data.get("max_pooches", 0), int):
             self._validate_min_max_pair(path, filter_data, "min_pooches", "max_pooches", minimum=0)
+        self._validate_int_list(path, filter_data, "exclude_pooches")
 
         pooches = filter_data.get("pooches", [])
         if not isinstance(pooches, list):
@@ -521,8 +603,10 @@ class BaseEventValidator:
             self._validate_optional_string(path, filter_data, "description")
 
         self._validate_min_max_pair(path, filter_data, "min_age", "max_age", minimum=0)
+        self._validate_int_list(path, filter_data, "exclude_age")
         self._validate_enum_string(path, filter_data, "sex", SEX_VALUES)
         self._validate_min_max_pair(path, filter_data, "min_health", "max_health")
+        self._validate_int_list(path, filter_data, "exclude_health")
         self._validate_optional_bool(path, filter_data, "is_virgin")
         self._validate_optional_bool(path, filter_data, "is_alive")
         self._validate_min_max_pair(
@@ -532,6 +616,7 @@ class BaseEventValidator:
             "max_breeding_cooldown",
             minimum=0,
         )
+        self._validate_int_list(path, filter_data, "exclude_breeding_cooldown")
 
         self._validate_name_list(path, filter_data, "has_any_breed", self.breed_names)
         self._validate_name_list(path, filter_data, "has_all_breeds", self.breed_names)
@@ -555,10 +640,15 @@ class BaseEventValidator:
 
         self._validate_unknown_keys(path, filter_data, _OWNER_FILTER_ALLOWED_KEYS)
 
-        self._validate_min_max_pair(path, filter_data, "min_money", "max_money", minimum=0)
-        self._validate_min_max_pair(path, filter_data, "min_bloodskulls", "max_bloodskulls", minimum=0)
-        self._validate_min_max_pair(path, filter_data, "min_pooches", "max_pooches", minimum=0)
+        self._validate_min_max_pair(path, filter_data, "min_money", "max_money")
+        self._validate_int_list(path, filter_data, "exclude_money")
+        self._validate_min_max_pair(path, filter_data, "min_bloodskulls", "max_bloodskulls")
+        self._validate_int_list(path, filter_data, "exclude_bloodskulls")
+        if isinstance(filter_data.get("max_pooches", 0), int):
+            self._validate_min_max_pair(path, filter_data, "min_pooches", "max_pooches", minimum=0)
+        self._validate_int_list(path, filter_data, "exclude_pooches")
         self._validate_min_max_pair(path, filter_data, "min_kennels", "max_kennels", minimum=0)
+        self._validate_int_list(path, filter_data, "exclude_kennels")
 
         kennels = filter_data.get("kennels", [])
         if not isinstance(kennels, list):
@@ -667,6 +757,21 @@ class BaseEventValidator:
         if normalized_value not in valid_names:
             self.error(f"{path}.{field_name}", "references a name that does not exist")
         return normalized_value
+
+    def _validate_int_list(self, path: str, value: dict[str, Any], field_name: str) -> list[int] | None:
+        if field_name not in value:
+            return None
+        raw_value = value[field_name]
+        if not isinstance(raw_value, list):
+            self.error(f"{path}.{field_name}", "must be a list of integers")
+            return None
+        validated: list[int] = []
+        for idx, item in enumerate(raw_value):
+            if isinstance(item, bool) or not isinstance(item, int):
+                self.error(f"{path}.{field_name}[{idx}]", "must be an integer")
+                continue
+            validated.append(item)
+        return validated
 
     def _validate_name_list(
         self,

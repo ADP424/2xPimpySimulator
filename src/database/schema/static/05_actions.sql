@@ -11,6 +11,7 @@ CREATE TABLE event_actions (
     action_order            INTEGER NOT NULL DEFAULT 0,
     action_type             event_action_type NOT NULL,
     target_type             event_target_type NOT NULL DEFAULT 'owner',
+    repeat                  INTEGER NOT NULL DEFAULT 1,
 
     parameters              JSONB NOT NULL DEFAULT '{}'::jsonb,
 

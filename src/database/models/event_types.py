@@ -9,7 +9,7 @@ JsonObject: TypeAlias = dict[str, JsonValue]
 EventSeverity: TypeAlias = Literal["trivial", "minor", "moderate", "major", "critical"]
 EventRarity: TypeAlias = Literal["common", "uncommon", "rare", "novel", "extraordinary"]
 EventTargetType: TypeAlias = Literal["owner", "pooch", "kennel"]
-EventEntitySelector: TypeAlias = Literal["selected", "random", "all"]
+EventEntitySelector: TypeAlias = Literal["selected", "random", "all", "random_exclude"]
 EventActionType: TypeAlias = Literal[
     "modify_money",
     "modify_bloodskulls",
@@ -27,6 +27,8 @@ EventActionType: TypeAlias = Literal[
     "set_breeding_cooldown",
     "start_event",
     "breed_pooches",
+    "sell_pooch",
+    "buy_pooch",
 ]
 
 
@@ -36,13 +38,16 @@ class PoochFilterSpec(TypedDict, total=False):
     description: str
     min_age: int
     max_age: int
+    exclude_age: list[int]
     sex: str
     min_health: int
     max_health: int
+    exclude_health: list[int]
     is_virgin: bool
     is_alive: bool
     min_breeding_cooldown: int
     max_breeding_cooldown: int
+    exclude_breeding_cooldown: list[int]
     has_any_breed: list[str]
     has_all_breeds: list[str]
     exclude_breeds: list[str]
@@ -58,20 +63,26 @@ class KennelFilterSpec(TypedDict, total=False):
     description: str
     min_capacity: int
     max_capacity: int
+    exclude_capacity: list[int]
     min_pooches: int
     max_pooches: int | str
+    exclude_pooches: list[int]
     pooches: list[PoochFilterSpec]
 
 
 class OwnerEventFilterSpec(TypedDict, total=False):
     min_money: int
     max_money: int
+    exclude_money: list[int]
     min_bloodskulls: int
     max_bloodskulls: int
+    exclude_bloodskulls: list[int]
     min_pooches: int
     max_pooches: int
+    exclude_pooches: list[int]
     min_kennels: int
     max_kennels: int
+    exclude_kennels: list[int]
     kennels: list[KennelFilterSpec]
     pooches: list[PoochFilterSpec]
 
@@ -138,6 +149,7 @@ class EventOutcomeAdvancedOptions(TypedDict, total=False):
 
 class EventActionBaseParameters(TypedDict, total=False):
     selector: EventEntitySelector
+    count: int  # for "random": how many to pick; for "random_exclude": how many to exclude
     filter: JsonObject
     save_as: str
     save_kennel: bool
@@ -207,6 +219,8 @@ class EventBreedPoochesParameters(TypedDict, total=False):
     first_filter: JsonObject
     second_selector: EventEntitySelector
     second_filter: JsonObject
+    require_unique: bool  # default True — the two selected pooches must be different individuals
+    require_same: bool  # default False — force both selectors to resolve to the same pooch
     baby_name: str
     baby_sex: str
     baby_age: int
@@ -214,6 +228,22 @@ class EventBreedPoochesParameters(TypedDict, total=False):
     baby_breeding_cooldown: int
     # save_as supports a plain str (saves baby IDs) or a list of {slot, target} dicts
     # where target is "baby", "first_parent", or "second_parent"
+
+
+class EventSellPoochParameters(EventActionBaseParameters, total=False):
+    vendor_id: int  # sell to a specific vendor
+    vendor_selector: str  # "random" — pick a random vendor (default if no vendor_id)
+    value_multiplier: float  # multiply the pooch's base sell price by this amount
+
+
+class EventBuyPoochParameters(TypedDict, total=False):
+    vendor_id: int  # buy from a specific vendor
+    vendor_selector: str  # "random" — pick a random vendor (default if no vendor_id)
+    pooch_selector: str  # "random" — pick a random pooch from the vendor's stock (default)
+    pooch_filter: JsonObject  # filter the vendor's stock before selecting
+    value_multiplier: float  # multiply the pooch's base buy price by this amount
+    destination: str  # "kennel" | "graveyard" | "hell" | "town"
+    save_as: str
 
 
 EventActionParameters: TypeAlias = (
@@ -227,6 +257,8 @@ EventActionParameters: TypeAlias = (
     | EventSetBreedingCooldownParameters
     | EventStartEventParameters
     | EventBreedPoochesParameters
+    | EventSellPoochParameters
+    | EventBuyPoochParameters
 )
 
 

@@ -32,7 +32,7 @@
             "action_type": "modify_money",
             "target_type": "owner",
             "parameters": {
-                "amount": 100 //TODO. Set to however expenive half a kennel expansion is.
+                "amount": 100 // TODO: Set to however expensive half a kennel expansion is.
             }
         }
     ]

@@ -1,6 +1,6 @@
 {
     "name": "Debt Repayment",
-    "description": "The bank has come for it's money.",
+    "description": "The bank has come for its money.",
     "flavor_text": "They will keep taking pooches until your debt improves.",
     "severity": "MODERATE",
     "rarity": "COMMON",
@@ -16,7 +16,7 @@
     },
     "actions": [
         {
-            "action_type": "modify_money", //TODO. Should force sell a random pooch you own.
+            "action_type": "modify_money", // TODO: Should force sell a random pooch you own.
             "target_type": "owner",
             "parameters": {
                 "min_amount": 100,

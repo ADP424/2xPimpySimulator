@@ -41,6 +41,7 @@
 | Clone your pooches by spending bloodskulls (better breeds = more expensive)                                                   | 5      |
 | Spend bloodskulls to reset pooch age (but at some EVIL cost)                                                                  | 5      |
 | Spend a LOT of bloodskulls to make your pooch IMMORTAL (but infertile, like a vampire, also can't go out at night)            | 5      |
+| Blood magic to breed YOURSELF with the dogs >:)                                                                               | 8      |
 
 ## Diseases
 | Feature                                                                                                                       | Points |
@@ -76,6 +77,7 @@
 | Stillbirths/miscarriages                                                                                                      | 3      |
 | Have pooch stats (fertility, aggressiveness, etc.) be partially inherited                                                     | 3      |
 | Add option to neuter dogs at the vet                                                                                          | 3      |
+| Have percentage of a breed increase by more if both pooches have a bit of that breed (so you can get closer to pure)          | 2      |
 
 ## Vendors
 | Feature                                                                                                                       | Points |

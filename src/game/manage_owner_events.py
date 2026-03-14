@@ -8,6 +8,7 @@ from src.database import (
     add_mutation_to_pooch,
     add_pooch_breeds,
     add_pooch_to_kennel,
+    add_pooch_to_vendor_stock,
     archive_active_event,
     bury_pooch,
     check_owner_event_filter_for_owner,
@@ -43,10 +44,15 @@ from src.database import (
     list_pooch_breed_weights,
     list_pooch_mutations,
     list_pooches_for_kennel,
+    list_servers_for_owner,
+    list_vendor_pooch_stock,
+    list_vendors,
     modify_kennel_pooch_limit,
     modify_pooch_age,
     modify_pooch_base_health,
     remove_mutation_from_pooch,
+    remove_pooch_from_kennel,
+    remove_pooch_from_vendor_stock,
     remove_random_mutation_from_pooch,
     rename_pooch,
     respond_to_active_owner_event,
@@ -63,6 +69,7 @@ from .constants import (
     EVENT_MAX_ACTIVE_PER_OWNER,
     POOCH_BREEDING_COOLDOWN,
 )
+from .manage_vendors import get_pooch_buy_price, get_pooch_sell_price
 from .models import (
     Event,
     EventContext,
@@ -545,12 +552,25 @@ async def _execute_single_action(
     async def _get_target_pooch_ids(target_type: str, selector: str, parameters: dict[str, Any]) -> list[int]:
         action_filter = parameters.get("filter", {})
         filter_spec = action_filter if isinstance(action_filter, dict) else {}
+        count_param = parameters.get("count")
+        count = int(count_param) if isinstance(count_param, int) and count_param > 0 else None
 
-        # use_saved: pull pooch IDs from a named slot
+        # use_saved: pull IDs from a named slot
         use_saved = parameters.get("use_saved")
         if isinstance(use_saved, str) and use_saved:
             slot = context.extra_data.get(use_saved, {})
-            return list(slot.get("pooch_ids", [])) if isinstance(slot, dict) else []
+            if not isinstance(slot, dict):
+                return []
+            if target_type == "kennel":
+                # Slot stores kennel_ids; enumerate pooches within those kennels
+                saved_kennel_ids = list(slot.get("kennel_ids", []))
+                pooch_filter_raw = parameters.get("pooch_filter", {})
+                pooch_filter = pooch_filter_raw if isinstance(pooch_filter_raw, dict) else {}
+                pooch_ids: list[int] = []
+                for kid in saved_kennel_ids:
+                    pooch_ids.extend(await list_matching_pooch_ids_in_kennel(owner_discord_id, kid, pooch_filter))
+                return pooch_ids
+            return list(slot.get("pooch_ids", []))
 
         if target_type == "owner":
             pooch_ids = await list_matching_pooch_ids(owner_discord_id, filter_spec)
@@ -558,10 +578,20 @@ async def _execute_single_action(
             if selector == "selected":
                 pooch_ids = [context.selected_pooch_id] if context.selected_pooch_id else []
             elif selector == "random":
-                pooch_id = await get_random_matching_pooch_id(owner_discord_id, filter_spec, rng)
-                pooch_ids = [pooch_id] if pooch_id is not None else []
+                all_ids = await list_matching_pooch_ids(owner_discord_id, filter_spec)
+                if count is not None:
+                    pooch_ids = rng.sample(all_ids, min(count, len(all_ids))) if all_ids else []
+                else:
+                    pooch_ids = [rng.choice(all_ids)] if all_ids else []
             elif selector == "all":
                 pooch_ids = await list_matching_pooch_ids(owner_discord_id, filter_spec)
+            elif selector == "random_exclude":
+                all_ids = await list_matching_pooch_ids(owner_discord_id, filter_spec)
+                if count is not None and count < len(all_ids):
+                    excluded = set(rng.sample(all_ids, count))
+                    pooch_ids = [pid for pid in all_ids if pid not in excluded]
+                else:
+                    pooch_ids = []
             else:
                 pooch_ids = []
         else:
@@ -573,10 +603,21 @@ async def _execute_single_action(
             if selector == "selected":
                 kennel_ids = [context.selected_kennel_id] if context.selected_kennel_id else []
             elif selector == "random":
-                kennel_id = await get_random_matching_kennel_id(owner_discord_id, kennel_filter, rng)
-                kennel_ids = [kennel_id] if kennel_id is not None else []
+                all_kennel_ids = await list_matching_kennel_ids(owner_discord_id, kennel_filter)
+                if count is not None:
+                    kennel_ids = rng.sample(all_kennel_ids, min(count, len(all_kennel_ids))) if all_kennel_ids else []
+                else:
+                    kennel_id = await get_random_matching_kennel_id(owner_discord_id, kennel_filter, rng)
+                    kennel_ids = [kennel_id] if kennel_id is not None else []
             elif selector == "all":
                 kennel_ids = await list_matching_kennel_ids(owner_discord_id, kennel_filter)
+            elif selector == "random_exclude":
+                all_kennel_ids = await list_matching_kennel_ids(owner_discord_id, kennel_filter)
+                if count is not None and count < len(all_kennel_ids):
+                    excluded = set(rng.sample(all_kennel_ids, count))
+                    kennel_ids = [kid for kid in all_kennel_ids if kid not in excluded]
+                else:
+                    kennel_ids = []
             else:
                 kennel_ids = []
 
@@ -602,6 +643,8 @@ async def _execute_single_action(
     async def _get_target_kennel_ids(target_type: str, selector: str, parameters: dict[str, Any]) -> list[int]:
         action_filter = parameters.get("filter", {})
         filter_spec = action_filter if isinstance(action_filter, dict) else {}
+        count_param = parameters.get("count")
+        count = int(count_param) if isinstance(count_param, int) and count_param > 0 else None
 
         # use_saved: pull kennel IDs from a named slot
         use_saved = parameters.get("use_saved")
@@ -614,10 +657,21 @@ async def _execute_single_action(
         elif selector == "selected":
             kennel_ids = [context.selected_kennel_id] if context.selected_kennel_id else []
         elif selector == "random":
-            kennel_id = await get_random_matching_kennel_id(owner_discord_id, filter_spec, rng)
-            kennel_ids = [kennel_id] if kennel_id is not None else []
+            all_kennel_ids = await list_matching_kennel_ids(owner_discord_id, filter_spec)
+            if count is not None:
+                kennel_ids = rng.sample(all_kennel_ids, min(count, len(all_kennel_ids))) if all_kennel_ids else []
+            else:
+                kennel_id = await get_random_matching_kennel_id(owner_discord_id, filter_spec, rng)
+                kennel_ids = [kennel_id] if kennel_id is not None else []
         elif selector == "all":
             kennel_ids = await list_matching_kennel_ids(owner_discord_id, filter_spec)
+        elif selector == "random_exclude":
+            all_kennel_ids = await list_matching_kennel_ids(owner_discord_id, filter_spec)
+            if count is not None and count < len(all_kennel_ids):
+                excluded = set(rng.sample(all_kennel_ids, count))
+                kennel_ids = [kid for kid in all_kennel_ids if kid not in excluded]
+            else:
+                kennel_ids = []
         else:
             kennel_ids = []
 
@@ -897,14 +951,26 @@ async def _execute_single_action(
                     return rng.choice(ids) if ids else None
                 return None
 
-            first_pooch_id = await _resolve_breed_pooch_id(first_selector, first_filter)
-            second_pooch_id = await _resolve_breed_pooch_id(second_selector, second_filter)
+            require_unique = bool(parameters.get("require_unique", True))
+            require_same = bool(parameters.get("require_same", False))
 
-            if first_pooch_id is None or second_pooch_id is None or first_pooch_id == second_pooch_id:
-                logger.warning("breed_pooches: could not resolve two distinct pooches; skipping")
+            first_pooch_id = await _resolve_breed_pooch_id(first_selector, first_filter)
+            if require_same:
+                second_pooch_id = first_pooch_id
+            else:
+                second_pooch_id = await _resolve_breed_pooch_id(second_selector, second_filter)
+
+            if first_pooch_id is None or second_pooch_id is None:
+                logger.warning("breed_pooches: could not resolve one or both pooches; skipping")
+            elif require_unique and first_pooch_id == second_pooch_id:
+                logger.warning(
+                    "breed_pooches: require_unique is set but both selectors resolved to the same pooch; skipping"
+                )
             else:
                 try:
-                    baby_ids = await breed_pooches(first_pooch_id, second_pooch_id, rng_seed=rng.randint(0, 2**31))
+                    baby_ids = await breed_pooches(
+                        first_pooch_id, second_pooch_id, rng_seed=rng.randint(0, 2**31), skip_validation=True
+                    )
                     result.pooches_created.extend(baby_ids)
                     result.pooches_affected.extend(baby_ids)
 
@@ -947,6 +1013,94 @@ async def _execute_single_action(
 
                 except ValueError as e:
                     logger.warning(f"breed_pooches: breeding failed — {e}")
+
+        elif action_type == "sell_pooch":
+            pooch_ids = await _get_target_pooch_ids(target_type, selector, parameters)
+            vendor_id = parameters.get("vendor_id")
+            vendor_selector = str(parameters.get("vendor_selector", "random")).strip().lower()
+            value_multiplier = parameters.get("value_multiplier")
+            multiplier = float(value_multiplier) if isinstance(value_multiplier, (int, float)) else 1.0
+
+            # Resolve vendor if not explicitly specified
+            resolved_vendor_id: int | None = vendor_id if isinstance(vendor_id, int) else None
+            if resolved_vendor_id is None and vendor_selector == "random":
+                servers = await list_servers_for_owner(owner_discord_id)
+                all_vendors = []
+                for server in servers:
+                    all_vendors.extend(await list_vendors(server.discord_id))
+                if all_vendors:
+                    resolved_vendor_id = rng.choice(all_vendors).id
+
+            for pooch_id in pooch_ids:
+                pooch = await get_pooch_by_id(pooch_id)
+                if pooch is None or not pooch.alive:
+                    continue
+                if resolved_vendor_id is not None:
+                    price = round((await get_pooch_sell_price(pooch_id, resolved_vendor_id)) * multiplier)
+                    await give_money_to_owner(owner_discord_id, price)
+                    await transfer_pooch_to_vendor(pooch_id, resolved_vendor_id)
+                    await remove_pooch_from_kennel(pooch_id)
+                    await add_pooch_to_vendor_stock(resolved_vendor_id, pooch_id)
+                    result.money_changed += price
+                else:
+                    price = round((await get_pooch_sell_price(pooch_id)) * multiplier)
+                    await give_money_to_owner(owner_discord_id, price)
+                    result.money_changed += price
+                result.pooches_affected.append(pooch_id)
+
+        elif action_type == "buy_pooch":
+            vendor_id = parameters.get("vendor_id")
+            vendor_selector = str(parameters.get("vendor_selector", "random")).strip().lower()
+            pooch_selector = str(parameters.get("pooch_selector", "random")).strip().lower()
+            pooch_filter_raw = parameters.get("pooch_filter", {})
+            pooch_filter = pooch_filter_raw if isinstance(pooch_filter_raw, dict) else {}
+            value_multiplier = parameters.get("value_multiplier")
+            multiplier = float(value_multiplier) if isinstance(value_multiplier, (int, float)) else 1.0
+            destination_str = parameters.get("destination", "kennel")
+
+            # Resolve vendor
+            resolved_vendor_id = vendor_id if isinstance(vendor_id, int) else None
+            if resolved_vendor_id is None and vendor_selector == "random":
+                servers = await list_servers_for_owner(owner_discord_id)
+                all_vendors = []
+                for server in servers:
+                    all_vendors.extend(await list_vendors(server.discord_id))
+                if all_vendors:
+                    resolved_vendor_id = rng.choice(all_vendors).id
+
+            if resolved_vendor_id is None:
+                logger.warning("buy_pooch: no vendor available; skipping")
+            else:
+                stock = await list_vendor_pooch_stock(resolved_vendor_id)
+                if pooch_filter:
+                    filter_ids = await list_matching_pooch_ids(owner_discord_id, pooch_filter)
+                    stock = [p for p in stock if p.id in set(filter_ids)]
+                if not stock:
+                    logger.warning("buy_pooch: no pooches available from vendor; skipping")
+                else:
+                    pooch_db = rng.choice(stock) if pooch_selector == "random" else stock[0]
+                    price = round((await get_pooch_buy_price(pooch_db.id, resolved_vendor_id)) * multiplier)
+                    owner = await get_owner_by_discord_id(owner_discord_id)
+                    if owner is None or owner.dollars < price:
+                        logger.warning("buy_pooch: owner cannot afford the pooch; skipping")
+                    else:
+                        await remove_pooch_from_vendor_stock(resolved_vendor_id, pooch_db.id)
+                        await give_money_to_owner(owner_discord_id, -price)
+                        await transfer_pooch_to_owner(pooch_db.id, owner_discord_id)
+
+                        dest_key, kennel_name = await _deliver_pooch(owner_discord_id, pooch_db.id, destination_str)
+                        result.money_changed -= price
+                        result.pooches_created.append(pooch_db.id)
+                        result.pooches_affected.append(pooch_db.id)
+
+                        save_as = parameters.get("save_as")
+                        if isinstance(save_as, str) and save_as:
+                            context.extra_data[save_as] = {"pooch_ids": [pooch_db.id]}
+
+                        if dest_key == "kennel":
+                            result.message = f"{pooch_db.name} was purchased and placed in {kennel_name}!"
+                        else:
+                            result.message = f"{pooch_db.name} was purchased!"
 
         # Other Actions
         elif action_type == "start_event":
@@ -993,8 +1147,10 @@ async def _execute_event_actions(
     result = EventResult()
 
     for action in sorted(actions, key=lambda a: a.action_order):
-        action_result = await _execute_single_action(owner_discord_id, action, context, rng)
-        result.merge(action_result)
+        repeat = max(int(action.repeat), 1) if isinstance(action.repeat, int) else 1
+        for _ in range(repeat):
+            action_result = await _execute_single_action(owner_discord_id, action, context, rng)
+            result.merge(action_result)
 
     return result
 

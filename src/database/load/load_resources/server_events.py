@@ -246,6 +246,7 @@ async def load_server_events():
                         action_order=idx,
                         action_type=str(action_data.get("action_type")).lower(),
                         target_type=str(action_data.get("target_type", "owner")).lower(),
+                        repeat=int(action_data.get("repeat", 1)),
                         parameters=resolve_event_action_parameters(
                             action_data.get("parameters", {}), breed_name_to_id, mutation_name_to_id
                         ),
@@ -272,6 +273,7 @@ async def load_server_events():
                             action_order=act_idx,
                             action_type=str(opt_action_data.get("action_type")).lower(),
                             target_type=str(opt_action_data.get("target_type", "owner")).lower(),
+                            repeat=int(opt_action_data.get("repeat", 1)),
                             parameters=resolve_event_action_parameters(
                                 opt_action_data.get("parameters", {}), breed_name_to_id, mutation_name_to_id
                             ),
@@ -299,6 +301,7 @@ async def load_server_events():
                             action_order=outcome_action_idx,
                             action_type=str(outcome_action_data.get("action_type")).lower(),
                             target_type=str(outcome_action_data.get("target_type", "owner")).lower(),
+                            repeat=int(outcome_action_data.get("repeat", 1)),
                             parameters=resolve_event_action_parameters(
                                 outcome_action_data.get("parameters", {}),
                                 breed_name_to_id,

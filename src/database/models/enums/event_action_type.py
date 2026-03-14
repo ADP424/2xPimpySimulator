@@ -17,6 +17,8 @@ EVENT_ACTION_TYPE = ENUM(
     "set_breeding_cooldown",
     "start_event",
     "breed_pooches",
+    "sell_pooch",
+    "buy_pooch",
     name="event_action_type",
     create_type=False,
 )

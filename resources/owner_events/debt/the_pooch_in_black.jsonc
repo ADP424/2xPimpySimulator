@@ -1,5 +1,5 @@
 {
-    "name": "The Pooch In Black",
+    "name": "The Pooch in Black",
     "description": "A black dog has shown up in your darkest moment.",
     "flavor_text": "Hopfuly you can get back on your two feet.",
     "severity": "MAJOR",
@@ -38,7 +38,7 @@
             "target_type": "pooch",
             "parameters": {
                 "use_saved": "black_pooch",
-                "breed": "mexican_hairless_dog",
+                "breed": "Mexican Hairless Dog",
                 "weight": 0.75
             }
         },
@@ -47,15 +47,14 @@
             "target_type": "pooch",
             "parameters": {
                 "use_saved": "black_pooch",
-                "selector": "selected", //not sure if this is right
-                "mutation": "sent_by_death"
+                "mutation": "Sent by Death"
             }
         },
         {
             "action_type": "modify_money",
             "target_type": "owner",
             "parameters": {
-                "amount": 100 //TODO. Set to pay off your debt.
+                "amount": 100 // TODO: Set to pay off your debt.
             }
         }
     ]

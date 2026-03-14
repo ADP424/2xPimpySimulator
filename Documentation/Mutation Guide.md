@@ -69,6 +69,18 @@ An object representing more complex options for the mutatation (more information
 
 # Advanced Options Guide
 
+## Aquisition Options
+
+### `born_from_ritual` : `bool (int)`
+Whether the breed can show up in pooches created by spending bloodskulls on the altar.
+- `1`: The breed can show up in pooches created from sacrifice. This is the default.
+- `0`: The breed will not show up in pooches created from sacrifice.
+
+### `sold_by_vendors` : `bool (int)`
+Whether the breed can show up on pooches generated to be sold by vendors or not.
+- `1`: The breed can show up in vendor pooches. This is the default.
+- `0`: The breed will not show up in vendor pooches.
+
 ## Breeding Options
 
 ### `breeding_cooldown` : `int`

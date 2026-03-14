@@ -6,16 +6,20 @@
     "rarity": "NOVEL",
     "requires_response": false,
     "filter": {
-        "pooches": [ // TODO: Make in kennel
-            { 
-                "sex": "male",
-                "is_alive": true,
-                "max_breeding_cooldown": 0
-            },
-            { 
-                "sex": "female",
-                "is_alive": true,
-                "max_breeding_cooldown": 0
+        "kennels": [
+            {
+                "pooches": [
+                    { 
+                        "sex": "male",
+                        "is_alive": true,
+                        "max_breeding_cooldown": 0
+                    },
+                    { 
+                        "sex": "female",
+                        "is_alive": true,
+                        "max_breeding_cooldown": 0
+                    }
+                ]
             }
         ]
     },

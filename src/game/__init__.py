@@ -5,17 +5,6 @@ from .breeding import (
 from .change_day import (
     run_day_change,
 )
-from .manage_events import (
-    get_active_events_for_owner,
-    get_event_history,
-    get_pending_event,
-    list_all_owner_events,
-    process_expired_events,
-    respond_to_event,
-    run_hourly_event_check,
-    trigger_random_event,
-    trigger_specific_event,
-)
 from .manage_graveyard import (
     list_graveyard_pooches,
 )
@@ -29,6 +18,17 @@ from .manage_hell import (
 from .manage_kennels import (
     list_kennel_pooches,
     rename_kennel,
+)
+from .manage_owner_events import (
+    get_active_events_for_owner,
+    get_event_history,
+    get_pending_event,
+    list_all_owner_events,
+    process_expired_events,
+    respond_to_event,
+    run_hourly_event_check,
+    trigger_random_event,
+    trigger_specific_event,
 )
 from .manage_owners import (
     add_money,

@@ -21,7 +21,7 @@
     },
     "actions": [
         {
-            "action_type": "modify_money", //TODO. Should force sell a random kennel you own.
+            "action_type": "modify_money", // TODO: Should force sell a random kennel you own.
             "target_type": "owner",
             "parameters": {
                 "min_amount": 100,

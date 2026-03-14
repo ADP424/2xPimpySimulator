@@ -699,6 +699,23 @@ async def list_servers_for_pooch(pooch_id: int) -> list[Server]:
     return list(response.scalars().all())
 
 
+async def list_servers_for_owner(owner_discord_id: int) -> list[Server]:
+    """
+    Fetch all servers the given owner belongs to.
+    """
+
+    async with session_scope() as session:
+        query = (
+            select(Server)
+            .join(OwnerServer, OwnerServer.server_discord_id == Server.discord_id)
+            .where(OwnerServer.owner_discord_id == owner_discord_id)
+            .order_by(Server.joined_at.asc(), Server.discord_id.asc())
+        )
+        response = await session.execute(query)
+
+    return list(response.scalars().all())
+
+
 async def list_vendor_pooch_stock(vendor_id: int) -> list[Pooch]:
     """
     Fetch a list of every pooch a given vendor has for sale.

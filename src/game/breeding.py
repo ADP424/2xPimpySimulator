@@ -41,7 +41,9 @@ def _combine_puppy_name(father_name: str, mother_name: str) -> str:
     return name
 
 
-async def breed_pooches(first_pooch_id: int, second_pooch_id: int, rng_seed: Optional[int] = None) -> list[int]:
+async def breed_pooches(
+    first_pooch_id: int, second_pooch_id: int, rng_seed: Optional[int] = None, skip_validation=False
+) -> list[int]:
     """
     Breed two pooches and create a fetus in the mother.
 
@@ -55,6 +57,9 @@ async def breed_pooches(first_pooch_id: int, second_pooch_id: int, rng_seed: Opt
 
     rng_seed: int, optional
         The seed to use to randomize random values with.
+
+    skip_validation: bool, default : False
+        Whether to skip validation (like pooches being different sexes, on breeding cooldown, etc.) or not.
 
     Returns
     -------
@@ -74,12 +79,12 @@ async def breed_pooches(first_pooch_id: int, second_pooch_id: int, rng_seed: Opt
 
     first_pooch = await get_pooch_by_id(first_pooch_id)
     second_pooch = await get_pooch_by_id(second_pooch_id)
-    if first_pooch is None:
+    if first_pooch is None and not skip_validation:
         raise PoochNotFound(first_pooch_id)
-    if second_pooch is None:
+    if second_pooch is None and not skip_validation:
         raise PoochNotFound(second_pooch_id)
 
-    if first_pooch.sex == second_pooch.sex:
+    if first_pooch.sex == second_pooch.sex and not skip_validation:
         raise ValueError("Pooches must be different sexes to breed.")
 
     if first_pooch.sex == "male":
@@ -87,7 +92,7 @@ async def breed_pooches(first_pooch_id: int, second_pooch_id: int, rng_seed: Opt
     else:
         father, mother = second_pooch, first_pooch
 
-    if father.breeding_cooldown > 0 or mother.breeding_cooldown > 0:
+    if (father.breeding_cooldown > 0 or mother.breeding_cooldown > 0) and not skip_validation:
         raise ValueError("One or both pooches are still on breeding cooldown.")
 
     await set_pooch_breeding_cooldown(

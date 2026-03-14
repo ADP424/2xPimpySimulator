@@ -142,7 +142,11 @@ async def add_breed_to_pooch(
 
 
 async def add_mutation_to_pooch(
-    pooch_id: int, mutation_id: Optional[int] = None, rng: Optional[random.Random] = None
+    pooch_id: int,
+    mutation_id: Optional[int] = None,
+    rng: Optional[random.Random] = None,
+    from_vendor: bool = False,
+    from_ritual: bool = False,
 ) -> Optional[PoochMutation]:
     """
     Add the mutation with the given ID to the pooch with the given ID.
@@ -158,6 +162,14 @@ async def add_mutation_to_pooch(
 
     rng: Random, optional
         The random generator to use to determine the random mutation, if `mutation_id` is left blank.
+
+    from_vendor: bool, default : False
+        Specify whether this mutation is being added from a vendor or not.
+        This matters because some mutations can't show up on pooches sold by vendors.
+
+    from_ritual: bool, default : False
+        Specify whether this mutation is being added from a bloodskull ritual or not.
+        This matters because some mutations can't show up on pooches created by sacrificial rituals.
 
     Returns
     -------
@@ -185,6 +197,11 @@ async def add_mutation_to_pooch(
                     )
                 )
             )
+            if from_vendor:
+                mutation_query = mutation_query.where(not_(Mutation.advanced_options.contains({"sold_by_vendors": 0})))
+            if from_ritual:
+                mutation_query = mutation_query.where(not_(Mutation.advanced_options.contains({"born_from_ritual": 0})))
+
             mutation_response = await session.execute(mutation_query)
             rows = [(mutation, weight) for mutation, weight in mutation_response.tuples().all()]
             mutation = weighted_choice(rng, rows)
