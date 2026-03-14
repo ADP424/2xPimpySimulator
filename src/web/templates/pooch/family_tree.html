@@ -140,7 +140,17 @@
             <h1 class="text-2xl font-bold" id="tree-title">Family Tree</h1>
             <span class="badge badge-neutral" id="tree-stats"></span>
         </div>
-        <div class="flex gap-2">
+        <div class="flex items-center gap-3 flex-wrap">
+            <div class="flex items-center gap-2">
+                <label class="text-xs text-base-content/50">Ancestors:</label>
+                <input id="ancestor-depth" type="number" min="0" max="16" value="5"
+                       class="input input-xs input-bordered w-16" onchange="reloadTree()">
+            </div>
+            <div class="flex items-center gap-2">
+                <label class="text-xs text-base-content/50">Descendants:</label>
+                <input id="descendant-depth" type="number" min="0" max="16" value="4"
+                       class="input input-xs input-bordered w-16" onchange="reloadTree()">
+            </div>
             <a id="back-to-pooch" href="#" class="btn btn-ghost btn-sm">View Pooch</a>
             <button onclick="history.back()" class="btn btn-ghost btn-sm">Back</button>
         </div>
@@ -185,11 +195,27 @@ const COUPLE_GAP = 18; // tighter gap between mated pairs
 let svg, g, zoomBehavior;
 let treeData = null;
 
+async function loadTree() {
+    const ancestorDepth = document.getElementById('ancestor-depth')?.value ?? 5;
+    const descendantDepth = document.getElementById('descendant-depth')?.value ?? 4;
+    const resp = await fetch(`/api/pooches/${PAGE_DATA.poochId}/family-tree?ancestor_depth=${ancestorDepth}&descendant_depth=${descendantDepth}`);
+    if (!resp.ok) throw new Error('Failed to load');
+    return await resp.json();
+}
+
+async function reloadTree() {
+    try {
+        treeData = await loadTree();
+        document.getElementById('tree-stats').textContent = `${treeData.nodes.length} members`;
+        renderTree(treeData);
+    } catch (err) {
+        console.error(err);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     try {
-        const resp = await fetch(`/api/pooches/${PAGE_DATA.poochId}/family-tree`);
-        if (!resp.ok) throw new Error('Failed to load');
-        treeData = await resp.json();
+        treeData = await loadTree();
 
         document.getElementById('loading').style.display = 'none';
         document.getElementById('tree-page').style.display = 'block';

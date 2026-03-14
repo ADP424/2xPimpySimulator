@@ -95,9 +95,9 @@ def get_pooch_family_tree(pooch_id: int):
     from game import get_pooch_family_tree
 
     ancestor_depth = request.args.get("ancestor_depth", 5, type=int)
-    descendant_depth = request.args.get("descendant_depth", 2, type=int)
-    ancestor_depth = min(max(ancestor_depth, 0), 8)
-    descendant_depth = min(max(descendant_depth, 0), 4)
+    descendant_depth = request.args.get("descendant_depth", 4, type=int)
+    ancestor_depth = min(max(ancestor_depth, 0), 16)
+    descendant_depth = min(max(descendant_depth, 0), 16)
 
     try:
         tree = run_async(get_pooch_family_tree(pooch_id, ancestor_depth, descendant_depth))

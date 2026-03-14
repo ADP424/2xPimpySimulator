@@ -28,6 +28,9 @@ async def get_pooch_family_tree(pooch_id: int, ancestor_depth: int = 5, descenda
     edges: set[tuple[int, int]] = set()
     # Track the maximum generation (distance from root) for each node
     node_generation: dict[int, int] = {}
+    # Track the max remaining depth each node has been explored with
+    ancestor_explored: dict[int, int] = {}
+    descendant_explored: dict[int, int] = {}
 
     async def _add_node(orm_pooch, generation: int):
         pid = orm_pooch.id
@@ -48,33 +51,36 @@ async def get_pooch_family_tree(pooch_id: int, ancestor_depth: int = 5, descenda
     async def _fetch_ancestors(pid: int, depth: int, generation: int):
         if depth <= 0:
             return
+        # Skip if already explored with at least this much depth
+        if ancestor_explored.get(pid, -1) >= depth:
+            return
+        ancestor_explored[pid] = depth
+
         father, mother = await get_pooch_parents(pid)
         for parent in (father, mother):
             if parent is None:
                 continue
             edges.add((parent.id, pid))
-            prev_gen = node_generation.get(parent.id, -1)
             await _add_node(parent, generation)
-            # Only recurse if this is a new node or placed at a higher generation
-            if generation > prev_gen:
-                await _fetch_ancestors(parent.id, depth - 1, generation + 1)
+            await _fetch_ancestors(parent.id, depth - 1, generation + 1)
 
     async def _fetch_descendants(pid: int, depth: int, generation: int):
         if depth <= 0:
             return
+        # Skip if already explored with at least this much depth
+        if descendant_explored.get(pid, -1) >= depth:
+            return
+        descendant_explored[pid] = depth
+
         children = await list_pooch_children(pid)
         for child in children:
             edges.add((pid, child.id))
-            prev_gen = node_generation.get(child.id, 999)
             await _add_node(child, generation)
 
             # Also fetch and add the child's other parent (mate of pid)
             father, mother = await get_pooch_parents(child.id)
             for parent in (father, mother):
                 if parent is not None and parent.id != pid:
-                    # Place the mate at the same generation as pid, but don't
-                    # override if the node already has a generation (e.g. it's
-                    # also a descendant placed at a lower generation)
                     if parent.id in node_generation:
                         await _add_node(parent, node_generation[parent.id])
                     else:
@@ -82,9 +88,7 @@ async def get_pooch_family_tree(pooch_id: int, ancestor_depth: int = 5, descenda
                         await _add_node(parent, mate_gen)
                     edges.add((parent.id, child.id))
 
-            # Only recurse if this is a new node or placed at a lower generation
-            if generation < prev_gen:
-                await _fetch_descendants(child.id, depth - 1, generation - 1)
+            await _fetch_descendants(child.id, depth - 1, generation - 1)
 
     # Start with the root pooch
     root_orm = await db_get_pooch_by_id(pooch_id)
