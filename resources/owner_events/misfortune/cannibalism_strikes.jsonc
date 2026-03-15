@@ -3,7 +3,7 @@
     "description": "One of your cannibal pooches ate another pooch.",
     "flavor_text": "He must have been hungry.",
     "severity": "MODERATE",
-    "rarity": "RARE",
+    "rarity": "NOVEL",
     "requires_response": false,
     "filter": {
         "kennels": [
