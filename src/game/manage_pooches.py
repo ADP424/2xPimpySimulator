@@ -1,118 +1,14 @@
-from database import get_pooch_by_id as db_get_pooch_by_id
+from database import get_parentage_maps, get_pooch_by_id as db_get_pooch_by_id, list_pooches_with_health
 from database import (
     get_pooch_parents,
     list_pooch_children,
     list_pooch_siblings,
 )
-from database.models import PoochParentage
-from database.models import Pooch as PoochORM
-from database.session import session_scope
 from database.update import rename_pooch as db_rename_pooch
-from sqlalchemy import func, select
 
 from .constants import MAX_NAME_LENGTH
 from .exceptions.pooch_not_found import PoochNotFound
 from .models import Pooch, to_pooch
-
-
-async def _load_parentage_maps(
-    root_id: int, ancestor_depth: int, descendant_depth: int,
-) -> tuple[dict[int, tuple[int | None, int | None]], dict[int, list[int]]]:
-    """Load only the parentage rows reachable from *root_id* within the given
-    depth limits using recursive CTEs (1 query).
-
-    Returns (parents_of, children_of) where:
-        parents_of[child_id] = (father_id, mother_id)
-        children_of[parent_id] = [child_id, ...]
-    """
-    from sqlalchemy import text
-
-    sql = text("""
-        WITH RECURSIVE
-        ancestor_rows(child_id, father_id, mother_id, depth) AS (
-            SELECT pp.child_id, pp.father_id, pp.mother_id, 0
-            FROM pooch_parentage pp WHERE pp.child_id = :root_id
-            UNION ALL
-            SELECT pp.child_id, pp.father_id, pp.mother_id, ar.depth + 1
-            FROM pooch_parentage pp
-            JOIN ancestor_rows ar
-              ON pp.child_id = ar.father_id OR pp.child_id = ar.mother_id
-            WHERE ar.depth < :anc_depth
-        ),
-        descendant_rows(child_id, father_id, mother_id, depth) AS (
-            SELECT pp.child_id, pp.father_id, pp.mother_id, 1
-            FROM pooch_parentage pp
-            WHERE pp.father_id = :root_id OR pp.mother_id = :root_id
-            UNION ALL
-            SELECT pp.child_id, pp.father_id, pp.mother_id, dr.depth + 1
-            FROM pooch_parentage pp
-            JOIN descendant_rows dr
-              ON pp.father_id = dr.child_id OR pp.mother_id = dr.child_id
-            WHERE dr.depth < :desc_depth
-        )
-        SELECT DISTINCT child_id, father_id, mother_id FROM (
-            SELECT child_id, father_id, mother_id FROM ancestor_rows
-            UNION
-            SELECT child_id, father_id, mother_id FROM descendant_rows
-        ) combined
-    """)
-
-    parents_of: dict[int, tuple[int | None, int | None]] = {}
-    children_of: dict[int, list[int]] = {}
-
-    async with session_scope() as session:
-        result = await session.execute(
-            sql, {"root_id": root_id, "anc_depth": ancestor_depth, "desc_depth": descendant_depth}
-        )
-        rows = result.all()
-
-    for row in rows:
-        cid, fid, mid = row[0], row[1], row[2]
-        parents_of[cid] = (fid, mid)
-        if fid is not None:
-            children_of.setdefault(fid, []).append(cid)
-        if mid is not None:
-            children_of.setdefault(mid, []).append(cid)
-
-    # Sort children by ID (matches creation order since IDs are autoincrement)
-    for kids in children_of.values():
-        kids.sort()
-
-    return parents_of, children_of
-
-
-async def _batch_fetch_pooches(pooch_ids: set[int]) -> dict[int, dict]:
-    """Batch-fetch pooch data + computed health in a single joined query.
-
-    Returns dict of {pooch_id: {id, name, sex, alive, age, health}}.
-    """
-    if not pooch_ids:
-        return {}
-
-    from database.models import HealthImpactWeight, Mutation, PoochMutation
-
-    async with session_scope() as session:
-        query = (
-            select(
-                PoochORM.id,
-                PoochORM.name,
-                PoochORM.sex,
-                PoochORM.alive,
-                PoochORM.age,
-                (PoochORM.base_health - PoochORM.health_loss_age + func.coalesce(func.sum(HealthImpactWeight.weight), 0)).label("health"),
-            )
-            .outerjoin(PoochMutation, PoochMutation.pooch_id == PoochORM.id)
-            .outerjoin(Mutation, Mutation.id == PoochMutation.mutation_id)
-            .outerjoin(HealthImpactWeight, HealthImpactWeight.health_impact == Mutation.health_impact)
-            .where(PoochORM.id.in_(pooch_ids))
-            .group_by(PoochORM.id, PoochORM.name, PoochORM.sex, PoochORM.alive, PoochORM.age, PoochORM.base_health, PoochORM.health_loss_age)
-        )
-        rows = (await session.execute(query)).all()
-
-    return {
-        row[0]: {"id": row[0], "name": row[1], "sex": row[2], "alive": row[3], "age": row[4], "health": int(row[5])}
-        for row in rows
-    }
 
 
 def _pooch_status(alive: bool, age: int, health: int) -> str:
@@ -139,7 +35,7 @@ async def get_pooch_family_tree(pooch_id: int, ancestor_depth: int = 5, descenda
         Each edge: ``{source, target}`` where source is the parent.
     """
     # Phase 1: Load relevant parentage via recursive CTE (1 query)
-    parents_of, children_of = await _load_parentage_maps(pooch_id, ancestor_depth, descendant_depth)
+    parents_of, children_of = await get_parentage_maps(pooch_id, ancestor_depth, descendant_depth)
 
     # Phase 2: In-memory traversal to collect pooch IDs, edges, and generations
     needed_ids: set[int] = set()
@@ -206,7 +102,7 @@ async def get_pooch_family_tree(pooch_id: int, ancestor_depth: int = 5, descenda
                 edges.add((mother_id, candidate_id))
 
     # Phase 3: Batch-fetch all needed pooches + health in one joined query
-    pooches = await _batch_fetch_pooches(needed_ids)
+    pooches = await list_pooches_with_health(needed_ids)
 
     # Verify root exists
     if pooch_id not in pooches:
