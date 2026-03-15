@@ -519,6 +519,27 @@ async def set_kennel_pooch_limit(kennel_id: int, limit: int) -> Optional[Kennel]
         return kennel
 
 
+async def reset_visited_park_today() -> int:
+    """Reset every owner's `visited_park_today` flag to False."""
+    async with session_scope() as session:
+        query = select(Owner)
+        owners = (await session.execute(query)).scalars().all()
+        for owner in owners:
+            owner.visited_park_today = False
+        return len(owners)
+
+
+async def set_owner_visited_park_today(owner_discord_id: int, visited: bool = True) -> Optional[Owner]:
+    """Set the `visited_park_today` flag for the owner with the given Discord ID."""
+    async with session_scope() as session:
+        query = select(Owner).where(Owner.discord_id == owner_discord_id)
+        owner = (await session.execute(query)).scalar_one_or_none()
+        if owner is None:
+            return None
+        owner.visited_park_today = visited
+    return owner
+
+
 async def set_owner_begged_today(owner_discord_id: int, begged_today: bool = True) -> Optional[Owner]:
     """
     Set the `begged_today` flag for the owner with the given Discord ID.

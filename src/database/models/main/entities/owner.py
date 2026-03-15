@@ -23,6 +23,7 @@ class Owner(Base):
     dollars: Mapped[int] = mapped_column(Integer, default=100)
     bloodskulls: Mapped[int] = mapped_column(Integer, default=0)
     begged_today: Mapped[bool] = mapped_column(Boolean, default=True)
+    visited_park_today: Mapped[bool] = mapped_column(Boolean, default=False)
     joined_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=text("now()"))
 
     owned_pooches: Mapped[list[Pooch]] = relationship(

@@ -6,6 +6,7 @@ from src.bot.ui.util import InteractionResponder
 
 from .church import ChurchView
 from .components import PaginatorView
+from .park import ParkView
 from .vendors import VendorsPageSource
 from .vet_clinic import VetClinicView
 
@@ -25,6 +26,7 @@ class TownNavigationSelect(Select):
                 discord.SelectOption(label="Vendors", value="vendors"),
                 discord.SelectOption(label="Veterinary Clinic", value="vet"),
                 discord.SelectOption(label="Church", value="church"),
+                discord.SelectOption(label="Park", value="park"),
             ],
             row=0,
         )
@@ -52,6 +54,10 @@ class TownNavigationSelect(Select):
         if self.values[0] == "church":
             view = ChurchView(server_discord_id=interaction.guild_id, owner_discord_id=interaction.user.id)
             await r.reply(content="**Welcome to the Church**", view=view)
+
+        if self.values[0] == "park":
+            view = ParkView(server_discord_id=interaction.guild_id, owner_discord_id=interaction.user.id)
+            await r.reply(content="**Welcome to the Park**", view=view)
 
 
 class HomeButton(Button):

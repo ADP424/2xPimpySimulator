@@ -69,7 +69,7 @@ class BreedDropdownControls:
             await edit_interaction(interaction, view=self.select.view)
             return
 
-        selected_id = value
+        selected_id = int(value)
         selected = next((o.breed for o in self.breeds if o.breed.id == selected_id), None)
         if selected is None:
             return

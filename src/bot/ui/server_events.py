@@ -45,7 +45,7 @@ def _discord_timestamp(value: datetime | None, style: str = "R") -> str:
         return "—"
     if value.tzinfo is None:
         value = value.replace(tzinfo=timezone.utc)
-    return f"<t:{value.timestamp()}:{style}>"
+    return f"<t:{int(value.timestamp())}:{style}>"
 
 
 def _format_server_option_line(option: ServerEventOption) -> str:

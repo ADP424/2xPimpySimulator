@@ -29,6 +29,7 @@ from .models import (
     ServerEventOption,
     ServerEventOutcome,
     ServerEventParticipation,
+    StrayPooch,
     Vendor,
     VendorPoochForSale,
 )
@@ -697,6 +698,41 @@ async def list_servers_for_pooch(pooch_id: int) -> list[Server]:
         response = await session.execute(query)
 
     return list(response.scalars().all())
+
+
+async def list_strays_for_server(server_discord_id: int) -> list[Pooch]:
+    """
+    List all alive stray pooches on a server.
+
+    Parameters
+    ----------
+    server_discord_id: int
+        The Discord ID of the server to list strays for.
+
+    Returns
+    -------
+    list[Pooch]
+        A list of alive Pooch ORM objects that are currently strays on the given server.
+    """
+
+    async with session_scope() as session:
+        query = (
+            select(Pooch)
+            .join(StrayPooch, StrayPooch.pooch_id == Pooch.id)
+            .where(StrayPooch.server_discord_id == server_discord_id, Pooch.alive.is_(True))
+            .order_by(Pooch.id)
+        )
+        result = await session.execute(query)
+        return list(result.scalars().all())
+
+
+async def count_owners_for_server(server_discord_id: int) -> int:
+    """Return the number of owners registered on the given server."""
+    async with session_scope() as session:
+        result = await session.scalar(
+            select(func.count(OwnerServer.owner_discord_id)).where(OwnerServer.server_discord_id == server_discord_id)
+        )
+        return result or 0
 
 
 async def list_servers_for_owner(owner_discord_id: int) -> list[Server]:

@@ -9,6 +9,7 @@ from .pooch_parentage import PoochParentage
 from .pooch_pregnancy import PoochPregnancy
 from .server_event_occurrence import ServerEventOccurrence
 from .server_event_participation import ServerEventParticipation
+from .stray_pooch import StrayPooch
 from .vendor_pooch_for_sale import VendorPoochForSale
 
 __all__ = [
@@ -23,5 +24,6 @@ __all__ = [
     "PoochPregnancy",
     "ServerEventOccurrence",
     "ServerEventParticipation",
+    "StrayPooch",
     "VendorPoochForSale",
 ]

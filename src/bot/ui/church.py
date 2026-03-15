@@ -479,7 +479,7 @@ class _SacrificeControls:
             for option in self.select.options:
                 option.default = False
         else:
-            selected_id = value
+            selected_id = int(value)
             self.selected = next((p for p in self.pooches if p.id == selected_id), None)
             if self.selected is None:
                 return

@@ -8,6 +8,7 @@ from src.database import (
     add_mutation_to_pooch,
     add_pooch_breeds,
     add_pooch_to_kennel,
+    add_pooch_to_strays,
     add_pooch_to_vendor_stock,
     archive_active_event,
     bury_pooch,
@@ -45,6 +46,7 @@ from src.database import (
     list_pooch_mutations,
     list_pooches_for_kennel,
     list_servers_for_owner,
+    list_strays_for_server,
     list_vendor_pooch_stock,
     list_vendors,
     modify_kennel_pooch_limit,
@@ -52,6 +54,7 @@ from src.database import (
     modify_pooch_base_health,
     remove_mutation_from_pooch,
     remove_pooch_from_kennel,
+    remove_pooch_from_strays,
     remove_pooch_from_vendor_stock,
     remove_random_mutation_from_pooch,
     rename_pooch,
@@ -570,6 +573,10 @@ async def _execute_single_action(
         count_param = parameters.get("count")
         count = int(count_param) if isinstance(count_param, int) and count_param > 0 else None
 
+        # _exclude_ids: internal list of pooch IDs to exclude from random resolution (used by exclude_claimed preflight)
+        exclude_ids_raw = parameters.get("_exclude_ids", [])
+        exclude_ids: set[int] = set(exclude_ids_raw) if isinstance(exclude_ids_raw, list) else set()
+
         # use_saved: pull IDs from a named slot
         use_saved = parameters.get("use_saved")
         if isinstance(use_saved, str) and use_saved:
@@ -589,19 +596,26 @@ async def _execute_single_action(
 
         if target_type == "owner":
             pooch_ids = await list_matching_pooch_ids(owner_discord_id, filter_spec)
+            if exclude_ids:
+                pooch_ids = [pid for pid in pooch_ids if pid not in exclude_ids]
         elif target_type == "pooch":
             if selector == "selected":
                 pooch_ids = [context.selected_pooch_id] if context.selected_pooch_id else []
             elif selector == "random":
                 all_ids = await list_matching_pooch_ids(owner_discord_id, filter_spec)
+                if exclude_ids:
+                    all_ids = [pid for pid in all_ids if pid not in exclude_ids]
                 if count is not None:
                     pooch_ids = rng.sample(all_ids, min(count, len(all_ids))) if all_ids else []
                 else:
                     pooch_ids = [rng.choice(all_ids)] if all_ids else []
             elif selector == "all":
-                pooch_ids = await list_matching_pooch_ids(owner_discord_id, filter_spec)
+                all_ids = await list_matching_pooch_ids(owner_discord_id, filter_spec)
+                pooch_ids = [pid for pid in all_ids if pid not in exclude_ids] if exclude_ids else all_ids
             elif selector == "random_exclude":
                 all_ids = await list_matching_pooch_ids(owner_discord_id, filter_spec)
+                if exclude_ids:
+                    all_ids = [pid for pid in all_ids if pid not in exclude_ids]
                 if count is not None and count < len(all_ids):
                     excluded = set(rng.sample(all_ids, count))
                     pooch_ids = [pid for pid in all_ids if pid not in excluded]
@@ -908,6 +922,46 @@ async def _execute_single_action(
             if result.pooches_killed:
                 count = len(result.pooches_killed)
                 result.message = "A pooch has died!" if count == 1 else f"{count} pooches have died!"
+
+        elif action_type == "release_stray":
+            pooch_ids = await _get_target_pooch_ids(target_type, selector, parameters)
+            servers = await list_servers_for_owner(owner_discord_id)
+            if not servers:
+                logger.warning("release_stray: owner has no servers; skipping")
+            else:
+                server = rng.choice(servers)
+                for pooch_id in pooch_ids:
+                    stray = await add_pooch_to_strays(pooch_id, server.discord_id)
+                    if stray:
+                        result.pooches_affected.append(pooch_id)
+
+        elif action_type == "receive_stray":
+            servers = await list_servers_for_owner(owner_discord_id)
+            if not servers:
+                logger.warning("receive_stray: owner has no servers; skipping")
+            else:
+                server = rng.choice(servers)
+                candidates = await list_strays_for_server(server.discord_id)
+                count = int(parameters.get("count", 1))
+                pool = rng.sample(candidates, min(count, len(candidates))) if candidates else []
+                if not pool:
+                    logger.warning("receive_stray: no strays available on server %s; skipping", server.discord_id)
+                else:
+                    chosen = rng.choice(pool)
+                    await remove_pooch_from_strays(chosen.id)
+                    await transfer_pooch_to_owner(chosen.id, owner_discord_id)
+                    destination_str = str(parameters.get("destination", "town")).strip().lower()
+                    dest_key, kennel_name = await _deliver_pooch(owner_discord_id, chosen.id, destination_str)
+                    result.pooches_created.append(chosen.id)
+                    result.extra_data.setdefault("created_pooches", []).append(
+                        {
+                            "pooch_id": chosen.id,
+                            "pooch_name": chosen.name,
+                            "sex": chosen.sex,
+                            "age": chosen.age,
+                            "kennel_name": kennel_name,
+                        }
+                    )
 
         elif action_type == "add_mutation":
             pooch_ids = await _get_target_pooch_ids(target_type, selector, parameters)
@@ -1253,6 +1307,43 @@ async def _create_and_execute_event(
     # Event-level actions always fire immediately at trigger time (before the user picks)
     result = await _execute_event_actions(owner_discord_id, event.actions, context, rng)
     await update_active_event_result(active_event.id, result.to_dict())
+
+    # Preflight: pre-resolve exclude_claimed targets for visible options so that each option
+    # gets a unique pooch and options with no valid target are suppressed.
+    if event.requires_response:
+        claimed_ids: set[int] = set()
+        suppressed_option_ids: list[int] = []
+
+        for option in sorted(event.options, key=lambda o: o.option_order):
+            if not option.is_visible:
+                continue
+            option_suppressed = False
+            for action_order, action in enumerate(sorted(option.actions, key=lambda a: a.action_order)):
+                if not action.parameters.get("exclude_claimed", False):
+                    continue
+                # Resolve candidate pooch IDs for this action, excluding already-claimed IDs
+                action_filter_raw = action.parameters.get("filter", {})
+                action_filter_spec = action_filter_raw if isinstance(action_filter_raw, dict) else {}
+                try:
+                    candidate_ids = await list_matching_pooch_ids(owner_discord_id, action_filter_spec)
+                    candidate_ids = [pid for pid in candidate_ids if pid not in claimed_ids]
+                except Exception:
+                    candidate_ids = []
+
+                if not candidate_ids:
+                    option_suppressed = True
+                    break
+                chosen_id = rng.choice(candidate_ids)
+                claimed_ids.add(chosen_id)
+                slot_key = f"_claimed_{option.id}_{action_order}"
+                context.extra_data[slot_key] = chosen_id
+
+            if option_suppressed:
+                suppressed_option_ids.append(option.id)
+
+        if suppressed_option_ids:
+            context.extra_data["suppressed_option_ids"] = suppressed_option_ids
+
     # Persist the updated context so named slots written by trigger-time actions
     # (via save_as) survive to response/expiry time when context is reloaded from DB.
     if event.requires_response:

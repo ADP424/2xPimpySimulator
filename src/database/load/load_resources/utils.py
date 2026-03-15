@@ -258,7 +258,7 @@ class BaseEventValidator:
         common_allowed: set[str] = set()
 
         if target_type == "pooch":
-            common_allowed |= {"selector", "count", "filter", "save_as", "save_kennel", "use_saved"}
+            common_allowed |= {"selector", "count", "filter", "save_as", "save_kennel", "use_saved", "exclude_claimed"}
             if "use_saved" not in parameters:
                 self._validate_entity_selector(params_path, parameters, "selector")
             else:
@@ -275,6 +275,7 @@ class BaseEventValidator:
                 )
             self._validate_optional_string(params_path, parameters, "save_as", allow_blank=False)
             self._validate_optional_bool(params_path, parameters, "save_kennel")
+            self._validate_optional_bool(params_path, parameters, "exclude_claimed")
         elif target_type == "kennel":
             common_allowed |= {
                 "selector",
@@ -566,6 +567,20 @@ class BaseEventValidator:
             self._validate_optional_number(params_path, parameters, "value_multiplier", minimum_exclusive=0)
             self._validate_enum_string(params_path, parameters, "destination", {"kennel", "graveyard", "hell", "town"})
             self._validate_optional_string(params_path, parameters, "save_as", allow_blank=False)
+            self._validate_target_type(path, action_type, target_type, {"owner"})
+
+        elif action_type == "release_stray":
+            self._validate_allowed_keys(params_path, parameters, common_allowed)
+            self._validate_target_type(path, action_type, target_type, {"pooch", "kennel", "owner"})
+
+        elif action_type == "receive_stray":
+            self._validate_allowed_keys(
+                params_path,
+                parameters,
+                {"destination", "count"},
+            )
+            self._validate_optional_int(params_path, parameters, "count", minimum=1)
+            self._validate_enum_string(params_path, parameters, "destination", {"kennel", "graveyard", "hell", "town"})
             self._validate_target_type(path, action_type, target_type, {"owner"})
 
         else:

@@ -25,6 +25,7 @@ from .main import (
     Server,
     ServerEventOccurrence,
     ServerEventParticipation,
+    StrayPooch,
     Vendor,
     VendorPoochForSale,
 )
@@ -68,6 +69,7 @@ __all__ = [
     "Server",
     "ServerEventOccurrence",
     "ServerEventParticipation",
+    "StrayPooch",
     "VendorPoochForSale",
     "Vendor",
     "Breed",

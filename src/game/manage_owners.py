@@ -7,6 +7,7 @@ from src.database import (
     add_breed_to_pooch,
     add_owner_to_server,
     add_pooch_to_kennel,
+    count_owners_for_server,
     create_kennel,
     create_owner,
     create_pooch,
@@ -15,12 +16,17 @@ from src.database import (
     give_money_to_owner,
     list_kennels_for_owner,
     list_owners,
+    list_pooches_for_kennel,
+    list_strays_for_server,
+    remove_pooch_from_strays,
     set_owner_begged_today,
+    set_owner_visited_park_today,
+    transfer_pooch_to_owner,
     update_owner_discord_name,
 )
 from src.logger import get_logger
 
-from .constants import BEG_DOLLARS_RANGE, BEG_MAX_DOLLARS
+from .constants import BEG_DOLLARS_RANGE, BEG_MAX_DOLLARS, PARK_STRAY_CATCH_DIVISOR
 from .exceptions import OwnerNotFound
 from .manage_servers import get_or_create_server
 from .models import to_kennel, to_owner
@@ -211,3 +217,66 @@ async def update_owner_names(names: dict[int, str]) -> int:
 
     logger.info(f"Updated {updated}/{len(owners)} owner display names")
     return updated
+
+
+async def visit_park(
+    server_discord_id: int, owner_discord_id: int, rng: random.Random | None = None
+) -> tuple[bool, str]:
+    """
+    Attempt to attract a stray pooch at the park.
+
+    Catch chance = min(stray_count / owner_count / PARK_STRAY_CATCH_DIVISOR, 1.0).
+    An owner may only visit the park once per day.
+    On success the stray is delivered to the first kennel with free space, or left in town if none.
+
+    Returns
+    -------
+    tuple[bool, str]
+        (caught, message) — caught is True if a stray was attracted, False otherwise.
+    """
+
+    rng = rng if rng is not None else random.Random()
+
+    await get_or_create_owner(server_discord_id, owner_discord_id)
+
+    owner = await get_owner_by_discord_id(owner_discord_id)
+    if owner is None:
+        raise OwnerNotFound(owner_discord_id)
+
+    if owner.visited_park_today:
+        return False, "You already spent time at the park today. Come back tomorrow."
+
+    await set_owner_visited_park_today(owner_discord_id)
+
+    strays = await list_strays_for_server(server_discord_id)
+    if not strays:
+        return False, "You sit in the park for a while, but no stray pooches appear."
+
+    owner_count = await count_owners_for_server(server_discord_id)
+    catch_chance = min(len(strays) / max(owner_count, 1) / PARK_STRAY_CATCH_DIVISOR, 1.0)
+
+    if rng.random() > catch_chance:
+        return False, "You sit in the park for a while, but no stray pooches come close enough to catch."
+
+    chosen = rng.choice(strays)
+    await remove_pooch_from_strays(chosen.id)
+    await transfer_pooch_to_owner(chosen.id, owner_discord_id)
+
+    # Deliver to first free kennel
+    kennels = await list_kennels_for_owner(owner_discord_id)
+    for kennel in kennels:
+        pooches_in_kennel = await list_pooches_for_kennel(kennel.id)
+        if len(pooches_in_kennel) < kennel.pooch_limit:
+            await add_pooch_to_kennel(kennel.id, chosen.id)
+            return (
+                True,
+                f"A stray pooch named **{chosen.name}** trotted up to you! They've been placed in **{kennel.name}**.",
+            )
+
+    return (
+        True,
+        (
+            f"A stray pooch named **{chosen.name}** trotted up to you!"
+            "They're waiting in town until you make room in a kennel."
+        ),
+    )

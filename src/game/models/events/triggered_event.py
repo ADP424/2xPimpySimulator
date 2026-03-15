@@ -70,10 +70,15 @@ async def to_triggered_event(event_occurrence: EventOccurrenceORM) -> TriggeredE
 
     options = []
     if event.requires_response:
+        suppressed_option_ids: set[int] = set(
+            context.extra_data.get("suppressed_option_ids", [])
+            if isinstance(context.extra_data.get("suppressed_option_ids"), list)
+            else []
+        )
         options = [
             await to_event_option(option)
             for option in sorted(event.options, key=lambda option: option.option_order)
-            if option.is_visible
+            if option.is_visible and option.id not in suppressed_option_ids
         ]
 
     return TriggeredEvent(

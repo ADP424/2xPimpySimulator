@@ -9,6 +9,7 @@ from ... import Base
 
 if TYPE_CHECKING:
     from ..relationships.owner_server import OwnerServer
+    from ..relationships.stray_pooch import StrayPooch
     from .vendor import Vendor
 
 
@@ -20,6 +21,10 @@ class Server(Base):
     joined_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=text("now()"))
 
     vendors: Mapped[list[Vendor]] = relationship("Vendor", back_populates="server", cascade="all, delete-orphan")
+
+    stray_rows: Mapped[list[StrayPooch]] = relationship(
+        "StrayPooch", back_populates="server", cascade="all, delete-orphan"
+    )
 
     owner_server_rows: Mapped[list[OwnerServer]] = relationship(
         "OwnerServer",

@@ -86,7 +86,7 @@ class MutationDropdownControls:
             await edit_interaction(interaction, view=self.select.view)
             return
 
-        selected_id = value
+        selected_id = int(value)
         selected = next((o.mutation for o in self.mutations if o.mutation.id == selected_id), None)
         if selected is None:
             return

@@ -35,6 +35,7 @@ from .models import (
     Server,
     ServerEventOccurrence,
     ServerEventParticipation,
+    StrayPooch,
     Vendor,
     VendorFirstName,
     VendorLastName,
@@ -837,6 +838,40 @@ async def create_server_event_occurrence(
         await session.flush()
         await session.refresh(occurrence)
     return occurrence
+
+
+async def add_pooch_to_strays(pooch_id: int, server_discord_id: int) -> Optional[StrayPooch]:
+    """
+    Move the given pooch to the stray pool for the given server.
+    Removes the pooch from its kennel (if any), clears its owner and vendor, then inserts a StrayPooch row.
+
+    Parameters
+    ----------
+    pooch_id: int
+        The ID of the pooch to make a stray.
+
+    server_discord_id: int
+        The Discord ID of the server the stray will belong to.
+
+    Returns
+    -------
+    StrayPooch, optional
+        The StrayPooch ORM object just created, or None if the pooch wasn't found.
+    """
+
+    async with session_scope() as session:
+        pooch = await session.get(Pooch, pooch_id)
+        if pooch is None:
+            return None
+        pooch.owner_discord_id = None
+        pooch.vendor_id = None
+        kennel_row = await session.get(KennelPooch, pooch_id)
+        if kennel_row:
+            await session.delete(kennel_row)
+        stray = StrayPooch(pooch_id=pooch_id, server_discord_id=server_discord_id)
+        session.add(stray)
+        await session.flush()
+        return stray
 
 
 async def create_server_event_participation(

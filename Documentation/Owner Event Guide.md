@@ -741,6 +741,8 @@ An optional integer column (default: `1`) that controls how many times in a row 
 | `breed_pooches` | `owner` | Breeds two of the owner's pooches together |
 | `sell_pooch` | `pooch`, `kennel`, `owner` | Sells a pooch, crediting the owner |
 | `buy_pooch` | `owner` | Buys a pooch from a vendor |
+| `release_stray` | `pooch`, `kennel`, `owner` | Releases a pooch into the stray pool for the owner's server |
+| `receive_stray` | `owner` | Claims a random stray pooch from the owner's server |
 
 ### Supported Target Types
 
@@ -1256,3 +1258,72 @@ Buys a pooch from a vendor and delivers it to the owner.
 | `save_as` | string | no | Save the purchased pooch's ID into a named slot |
 
 If no matching vendor or pooch is found, the action is a no-op.
+
+---
+
+#### `release_stray`
+
+Removes a pooch from the owner's kennel and releases it into the stray pool for one of the owner's servers (chosen randomly). The pooch loses its owner and kennel assignment.
+
+```json
+{
+    "action_type": "release_stray",
+    "target_type": "pooch",
+    "parameters": {
+        "selector": "random"
+    }
+}
+```
+
+Supports the same pooch-targeting parameters as other pooch actions (`selector`, `count`, `filter`, `save_as`, `save_kennel`, `use_saved`, `exclude_claimed`).
+
+If the owner belongs to no servers, the action is a no-op.
+
+---
+
+#### `receive_stray`
+
+Claims a random stray pooch from one of the owner's servers and delivers it to the owner.
+
+```json
+{
+    "action_type": "receive_stray",
+    "target_type": "owner",
+    "parameters": {
+        "destination": "kennel",
+        "count": 1
+    }
+}
+```
+
+| Parameter | Type | Required | Notes |
+|-----------|------|----------|-------|
+| `destination` | string | no | Where to deliver the stray — `"kennel"`, `"graveyard"`, `"hell"`, or `"town"` (default: `"town"`) |
+| `count` | int | no | How many strays to sample as candidates before randomly picking one (default: `1`). Useful with multiple options to allow player choice between distinct strays. |
+
+If no strays are available on the server, the action is a no-op.
+
+---
+
+### `exclude_claimed` Parameter
+
+The `exclude_claimed` boolean parameter can be added to any pooch-targeting action. When set to `true`, the action participates in the **preflight cross-option uniqueness check** at trigger time:
+
+1. For each visible event option (in definition order), the engine speculatively resolves any action with `exclude_claimed: true`, excluding pooch IDs already claimed by earlier options.
+2. If a valid candidate is found, that pooch ID is "claimed" and stored internally so later options cannot resolve to the same pooch.
+3. If no valid candidate remains for an option (all have been claimed), that option is suppressed and hidden from the player's response menu.
+
+This ensures that when multiple options each claim a distinct stray (or any distinct pooch), each option genuinely resolves to a different animal, and options with no remaining candidate are automatically hidden.
+
+```json
+{
+    "action_type": "receive_stray",
+    "target_type": "owner",
+    "parameters": {
+        "destination": "kennel",
+        "exclude_claimed": true
+    }
+}
+```
+
+`exclude_claimed` is only meaningful on actions within **options** (not top-level event actions). It has no effect when used outside of the preflight context.

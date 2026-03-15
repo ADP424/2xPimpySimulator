@@ -7,6 +7,7 @@ from discord.ui import Button, Select, View
 
 from src.bot.constants import MAX_NAME_LENGTH
 from src.bot.ui.util import InteractionResponder
+from src.database import add_pooch_to_strays
 from src.game import (
     get_or_create_owner,
     get_or_create_server,
@@ -20,7 +21,7 @@ if TYPE_CHECKING:
     from src.game.models import Kennel, Pooch
 
 from .breeding import BreedMateView
-from .components import PageSource
+from .components import PageSource, PaginatorView
 from .pooch_info import PoochInfoView
 
 
@@ -83,17 +84,20 @@ class KennelPageControls:
         self.breed_button = Button(label="Breed", style=discord.ButtonStyle.secondary, disabled=True)
         self.walk_button = Button(label="Walk", style=discord.ButtonStyle.secondary, disabled=True)
         self.rename_pooch_button = Button(label="Rename Pooch", style=discord.ButtonStyle.secondary, disabled=True)
+        self.cast_out_button = Button(label="Cast Out", style=discord.ButtonStyle.danger, disabled=True)
 
         self.info_button.callback = self._on_info
         self.breed_button.callback = self._on_breed
         self.walk_button.callback = self._noop
         self.rename_pooch_button.callback = self._on_rename_pooch
+        self.cast_out_button.callback = self._on_cast_out
 
         if not pooches:
             self.info_button.disabled = True
             self.breed_button.disabled = True
             self.walk_button.disabled = True
             self.rename_pooch_button.disabled = True
+            self.cast_out_button.disabled = True
 
     def attach(self, view: View):
         self.rename_kennel_button.row = 0
@@ -102,6 +106,7 @@ class KennelPageControls:
         self.breed_button.row = 2
         self.walk_button.row = 2
         self.rename_pooch_button.row = 2
+        self.cast_out_button.row = 3
 
         view.add_item(self.rename_kennel_button)
         view.add_item(self.select)
@@ -109,17 +114,19 @@ class KennelPageControls:
         view.add_item(self.breed_button)
         view.add_item(self.walk_button)
         view.add_item(self.rename_pooch_button)
+        view.add_item(self.cast_out_button)
 
     async def _on_select(self, interaction: discord.Interaction):
         r = InteractionResponder(interaction)
         selected_id = self.select.values[0]
-        self.selected_pooch = next((pooch for pooch in self.pooches if pooch.id == selected_id), None)
+        self.selected_pooch = next((pooch for pooch in self.pooches if str(pooch.id) == selected_id), None)
         if self.selected_pooch is None:
             return
         self.info_button.disabled = False
         self.breed_button.disabled = False
         self.walk_button.disabled = False
         self.rename_pooch_button.disabled = False
+        self.cast_out_button.disabled = False
 
         # Make sure the dropdown selection persists between refreshes
         for option in self.select.options:
@@ -185,6 +192,19 @@ class KennelPageControls:
             )
         )
 
+    async def _on_cast_out(self, interaction: discord.Interaction):
+        r = InteractionResponder(interaction)
+        if self.selected_pooch is None:
+            return
+        pooch_name = self.selected_pooch.name
+        await add_pooch_to_strays(self.selected_pooch.id, self.server_discord_id)
+
+        parent_view = self.select.view
+        if isinstance(parent_view, PaginatorView):
+            await parent_view.refresh(interaction)
+
+        await r.reply(content=f"{pooch_name} has been cast out.")
+
 
 class _RenameKennelModal(discord.ui.Modal):
     def __init__(self, owner_discord_id: int, kennel_id: int, current_name: str, parent_view: View):
@@ -215,8 +235,6 @@ class _RenameKennelModal(discord.ui.Modal):
             return
 
         # Refresh the current page so the new name shows up immediately.
-        from .components import PaginatorView
-
         if isinstance(self._parent_view, PaginatorView):
             await self._parent_view.refresh(interaction)
 
@@ -250,8 +268,6 @@ class _RenamePoochModal(discord.ui.Modal):
         if not ok:
             await r.reply(content=f"That name is too long. Keep it under {MAX_NAME_LENGTH} characters.")
             return
-
-        from .components import PaginatorView
 
         if isinstance(self._parent_view, PaginatorView):
             await self._parent_view.refresh(interaction)

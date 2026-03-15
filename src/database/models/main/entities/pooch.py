@@ -25,6 +25,7 @@ if TYPE_CHECKING:
     from ..relationships.pooch_mutation import PoochMutation
     from ..relationships.pooch_parentage import PoochParentage
     from ..relationships.pooch_pregnancy import PoochPregnancy
+    from ..relationships.stray_pooch import StrayPooch
     from ..relationships.vendor_pooch_for_sale import VendorPoochForSale
     from .owner import Owner
     from .vendor import Vendor
@@ -124,6 +125,13 @@ class Pooch(Base):
         back_populates="pooch",
         uselist=False,
         foreign_keys="HellPooch.pooch_id",
+    )
+
+    stray_row: Mapped[StrayPooch] = relationship(
+        "StrayPooch",
+        back_populates="pooch",
+        uselist=False,
+        foreign_keys="StrayPooch.pooch_id",
     )
 
     vendor_pooch_for_sale_row: Mapped[VendorPoochForSale] = relationship(

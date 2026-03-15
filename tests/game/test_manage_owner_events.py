@@ -3958,3 +3958,135 @@ async def test_process_expired_events_outcome_no_message_uses_default_message():
     # When outcome_message is None, falls back to "Event '...' expired. Expire was applied."
     assert "Expiring Event" in result.message
     assert "Expire" in result.message
+
+
+# ---------------------------------------------------------------------------
+# release_stray action
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_release_stray_action_calls_add_pooch_to_strays(context, rng):
+    """release_stray should call add_pooch_to_strays with the resolved pooch and server IDs."""
+    action = _make_action(
+        "release_stray",
+        "pooch",
+        {"selector": "random"},
+    )
+
+    fake_server = SimpleNamespace(discord_id=999)
+    fake_stray = SimpleNamespace(pooch_id=5, server_discord_id=999)
+
+    with (
+        patch("src.game.manage_owner_events.list_matching_pooch_ids", new=AsyncMock(return_value=[5])),
+        patch("src.game.manage_owner_events.list_servers_for_owner", new=AsyncMock(return_value=[fake_server])),
+        patch("src.game.manage_owner_events.add_pooch_to_strays", new=AsyncMock(return_value=fake_stray)) as mock_add,
+    ):
+        result = await _execute_single_action(1, action, context, rng)
+
+    mock_add.assert_awaited_once_with(5, 999)
+    assert 5 in result.pooches_affected
+
+
+@pytest.mark.asyncio
+async def test_release_stray_no_server_skips(context, rng):
+    """release_stray with no servers available should skip without error."""
+    action = _make_action(
+        "release_stray",
+        "pooch",
+        {"selector": "random"},
+    )
+
+    with (
+        patch("src.game.manage_owner_events.list_matching_pooch_ids", new=AsyncMock(return_value=[5])),
+        patch("src.game.manage_owner_events.list_servers_for_owner", new=AsyncMock(return_value=[])),
+        patch("src.game.manage_owner_events.add_pooch_to_strays", new=AsyncMock()) as mock_add,
+    ):
+        result = await _execute_single_action(1, action, context, rng)
+
+    mock_add.assert_not_awaited()
+    assert result.pooches_affected == []
+
+
+# ---------------------------------------------------------------------------
+# receive_stray action
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_receive_stray_action_delivers_pooch_to_kennel(context, rng):
+    """receive_stray should claim a stray and deliver it to the requested destination."""
+    action = _make_action(
+        "receive_stray",
+        "owner",
+        {"destination": "kennel"},
+    )
+
+    fake_server = SimpleNamespace(discord_id=999)
+    fake_pooch = SimpleNamespace(id=42, name="Rover", sex="male", age=3)
+
+    with (
+        patch("src.game.manage_owner_events.list_servers_for_owner", new=AsyncMock(return_value=[fake_server])),
+        patch("src.game.manage_owner_events.list_strays_for_server", new=AsyncMock(return_value=[fake_pooch])),
+        patch("src.game.manage_owner_events.remove_pooch_from_strays", new=AsyncMock(return_value=fake_pooch)),
+        patch("src.game.manage_owner_events.transfer_pooch_to_owner", new=AsyncMock()),
+        patch("src.game.manage_owner_events._deliver_pooch", new=AsyncMock(return_value=("kennel", "Main Kennel"))),
+    ):
+        result = await _execute_single_action(1, action, context, rng)
+
+    assert 42 in result.pooches_created
+    created_entries = result.extra_data.get("created_pooches", [])
+    assert len(created_entries) == 1
+    assert created_entries[0]["pooch_name"] == "Rover"
+    assert created_entries[0]["kennel_name"] == "Main Kennel"
+
+
+@pytest.mark.asyncio
+async def test_receive_stray_no_strays_available_skips(context, rng):
+    """receive_stray should skip gracefully when no strays are available on the server."""
+    action = _make_action(
+        "receive_stray",
+        "owner",
+        {"destination": "kennel"},
+    )
+
+    fake_server = SimpleNamespace(discord_id=999)
+
+    with (
+        patch("src.game.manage_owner_events.list_servers_for_owner", new=AsyncMock(return_value=[fake_server])),
+        patch("src.game.manage_owner_events.list_strays_for_server", new=AsyncMock(return_value=[])),
+        patch("src.game.manage_owner_events.remove_pooch_from_strays", new=AsyncMock()) as mock_remove,
+    ):
+        result = await _execute_single_action(1, action, context, rng)
+
+    mock_remove.assert_not_awaited()
+    assert result.pooches_created == []
+
+
+# ---------------------------------------------------------------------------
+# exclude_claimed preflight
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_exclude_claimed_suppresses_option_when_no_strays_available(context, rng):
+    """
+    When exclude_claimed=True is set on an option's action and no valid candidate pooch exists
+    (because all have been claimed by earlier options), the option should be added to
+    suppressed_option_ids in context.extra_data.
+
+    This test calls _execute_single_action with _exclude_ids populated so that no candidates
+    remain, and verifies the resolver returns an empty list (simulating suppression behavior).
+    """
+    # Action with exclude_claimed and a _exclude_ids that covers all candidates
+    action = _make_action(
+        "kill_pooch",
+        "pooch",
+        {"selector": "random", "exclude_claimed": True, "_exclude_ids": [10, 20, 30]},
+    )
+
+    with patch("src.game.manage_owner_events.list_matching_pooch_ids", new=AsyncMock(return_value=[10, 20, 30])):
+        result = await _execute_single_action(1, action, context, rng)
+
+    # All candidates excluded — no pooches should be killed
+    assert result.pooches_killed == []

@@ -29,6 +29,7 @@ from src.database import (
     list_vendors,
     remove_pooch_from_kennel,
     reset_begged_today,
+    reset_visited_park_today,
     set_pooch_breeding_cooldown,
     set_pooch_dead,
 )
@@ -99,6 +100,7 @@ async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeS
 
     # reset daily owner actions
     await reset_begged_today()
+    await reset_visited_park_today()
 
     births_by_server: dict[int, list[BirthEvent]] = {}
     deaths_by_server: dict[int, list[DeathEvent]] = {}

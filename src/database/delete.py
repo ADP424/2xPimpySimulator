@@ -11,6 +11,7 @@ from .models import (
     Pooch,
     PoochMutation,
     PoochPregnancy,
+    StrayPooch,
     Vendor,
     VendorPoochForSale,
 )
@@ -254,6 +255,29 @@ async def remove_pooch_from_vendor_stock(vendor_id: int, pooch_id: int) -> Optio
         )
 
     return pooch
+
+
+async def remove_pooch_from_strays(pooch_id: int) -> Optional[StrayPooch]:
+    """
+    Remove the given pooch from the stray pool.
+
+    Parameters
+    ----------
+    pooch_id: int
+        The ID of the stray pooch to remove.
+
+    Returns
+    -------
+    StrayPooch, optional
+        The removed StrayPooch ORM object, or None if it wasn't in the stray pool.
+    """
+
+    async with session_scope() as session:
+        stray = await session.get(StrayPooch, pooch_id)
+        if stray is None:
+            return None
+        await session.delete(stray)
+        return stray
 
 
 async def remove_random_mutation_from_pooch(

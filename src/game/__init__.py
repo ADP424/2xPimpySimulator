@@ -37,6 +37,7 @@ from .manage_owners import (
     list_all_owners,
     list_owner_kennels,
     update_owner_names,
+    visit_park,
 )
 from .manage_pooches import (
     get_pooch_by_id,
@@ -106,6 +107,7 @@ __all__ = [
     "list_all_owners",
     "list_owner_kennels",
     "update_owner_names",
+    "visit_park",
     # Pooch commands
     "get_pooch_by_id",
     "get_pooch_family",
