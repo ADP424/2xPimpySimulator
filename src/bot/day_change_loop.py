@@ -25,7 +25,7 @@ from .ui.server_events import (
 from .webhooks import post_day_change_webhooks
 
 if TYPE_CHECKING:
-    from src.game.models import DayChangeSummary
+    from src.game.models import DayChangeSummary, StrayEventResult
 
 
 logger = get_logger("bot/day_change_loop")
@@ -167,6 +167,38 @@ async def post_server_event_resolutions(bot: discord.Client, resolutions: list[o
         await channel.send(embed=await build_server_event_resolution_embed(resolution))
 
 
+async def post_stray_event_summaries(
+    bot: discord.Client,
+    stray_results: dict[int, list[tuple[str, StrayEventResult]]],
+) -> None:
+    """Post stray event results to each server's event channel (dev only)."""
+    for server_discord_id, events in stray_results.items():
+        channel_id = await get_event_channel(server_discord_id)
+        if not channel_id:
+            continue
+
+        channel = bot.get_channel(channel_id)
+        if channel is None:
+            try:
+                channel = await bot.fetch_channel(channel_id)
+            except Exception:
+                continue
+
+        lines = []
+        for event_name, result in events:
+            parts = [f"**[stray event]** `{event_name}`"]
+            if result.pooches_affected:
+                parts.append(f"affected: {result.pooches_affected}")
+            if result.pooches_killed:
+                parts.append(f"killed: {result.pooches_killed}")
+            if result.pooches_created:
+                parts.append(f"created: {result.pooches_created}")
+            lines.append(" | ".join(parts))
+
+        if lines:
+            await channel.send("\n".join(lines))
+
+
 async def day_change_runner(
     bot: discord.Client, stage: str, tz: str = "America/New_York", skip_startup_day_change: bool = False
 ):
@@ -175,9 +207,11 @@ async def day_change_runner(
 
     async def run_once():
         logger.info("Changing day...")
-        summaries = await run_day_change(rng_seed=int.from_bytes(os.urandom(8)))
+        summaries, stray_results = await run_day_change(rng_seed=int.from_bytes(os.urandom(8)))
         await post_day_change_summaries(bot, summaries)
         await post_day_change_webhooks(summaries)
+        if stage == "dev":
+            await post_stray_event_summaries(bot, stray_results)
         try:
             await _fetch_and_update_names(bot)
         except Exception:

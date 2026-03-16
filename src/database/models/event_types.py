@@ -253,9 +253,9 @@ class EventStartEventParameters(TypedDict, total=False):
 
 
 class EventBreedPoochesParameters(TypedDict, total=False):
-    first_selector: EventEntitySelector
+    first_pooch_selector: EventEntitySelector
     first_filter: JsonObject
-    second_selector: EventEntitySelector
+    second_pooch_selector: EventEntitySelector
     second_filter: JsonObject
     require_unique: bool  # default True — the two selected pooches must be different individuals
     require_same: bool  # default False — force both selectors to resolve to the same pooch

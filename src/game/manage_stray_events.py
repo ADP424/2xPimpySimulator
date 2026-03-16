@@ -518,11 +518,18 @@ async def _trigger_stray_event_for_server(
     return result
 
 
-async def run_daily_stray_event_check(rng_seed: Optional[int] = None) -> dict[int, list[StrayEventResult]]:
+STRAY_EVENT_TRIGGER_CHANCE = 0.5
+
+
+async def run_daily_stray_event_check(
+    rng_seed: Optional[int] = None,
+) -> dict[int, list[tuple[str, StrayEventResult]]]:
     """
     Run the daily stray event check for all servers.
 
-    For each server, attempt to trigger one random eligible stray event.
+    For each alive stray on a server there is a 50% chance of triggering a
+    random eligible stray event.  A single event is drawn per roll — multiple
+    strays on the same server can trigger different events in the same cycle.
 
     Parameters
     ----------
@@ -531,23 +538,30 @@ async def run_daily_stray_event_check(rng_seed: Optional[int] = None) -> dict[in
 
     Returns
     -------
-    dict[int, list[StrayEventResult]]
-        Mapping of server_discord_id → list of results for triggered events.
+    dict[int, list[tuple[str, StrayEventResult]]]
+        Mapping of server_discord_id → list of (event_name, result) pairs for
+        every triggered event, in trigger order.
     """
     rng = random.Random(rng_seed) if rng_seed is not None else random.Random()
 
     servers = await list_servers()
-    results: dict[int, list[StrayEventResult]] = {}
+    results: dict[int, list[tuple[str, StrayEventResult]]] = {}
 
     for server in servers:
-        event = await get_random_eligible_stray_event_for_server(server.discord_id, rng=rng)
-        if event is None:
-            logger.debug(f"No eligible stray events for server {server.discord_id}.")
-            continue
+        strays = await list_strays_for_server(server.discord_id)
+        for _ in strays:
+            if rng.random() > STRAY_EVENT_TRIGGER_CHANCE:
+                continue
 
-        result = await _trigger_stray_event_for_server(server.discord_id, event, rng)
-        if result is not None:
-            results.setdefault(server.discord_id, []).append(result)
+            event = await get_random_eligible_stray_event_for_server(server.discord_id, rng=rng)
+            if event is None:
+                logger.debug(f"No eligible stray events for server {server.discord_id}.")
+                continue
 
-    logger.info("Daily stray event check complete. %d server(s) had stray events triggered.", len(results))
+            result = await _trigger_stray_event_for_server(server.discord_id, event, rng)
+            if result is not None:
+                results.setdefault(server.discord_id, []).append((event.name, result))
+
+    total = sum(len(v) for v in results.values())
+    logger.info("Daily stray event check complete. %d event(s) triggered across %d server(s).", total, len(results))
     return results

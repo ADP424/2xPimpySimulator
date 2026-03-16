@@ -82,7 +82,9 @@ def _death_roll(total_health: int, rng: random.Random) -> bool:
     return rng.random() < chance
 
 
-async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeSummary]:
+async def run_day_change(
+    rng_seed: Optional[int] = None,
+) -> tuple[dict[int, DayChangeSummary], dict[int, list[tuple[str, object]]]]:
     """
     Change the day for all servers, completing pregnancies, resolving deaths, and restocking vendors.
 
@@ -93,9 +95,11 @@ async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeS
 
     Returns
     -------
-    dict[int, DayChangeSummary]
-        A dictionary summarizing the day's events for each server in the form
-        `{ server_discord_id : DayChangeSummary }`.
+    tuple[dict[int, DayChangeSummary], dict[int, list[tuple[str, StrayEventResult]]]]
+        A tuple of:
+        - A dictionary summarizing the day's events for each server.
+        - A mapping of server_discord_id → list of (event_name, result) pairs
+          for triggered stray events.
     """
 
     rng = random.Random(rng_seed)
@@ -244,15 +248,12 @@ async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeS
                     pooch_kennel = await get_pooch_kennel(pooch.id)
                     if pooch_kennel is None:
                         continue
-                    target_pooches = [
-                        rng.choice(
-                            [
-                                kennel_pooch
-                                for kennel_pooch in (await list_pooches_for_kennel(pooch_kennel.id))
-                                if kennel_pooch.alive and kennel_pooch.id != pooch.id
-                            ]
-                        )
+                    kennel_pooches = [
+                        kennel_pooch
+                        for kennel_pooch in (await list_pooches_for_kennel(pooch_kennel.id))
+                        if kennel_pooch.alive and kennel_pooch.id != pooch.id
                     ]
+                    target_pooches = [rng.choice(kennel_pooches)]
 
                 if on_death == "kill":
                     for target in target_pooches:
@@ -336,11 +337,6 @@ async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeS
                 logger.info(f"Added guaranteed stray pooch {stray_pooch.id} to server {server.discord_id}.")
     logger.info("Minimum stray check complete.")
 
-    # stray events (fire once per server after the stray population is guaranteed)
-    logger.info("Running daily stray events...")
-    await run_daily_stray_event_check(rng_seed=rng.randint(0, 2**31))
-    logger.info("Completed daily stray events.")
-
     # vendor restock (replace one vendor per server, then replace the stock of all vendors)
     logger.info("Restocking vendors for the day...")
     for server in servers:
@@ -382,6 +378,11 @@ async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeS
                 await add_pooch_to_vendor_stock(vendor.id, vendor_pooch.id)
     logger.info("Completed daily vendor restock.")
 
+    # stray events (fire once per server after the stray population is guaranteed)
+    logger.info("Running daily stray events...")
+    stray_event_results = await run_daily_stray_event_check(rng_seed=rng_seed)
+    logger.info("Completed daily stray events.")
+
     # summaries
     out: dict[int, DayChangeSummary] = {}
     for server in servers:
@@ -391,4 +392,4 @@ async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeS
             deaths=deaths_by_server.get(server.discord_id, []),
             other_events=other_events_by_server.get(server.discord_id, []),
         )
-    return out
+    return out, stray_event_results

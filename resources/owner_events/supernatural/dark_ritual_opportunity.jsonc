@@ -12,7 +12,12 @@
             "description": "Sacrifice 5 bloodskulls for a lost soul from Hell.",
             "filter": {
                 "min_bloodskulls": 5,
-                "max_pooches": "capacity - 1"
+                "kennels": [
+                    {
+                        "min_count": 1,
+                        "max_pooches": "capacity - 1"
+                    }
+                ]
             },
             "actions": [
                 {
@@ -33,8 +38,8 @@
                     "action_type": "add_breed",
                     "target_type": "pooch",
                     "parameters": {
-                        "weight": 1.0,
-                        "use_saved": "summoned_pooch"
+                        "use_saved": "summoned_pooch",
+                        "weight": 1.0
                     }
                 },
                 {

@@ -770,8 +770,8 @@ async def test_breed_pooches_require_unique_skips_when_same(context, rng):
         "breed_pooches",
         "owner",
         {
-            "first_selector": "random",
-            "second_selector": "random",
+            "first_pooch_selector": "random",
+            "second_pooch_selector": "random",
             "require_unique": True,
         },
     )
@@ -800,8 +800,8 @@ async def test_breed_pooches_require_same_forces_same_pooch(context, rng):
         "breed_pooches",
         "owner",
         {
-            "first_selector": "random",
-            "second_selector": "random",
+            "first_pooch_selector": "random",
+            "second_pooch_selector": "random",
             "require_same": True,
         },
     )
@@ -1513,8 +1513,8 @@ async def test_breed_pooches_save_as_string_saves_baby(context, rng):
         "breed_pooches",
         "owner",
         {
-            "first_selector": "random",
-            "second_selector": "random",
+            "first_pooch_selector": "random",
+            "second_pooch_selector": "random",
             "require_unique": False,
             "save_as": "new_baby",
         },
@@ -1547,8 +1547,8 @@ async def test_breed_pooches_save_as_list_saves_parents_and_baby(context, rng):
         "breed_pooches",
         "owner",
         {
-            "first_selector": "random",
-            "second_selector": "random",
+            "first_pooch_selector": "random",
+            "second_pooch_selector": "random",
             "require_unique": False,
             "save_as": save_as_list,
         },
@@ -2320,7 +2320,7 @@ async def test_breed_pooches_selected_selector_uses_context(context, rng):
     action = _make_action(
         "breed_pooches",
         "owner",
-        {"first_selector": "selected", "second_selector": "selected", "require_unique": False},
+        {"first_pooch_selector": "selected", "second_pooch_selector": "selected", "require_unique": False},
     )
     with patch("src.game.manage_owner_events.breed_pooches", new=AsyncMock(return_value=[99])):
         result = await _execute_single_action(1, action, context, rng)
@@ -2333,7 +2333,7 @@ async def test_breed_pooches_all_selector_picks_from_list(context, rng):
     action = _make_action(
         "breed_pooches",
         "owner",
-        {"first_selector": "all", "second_selector": "all", "require_unique": False},
+        {"first_pooch_selector": "all", "second_pooch_selector": "all", "require_unique": False},
     )
     with (
         patch("src.game.manage_owner_events.list_matching_pooch_ids", new=AsyncMock(return_value=[1, 2, 3])),
@@ -2349,7 +2349,7 @@ async def test_breed_pooches_all_selector_empty_skips_breeding(context, rng):
     action = _make_action(
         "breed_pooches",
         "owner",
-        {"first_selector": "all", "second_selector": "all"},
+        {"first_pooch_selector": "all", "second_pooch_selector": "all"},
     )
     with (
         patch("src.game.manage_owner_events.list_matching_pooch_ids", new=AsyncMock(return_value=[])),
@@ -2365,7 +2365,7 @@ async def test_breed_pooches_unknown_selector_resolves_none_skips(context, rng):
     action = _make_action(
         "breed_pooches",
         "owner",
-        {"first_selector": "bogus", "second_selector": "bogus"},
+        {"first_pooch_selector": "bogus", "second_pooch_selector": "bogus"},
     )
     with patch("src.game.manage_owner_events.breed_pooches", new=AsyncMock()) as mock_breed:
         await _execute_single_action(1, action, context, rng)
@@ -2378,7 +2378,7 @@ async def test_breed_pooches_require_unique_excludes_first_from_second(context, 
     action = _make_action(
         "breed_pooches",
         "owner",
-        {"first_selector": "random", "second_selector": "random", "require_unique": True},
+        {"first_pooch_selector": "random", "second_pooch_selector": "random", "require_unique": True},
     )
     # Two pooches available; first pick gets pooch 7, second pick should exclude 7 and pick 8
     with (
@@ -2396,7 +2396,7 @@ async def test_breed_pooches_require_unique_no_second_available_skips(context, r
     action = _make_action(
         "breed_pooches",
         "owner",
-        {"first_selector": "random", "second_selector": "random", "require_unique": True},
+        {"first_pooch_selector": "random", "second_pooch_selector": "random", "require_unique": True},
     )
     # Only one pooch available — after excluding first, second pick has nothing
     with (
@@ -2414,8 +2414,8 @@ async def test_breed_pooches_with_baby_params(context, rng):
         "breed_pooches",
         "owner",
         {
-            "first_selector": "random",
-            "second_selector": "random",
+            "first_pooch_selector": "random",
+            "second_pooch_selector": "random",
             "require_unique": False,
             "baby_name": "Pup",
             "baby_age": 0,
@@ -2445,7 +2445,7 @@ async def test_breed_pooches_save_as_invalid_type_is_noop(context, rng):
     action = _make_action(
         "breed_pooches",
         "owner",
-        {"first_selector": "random", "second_selector": "random", "require_unique": False, "save_as": 123},
+        {"first_pooch_selector": "random", "second_pooch_selector": "random", "require_unique": False, "save_as": 123},
     )
     with (
         patch("src.game.manage_owner_events.list_matching_pooch_ids", new=AsyncMock(return_value=[1, 2])),
@@ -2462,8 +2462,8 @@ async def test_breed_pooches_save_as_list_empty_slot_skips(context, rng):
         "breed_pooches",
         "owner",
         {
-            "first_selector": "random",
-            "second_selector": "random",
+            "first_pooch_selector": "random",
+            "second_pooch_selector": "random",
             "require_unique": False,
             "save_as": [{"slot": "", "target": "baby"}],
         },
@@ -2482,7 +2482,7 @@ async def test_breed_pooches_raises_value_error_logs_warning(context, rng):
     action = _make_action(
         "breed_pooches",
         "owner",
-        {"first_selector": "random", "second_selector": "random", "require_unique": False},
+        {"first_pooch_selector": "random", "second_pooch_selector": "random", "require_unique": False},
     )
     with (
         patch("src.game.manage_owner_events.list_matching_pooch_ids", new=AsyncMock(return_value=[5, 6])),

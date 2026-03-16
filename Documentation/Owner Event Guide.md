@@ -574,10 +574,13 @@ Instead, `target_type: "pooch"` and `target_type: "kennel"` actions use a `selec
 - `"selected"`: use the event's pre-selected contextual target (resolved once at trigger time)
 - `"all"`: apply the action to every matching target
 - `"random_exclude"`: apply the action to all matching targets **except** a randomly chosen subset
+- `"all_exclude"`: apply the action to every target **not** matched by the filter (inverse of `"all"`)
 
 `"random"` is the default if `selector` is omitted.
 
 `"selected"` is especially useful for events that need to refer to the same target across option branches and outcomes.
+
+`"all_exclude"` inverts the filter — it targets every entity the owner has that does *not* match `filter`. If no filter is specified, `"all_exclude"` targets no entities (the complement of "all" with no exclusions is empty).
 
 ### `count` parameter
 
@@ -725,7 +728,7 @@ An optional integer column (default: `1`) that controls how many times in a row 
 |--------|-------------|-------|
 | `modify_money` | `owner` | Adjusts the owner's dollars |
 | `modify_bloodskulls` | `owner` | Adjusts the owner's bloodskulls |
-| `create_pooch` | `owner` | Creates a new pooch for the owner |
+| `create_pooch` | `owner`, `kennel` | Creates a new pooch for the owner |
 | `clone_pooch` | `pooch`, `kennel`, `owner` | Duplicates an existing pooch |
 | `start_event` | `owner` | Triggers another event |
 | `modify_pooch_health` | `pooch`, `kennel`, `owner` | Modifies base health |
@@ -738,11 +741,11 @@ An optional integer column (default: `1`) that controls how many times in a row 
 | `rename_pooch` | `pooch`, `kennel`, `owner` | Renames the pooch |
 | `set_breeding_cooldown` | `pooch`, `kennel`, `owner` | Sets breeding cooldown |
 | `modify_kennel_capacity` | `kennel`, `owner` | Adjusts the kennel's pooch limit |
-| `breed_pooches` | `owner` | Breeds two of the owner's pooches together |
+| `breed_pooches` | `owner`, `kennel` | Breeds two of the owner's pooches together |
 | `sell_pooch` | `pooch`, `kennel`, `owner` | Sells a pooch, crediting the owner |
-| `buy_pooch` | `owner` | Buys a pooch from a vendor |
+| `buy_pooch` | `owner`, `kennel` | Buys a pooch from a vendor |
 | `release_stray` | `pooch`, `kennel`, `owner` | Releases a pooch into the stray pool for the owner's server |
-| `receive_stray` | `owner` | Claims a random stray pooch from the owner's server |
+| `receive_stray` | `owner`, `kennel` | Claims a random stray pooch from the owner's server |
 
 ### Supported Target Types
 
@@ -756,6 +759,7 @@ For `pooch` and `kennel` targets, use `parameters.selector` to control which ent
 - `"selected"` — the event's pre-selected contextual entity
 - `"all"` — every matching entity owned by the player
 - `"random_exclude"` — all matching entities except a randomly chosen subset (use with `count`)
+- `"all_exclude"` — every entity **not** matched by the filter (inverse of `"all"`)
 
 When `target_type` is `"kennel"` on a **pooch action** (e.g. `kill_pooch`, `modify_pooch_health`), the action applies to pooches *inside* the targeted kennel(s) rather than to the kennel itself. An optional `pooch_filter` parameter can narrow which pooches inside the kennel are affected. Use `pooch_selector` and `pooch_count` to further control which pooches within each resolved kennel are targeted — for example, `pooch_selector: "random_exclude", pooch_count: 1` affects all pooches except one randomly spared survivor.
 
@@ -885,7 +889,7 @@ Slots persist for the lifetime of the event, and you can use them between phases
 
 | Parameter | Type | Required | Notes |
 |-----------|------|----------|-------|
-| `selector` | string | yes (except `owner`) | `"random"`, `"selected"`, `"all"`, or `"random_exclude"` — not used when `target_type` is `"owner"` or `use_saved` is set |
+| `selector` | string | yes (except `owner`) | `"random"`, `"selected"`, `"all"`, `"random_exclude"`, or `"all_exclude"` — not used when `target_type` is `"owner"` or `use_saved` is set |
 | `count` | int | no | With `"random"`: number of pooches to pick. With `"random_exclude"`: number to exclude. |
 | `filter` | object | no | Pooch filter (`pooch`/`owner`), or kennel filter (`kennel`) |
 | `pooch_filter` | object | no | Pooch filter when `target_type` is `"kennel"` |
@@ -940,7 +944,7 @@ Slots persist for the lifetime of the event, and you can use them between phases
 
 | Parameter | Type | Required | Notes |
 |-----------|------|----------|-------|
-| `selector` | string | yes (except `owner`) | `"random"`, `"selected"`, `"all"`, or `"random_exclude"` |
+| `selector` | string | yes (except `owner`) | `"random"`, `"selected"`, `"all"`, `"random_exclude"`, or `"all_exclude"` |
 | `count` | int | no | Number of pooches to pick (`"random"`) or exclude (`"random_exclude"`) |
 | `filter` | object | no | Pooch filter (`pooch`/`owner`), or kennel filter (`kennel`) |
 | `pooch_filter` | object | no | Pooch filter when `target_type` is `"kennel"` |
@@ -965,7 +969,7 @@ Slots persist for the lifetime of the event, and you can use them between phases
 
 | Parameter | Type | Required | Notes |
 |-----------|------|----------|-------|
-| `selector` | string | yes (except `owner`) | `"random"`, `"selected"`, `"all"`, or `"random_exclude"` |
+| `selector` | string | yes (except `owner`) | `"random"`, `"selected"`, `"all"`, `"random_exclude"`, or `"all_exclude"` |
 | `count` | int | no | Number to pick (`"random"`) or exclude (`"random_exclude"`) |
 | `filter` / `pooch_filter` | object | no | Filters |
 | `mutation_id` | int | no | Internal mutation ID to add/remove — omit for a random mutation |
@@ -976,7 +980,7 @@ Slots persist for the lifetime of the event, and you can use them between phases
 
 | Parameter | Type | Required | Notes |
 |-----------|------|----------|-------|
-| `selector` | string | yes (except `owner`) | `"random"`, `"selected"`, `"all"`, or `"random_exclude"` |
+| `selector` | string | yes (except `owner`) | `"random"`, `"selected"`, `"all"`, `"random_exclude"`, or `"all_exclude"` |
 | `count` | int | no | Number to pick or exclude |
 | `filter` / `pooch_filter` | object | no | |
 | `breed` | string | no | Breed name — omit for a random breed |
@@ -988,7 +992,7 @@ Slots persist for the lifetime of the event, and you can use them between phases
 
 | Parameter | Type | Required | Notes |
 |-----------|------|----------|-------|
-| `selector` | string | yes (except `owner`) | `"random"`, `"selected"`, `"all"`, or `"random_exclude"` |
+| `selector` | string | yes (except `owner`) | `"random"`, `"selected"`, `"all"`, `"random_exclude"`, or `"all_exclude"` |
 | `count` | int | no | Number to pick or exclude |
 | `filter` / `pooch_filter` | object | no | |
 | `new_owner_discord_id` | int | one of | Transfer to this owner |
@@ -1014,6 +1018,8 @@ Creates a new pooch and optionally delivers it to a destination.
 }
 ```
 
+**Supported target types:** `owner`, `kennel`
+
 | Parameter | Type | Required | Notes |
 |-----------|------|----------|-------|
 | `name` | string | no | Defaults to a generated name |
@@ -1021,10 +1027,14 @@ Creates a new pooch and optionally delivers it to a destination.
 | `age` | int | no | Default: 0 |
 | `base_health` | int | no | Default value from constants |
 | `breeding_cooldown` | int | no | Default value from constants |
-| `destination` | string | no | Where to deliver the pooch (see below) — default: `"town"` |
+| `destination` | string | no | Where to deliver the pooch (see below) — default: `"town"`. Ignored when `target_type` is `"kennel"`. |
+| `selector` | string | yes (kennel) | `"random"`, `"selected"`, `"all"`, `"random_exclude"`, or `"all_exclude"` — selects which kennel to deliver to. Multi-kennel selectors use the first resolved kennel. |
+| `filter` | object | no | Kennel filter — only used when `target_type` is `"kennel"` |
 | `save_as` | string | no | Save the new pooch's ID into a named slot for use by later actions |
 
-##### `destination` values
+When `target_type` is `"kennel"`, the pooch is placed directly into the resolved kennel. If the kennel is full, the pooch is left unhoused in town.
+
+##### `destination` values (owner target only)
 
 | Value | Effect |
 |-------|--------|
@@ -1095,7 +1105,7 @@ Examples:
 
 | Parameter | Type | Required | Notes |
 |-----------|------|----------|-------|
-| `selector` | string | yes (except `owner`) | `"random"`, `"selected"`, `"all"`, or `"random_exclude"` |
+| `selector` | string | yes (except `owner`) | `"random"`, `"selected"`, `"all"`, `"random_exclude"`, or `"all_exclude"` |
 | `count` | int | no | Number of kennels to pick or exclude |
 | `filter` | object | no | Kennel filter (`kennel`/`owner`) |
 | `amount` | int | one of | Fixed delta; or absolute value when `mode` is `"set"` |
@@ -1112,7 +1122,7 @@ Examples:
 
 | Parameter | Type | Required | Notes |
 |-----------|------|----------|-------|
-| `selector` | string | yes (except `owner`) | `"random"`, `"selected"`, `"all"`, or `"random_exclude"` |
+| `selector` | string | yes (except `owner`) | `"random"`, `"selected"`, `"all"`, `"random_exclude"`, or `"all_exclude"` |
 | `count` | int | no | Number to pick or exclude |
 | `filter` / `pooch_filter` | object | no | |
 | `name` | string | yes | New name for the pooch |
@@ -1123,7 +1133,7 @@ Examples:
 
 | Parameter | Type | Required | Notes |
 |-----------|------|----------|-------|
-| `selector` | string | yes (except `owner`) | `"random"`, `"selected"`, `"all"`, or `"random_exclude"` |
+| `selector` | string | yes (except `owner`) | `"random"`, `"selected"`, `"all"`, `"random_exclude"`, or `"all_exclude"` |
 | `count` | int | no | Number to pick or exclude |
 | `filter` / `pooch_filter` | object | no | |
 | `cooldown` | int or `"base"` | yes | Days to set; `"base"` resets to the pooch's mutation-adjusted base cooldown |
@@ -1143,28 +1153,48 @@ Examples:
 
 Selects two of the owner's pooches and breeds them. Calls the same breeding logic as manual breeding, so the pooches must be opposite sexes — use `first_filter` / `second_filter` to ensure this.
 
+**Supported target types:** `owner`, `kennel`
+
 ```json
 {
     "action_type": "breed_pooches",
     "target_type": "owner",
     "parameters": {
-        "first_selector": "random",
+        "first_pooch_selector": "random",
         "first_filter": { "sex": "male" },
-        "second_selector": "random",
+        "second_pooch_selector": "random",
         "second_filter": { "sex": "female" },
         "baby_base_health": 10
     }
 }
 ```
 
+When `target_type` is `"kennel"`, both parent pools are restricted to pooches within the first resolved kennel. The `selector` / `filter` parameters select which kennel. Multi-kennel selectors (`all`, `all_exclude`, `random_exclude`) use the first kennel in the resolved list. This mirrors how manual breeding works — parents must be in the same kennel.
+
+```json
+{
+    "action_type": "breed_pooches",
+    "target_type": "kennel",
+    "parameters": {
+        "selector": "selected",
+        "first_pooch_selector": "random",
+        "first_filter": { "sex": "male" },
+        "second_pooch_selector": "random",
+        "second_filter": { "sex": "female" }
+    }
+}
+```
+
 | Parameter | Type | Required | Notes |
 |-----------|------|----------|-------|
-| `first_selector` | string | no | `"random"` (default), `"selected"`, or `"all"` (picks one from all) |
-| `first_filter` | object | no | Pooch filter applied to the first pooch selection |
-| `second_selector` | string | no | Same as above for the second pooch |
-| `second_filter` | object | no | Pooch filter applied to the second pooch selection |
-| `require_unique` | bool | no | If `true`, the second pooch is picked from the pool with the first pooch excluded — if no second distinct pooch can be found, breeding is skipped (default: `false`) |
-| `require_same` | bool | no | If `true`, force the second parent to be the same pooch as the first (ignores `second_selector`) |
+| `selector` | string | yes (kennel) | `"random"`, `"selected"`, `"all"`, `"random_exclude"`, or `"all_exclude"` — selects which kennel to restrict breeding to. Multi-kennel selectors use the first resolved kennel. |
+| `filter` | object | no | Kennel filter — only used when `target_type` is `"kennel"` |
+| `first_pooch_selector` | string | no | `"random"` (default), `"selected"`, `"all"`, or `"all_exclude"` (picks one from the resolved pool) — selects the first parent |
+| `first_filter` | object | no | Pooch filter applied to the first parent selection |
+| `second_pooch_selector` | string | no | Same values as `first_pooch_selector`, applied to the second parent |
+| `second_filter` | object | no | Pooch filter applied to the second parent selection |
+| `require_unique` | bool | no | If `true`, the second pooch is picked from the pool with the first pooch excluded — if no second distinct pooch can be found, breeding is skipped (default: `true`) |
+| `require_same` | bool | no | If `true`, force the second parent to be the same pooch as the first (ignores `second_pooch_selector`) |
 | `baby_name` | string | no | Override the generated baby name |
 | `baby_sex` | string | no | `"male"` or `"female"` — random if omitted |
 | `baby_age` | int | no | Override the baby's starting age |
@@ -1218,7 +1248,7 @@ Sells one or more of the owner's pooches, crediting the owner with the sale pric
 
 | Parameter | Type | Required | Notes |
 |-----------|------|----------|-------|
-| `selector` | string | yes (except `owner`) | `"random"`, `"selected"`, `"all"`, or `"random_exclude"` |
+| `selector` | string | yes (except `owner`) | `"random"`, `"selected"`, `"all"`, `"random_exclude"`, or `"all_exclude"` |
 | `count` | int | no | Number to pick (`"random"`) or exclude (`"random_exclude"`) |
 | `filter` / `pooch_filter` | object | no | Filters for source pooch selection |
 | `use_saved` | string | no | Use IDs from a named slot instead of `selector` |
@@ -1233,6 +1263,8 @@ If neither `vendor_id` nor `vendor_selector` is provided, the pooch is sold for 
 #### `buy_pooch`
 
 Buys a pooch from a vendor and delivers it to the owner.
+
+**Supported target types:** `owner`, `kennel`
 
 ```json
 {
@@ -1254,8 +1286,12 @@ Buys a pooch from a vendor and delivers it to the owner.
 | `pooch_selector` | string | no | `"random"` (default) or `"selected"` — which pooch from the vendor's stock to buy |
 | `pooch_filter` | object | no | Filter to narrow vendor stock candidates |
 | `value_multiplier` | float | no | Multiply the purchase price by this factor (default: `1.0`) |
-| `destination` | string | no | Where to deliver the pooch — same values as `create_pooch` (default: `"town"`) |
+| `destination` | string | no | Where to deliver the pooch — same values as `create_pooch` (default: `"kennel"`). Ignored when `target_type` is `"kennel"`. |
+| `selector` | string | yes (kennel) | `"random"`, `"selected"`, `"all"`, `"random_exclude"`, or `"all_exclude"` — selects which kennel to deliver to. Multi-kennel selectors use the first resolved kennel. |
+| `filter` | object | no | Kennel filter — only used when `target_type` is `"kennel"` |
 | `save_as` | string | no | Save the purchased pooch's ID into a named slot |
+
+When `target_type` is `"kennel"`, the purchased pooch is placed directly into the resolved kennel. If the kennel is full, the pooch is left unhoused in town.
 
 If no matching vendor or pooch is found, the action is a no-op.
 
@@ -1283,7 +1319,11 @@ If the owner belongs to no servers, the action is a no-op.
 
 #### `receive_stray`
 
-Claims a random stray pooch from one of the owner's servers and delivers it to the owner.
+Claims a stray pooch from one of the owner's servers and delivers it to the owner.
+
+By default a random stray is chosen. If `use_saved` is set, the action instead resolves to whichever stray pooch IDs were stored in that context slot (e.g. by a prior `release_stray` with `save_as`).
+
+**Supported target types:** `owner`, `kennel`
 
 ```json
 {
@@ -1298,10 +1338,38 @@ Claims a random stray pooch from one of the owner's servers and delivers it to t
 
 | Parameter | Type | Required | Notes |
 |-----------|------|----------|-------|
-| `destination` | string | no | Where to deliver the stray — `"kennel"`, `"graveyard"`, `"hell"`, or `"town"` (default: `"town"`) |
-| `count` | int | no | How many strays to sample as candidates before randomly picking one (default: `1`). Useful with multiple options to allow player choice between distinct strays. |
+| `destination` | string | no | Where to deliver the stray — `"kennel"`, `"graveyard"`, `"hell"`, or `"town"` (default: `"town"`). Ignored when `target_type` is `"kennel"`. |
+| `count` | int | no | How many strays to sample as candidates before randomly picking one (default: `1`). Ignored when `use_saved` is set. |
+| `use_saved` | string | no | Slot name to read saved pooch IDs from. When set, the pool is restricted to those specific stray IDs instead of picking randomly. |
+| `selector` | string | yes (kennel) | `"random"`, `"selected"`, `"all"`, `"random_exclude"`, or `"all_exclude"` — selects which kennel to deliver to. Multi-kennel selectors use the first resolved kennel. |
+| `filter` | object | no | Kennel filter — only used when `target_type` is `"kennel"` |
 
-If no strays are available on the server, the action is a no-op.
+When `target_type` is `"kennel"`, the received stray is placed directly into the resolved kennel. If the kennel is full, the pooch is left unhoused in town.
+
+If no strays are available (or none of the saved IDs are currently strays on the server), the action is a no-op.
+
+**Example — receive the same pooch that was released earlier:**
+
+```json
+[
+    {
+        "action_type": "release_stray",
+        "target_type": "pooch",
+        "parameters": {
+            "selector": "selected",
+            "save_as": "released_pooch"
+        }
+    },
+    {
+        "action_type": "receive_stray",
+        "target_type": "owner",
+        "parameters": {
+            "destination": "kennel",
+            "use_saved": "released_pooch"
+        }
+    }
+]
+```
 
 ---
 
