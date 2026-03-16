@@ -5,7 +5,7 @@ from datetime import datetime
 
 from src.database.models import ServerEventOccurrence as ServerEventOccurrenceORM
 
-from .event_result import EventResult
+from ..owner_events.owner_event_result import OwnerEventResult
 from .server_event_context import ServerEventContext
 from .server_event_option import ServerEventOption, to_server_event_option
 from .server_event_participation import (
@@ -31,7 +31,7 @@ class TriggeredServerEvent:
     max_participants: int = 0
     message_discord_id: int | None = None
     viewer_participation: ServerEventParticipationSummary | None = None
-    result_summary: EventResult | None = None
+    result_summary: OwnerEventResult | None = None
 
 
 async def to_triggered_server_event(
@@ -65,5 +65,7 @@ async def to_triggered_server_event(
         max_participants=event.max_participants,
         message_discord_id=occurrence.message_discord_id,
         viewer_participation=viewer_participation,
-        result_summary=EventResult.from_dict(occurrence.result_summary or {}) if occurrence.result_summary else None,
+        result_summary=(
+            OwnerEventResult.from_dict(occurrence.result_summary or {}) if occurrence.result_summary else None
+        ),
     )

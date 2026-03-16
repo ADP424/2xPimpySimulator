@@ -20,7 +20,7 @@ logger = get_logger("database/load/load_resources")
 RESOURCE_ROOT = Path("resources")
 VENDOR_NAMES_ROOT = RESOURCE_ROOT / "vendor_names"
 
-_SELECTOR_TOKENS = {"selected", "random", "all", "random_exclude"}
+_SELECTOR_TOKENS = {"selected", "random", "all", "random_exclude", "all_exclude"}
 _JSONC_SUFFIXES = {".jsonc", ".json"}
 
 _ACTION_ALLOWED_KEYS = {"action_type", "target_type", "parameters", "repeat"}

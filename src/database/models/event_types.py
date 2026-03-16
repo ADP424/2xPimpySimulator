@@ -9,7 +9,7 @@ JsonObject: TypeAlias = dict[str, JsonValue]
 EventSeverity: TypeAlias = Literal["trivial", "minor", "moderate", "major", "critical"]
 EventRarity: TypeAlias = Literal["common", "uncommon", "rare", "novel", "extraordinary"]
 EventTargetType: TypeAlias = Literal["owner", "pooch", "kennel"]
-EventEntitySelector: TypeAlias = Literal["selected", "random", "all", "random_exclude"]
+EventEntitySelector: TypeAlias = Literal["selected", "random", "all", "random_exclude", "all_exclude"]
 EventActionType: TypeAlias = Literal[
     "modify_money",
     "modify_bloodskulls",
@@ -29,7 +29,30 @@ EventActionType: TypeAlias = Literal[
     "breed_pooches",
     "sell_pooch",
     "buy_pooch",
+    "release_stray",
+    "receive_stray",
+    "enter_kennel",
+    "enter_vendor_stock",
 ]
+
+StrayEventActionType: TypeAlias = Literal[
+    "modify_pooch_health",
+    "modify_pooch_age",
+    "kill_pooch",
+    "add_mutation",
+    "remove_mutation",
+    "add_breed",
+    "create_pooch",
+    "clone_pooch",
+    "rename_pooch",
+    "set_breeding_cooldown",
+    "breed_pooches",
+    "enter_kennel",
+    "enter_vendor_stock",
+    "start_stray_event",
+]
+
+StrayEventEntitySelector: TypeAlias = Literal["random", "random_exclude", "all", "all_exclude"]
 
 
 class PoochFilterSpec(TypedDict, total=False):
@@ -85,6 +108,21 @@ class OwnerEventFilterSpec(TypedDict, total=False):
     exclude_kennels: list[int]
     kennels: list[KennelFilterSpec]
     pooches: list[PoochFilterSpec]
+
+
+class StrayEventFilterSpec(TypedDict, total=False):
+    """Top-level filter for a stray event — determines which strays on a server are eligible targets."""
+
+    min_count: int
+    max_count: int
+    description: str
+    pooches: list[PoochFilterSpec]
+
+
+class StrayEventContextDict(TypedDict):
+    server_discord_id: int
+    affected_pooch_ids: list[int]
+    extra_data: JsonObject
 
 
 class EventContextDict(TypedDict):

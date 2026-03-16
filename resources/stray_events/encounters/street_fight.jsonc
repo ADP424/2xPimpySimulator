@@ -1,0 +1,30 @@
+{
+    "name": "Street Fight",
+    "description": "Two strays get into a vicious fight.",
+    "flavor_text": "The streets are dangerous.",
+    "severity": "MAJOR",
+    "rarity": "COMMON",
+    "filter": {
+        "min_count": 2
+    },
+    "actions": [
+        {
+            "action_type": "modify_pooch_health",
+            "target_type": "pooch",
+            "parameters": {
+                "selector": "random",
+                "min_amount": -8,
+                "max_amount": -3
+            }
+        },
+        {
+            "action_type": "modify_pooch_health",
+            "target_type": "pooch",
+            "parameters": {
+                "selector": "random",
+                "min_amount": -5,
+                "max_amount": -2
+            }
+        }
+    ]
+}

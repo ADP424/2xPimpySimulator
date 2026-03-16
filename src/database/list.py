@@ -29,6 +29,7 @@ from .models import (
     ServerEventOption,
     ServerEventOutcome,
     ServerEventParticipation,
+    StrayEvent,
     StrayPooch,
     Vendor,
     VendorPoochForSale,
@@ -883,3 +884,22 @@ async def list_matching_pooch_ids_in_kennel(
 async def list_matching_kennel_ids(owner_discord_id: int, filter_spec: dict | None) -> list[int]:
     async with session_scope() as session:
         return await get_matching_kennel_ids_for_owner(session, owner_discord_id, filter_spec or {})
+
+
+async def list_all_stray_events() -> list[StrayEvent]:
+    from sqlalchemy.orm import selectinload
+
+    async with session_scope() as session:
+        query = (
+            select(StrayEvent).options(selectinload(StrayEvent.actions)).order_by(StrayEvent.category, StrayEvent.name)
+        )
+        response = await session.execute(query)
+    return list(response.scalars().all())
+
+
+async def list_matching_stray_pooch_ids(server_discord_id: int, filter_spec: dict | None) -> list[int]:
+    """Return IDs of alive strays on the server that match the given pooch filter."""
+    from .utils import get_matching_stray_pooch_ids_for_server
+
+    async with session_scope() as session:
+        return await get_matching_stray_pooch_ids_for_server(session, server_discord_id, filter_spec or {})

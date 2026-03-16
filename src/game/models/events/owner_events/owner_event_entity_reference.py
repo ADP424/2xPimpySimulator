@@ -6,37 +6,37 @@ from typing import TYPE_CHECKING, Any, Literal
 from src.database import get_breed_by_id, get_mutation_by_id, get_pooch_by_id
 
 if TYPE_CHECKING:
-    from .event_context import EventContext
-    from .event_result import EventResult
+    from .owner_event_context import OwnerEventContext
+    from .owner_event_result import OwnerEventResult
 
 
-EventEntityKind = Literal["pooches", "breeds", "mutations"]
+OwnerEventEntityKind = Literal["pooches", "breeds", "mutations"]
 
 
 @dataclass(frozen=True)
-class EventEntityReference:
+class OwnerEventEntityReference:
     id: int
     label: str
     description: str | None = None
 
 
 @dataclass
-class EventEntityReferences:
-    pooches: list[EventEntityReference] = field(default_factory=list)
-    breeds: list[EventEntityReference] = field(default_factory=list)
-    mutations: list[EventEntityReference] = field(default_factory=list)
+class OwnerEventEntityReferences:
+    pooches: list[OwnerEventEntityReference] = field(default_factory=list)
+    breeds: list[OwnerEventEntityReference] = field(default_factory=list)
+    mutations: list[OwnerEventEntityReference] = field(default_factory=list)
 
-    def for_kind(self, kind: EventEntityKind) -> list[EventEntityReference]:
+    def for_kind(self, kind: OwnerEventEntityKind) -> list[OwnerEventEntityReference]:
         return getattr(self, kind)
 
-    def copy(self) -> EventEntityReferences:
-        return EventEntityReferences(
+    def copy(self) -> OwnerEventEntityReferences:
+        return OwnerEventEntityReferences(
             pooches=list(self.pooches),
             breeds=list(self.breeds),
             mutations=list(self.mutations),
         )
 
-    def add(self, kind: EventEntityKind, reference: EventEntityReference) -> None:
+    def add(self, kind: OwnerEventEntityKind, reference: OwnerEventEntityReference) -> None:
         bucket = self.for_kind(kind)
         if all(existing.id != reference.id for existing in bucket):
             bucket.append(reference)
@@ -45,34 +45,34 @@ class EventEntityReferences:
         return bool(self.pooches or self.breeds or self.mutations)
 
 
-async def resolve_event_entity_references(
-    context: EventContext,
-    result: EventResult | None = None,
-    existing: EventEntityReferences | None = None,
-) -> EventEntityReferences:
+async def resolve_owner_event_entity_references(
+    context: OwnerEventContext,
+    result: OwnerEventResult | None = None,
+    existing: OwnerEventEntityReferences | None = None,
+) -> OwnerEventEntityReferences:
     """
-    Resolve typed entity references for an event context and optional result.
+    Resolve typed entity references for an owner event context and optional result.
 
     Parameters
     ----------
-    context: EventContext
+    context: OwnerEventContext
         The event context carrying selected and affected entity ids.
 
-    result: EventResult | None
+    result: OwnerEventResult | None
         Optional event result to inspect for created / affected entities.
 
-    existing: EventEntityReferences | None
+    existing: OwnerEventEntityReferences | None
         Existing references to preserve and extend.
 
     Returns
     -------
-    EventEntityReferences
+    OwnerEventEntityReferences
         Typed entity references for the event.
     """
 
-    references = existing.copy() if existing is not None else EventEntityReferences()
+    references = existing.copy() if existing is not None else OwnerEventEntityReferences()
 
-    seen_ids: dict[EventEntityKind, set[int]] = {
+    seen_ids: dict[OwnerEventEntityKind, set[int]] = {
         "pooches": {reference.id for reference in references.pooches},
         "breeds": {reference.id for reference in references.breeds},
         "mutations": {reference.id for reference in references.mutations},
@@ -121,7 +121,7 @@ async def resolve_event_entity_references(
             continue
         pooch = await get_pooch_by_id(pooch_id)
         label = pooch.name if pooch is not None else f"Pooch #{pooch_id}"
-        references.add("pooches", EventEntityReference(id=pooch_id, label=label))
+        references.add("pooches", OwnerEventEntityReference(id=pooch_id, label=label))
         seen_ids["pooches"].add(pooch_id)
 
     for breed_id in sorted(breed_ids):
@@ -129,7 +129,7 @@ async def resolve_event_entity_references(
             continue
         breed = await get_breed_by_id(breed_id)
         label = breed.name if breed is not None else f"Breed #{breed_id}"
-        references.add("breeds", EventEntityReference(id=breed_id, label=label))
+        references.add("breeds", OwnerEventEntityReference(id=breed_id, label=label))
         seen_ids["breeds"].add(breed_id)
 
     for mutation_id in sorted(mutation_ids):
@@ -137,7 +137,7 @@ async def resolve_event_entity_references(
             continue
         mutation = await get_mutation_by_id(mutation_id)
         label = mutation.name if mutation is not None else f"Mutation #{mutation_id}"
-        references.add("mutations", EventEntityReference(id=mutation_id, label=label))
+        references.add("mutations", OwnerEventEntityReference(id=mutation_id, label=label))
         seen_ids["mutations"].add(mutation_id)
 
     return references

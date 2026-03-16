@@ -94,10 +94,8 @@
 ## Strays
 | Feature                                                                                                                       | Points |
 | ----------------------------------------------------------------------------------------------------------------------------- | ------ |
-| Owners can kick their dogs onto the street and they become wandering strays                                                   | 5      |
 | Randomly generated strays wandering towns (servers)                                                                           | 3      |
 | Players can adopt strays by spending bones for a chance to attract one                                                        | 3      |
-| Add park you can go to in order to get stray pooches (chance increases with strays / player)                                  | 8      |
 | There should always be a minimum of one shitty stray per server                                                               | 1      |
 | Strays fuck each other bro                                                                                                    | 3      |
 

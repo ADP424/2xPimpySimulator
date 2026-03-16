@@ -8,7 +8,7 @@ if TYPE_CHECKING:
 
 
 @dataclass
-class EventContext:
+class OwnerEventContext:
     owner_discord_id: int
 
     affected_pooch_ids: list[int] = field(default_factory=list)
@@ -20,19 +20,19 @@ class EventContext:
     extra_data: JsonObject = field(default_factory=dict)
 
     @classmethod
-    def from_dict(cls, data: EventContextDict) -> EventContext:
+    def from_dict(cls, data: EventContextDict) -> OwnerEventContext:
         """
         Create from a dictionary (from JSON storage).
 
         Parameters
         ----------
         data: EventContextDict
-            The database-side event context dictionary to convert to a game EventContext object.
+            The database-side event context dictionary to convert to a game OwnerEventContext object.
 
         Returns
         -------
-        EventContext
-            The new game EventContext object with the data of the input database EventContextDict.
+        OwnerEventContext
+            The new game OwnerEventContext object with the data of the input database EventContextDict.
         """
 
         return cls(
@@ -51,7 +51,7 @@ class EventContext:
         Returns
         -------
         EventContextDict
-            A plain dictionary with the same data as this EventContext object.
+            A plain dictionary with the same data as this OwnerEventContext object.
         """
 
         return {

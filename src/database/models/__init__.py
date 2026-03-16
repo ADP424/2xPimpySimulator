@@ -40,6 +40,8 @@ from .static import (
     ServerEvent,
     ServerEventOption,
     ServerEventOutcome,
+    StrayEvent,
+    StrayEventAction,
     VendorFirstName,
     VendorLastName,
 )
@@ -82,6 +84,8 @@ __all__ = [
     "ServerEvent",
     "ServerEventOption",
     "ServerEventOutcome",
+    "StrayEvent",
+    "StrayEventAction",
     "VendorFirstName",
     "VendorLastName",
 ]

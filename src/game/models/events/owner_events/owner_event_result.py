@@ -8,7 +8,7 @@ if TYPE_CHECKING:
 
 
 @dataclass
-class EventResult:
+class OwnerEventResult:
     success: bool = True
     message: str = ""
 
@@ -23,19 +23,19 @@ class EventResult:
     extra_data: JsonObject = field(default_factory=dict)
 
     @classmethod
-    def from_dict(cls, data: EventResultDict) -> EventResult:
+    def from_dict(cls, data: EventResultDict) -> OwnerEventResult:
         """
         Create from a dictionary (from JSON storage).
 
         Parameters
         ----------
         data: EventResultDict
-            The database-side event result dictionary to convert to a game EventResult object.
+            The database-side event result dictionary to convert to a game OwnerEventResult object.
 
         Returns
         -------
-        EventResult
-            The new game EventResult object with the data of the input database EventResultDict.
+        OwnerEventResult
+            The new game OwnerEventResult object with the data of the input database EventResultDict.
         """
 
         return cls(
@@ -58,7 +58,7 @@ class EventResult:
         Returns
         -------
         EventResultDict
-            A plain dictionary with the same data as this EventResult object.
+            A plain dictionary with the same data as this OwnerEventResult object.
         """
 
         return {
@@ -74,19 +74,19 @@ class EventResult:
             "extra_data": self.extra_data,
         }
 
-    def merge(self, other: EventResult) -> EventResult:
+    def merge(self, other: OwnerEventResult) -> OwnerEventResult:
         """
         Merge another result into this one.
         Numerical changes are totalled, lists are extended, messages are combined with newlines, etc.
 
         Parameters
         ----------
-        other: EventResult
-            The other EventResult object to merge into this one.
+        other: OwnerEventResult
+            The other OwnerEventResult object to merge into this one.
 
         Returns
         -------
-        EventResult
+        OwnerEventResult
             The result of the merge.
         """
 

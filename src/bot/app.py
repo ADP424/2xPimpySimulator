@@ -17,6 +17,7 @@ from .commands.pending_events import register_pending_events_command
 from .commands.server_event import register_server_event_command
 from .commands.set_event_channel import register_set_event_channel_command
 from .commands.town import register_town_command
+from .commands.trigger_event import register_trigger_event_command
 from .constants import GUILDS
 from .day_change_loop import _fetch_and_update_names, day_change_runner
 from .event_loop import hourly_event_runner
@@ -48,6 +49,7 @@ def run(update_names_only: bool = False, skip_startup_day_change: bool = False):
         register_get_money_command(tree)
         register_pause_day_loop_command(tree)
         register_increment_day_command(tree)
+        register_trigger_event_command(tree)
 
     async def sync_commands():
         if stage == "dev":

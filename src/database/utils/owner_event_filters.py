@@ -18,6 +18,7 @@ from ..models import (
     Pooch,
     PoochBreed,
     PoochMutation,
+    StrayPooch,
 )
 
 if TYPE_CHECKING:
@@ -25,12 +26,10 @@ if TYPE_CHECKING:
         KennelFilterSpec,
         OwnerEventFilterSpec,
         PoochFilterSpec,
+        StrayEventFilterSpec,
     )
 
 _FILTER_META_KEYS = {"min_count", "max_count", "description"}
-_POOCH_FILTER_EXCLUSION_KEYS = {"exclude_age", "exclude_health", "exclude_breeding_cooldown"}
-_KENNEL_FILTER_EXCLUSION_KEYS = {"exclude_capacity", "exclude_pooches"}
-_OWNER_FILTER_EXCLUSION_KEYS = {"exclude_money", "exclude_bloodskulls", "exclude_pooches", "exclude_kennels"}
 
 
 def _is_excluded(value: int | float, exclude_list: list | None) -> bool:
@@ -422,6 +421,60 @@ async def check_owner_event_filter(
         count = await count_matching_pooches_for_owner(
             session,
             owner_discord_id,
+            _strip_requirement_metadata(pooch_filter),
+        )
+        if count < min_count:
+            return False
+        if max_count is not None and count > max_count:
+            return False
+
+    return True
+
+
+async def get_matching_stray_pooch_ids_for_server(
+    session: AsyncSession,
+    server_discord_id: int,
+    filter_spec: "PoochFilterSpec | None",
+) -> list[int]:
+    """Return IDs of alive strays on the given server that match filter_spec."""
+    query = await _build_pooch_query(session, dict(filter_spec) if filter_spec else {})
+    stray_subquery = select(StrayPooch.pooch_id).where(StrayPooch.server_discord_id == server_discord_id)
+    query = query.where(Pooch.id.in_(stray_subquery), Pooch.alive.is_(True))
+    result = await session.execute(query.with_only_columns(Pooch.id))
+    return list(result.scalars().all())
+
+
+async def count_matching_stray_pooches_for_server(
+    session: AsyncSession,
+    server_discord_id: int,
+    filter_spec: "PoochFilterSpec | None",
+) -> int:
+    ids = await get_matching_stray_pooch_ids_for_server(session, server_discord_id, filter_spec)
+    return len(ids)
+
+
+async def check_stray_event_filter(
+    session: AsyncSession,
+    server_discord_id: int,
+    filter_spec: StrayEventFilterSpec | None,
+) -> bool:
+    """Return True if the stray population on the server satisfies filter_spec."""
+
+    if not filter_spec:
+        # No filter — just need at least one alive stray
+        stray_count = await session.scalar(
+            select(func.count(StrayPooch.pooch_id))
+            .join(Pooch, Pooch.id == StrayPooch.pooch_id)
+            .where(StrayPooch.server_discord_id == server_discord_id, Pooch.alive.is_(True))
+        )
+        return (stray_count or 0) > 0
+
+    for pooch_filter in list(filter_spec.get("pooches", [])):
+        min_count = pooch_filter.get("min_count", 1)
+        max_count = pooch_filter.get("max_count")
+        count = await count_matching_stray_pooches_for_server(
+            session,
+            server_discord_id,
             _strip_requirement_metadata(pooch_filter),
         )
         if count < min_count:

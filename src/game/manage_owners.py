@@ -7,6 +7,7 @@ from src.database import (
     add_breed_to_pooch,
     add_owner_to_server,
     add_pooch_to_kennel,
+    add_pooch_to_strays,
     count_owners_for_server,
     create_kennel,
     create_owner,
@@ -276,7 +277,11 @@ async def visit_park(
     return (
         True,
         (
-            f"A stray pooch named **{chosen.name}** trotted up to you!"
+            f"A stray pooch named **{chosen.name}** trotted up to you! "
             "They're waiting in town until you make room in a kennel."
         ),
     )
+
+
+async def cast_out_pooch(pooch_id: int, server_discord_id: int) -> None:
+    await add_pooch_to_strays(pooch_id, server_discord_id)

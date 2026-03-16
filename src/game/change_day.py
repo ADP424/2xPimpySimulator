@@ -8,6 +8,7 @@ import numpy
 from src.database import (
     add_breed_to_pooch,
     add_mutation_to_pooch,
+    add_pooch_to_strays,
     add_pooch_to_vendor_stock,
     age_pooch,
     bury_pooch,
@@ -26,6 +27,7 @@ from src.database import (
     list_pooches_for_kennel,
     list_servers,
     list_servers_for_pooch,
+    list_strays_for_server,
     list_vendors,
     remove_pooch_from_kennel,
     reset_begged_today,
@@ -50,6 +52,7 @@ from .constants import (
 )
 from .manage_kennels import add_pooch_to_kennel
 from .manage_pooches import get_pooch_by_id
+from .manage_stray_events import run_daily_stray_event_check
 from .models import (
     BirthEvent,
     DayChangeSummary,
@@ -317,6 +320,26 @@ async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeS
     logger.info("Completed daily deaths.")
 
     servers = await list_servers()
+
+    # minimum stray guarantee: every server must have at least one alive stray
+    logger.info("Checking minimum stray population per server...")
+    for server in servers:
+        strays = await list_strays_for_server(server.discord_id)
+        if not strays:
+            stray_pooch = await create_pooch(
+                base_health=rng.randint(POOCH_BASE_HEALTH_RANGE[0], POOCH_BASE_HEALTH_RANGE[1]),
+                age=0,
+                rng=rng,
+            )
+            if stray_pooch:
+                await add_pooch_to_strays(stray_pooch.id, server.discord_id)
+                logger.info(f"Added guaranteed stray pooch {stray_pooch.id} to server {server.discord_id}.")
+    logger.info("Minimum stray check complete.")
+
+    # stray events (fire once per server after the stray population is guaranteed)
+    logger.info("Running daily stray events...")
+    await run_daily_stray_event_check(rng_seed=rng.randint(0, 2**31))
+    logger.info("Completed daily stray events.")
 
     # vendor restock (replace one vendor per server, then replace the stock of all vendors)
     logger.info("Restocking vendors for the day...")

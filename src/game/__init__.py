@@ -27,12 +27,14 @@ from .manage_owner_events import (
     process_expired_events,
     respond_to_event,
     run_hourly_event_check,
+    trigger_event_by_name,
     trigger_random_event,
     trigger_specific_event,
 )
 from .manage_owners import (
     add_money,
     beg_for_money,
+    cast_out_pooch,
     get_or_create_owner,
     list_all_owners,
     list_owner_kennels,
@@ -63,6 +65,9 @@ from .manage_static import (
     list_all_breeds,
     list_all_mutations,
 )
+from .manage_stray_events import (
+    run_daily_stray_event_check,
+)
 from .manage_vendors import (
     buy_pooch,
     get_pooch_buy_price,
@@ -83,6 +88,7 @@ __all__ = [
     "list_all_owner_events",
     "get_active_events_for_owner",
     "get_pending_event",
+    "trigger_event_by_name",
     "trigger_random_event",
     "trigger_specific_event",
     "respond_to_event",
@@ -103,6 +109,7 @@ __all__ = [
     # Owner commands
     "add_money",
     "beg_for_money",
+    "cast_out_pooch",
     "get_or_create_owner",
     "list_all_owners",
     "list_owner_kennels",
@@ -112,6 +119,8 @@ __all__ = [
     "get_pooch_by_id",
     "get_pooch_family",
     "rename_pooch",
+    # Stray event commands
+    "run_daily_stray_event_check",
     # Server commands
     "get_event_channel",
     "get_or_create_server",

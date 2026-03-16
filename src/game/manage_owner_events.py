@@ -80,14 +80,14 @@ from .constants import (
 )
 from .manage_vendors import get_pooch_buy_price, get_pooch_sell_price
 from .models import (
-    Event,
-    EventContext,
-    EventHistory,
-    EventResult,
-    TriggeredEvent,
-    to_event,
-    to_event_history,
-    to_triggered_event,
+    OwnerEvent,
+    OwnerEventContext,
+    OwnerEventHistory,
+    OwnerEventResult,
+    TriggeredOwnerEvent,
+    to_owner_event,
+    to_owner_event_history,
+    to_triggered_owner_event,
 )
 from .utils import get_pooch_mutation_advanced_option_total
 
@@ -99,7 +99,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-async def get_active_events_for_owner(owner_discord_id: int, pending_only: bool = True) -> list[TriggeredEvent]:
+async def get_active_events_for_owner(owner_discord_id: int, pending_only: bool = True) -> list[TriggeredOwnerEvent]:
     """
     Get all active events for an owner.
 
@@ -113,15 +113,15 @@ async def get_active_events_for_owner(owner_discord_id: int, pending_only: bool 
 
     Returns
     -------
-    list[TriggeredEvent]
+    list[TriggeredOwnerEvent]
         List of triggered events for the owner.
     """
 
     active_events = await list_active_owner_events_for_owner(owner_discord_id, pending_only=pending_only)
-    return [await to_triggered_event(active_event) for active_event in active_events]
+    return [await to_triggered_owner_event(active_event) for active_event in active_events]
 
 
-async def get_event_history(owner_discord_id: int, limit: int = 50) -> list[EventHistory]:
+async def get_event_history(owner_discord_id: int, limit: int = 50) -> list[OwnerEventHistory]:
     """
     Get the event history for an owner.
 
@@ -135,17 +135,17 @@ async def get_event_history(owner_discord_id: int, limit: int = 50) -> list[Even
 
     Returns
     -------
-    list[EventHistory]
+    list[OwnerEventHistory]
         List of typed event history records.
     """
 
     history = await list_owner_event_history_for_owner(owner_discord_id, limit)
-    return [await to_event_history(record) for record in history]
+    return [await to_owner_event_history(record) for record in history]
 
 
 async def get_pending_event(
     owner_discord_id: int, active_owner_event_id: Optional[int] = None
-) -> Optional[TriggeredEvent]:
+) -> Optional[TriggeredOwnerEvent]:
     """
     Get a specific pending event for an owner.
 
@@ -159,7 +159,7 @@ async def get_pending_event(
 
     Returns
     -------
-    TriggeredEvent, optional
+    TriggeredOwnerEvent, optional
         The triggered event, or None if not found.
     """
 
@@ -174,24 +174,24 @@ async def get_pending_event(
         if active_event is None:
             return None
 
-    return await to_triggered_event(active_event)
+    return await to_triggered_owner_event(active_event)
 
 
-async def list_all_owner_events() -> list[Event]:
+async def list_all_owner_events() -> list[OwnerEvent]:
     """
     List all available owner_events.
 
     Returns
     -------
-    list[Event]
+    list[OwnerEvent]
         A list of typed event information objects.
     """
 
     events = await db_list_all_owner_events()
-    return [await to_event(event) for event in events]
+    return [await to_owner_event(event) for event in events]
 
 
-async def process_expired_events(rng: Optional[random.Random] = None) -> list[tuple[int, int, EventResult]]:
+async def process_expired_events(rng: Optional[random.Random] = None) -> list[tuple[int, int, OwnerEventResult]]:
     """
     Process all expired events that weren't responded to.
 
@@ -202,7 +202,7 @@ async def process_expired_events(rng: Optional[random.Random] = None) -> list[tu
 
     Returns
     -------
-    list[tuple[int, int, EventResult]]
+    list[tuple[int, int, OwnerEventResult]]
         List of (owner_discord_id, event_id, result) for processed owner_events.
     """
 
@@ -213,11 +213,15 @@ async def process_expired_events(rng: Optional[random.Random] = None) -> list[tu
     results = []
 
     for active_event in expired_events:
-        context = EventContext.from_dict(active_event.context)
+        context = OwnerEventContext.from_dict(active_event.context)
         event = active_event.event
 
         # Start with any result already recorded from event-level actions at trigger time
-        result = EventResult.from_dict(active_event.result_summary) if active_event.result_summary else EventResult()
+        result = (
+            OwnerEventResult.from_dict(active_event.result_summary)
+            if active_event.result_summary
+            else OwnerEventResult()
+        )
 
         default_option = next((opt for opt in event.options if opt.is_default), None)
         responded_option_id = None
@@ -245,11 +249,13 @@ async def process_expired_events(rng: Optional[random.Random] = None) -> list[tu
                     "message": selected_outcome.message,
                     "chance": selected_outcome.chance,
                 }
-                result.message = outcome_message or f"Event '{event.name}' expired. {default_option.label} was applied."
+                result.message = (
+                    outcome_message or f"OwnerEvent '{event.name}' expired. {default_option.label} was applied."
+                )
             else:
-                result.message = f"Event '{event.name}' expired. {default_option.label} was applied."
+                result.message = f"OwnerEvent '{event.name}' expired. {default_option.label} was applied."
         else:
-            result.message = f"Event '{event.name}' expired without response. {result.message}".strip()
+            result.message = f"OwnerEvent '{event.name}' expired without response. {result.message}".strip()
 
         await respond_to_active_owner_event(active_event.id, responded_option_id, result.to_dict())
         await archive_active_event(active_event.id, timed_out=True)
@@ -293,7 +299,7 @@ def _choose_option_outcome(option: EventOption, rng: random.Random) -> Optional[
 
 async def respond_to_event(
     owner_discord_id: int, active_owner_event_id: int, option_id: int, rng: Optional[random.Random] = None
-) -> tuple[bool, str, Optional[EventResult]]:
+) -> tuple[bool, str, Optional[OwnerEventResult]]:
     """
     Process a player's response to an event.
 
@@ -313,7 +319,7 @@ async def respond_to_event(
 
     Returns
     -------
-    tuple[bool, str, EventResult | None]
+    tuple[bool, str, OwnerEventResult | None]
         Success status, message, and the result of the response.
     """
 
@@ -322,7 +328,7 @@ async def respond_to_event(
 
     active_event = await get_active_owner_event_by_id(active_owner_event_id)
     if active_event is None:
-        return False, "Event not found.", None
+        return False, "OwnerEvent not found.", None
 
     if active_event.owner_discord_id != owner_discord_id:
         return False, "This event is not for you.", None
@@ -357,9 +363,11 @@ async def respond_to_event(
     if not await check_owner_event_filter_for_owner(owner_discord_id, option.filter):
         return False, "You do not currently meet the requirements for that option.", None
 
-    context = EventContext.from_dict(active_event.context)
+    context = OwnerEventContext.from_dict(active_event.context)
     # Merge with any result already recorded from event-level actions at trigger time
-    result = EventResult.from_dict(active_event.result_summary) if active_event.result_summary else EventResult()
+    result = (
+        OwnerEventResult.from_dict(active_event.result_summary) if active_event.result_summary else OwnerEventResult()
+    )
     option_result = await _execute_event_actions(owner_discord_id, option.actions, context, rng)
     result.merge(option_result)
 
@@ -386,7 +394,7 @@ async def respond_to_event(
     return True, response_message, result
 
 
-async def run_hourly_event_check(rng_seed: Optional[int] = None) -> dict[int, list[TriggeredEvent]]:
+async def run_hourly_event_check(rng_seed: Optional[int] = None) -> dict[int, list[TriggeredOwnerEvent]]:
     """
     Run the hourly event check for all owners.
 
@@ -400,7 +408,7 @@ async def run_hourly_event_check(rng_seed: Optional[int] = None) -> dict[int, li
 
     Returns
     -------
-    dict[int, list[TriggeredEvent]]
+    dict[int, list[TriggeredOwnerEvent]]
         Dictionary mapping owner Discord IDs to triggered owner_events.
     """
 
@@ -413,7 +421,7 @@ async def run_hourly_event_check(rng_seed: Optional[int] = None) -> dict[int, li
 
     owners = await list_owners()
 
-    triggered_events: dict[int, list[TriggeredEvent]] = {}
+    triggered_events: dict[int, list[TriggeredOwnerEvent]] = {}
 
     for owner in owners:
         if rng.random() > EVENT_HOURLY_TRIGGER_CHANCE:
@@ -430,7 +438,7 @@ async def run_hourly_event_check(rng_seed: Optional[int] = None) -> dict[int, li
     return triggered_events
 
 
-async def _create_event_context(owner_discord_id: int, event: EventDB, rng: random.Random) -> EventContext:
+async def _create_event_context(owner_discord_id: int, event: EventDB, rng: random.Random) -> OwnerEventContext:
     """
     Create context for an event based on its requirements.
 
@@ -438,7 +446,7 @@ async def _create_event_context(owner_discord_id: int, event: EventDB, rng: rand
     Random targets are resolved when the action executes so they can respect action filters.
     """
 
-    context = EventContext(owner_discord_id=owner_discord_id)
+    context = OwnerEventContext(owner_discord_id=owner_discord_id)
 
     candidate_kennel_ids = await list_matching_kennel_ids(owner_discord_id, {})
     candidate_pooch_ids = await list_matching_pooch_ids(owner_discord_id, {})
@@ -540,8 +548,8 @@ async def _deliver_pooch(owner_discord_id: int, pooch_id: int, destination: str)
 
 
 async def _execute_single_action(
-    owner_discord_id: int, action: EventAction, context: EventContext, rng: random.Random
-) -> EventResult:
+    owner_discord_id: int, action: EventAction, context: OwnerEventContext, rng: random.Random
+) -> OwnerEventResult:
     """
     Execute a single event action.
     """
@@ -621,6 +629,13 @@ async def _execute_single_action(
                     pooch_ids = [pid for pid in all_ids if pid not in excluded]
                 else:
                     pooch_ids = []
+            elif selector == "all_exclude":
+                # "all_exclude" with a filter: targets every pooch NOT matched by the filter
+                all_owner_ids = await list_matching_pooch_ids(owner_discord_id, {})
+                matched_ids = set(await list_matching_pooch_ids(owner_discord_id, filter_spec))
+                pooch_ids = [pid for pid in all_owner_ids if pid not in matched_ids]
+                if exclude_ids:
+                    pooch_ids = [pid for pid in pooch_ids if pid not in exclude_ids]
             else:
                 pooch_ids = []
         else:
@@ -647,6 +662,11 @@ async def _execute_single_action(
                     kennel_ids = [kid for kid in all_kennel_ids if kid not in excluded]
                 else:
                     kennel_ids = []
+            elif selector == "all_exclude":
+                # targets every kennel NOT matched by the filter
+                all_owner_kennel_ids = await list_matching_kennel_ids(owner_discord_id, {})
+                matched_kennel_ids = set(await list_matching_kennel_ids(owner_discord_id, kennel_filter))
+                kennel_ids = [kid for kid in all_owner_kennel_ids if kid not in matched_kennel_ids]
             else:
                 kennel_ids = []
 
@@ -718,6 +738,10 @@ async def _execute_single_action(
                 kennel_ids = [kid for kid in all_kennel_ids if kid not in excluded]
             else:
                 kennel_ids = []
+        elif selector == "all_exclude":
+            all_owner_kennel_ids = await list_matching_kennel_ids(owner_discord_id, {})
+            matched_kennel_ids = set(await list_matching_kennel_ids(owner_discord_id, filter_spec))
+            kennel_ids = [kid for kid in all_owner_kennel_ids if kid not in matched_kennel_ids]
         else:
             kennel_ids = []
 
@@ -728,7 +752,7 @@ async def _execute_single_action(
 
         return kennel_ids
 
-    result = EventResult()
+    result = OwnerEventResult()
     action_type = action.action_type
     target_type = action.target_type
     parameters = action.parameters
@@ -1245,13 +1269,13 @@ async def _execute_single_action(
 
 
 async def _execute_event_actions(
-    owner_discord_id: int, actions: list[EventAction], context: EventContext, rng: random.Random
-) -> EventResult:
+    owner_discord_id: int, actions: list[EventAction], context: OwnerEventContext, rng: random.Random
+) -> OwnerEventResult:
     """
     Execute a list of event actions.
     """
 
-    result = EventResult()
+    result = OwnerEventResult()
 
     for action in sorted(actions, key=lambda a: a.action_order):
         repeat = max(int(action.repeat), 1) if isinstance(action.repeat, int) else 1
@@ -1264,7 +1288,7 @@ async def _execute_event_actions(
 
 async def _create_and_execute_event(
     owner_discord_id: int, event: EventDB, rng: random.Random
-) -> Optional[TriggeredEvent]:
+) -> Optional[TriggeredOwnerEvent]:
     """
     Create an active event and execute it if it doesn't require a response.
 
@@ -1273,7 +1297,7 @@ async def _create_and_execute_event(
     owner_discord_id: int
         The Discord ID of the owner.
 
-    event: Event
+    event: OwnerEvent
         The event to trigger.
 
     rng: Random
@@ -1281,7 +1305,7 @@ async def _create_and_execute_event(
 
     Returns
     -------
-    TriggeredEvent, optional
+    TriggeredOwnerEvent, optional
         The triggered event, or None if creation failed.
     """
 
@@ -1304,7 +1328,7 @@ async def _create_and_execute_event(
 
     logger.info(f"Triggered event '{event.name}' for owner {owner_discord_id}")
 
-    # Event-level actions always fire immediately at trigger time (before the user picks)
+    # OwnerEvent-level actions always fire immediately at trigger time (before the user picks)
     result = await _execute_event_actions(owner_discord_id, event.actions, context, rng)
     await update_active_event_result(active_event.id, result.to_dict())
 
@@ -1355,10 +1379,12 @@ async def _create_and_execute_event(
     active_event.result_summary = result.to_dict()
     active_event.context = context.to_dict()
     active_event.expires_at = expires_at
-    return await to_triggered_event(active_event)
+    return await to_triggered_owner_event(active_event)
 
 
-async def trigger_random_event(owner_discord_id: int, rng: Optional[random.Random] = None) -> Optional[TriggeredEvent]:
+async def trigger_random_event(
+    owner_discord_id: int, rng: Optional[random.Random] = None
+) -> Optional[TriggeredOwnerEvent]:
     """
     Attempt to trigger a random event for an owner.
 
@@ -1372,7 +1398,7 @@ async def trigger_random_event(owner_discord_id: int, rng: Optional[random.Rando
 
     Returns
     -------
-    TriggeredEvent, optional
+    TriggeredOwnerEvent, optional
         The triggered event, or None if no event was triggered.
     """
 
@@ -1396,7 +1422,7 @@ async def trigger_random_event(owner_discord_id: int, rng: Optional[random.Rando
 
 async def trigger_specific_event(
     owner_discord_id: int, event_id: int, rng: Optional[random.Random] = None
-) -> Optional[TriggeredEvent]:
+) -> Optional[TriggeredOwnerEvent]:
     """
     Trigger a specific event for an owner (for testing or admin purposes).
 
@@ -1413,7 +1439,7 @@ async def trigger_specific_event(
 
     Returns
     -------
-    TriggeredEvent, optional
+    TriggeredOwnerEvent, optional
         The triggered event, or None if the event couldn't be triggered.
     """
 
@@ -1422,7 +1448,37 @@ async def trigger_specific_event(
 
     event = await db_get_owner_event_by_id(event_id)
     if event is None:
-        logger.warning(f"Event {event_id} not found")
+        logger.warning(f"OwnerEvent {event_id} not found")
         return None
 
     return await _create_and_execute_event(owner_discord_id, event, rng)
+
+
+async def trigger_event_by_name(
+    owner_discord_id: int, event_name: str, rng: Optional[random.Random] = None
+) -> Optional[TriggeredOwnerEvent]:
+    """
+    Trigger a specific event for an owner by its name.
+
+    Parameters
+    ----------
+    owner_discord_id: int
+        The Discord ID of the owner.
+
+    event_name: str
+        The name of the event to trigger.
+
+    rng: Random, optional
+        Random number generator for reproducibility.
+
+    Returns
+    -------
+    TriggeredOwnerEvent, optional
+        The triggered event, or None if the event couldn't be found or triggered.
+    """
+    event = await db_get_owner_event_by_name(event_name)
+    if event is None:
+        logger.warning(f"OwnerEvent '{event_name}' not found")
+        return None
+
+    return await trigger_specific_event(owner_discord_id, event.id, rng)

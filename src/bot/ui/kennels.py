@@ -7,8 +7,8 @@ from discord.ui import Button, Select, View
 
 from src.bot.constants import MAX_NAME_LENGTH
 from src.bot.ui.util import InteractionResponder
-from src.database import add_pooch_to_strays
 from src.game import (
+    cast_out_pooch,
     get_or_create_owner,
     get_or_create_server,
     list_kennel_pooches,
@@ -197,7 +197,7 @@ class KennelPageControls:
         if self.selected_pooch is None:
             return
         pooch_name = self.selected_pooch.name
-        await add_pooch_to_strays(self.selected_pooch.id, self.server_discord_id)
+        await cast_out_pooch(self.selected_pooch.id, self.server_discord_id)
 
         parent_view = self.select.view
         if isinstance(parent_view, PaginatorView):

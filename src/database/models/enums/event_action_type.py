@@ -19,6 +19,11 @@ EVENT_ACTION_TYPE = ENUM(
     "breed_pooches",
     "sell_pooch",
     "buy_pooch",
+    "release_stray",
+    "receive_stray",
+    "enter_kennel",
+    "enter_vendor_stock",
+    "start_stray_event",
     name="event_action_type",
     create_type=False,
 )

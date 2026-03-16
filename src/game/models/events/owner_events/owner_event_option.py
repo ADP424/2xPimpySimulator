@@ -8,7 +8,7 @@ if TYPE_CHECKING:
 
 
 @dataclass(frozen=True)
-class EventOption:
+class OwnerEventOption:
     id: int
     label: str
     description: str
@@ -18,9 +18,9 @@ class EventOption:
     is_visible: bool
 
 
-async def to_event_option(option: EventOptionORM) -> EventOption:
+async def to_owner_event_option(option: EventOptionORM) -> OwnerEventOption:
     """
-    Convert an ORM EventOption object to a game EventOption object.
+    Convert an ORM EventOption object to a game OwnerEventOption object.
 
     Parameters
     ----------
@@ -29,11 +29,11 @@ async def to_event_option(option: EventOptionORM) -> EventOption:
 
     Returns
     -------
-    EventOption
-        The converted game EventOption object.
+    OwnerEventOption
+        The converted game OwnerEventOption object.
     """
 
-    return EventOption(
+    return OwnerEventOption(
         id=option.id,
         label=option.label,
         description=option.description,

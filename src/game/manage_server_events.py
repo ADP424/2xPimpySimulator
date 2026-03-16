@@ -31,8 +31,8 @@ from src.logger import get_logger
 from .manage_owner_events import _execute_event_actions
 from .manage_owners import get_or_create_owner
 from .models.events import (
-    EventContext,
-    EventResult,
+    OwnerEventContext,
+    OwnerEventResult,
     ServerEventContext,
     ServerEventParticipationSummary,
     ServerEventResolution,
@@ -65,8 +65,8 @@ def _matches_rank(min_rank: int | None, max_rank: int | None, rank: int | None) 
     return True
 
 
-async def _build_owner_event_context(owner_discord_id: int, selected_pooch_id: int | None = None) -> EventContext:
-    context = EventContext(owner_discord_id=owner_discord_id)
+async def _build_owner_event_context(owner_discord_id: int, selected_pooch_id: int | None = None) -> OwnerEventContext:
+    context = OwnerEventContext(owner_discord_id=owner_discord_id)
     kennels = await list_kennels_for_owner(owner_discord_id)
     candidate_kennel_ids = [kennel.id for kennel in kennels]
     candidate_pooch_ids: list[int] = []
@@ -87,7 +87,7 @@ async def _compute_participation_score(
     participation: ServerEventParticipation, strategy: str, rng: random.Random
 ) -> float:
     if strategy == "selected_pooch_health":
-        context = EventContext.from_dict(participation.context or {})
+        context = OwnerEventContext.from_dict(participation.context or {})
         if context.selected_pooch_id is not None:
             pooch = await db_get_pooch_by_id(context.selected_pooch_id)
             if pooch is not None:
@@ -245,11 +245,11 @@ async def resolve_server_event(
     winner_pooch_ids: list[int] = []
 
     for participation, score, rank in ranked_participations:
-        context = EventContext.from_dict(participation.context or {})
+        context = OwnerEventContext.from_dict(participation.context or {})
         combined_result = (
-            EventResult.from_dict(participation.resolution_result or {})
+            OwnerEventResult.from_dict(participation.resolution_result or {})
             if participation.resolution_result
-            else EventResult()
+            else OwnerEventResult()
         )
         matched_messages: list[str] = []
 
@@ -278,7 +278,7 @@ async def resolve_server_event(
             if context.selected_pooch_id is not None:
                 winner_pooch_ids.append(context.selected_pooch_id)
 
-    summary = EventResult(
+    summary = OwnerEventResult(
         message=(
             f"Resolved '{occurrence.server_event.name}' with {len(ranked_participations)} participant"
             f"{'s' if len(ranked_participations) != 1 else ''}."

@@ -8,7 +8,7 @@ if TYPE_CHECKING:
 
 
 @dataclass(frozen=True)
-class Event:
+class OwnerEvent:
     id: int
 
     name: str
@@ -24,9 +24,9 @@ class Event:
     triggered_only: bool
 
 
-async def to_event(event: EventORM) -> Event:
+async def to_owner_event(event: EventORM) -> OwnerEvent:
     """
-    Convert an ORM Event object to a game Event object.
+    Convert an ORM Event object to a game OwnerEvent object.
 
     Parameters
     ----------
@@ -35,11 +35,11 @@ async def to_event(event: EventORM) -> Event:
 
     Returns
     -------
-    Event
-        The converted Event dataclass object.
+    OwnerEvent
+        The converted OwnerEvent dataclass object.
     """
 
-    return Event(
+    return OwnerEvent(
         id=event.id,
         name=event.name,
         category=event.category,

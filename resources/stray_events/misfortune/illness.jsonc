@@ -1,0 +1,21 @@
+{
+    "name": "Stray Illness",
+    "description": "A disease sweeps through the stray population.",
+    "flavor_text": "Life on the streets takes its toll.",
+    "severity": "MAJOR",
+    "rarity": "RARE",
+    "filter": {
+        "min_count": 1
+    },
+    "actions": [
+        {
+            "action_type": "modify_pooch_health",
+            "target_type": "pooch",
+            "parameters": {
+                "selector": "random",
+                "min_amount": -10,
+                "max_amount": -5
+            }
+        }
+    ]
+}

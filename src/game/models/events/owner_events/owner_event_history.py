@@ -6,20 +6,20 @@ from typing import TYPE_CHECKING
 
 from src.database import get_owner_event_by_id, get_owner_event_option_by_id
 
-from .event_context import EventContext
-from .event_entity_reference import (
-    EventEntityReferences,
-    resolve_event_entity_references,
+from .owner_event_context import OwnerEventContext
+from .owner_event_entity_reference import (
+    OwnerEventEntityReferences,
+    resolve_owner_event_entity_references,
 )
-from .event_option import EventOption, to_event_option
-from .event_result import EventResult
+from .owner_event_option import OwnerEventOption, to_owner_event_option
+from .owner_event_result import OwnerEventResult
 
 if TYPE_CHECKING:
     from src.database.models import EventOccurrence as EventOccurrenceORM
 
 
 @dataclass
-class EventHistory:
+class OwnerEventHistory:
     id: int
     event_id: int
 
@@ -29,14 +29,14 @@ class EventHistory:
     severity: str = "moderate"
     flavor_text: str | None = None
 
-    context: EventContext = field(default_factory=lambda: EventContext(owner_discord_id=0))
-    entity_references: EventEntityReferences = field(default_factory=EventEntityReferences)
-    result_summary: EventResult = field(default_factory=EventResult)
+    context: OwnerEventContext = field(default_factory=lambda: OwnerEventContext(owner_discord_id=0))
+    entity_references: OwnerEventEntityReferences = field(default_factory=OwnerEventEntityReferences)
+    result_summary: OwnerEventResult = field(default_factory=OwnerEventResult)
 
     triggered_at: datetime | None = None
     completed_at: datetime | None = None
 
-    selected_option: EventOption | None = None
+    selected_option: OwnerEventOption | None = None
     timed_out: bool = False
 
     @property
@@ -48,9 +48,9 @@ class EventHistory:
         return self.selected_option.label if self.selected_option is not None else None
 
 
-async def to_event_history(event_occurrence: EventOccurrenceORM) -> EventHistory:
+async def to_owner_event_history(event_occurrence: EventOccurrenceORM) -> OwnerEventHistory:
     """
-    Convert an ORM EventOccurrence object to a game EventHistory object.
+    Convert an ORM EventOccurrence object to a game OwnerEventHistory object.
 
     Parameters
     ----------
@@ -59,7 +59,7 @@ async def to_event_history(event_occurrence: EventOccurrenceORM) -> EventHistory
 
     Returns
     -------
-    EventHistory
+    OwnerEventHistory
         A look into this historical EventOccurrence.
     """
 
@@ -69,11 +69,11 @@ async def to_event_history(event_occurrence: EventOccurrenceORM) -> EventHistory
     if selected_option_orm is None and event_occurrence.selected_option_id is not None:
         selected_option_orm = await get_owner_event_option_by_id(event_occurrence.selected_option_id)
 
-    context = EventContext.from_dict(event_occurrence.context or {})
-    result_summary = EventResult.from_dict(event_occurrence.result_summary or {})
-    entity_references = await resolve_event_entity_references(context, result_summary)
+    context = OwnerEventContext.from_dict(event_occurrence.context or {})
+    result_summary = OwnerEventResult.from_dict(event_occurrence.result_summary or {})
+    entity_references = await resolve_owner_event_entity_references(context, result_summary)
 
-    return EventHistory(
+    return OwnerEventHistory(
         id=event_occurrence.id,
         event_id=event_occurrence.event_id,
         name=event.name if event is not None else "Unknown Event",
@@ -86,6 +86,6 @@ async def to_event_history(event_occurrence: EventOccurrenceORM) -> EventHistory
         result_summary=result_summary,
         triggered_at=event_occurrence.triggered_at,
         completed_at=event_occurrence.completed_at,
-        selected_option=(await to_event_option(selected_option_orm)) if selected_option_orm is not None else None,
+        selected_option=(await to_owner_event_option(selected_option_orm)) if selected_option_orm is not None else None,
         timed_out=event_occurrence.timed_out,
     )

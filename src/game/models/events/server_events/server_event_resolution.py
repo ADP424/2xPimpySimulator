@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from .event_result import EventResult
+from ..owner_events.owner_event_result import OwnerEventResult
 
 
 @dataclass
@@ -13,4 +13,4 @@ class ServerEventResolution:
     participant_count: int
     winner_owner_ids: list[int] = field(default_factory=list)
     winner_pooch_ids: list[int] = field(default_factory=list)
-    result_summary: EventResult = field(default_factory=EventResult)
+    result_summary: OwnerEventResult = field(default_factory=OwnerEventResult)

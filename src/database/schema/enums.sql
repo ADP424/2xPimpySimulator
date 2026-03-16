@@ -113,5 +113,10 @@ CREATE TYPE event_action_type AS ENUM (
     'start_event',
     'breed_pooches',
     'sell_pooch',
-    'buy_pooch'
+    'buy_pooch',
+    'release_stray',
+    'receive_stray',
+    'enter_kennel',
+    'enter_vendor_stock',
+    'start_stray_event'
 );

@@ -6,20 +6,20 @@ from typing import TYPE_CHECKING
 
 from src.database import get_owner_event_by_id
 
-from .event_context import EventContext
-from .event_entity_reference import (
-    EventEntityReferences,
-    resolve_event_entity_references,
+from .owner_event_context import OwnerEventContext
+from .owner_event_entity_reference import (
+    OwnerEventEntityReferences,
+    resolve_owner_event_entity_references,
 )
-from .event_option import EventOption, to_event_option
-from .event_result import EventResult
+from .owner_event_option import OwnerEventOption, to_owner_event_option
+from .owner_event_result import OwnerEventResult
 
 if TYPE_CHECKING:
     from src.database.models import EventOccurrence as EventOccurrenceORM
 
 
 @dataclass
-class TriggeredEvent:
+class TriggeredOwnerEvent:
     active_owner_event_id: int
     event_id: int
 
@@ -33,10 +33,10 @@ class TriggeredEvent:
     response_timeout: int
     expires_at: datetime | None
 
-    context: EventContext
-    options: list[EventOption] = field(default_factory=list)
-    result: EventResult | None = None
-    entity_references: EventEntityReferences = field(default_factory=EventEntityReferences)
+    context: OwnerEventContext
+    options: list[OwnerEventOption] = field(default_factory=list)
+    result: OwnerEventResult | None = None
+    entity_references: OwnerEventEntityReferences = field(default_factory=OwnerEventEntityReferences)
 
     @property
     def is_expired(self) -> bool:
@@ -45,9 +45,9 @@ class TriggeredEvent:
         return datetime.now(timezone.utc) > self.expires_at
 
 
-async def to_triggered_event(event_occurrence: EventOccurrenceORM) -> TriggeredEvent:
+async def to_triggered_owner_event(event_occurrence: EventOccurrenceORM) -> TriggeredOwnerEvent:
     """
-    Convert an active ORM EventOccurrence object to a game TriggeredEvent object.
+    Convert an active ORM EventOccurrence object to a game TriggeredOwnerEvent object.
 
     Parameters
     ----------
@@ -56,17 +56,19 @@ async def to_triggered_event(event_occurrence: EventOccurrenceORM) -> TriggeredE
 
     Returns
     -------
-    TriggeredEvent
-        The converted triggered event model.
+    TriggeredOwnerEvent
+        The converted triggered owner event model.
     """
 
     event = await get_owner_event_by_id(event_occurrence.event_id)
     if event is None:
         raise ValueError(f"Event {event_occurrence.event_id} could not be loaded.")
 
-    context = EventContext.from_dict(event_occurrence.context or {})
-    result = EventResult.from_dict(event_occurrence.result_summary or {}) if event_occurrence.result_summary else None
-    entity_references = await resolve_event_entity_references(context, result)
+    context = OwnerEventContext.from_dict(event_occurrence.context or {})
+    result = (
+        OwnerEventResult.from_dict(event_occurrence.result_summary or {}) if event_occurrence.result_summary else None
+    )
+    entity_references = await resolve_owner_event_entity_references(context, result)
 
     options = []
     if event.requires_response:
@@ -76,12 +78,12 @@ async def to_triggered_event(event_occurrence: EventOccurrenceORM) -> TriggeredE
             else []
         )
         options = [
-            await to_event_option(option)
+            await to_owner_event_option(option)
             for option in sorted(event.options, key=lambda option: option.option_order)
             if option.is_visible and option.id not in suppressed_option_ids
         ]
 
-    return TriggeredEvent(
+    return TriggeredOwnerEvent(
         active_owner_event_id=event_occurrence.id,
         event_id=event.id,
         name=event.name,

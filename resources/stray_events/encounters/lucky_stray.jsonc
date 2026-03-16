@@ -1,0 +1,17 @@
+{
+    "name": "Lucky Stray",
+    "description": "A remarkably healthy stray appears on the streets.",
+    "flavor_text": "Some dogs just have good genes.",
+    "severity": "MINOR",
+    "rarity": "UNCOMMON",
+    "actions": [
+        {
+            "action_type": "create_pooch",
+            "target_type": "pooch",
+            "parameters": {
+                "base_health": 20,
+                "age": 0
+            }
+        }
+    ]
+}

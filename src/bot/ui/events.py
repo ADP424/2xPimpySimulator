@@ -15,13 +15,13 @@ from src.game import (
 )
 from src.game.models import Pooch
 from src.game.models.events import (
-    EventContext,
-    EventEntityReferences,
-    EventHistory,
-    EventOption,
-    EventResult,
-    TriggeredEvent,
-    resolve_event_entity_references,
+    OwnerEventContext,
+    OwnerEventEntityReferences,
+    OwnerEventHistory,
+    OwnerEventOption,
+    OwnerEventResult,
+    TriggeredOwnerEvent,
+    resolve_owner_event_entity_references,
 )
 
 from .components import PaginatorView, build_breed_info_embed, build_mutation_info_embed
@@ -63,7 +63,7 @@ def _discord_timestamp(value: datetime | str | None, style: str = "f") -> str:
     return f"<t:{int(value.timestamp())}:{style}>"
 
 
-def _format_option_line(option: EventOption) -> str:
+def _format_option_line(option: OwnerEventOption) -> str:
     requirements: list[str] = []
     if option.min_money > 0:
         requirements.append(f"${option.min_money}")
@@ -79,7 +79,7 @@ def _format_option_line(option: EventOption) -> str:
     return line
 
 
-def _format_option_select_description(option: EventOption) -> str:
+def _format_option_select_description(option: OwnerEventOption) -> str:
     lines: list[str] = []
     if option.description:
         lines.append(option.description)
@@ -111,7 +111,7 @@ def _signed(value: int) -> str:
     return f"{value:+d}"
 
 
-def _entity_reference_lines(context: EventContext, entity_references: EventEntityReferences) -> list[str]:
+def _entity_reference_lines(context: OwnerEventContext, entity_references: OwnerEventEntityReferences) -> list[str]:
     lines: list[str] = []
 
     for kind, title in ENTITY_KINDS:
@@ -142,8 +142,8 @@ def _entity_reference_lines(context: EventContext, entity_references: EventEntit
 
 
 def _format_result_summary(
-    result: Optional[EventResult],
-    entity_references: Optional[EventEntityReferences] = None,
+    result: Optional[OwnerEventResult],
+    entity_references: Optional[OwnerEventEntityReferences] = None,
 ) -> str:
     if result is None:
         return "No recorded outcome."
@@ -269,7 +269,7 @@ def _format_result_summary(
     return _truncate("\n".join(lines) if lines else "No recorded outcome.")
 
 
-def build_triggered_event_embed(event: TriggeredEvent) -> discord.Embed:
+def build_triggered_event_embed(event: TriggeredOwnerEvent) -> discord.Embed:
     embed = discord.Embed(
         title=f"🎲 {event.name}",
         description=event.description or "No description provided.",
@@ -307,9 +307,9 @@ def build_triggered_event_embed(event: TriggeredEvent) -> discord.Embed:
 
 
 def build_resolved_event_embed(
-    event: TriggeredEvent,
+    event: TriggeredOwnerEvent,
     *,
-    result: Optional[EventResult],
+    result: Optional[OwnerEventResult],
     selected_option_label: Optional[str] = None,
     status_text: str = "Resolved",
 ) -> discord.Embed:
@@ -321,7 +321,7 @@ def build_resolved_event_embed(
     return embed
 
 
-def build_history_embed(record: EventHistory, page_index: int, page_count: int) -> discord.Embed:
+def build_history_embed(record: OwnerEventHistory, page_index: int, page_count: int) -> discord.Embed:
     embed = discord.Embed(
         title=f"📜 {record.name}",
         description=record.description or "No description provided.",
@@ -406,7 +406,7 @@ def _build_pooch_info_embed(pooch: Pooch) -> discord.Embed:
 
 
 class EventEntityControls:
-    def __init__(self, owner_discord_id: int, entity_references: EventEntityReferences):
+    def __init__(self, owner_discord_id: int, entity_references: OwnerEventEntityReferences):
         self.owner_discord_id = owner_discord_id
         self.entity_references = entity_references
         self.selected_kind: Optional[str] = None
@@ -497,7 +497,7 @@ class EventEntityControls:
 
 
 class EventHistoryPageSource:
-    def __init__(self, records: list[EventHistory], owner_discord_id: int):
+    def __init__(self, records: list[OwnerEventHistory], owner_discord_id: int):
         self._records = records
         self._owner_discord_id = owner_discord_id
 
@@ -520,7 +520,7 @@ class EventHistoryPageSource:
 
 
 class EventResponseSelect(discord.ui.Select):
-    def __init__(self, owner_discord_id: int, event: TriggeredEvent):
+    def __init__(self, owner_discord_id: int, event: TriggeredOwnerEvent):
         options = [
             discord.SelectOption(
                 label=_truncate(option.label, 100),
@@ -548,7 +548,7 @@ class EventResponseSelect(discord.ui.Select):
             if self.view is not None:
                 self.view.stop()
             self.event.result = result
-            self.event.entity_references = await resolve_event_entity_references(
+            self.event.entity_references = await resolve_owner_event_entity_references(
                 self.event.context, result, existing=self.event.entity_references
             )
             embed = build_resolved_event_embed(
@@ -570,7 +570,7 @@ class EventResponseSelect(discord.ui.Select):
             if self.view is not None:
                 self.view.stop()
             self.event.result = result
-            self.event.entity_references = await resolve_event_entity_references(
+            self.event.entity_references = await resolve_owner_event_entity_references(
                 self.event.context, result, existing=self.event.entity_references
             )
             embed = build_resolved_event_embed(self.event, result=result, status_text=message)
@@ -582,7 +582,7 @@ class EventResponseSelect(discord.ui.Select):
 
 
 class EventMessageView(discord.ui.View):
-    def __init__(self, owner_discord_id: int, event: TriggeredEvent, *, response_enabled: bool):
+    def __init__(self, owner_discord_id: int, event: TriggeredOwnerEvent, *, response_enabled: bool):
         timeout: Optional[float]
         if response_enabled and event.expires_at is not None:
             remaining = (event.expires_at - datetime.now(timezone.utc)).total_seconds()
@@ -641,7 +641,7 @@ async def _get_dm_channel(bot: discord.Client, user_id: int) -> Optional[discord
     return dm_channel
 
 
-async def send_triggered_event_dm(bot: discord.Client, owner_discord_id: int, event: TriggeredEvent) -> bool:
+async def send_triggered_event_dm(bot: discord.Client, owner_discord_id: int, event: TriggeredOwnerEvent) -> bool:
     dm_channel = await _get_dm_channel(bot, owner_discord_id)
     if dm_channel is None:
         return False
@@ -665,7 +665,7 @@ async def send_triggered_event_dm(bot: discord.Client, owner_discord_id: int, ev
 
 
 async def send_all_pending_event_dms(
-    bot: discord.Client, owner_discord_id: int, events: list[TriggeredEvent]
+    bot: discord.Client, owner_discord_id: int, events: list[TriggeredOwnerEvent]
 ) -> tuple[int, int]:
     sent = 0
     failed = 0
