@@ -17,6 +17,7 @@ from src.database import (
     create_pooch,
     damn_pooch,
     get_active_owner_event_by_id,
+    get_kennel_by_id,
     get_owner_by_discord_id,
 )
 from src.database import get_owner_event_by_id as db_get_owner_event_by_id
@@ -269,7 +270,7 @@ async def process_expired_events(rng: Optional[random.Random] = None) -> list[tu
 def _choose_option_outcome(option: EventOption, rng: random.Random) -> Optional[EventOutcome]:
     explicit = [outcome for outcome in option.outcomes if outcome.chance is not None]
     if not explicit:
-        return rng.choice(option.outcomes)
+        return rng.choice(option.outcomes) if option.outcomes else None
 
     total_explicit = sum(float(outcome.chance) for outcome in explicit)
     implicit = [outcome for outcome in option.outcomes if outcome.chance is None]
@@ -285,7 +286,7 @@ def _choose_option_outcome(option: EventOption, rng: random.Random) -> Optional[
     weighted.extend((outcome, float(outcome.chance)) for outcome in explicit)
     total_weight = sum(weight for _, weight in weighted)
     if total_weight <= 0:
-        return rng.choice(option.outcomes)
+        return rng.choice(option.outcomes) if option.outcomes else None
 
     roll = rng.uniform(0, total_weight)
     running_total = 0.0
@@ -786,16 +787,9 @@ async def _execute_single_action(
                 "owner_discord_id": owner_discord_id,
                 "rng": rng,
             }
-            if "name" in parameters:
-                create_pooch_kwargs["name"] = parameters["name"]
-            if "sex" in parameters:
-                create_pooch_kwargs["sex"] = parameters["sex"]
-            if "age" in parameters:
-                create_pooch_kwargs["age"] = parameters["age"]
-            if "base_health" in parameters:
-                create_pooch_kwargs["base_health"] = parameters["base_health"]
-            if "breeding_cooldown" in parameters:
-                create_pooch_kwargs["breeding_cooldown"] = parameters["breeding_cooldown"]
+            for _key in ("name", "sex", "age", "base_health", "breeding_cooldown"):
+                if _key in parameters:
+                    create_pooch_kwargs[_key] = parameters[_key]
 
             pooch = await create_pooch(**create_pooch_kwargs)
             if pooch:
@@ -808,16 +802,30 @@ async def _execute_single_action(
                 result.pooches_created.append(pooch.id)
                 result.pooches_affected.append(pooch.id)
 
-                destination_str = parameters.get("destination", "town")
-                dest_key, kennel_name = await _deliver_pooch(owner_discord_id, pooch.id, destination_str)
-                if dest_key == "kennel":
-                    result.message = f"A new pooch has appeared and was placed in {kennel_name}!"
-                elif dest_key == "graveyard":
-                    result.message = "A new pooch has appeared and was placed in the graveyard!"
-                elif dest_key == "hell":
-                    result.message = "A new pooch has appeared and was sent to Hell!"
+                if target_type == "kennel":
+                    kennel_ids = await _get_target_kennel_ids(target_type, selector, parameters)
+                    kennel_id = kennel_ids[0] if kennel_ids else None
+                    if kennel_id is not None:
+                        kennel = await get_kennel_by_id(kennel_id)
+                        pooches_in = await list_pooches_for_kennel(kennel_id)
+                        if kennel is not None and len(pooches_in) < kennel.pooch_limit:
+                            await add_pooch_to_kennel(kennel_id, pooch.id)
+                            result.message = f"A new pooch has appeared and was placed in {kennel.name}!"
+                        else:
+                            result.message = "A new pooch has appeared but there was no space in the kennel!"
+                    else:
+                        result.message = "A new pooch has appeared!"
                 else:
-                    result.message = "A new pooch has appeared!"
+                    destination_str = parameters.get("destination", "town")
+                    dest_key, kennel_name = await _deliver_pooch(owner_discord_id, pooch.id, destination_str)
+                    if dest_key == "kennel":
+                        result.message = f"A new pooch has appeared and was placed in {kennel_name}!"
+                    elif dest_key == "graveyard":
+                        result.message = "A new pooch has appeared and was placed in the graveyard!"
+                    elif dest_key == "hell":
+                        result.message = "A new pooch has appeared and was sent to Hell!"
+                    else:
+                        result.message = "A new pooch has appeared!"
 
                 save_as = parameters.get("save_as")
                 if isinstance(save_as, str) and save_as:
@@ -965,17 +973,39 @@ async def _execute_single_action(
                 logger.warning("receive_stray: owner has no servers; skipping")
             else:
                 server = rng.choice(servers)
-                candidates = await list_strays_for_server(server.discord_id)
-                count = int(parameters.get("count", 1))
-                pool = rng.sample(candidates, min(count, len(candidates))) if candidates else []
-                if not pool:
+                use_saved = parameters.get("use_saved")
+                if isinstance(use_saved, str) and use_saved:
+                    saved = context.extra_data.get(use_saved, {})
+                    saved_ids = list(saved.get("pooch_ids", [])) if isinstance(saved, dict) else []
+                    pool_objs = [p for p in await list_strays_for_server(server.discord_id) if p.id in saved_ids]
+                else:
+                    candidates = await list_strays_for_server(server.discord_id)
+                    count = int(parameters.get("count", 1))
+                    pool_objs = rng.sample(candidates, min(count, len(candidates))) if candidates else []
+                if not pool_objs:
                     logger.warning("receive_stray: no strays available on server %s; skipping", server.discord_id)
                 else:
-                    chosen = rng.choice(pool)
+                    chosen = rng.choice(pool_objs)
                     await remove_pooch_from_strays(chosen.id)
                     await transfer_pooch_to_owner(chosen.id, owner_discord_id)
-                    destination_str = str(parameters.get("destination", "town")).strip().lower()
-                    dest_key, kennel_name = await _deliver_pooch(owner_discord_id, chosen.id, destination_str)
+
+                    if target_type == "kennel":
+                        kennel_ids = await _get_target_kennel_ids(target_type, selector, parameters)
+                        recv_kennel_id = kennel_ids[0] if kennel_ids else None
+                        if recv_kennel_id is not None:
+                            kennel = await get_kennel_by_id(recv_kennel_id)
+                            pooches_in = await list_pooches_for_kennel(recv_kennel_id)
+                            if kennel is not None and len(pooches_in) < kennel.pooch_limit:
+                                await add_pooch_to_kennel(recv_kennel_id, chosen.id)
+                                dest_key, kennel_name = "kennel", kennel.name
+                            else:
+                                dest_key, kennel_name = "town", None
+                        else:
+                            dest_key, kennel_name = "town", None
+                    else:
+                        destination_str = str(parameters.get("destination", "town")).strip().lower()
+                        dest_key, kennel_name = await _deliver_pooch(owner_discord_id, chosen.id, destination_str)
+
                     result.pooches_created.append(chosen.id)
                     result.extra_data.setdefault("created_pooches", []).append(
                         {
@@ -1055,11 +1085,11 @@ async def _execute_single_action(
                     result.pooches_affected.append(pooch_id)
 
         elif action_type == "breed_pooches":
-            raw_first_selector = parameters.get("first_selector", "random")
+            raw_first_selector = parameters.get("first_pooch_selector", "random")
             first_selector = (
                 str(raw_first_selector).strip().lower() if isinstance(raw_first_selector, str) else "random"
             )
-            raw_second_selector = parameters.get("second_selector", "random")
+            raw_second_selector = parameters.get("second_pooch_selector", "random")
             second_selector = (
                 str(raw_second_selector).strip().lower() if isinstance(raw_second_selector, str) else "random"
             )
@@ -1069,31 +1099,40 @@ async def _execute_single_action(
             second_filter_raw = parameters.get("second_filter", {})
             second_filter = second_filter_raw if isinstance(second_filter_raw, dict) else {}
 
+            # When target_type is "kennel", restrict both parent pools to that kennel's pooches
+            breed_kennel_id: int | None = None
+            if target_type == "kennel":
+                kennel_ids = await _get_target_kennel_ids(target_type, selector, parameters)
+                breed_kennel_id = kennel_ids[0] if kennel_ids else None
+                if breed_kennel_id is None:
+                    logger.warning("breed_pooches: no kennel resolved for kennel target_type; skipping")
+                    breed_kennel_id = None  # will skip below
+
             async def _resolve_breed_pooch_id(sel: str, filt: dict, exclude_id: int | None = None) -> int | None:
                 if sel == "selected":
                     pid = context.selected_pooch_id
                     return None if (exclude_id is not None and pid == exclude_id) else pid
-                elif sel == "random":
+                if breed_kennel_id is not None:
+                    ids = await list_matching_pooch_ids_in_kennel(owner_discord_id, breed_kennel_id, filt)
+                else:
                     ids = await list_matching_pooch_ids(owner_discord_id, filt)
-                    if exclude_id is not None:
-                        ids = [i for i in ids if i != exclude_id]
-                    return rng.choice(ids) if ids else None
-                elif sel == "all":
-                    ids = await list_matching_pooch_ids(owner_discord_id, filt)
-                    if exclude_id is not None:
-                        ids = [i for i in ids if i != exclude_id]
-                    return rng.choice(ids) if ids else None
-                return None
+                if exclude_id is not None:
+                    ids = [i for i in ids if i != exclude_id]
+                return rng.choice(ids) if ids else None
 
             require_unique = bool(parameters.get("require_unique", True))
             require_same = bool(parameters.get("require_same", False))
 
-            first_pooch_id = await _resolve_breed_pooch_id(first_selector, first_filter)
-            if require_same:
-                second_pooch_id = first_pooch_id
+            if target_type == "kennel" and breed_kennel_id is None:
+                first_pooch_id = None
+                second_pooch_id = None
             else:
-                exclude = first_pooch_id if require_unique else None
-                second_pooch_id = await _resolve_breed_pooch_id(second_selector, second_filter, exclude_id=exclude)
+                first_pooch_id = await _resolve_breed_pooch_id(first_selector, first_filter)
+                if require_same:
+                    second_pooch_id = first_pooch_id
+                else:
+                    exclude = first_pooch_id if require_unique else None
+                    second_pooch_id = await _resolve_breed_pooch_id(second_selector, second_filter, exclude_id=exclude)
 
             if first_pooch_id is None or second_pooch_id is None:
                 logger.warning("breed_pooches: could not resolve one or both pooches; skipping")
@@ -1187,6 +1226,13 @@ async def _execute_single_action(
             pooch_filter = pooch_filter_raw if isinstance(pooch_filter_raw, dict) else {}
             value_multiplier = parameters.get("value_multiplier")
             multiplier = float(value_multiplier) if isinstance(value_multiplier, (int, float)) else 1.0
+
+            # Resolve delivery kennel when target_type is "kennel"
+            buy_kennel_id: int | None = None
+            if target_type == "kennel":
+                kennel_ids = await _get_target_kennel_ids(target_type, selector, parameters)
+                buy_kennel_id = kennel_ids[0] if kennel_ids else None
+
             destination_str = parameters.get("destination", "kennel")
 
             # Resolve vendor
@@ -1219,7 +1265,17 @@ async def _execute_single_action(
                         await give_money_to_owner(owner_discord_id, -price)
                         await transfer_pooch_to_owner(pooch_db.id, owner_discord_id)
 
-                        dest_key, kennel_name = await _deliver_pooch(owner_discord_id, pooch_db.id, destination_str)
+                        if buy_kennel_id is not None:
+                            kennel = await get_kennel_by_id(buy_kennel_id)
+                            pooches_in = await list_pooches_for_kennel(buy_kennel_id)
+                            if kennel is not None and len(pooches_in) < kennel.pooch_limit:
+                                await add_pooch_to_kennel(buy_kennel_id, pooch_db.id)
+                                dest_key, kennel_name = "kennel", kennel.name
+                            else:
+                                dest_key, kennel_name = "town", None
+                        else:
+                            dest_key, kennel_name = await _deliver_pooch(owner_discord_id, pooch_db.id, destination_str)
+
                         result.money_changed -= price
                         result.pooches_created.append(pooch_db.id)
                         result.pooches_affected.append(pooch_db.id)

@@ -12,7 +12,6 @@
                     {
                         "min_count": 2,
                         "sex": "female",
-                        "is_alive": true,
                         "max_breeding_cooldown": 0
                     }
                 ]
@@ -22,18 +21,27 @@
     "actions": [
         {
             "action_type": "breed_pooches",
-            "target_type": "owner",
+            "target_type": "kennel",
             "parameters": {
-                "first_selector": "random",
+                "selector": "random",
+                "filter": {
+                    "pooches": [
+                        { 
+                            "min_count": 2,
+                            "sex": "female",
+                            "max_breeding_cooldown": 0
+                        }
+                    ]
+                },
+
+                "first_pooch_selector": "random",
                 "first_filter": {
                     "sex": "female",
-                    "is_alive": true,
                     "max_breeding_cooldown": 0
                 },
-                "second_selector": "random",
+                "second_pooch_selector": "random",
                 "second_filter": {
                     "sex": "female",
-                    "is_alive": true,
                     "max_breeding_cooldown": 0
                 },
                 "require_unique": true

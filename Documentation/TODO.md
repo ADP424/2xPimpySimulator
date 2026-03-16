@@ -93,10 +93,7 @@
 ## Strays
 | Feature                                                                                                                       | Points |
 | ----------------------------------------------------------------------------------------------------------------------------- | ------ |
-| Randomly generated strays wandering towns (servers)                                                                           | 3      |
 | Players can adopt strays by spending bones for a chance to attract one                                                        | 3      |
-| There should always be a minimum of one shitty stray per server                                                               | 1      |
-| Strays fuck each other bro                                                                                                    | 3      |
 
 ## Stat Management
 | Feature                                                                                                                       | Points |

@@ -1,7 +1,7 @@
 {
     "name": "Spontaneous Pooch Combustion",
     "description": "One of your pooches has burst into flames!",
-    "flavor_text": "Quick, what will you do!",
+    "flavor_text": "Quick, what will you do!?",
     "severity": "MAJOR",
     "rarity": "UNPRECEDENTED",
     "requires_response": true,
@@ -82,7 +82,7 @@
                             "target_type": "kennel",
                             "parameters": {
                                 "use_saved": "fire_victim",
-                                "min_amount": -2, //change to minor burn
+                                "min_amount": -2, // TODO: change to minor burn
                                 "max_amount": -1
                             }
                         }
@@ -114,7 +114,7 @@
                             "action_type": "modify_pooch_health",
                             "target_type": "pooch",
                             "parameters": {
-                                "min_amount": -2, //change to minor burn
+                                "min_amount": -2, // TODO: change to minor burn
                                 "max_amount": -1,
                                 "selector": "random",
                                 "filter": {

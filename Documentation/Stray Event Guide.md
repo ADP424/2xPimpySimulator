@@ -136,9 +136,9 @@ Stray event actions use a `selector` parameter to control which strays are targe
 | `"random"` (default) | Pick one random stray from the candidate pool. Use `count` to pick more. |
 | `"all"` | Target every stray in the candidate pool. |
 | `"random_exclude"` | Target every stray **except** a randomly chosen subset. Use `count` to control how many are excluded. |
-| `"all_exclude"` | Target every stray **not** matched by the action's `filter`. Useful for "affect all strays that don't have X". |
+| `"all_exclude"` | Target every stray **not** matched by the action's `filter`. |
 
-`"selected"` is not available for stray events (there is no player-driven pre-selection).
+Note: Unlike for owner events, `"selected"` is not available for stray events (there is no player-driven pre-selection).
 
 ### `count` parameter
 
@@ -308,7 +308,7 @@ Breeds two strays. The offspring enters the stray pool.
 
 | Parameter | Type | Notes |
 |-----------|------|-------|
-| `first_selector` / `second_selector` | string | Selector for each parent (default: `"random"`) |
+| `first_pooch_selector` / `second_pooch_selector` | string | Selector for each parent (default: `"random"`) |
 | `first_filter` / `second_filter` | object | Pooch filters for each parent |
 | `require_unique` | bool | If `true`, ensure the two parents are different pooches (default: `true`) |
 | `require_same` | bool | If `true`, both parents are the same pooch (self-breeding) |

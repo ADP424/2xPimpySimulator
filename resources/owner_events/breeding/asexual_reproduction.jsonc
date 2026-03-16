@@ -19,7 +19,7 @@
             "action_type": "breed_pooches",
             "target_type": "owner",
             "parameters": {
-                "first_selector": "random",
+                "first_pooch_selector": "random",
                 "first_filter": {
                     "sex": "female",
                     "is_alive": true,

@@ -484,9 +484,9 @@ class BaseEventValidator:
                 params_path,
                 parameters,
                 {
-                    "first_selector",
+                    "first_pooch_selector",
                     "first_filter",
-                    "second_selector",
+                    "second_pooch_selector",
                     "second_filter",
                     "require_unique",
                     "require_same",
@@ -498,10 +498,10 @@ class BaseEventValidator:
                     "save_as",
                 },
             )
-            if "first_selector" in parameters:
-                self._validate_entity_selector(params_path, parameters, "first_selector")
-            if "second_selector" in parameters:
-                self._validate_entity_selector(params_path, parameters, "second_selector")
+            if "first_pooch_selector" in parameters:
+                self._validate_entity_selector(params_path, parameters, "first_pooch_selector")
+            if "second_pooch_selector" in parameters:
+                self._validate_entity_selector(params_path, parameters, "second_pooch_selector")
             if "first_filter" in parameters:
                 self._validate_pooch_filter(
                     f"{params_path}.first_filter", parameters["first_filter"], allow_counts=False, allow_location=True
