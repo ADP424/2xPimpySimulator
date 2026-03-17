@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Pooch Breeder">
+    {% if pooch_meta %}
+    <meta property="og:title" content="{{ pooch_meta.title }}">
+    <meta property="og:description" content="{{ pooch_meta.description }}">
+    <meta property="og:url" content="{{ request.host_url.rstrip('/') }}{{ pooch_meta.url }}">
+    {% endif %}
+    <title>{{ pooch_meta.title if pooch_meta else 'Pooch Breeder' }}</title>
+</head>
+<body>
+    <p>Redirecting...</p>
+    <script>window.location.href = "/pooch/{{ pooch_id }}";</script>
+</body>
+</html>
