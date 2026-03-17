@@ -3,7 +3,7 @@
     "description": "A remarkably healthy stray appears on the streets.",
     "flavor_text": "Some dogs just have good genes.",
     "severity": "MINOR",
-    "rarity": "UNCOMMON",
+    "rarity": "RARE",
     "actions": [
         {
             "action_type": "create_pooch",

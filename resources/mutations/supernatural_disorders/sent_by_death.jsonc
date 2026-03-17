@@ -6,7 +6,7 @@
     "health_impact": "HEALTHY",
     "rarity": "UNIQUE",
     "advanced_options": {
-        "bloodskull_value_mult": 0.0,
+        "bloodskull_value_mult": 0.0, // TODO: Sent to not be wanted by venders.
         "sold_by_vendors": 0,
         "born_from_ritual": 0
     }
