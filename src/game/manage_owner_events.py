@@ -90,7 +90,7 @@ from .models import (
     to_owner_event_history,
     to_triggered_owner_event,
 )
-from .utils import get_pooch_mutation_advanced_option_total
+from .utils import get_pooch_mutation_parameter_total
 
 if TYPE_CHECKING:
     from src.database.models import Event as EventDB
@@ -787,7 +787,20 @@ async def _execute_single_action(
                 "owner_discord_id": owner_discord_id,
                 "rng": rng,
             }
-            for _key in ("name", "sex", "age", "base_health", "breeding_cooldown"):
+            for _key in (
+                "name",
+                "sex",
+                "age",
+                "base_health",
+                "strength",
+                "cuteness",
+                "fluffiness",
+                "intelligence",
+                "dexterity",
+                "fertility",
+                "aggressiveness",
+                "breeding_cooldown",
+            ):
                 if _key in parameters:
                     create_pooch_kwargs[_key] = parameters[_key]
 
@@ -849,6 +862,13 @@ async def _execute_single_action(
                         "sex": parameters.get("sex", source.sex),
                         "age": parameters.get("age", source.age),
                         "base_health": parameters.get("base_health", source.base_health),
+                        "strength": parameters.get("strength", source.strength),
+                        "cuteness": parameters.get("cuteness", source.cuteness),
+                        "fluffiness": parameters.get("fluffiness", source.fluffiness),
+                        "intelligence": parameters.get("intelligence", source.intelligence),
+                        "dexterity": parameters.get("dexterity", source.dexterity),
+                        "fertility": parameters.get("fertility", source.fertility),
+                        "aggressiveness": parameters.get("aggressiveness", source.aggressiveness),
                         "breeding_cooldown": parameters.get("breeding_cooldown", source.breeding_cooldown),
                     }
                     clone = await create_pooch(**clone_kwargs)
@@ -1068,7 +1088,7 @@ async def _execute_single_action(
                 if isinstance(cooldown, str) and cooldown.strip().lower() == "base":
                     resolved_cooldown = max(
                         POOCH_BREEDING_COOLDOWN
-                        + await get_pooch_mutation_advanced_option_total(pooch_id, "breeding_cooldown"),
+                        + await get_pooch_mutation_parameter_total(pooch_id, "breeding_cooldown"),
                         0,
                     )
                 else:

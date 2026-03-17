@@ -3,7 +3,7 @@
     "alt_name": "Marquesas Islands Dog",
     "description": "The Marquesan Dog is an extinct breed of dog from the Marquesas Islands.",
     "rarity": "EXTRAORDINARY",
-    "advanced_options": {
+    "parameters": {
         "sold_by_vendors": 0
     }
 }

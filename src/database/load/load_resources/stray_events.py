@@ -4,7 +4,7 @@ from sqlalchemy import delete, select
 
 from src.logger import get_logger
 
-from ...models import Breed, Mutation, StrayEvent, StrayEventAction
+from ...models import Breed, Mutation, StrayEvent, StrayEventAction, StrayEventOutcome
 from ...session import session_scope
 from .utils import (
     EVENT_SEVERITY_VALUES,
@@ -21,13 +21,17 @@ STRAY_EVENTS_ROOT = RESOURCE_ROOT / "stray_events"
 
 _EVENT_ALLOWED_KEYS = {
     "name",
-    "description",
-    "flavor_text",
     "severity",
     "rarity",
     "triggered_only",
     "filter",
-    "advanced_options",
+    "actions",
+    "outcomes",
+}
+
+_OUTCOME_ALLOWED_KEYS = {
+    "message",
+    "chance",
     "actions",
 }
 
@@ -77,17 +81,15 @@ class _StrayEventValidator(BaseEventValidator):
 
         self._validate_unknown_keys(path, attributes, _EVENT_ALLOWED_KEYS)
         self._validate_optional_string(path, attributes, "name", allow_blank=False)
-        self._validate_optional_string(path, attributes, "description")
-        self._validate_optional_string(path, attributes, "flavor_text")
-        self._validate_optional_json_object(path, attributes, "advanced_options")
         self._validate_enum_string(path, attributes, "severity", EVENT_SEVERITY_VALUES)
         self._validate_enum_string(path, attributes, "rarity", RARITY_VALUES)
         self._validate_optional_bool(path, attributes, "triggered_only")
         self._validate_stray_event_filter(f"{path}.filter", attributes.get("filter"))
         actions = self._validate_stray_actions_list(path, attributes.get("actions", []))
+        outcomes = self._validate_outcomes_list(path, attributes.get("outcomes", []))
 
-        if not actions:
-            self.error(path, "stray events must define at least one action")
+        if not actions and not outcomes:
+            self.error(path, "stray events must define at least one action or outcome")
 
     def _validate_stray_event_filter(self, path: str, filter_spec: Any) -> None:
         if filter_spec is None:
@@ -110,6 +112,47 @@ class _StrayEventValidator(BaseEventValidator):
                     if isinstance(pf, dict):
                         self._validate_pooch_filter(f"{path}.pooches[{i}]", pf, allow_counts=True, allow_location=False)
 
+    def _validate_outcomes_list(self, path: str, outcomes: Any) -> list[dict[str, Any]]:
+        outcomes_path = f"{path}.outcomes"
+        if not isinstance(outcomes, list):
+            self.error(outcomes_path, "must be a list")
+            return []
+
+        validated: list[dict[str, Any]] = []
+        explicit_chances: list[float] = []
+
+        for index, outcome in enumerate(outcomes):
+            current_path = f"{outcomes_path}[{index}]"
+            if not isinstance(outcome, dict):
+                self.error(current_path, "outcome must be an object")
+                continue
+
+            self._validate_unknown_keys(current_path, outcome, _OUTCOME_ALLOWED_KEYS)
+            self._validate_optional_string(current_path, outcome, "message")
+            chance = self._validate_optional_probability(current_path, outcome, "chance")
+            if chance is not None:
+                explicit_chances.append(chance)
+            self._validate_stray_actions_list(current_path, outcome.get("actions", []))
+            validated.append(outcome)
+
+        if explicit_chances:
+            total = sum(explicit_chances)
+            all_explicit = len(explicit_chances) == len(validated)
+            if all_explicit:
+                if abs(total - 1.0) > 0.001:
+                    self.error(
+                        outcomes_path,
+                        f"all outcomes have explicit chances but they sum to {total:.4f} (must sum to 1.0)",
+                    )
+            else:
+                if total > 1.0 + 0.001:
+                    self.error(
+                        outcomes_path,
+                        f"explicit outcome chances sum to {total:.4f} which exceeds 1.0",
+                    )
+
+        return validated
+
     def _validate_stray_actions_list(self, path: str, actions: Any) -> list[dict[str, Any]]:
         actions_path = f"{path}.actions"
         if not isinstance(actions, list):
@@ -123,7 +166,7 @@ class _StrayEventValidator(BaseEventValidator):
                 self.error(current_path, "action must be an object")
                 continue
 
-            allowed_keys = {"action_type", "target_type", "parameters", "repeat", "filter"}
+            allowed_keys = {"action_type", "parameters", "repeat", "filter"}
             self._validate_unknown_keys(current_path, action, allowed_keys)
 
             action_type_raw = action.get("action_type")
@@ -195,6 +238,7 @@ async def load_stray_events():
         validator.raise_if_invalid()
 
         await session.execute(delete(StrayEventAction))
+        await session.execute(delete(StrayEventOutcome))
         await session.execute(delete(StrayEvent))
 
         for event_category, events in stray_events_json.items():
@@ -202,13 +246,10 @@ async def load_stray_events():
                 event = StrayEvent(
                     name=str(event_name),
                     category=str(event_category),
-                    description=str(attributes.get("description", f"{event_name} is a stray event.")),
-                    flavor_text=str(attributes.get("flavor_text", "")),
                     severity=str(attributes.get("severity", "minor")).lower(),
                     rarity=str(attributes.get("rarity", "common")).lower(),
                     triggered_only=bool(attributes.get("triggered_only", False)),
                     filter=_resolve_stray_event_filter(attributes),
-                    advanced_options=attributes.get("advanced_options", {}),
                 )
                 session.add(event)
                 await session.flush()
@@ -218,12 +259,33 @@ async def load_stray_events():
                         stray_event_id=event.id,
                         action_order=idx,
                         action_type=str(action_data.get("action_type")).lower(),
-                        target_type=str(action_data.get("target_type", "pooch")).lower(),
                         repeat=int(action_data.get("repeat", 1)),
                         parameters=resolve_event_action_parameters(
                             action_data.get("parameters", {}), breed_name_to_id, mutation_name_to_id
                         ),
                     )
                     session.add(action)
+
+                for outcome_idx, outcome_data in enumerate(attributes.get("outcomes", [])):
+                    outcome = StrayEventOutcome(
+                        stray_event_id=event.id,
+                        outcome_order=outcome_idx,
+                        message=str(outcome_data.get("message", "")),
+                        chance=float(outcome_data["chance"]) if "chance" in outcome_data else None,
+                    )
+                    session.add(outcome)
+                    await session.flush()
+
+                    for act_idx, action_data in enumerate(outcome_data.get("actions", [])):
+                        action = StrayEventAction(
+                            stray_event_outcome_id=outcome.id,
+                            action_order=act_idx,
+                            action_type=str(action_data.get("action_type")).lower(),
+                            repeat=int(action_data.get("repeat", 1)),
+                            parameters=resolve_event_action_parameters(
+                                action_data.get("parameters", {}), breed_name_to_id, mutation_name_to_id
+                            ),
+                        )
+                        session.add(action)
 
     logger.info("Finished loading stray events.")

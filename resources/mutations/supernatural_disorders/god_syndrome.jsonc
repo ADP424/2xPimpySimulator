@@ -5,7 +5,7 @@
     "heritability": 0.0,
     "health_impact": "IMMORTALITY",
     "rarity": "UNIQUE",
-    "advanced_options": {
+    "parameters": {
         "on_death": "spread",
         "on_death_targets": "random",
         "always_on_death": 1

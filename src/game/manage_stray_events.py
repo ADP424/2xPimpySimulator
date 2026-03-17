@@ -62,10 +62,10 @@ from src.database import (
 from .breeding import breed_pooches as _breed_pooches
 from .constants import POOCH_BREEDING_COOLDOWN
 from .models import StrayEventContext, StrayEventResult
-from .utils import get_pooch_mutation_advanced_option_total
+from .utils import get_pooch_mutation_parameter_total
 
 if TYPE_CHECKING:
-    from src.database.models import StrayEvent, StrayEventAction
+    from src.database.models import StrayEvent, StrayEventAction, StrayEventOutcome
     from src.database.models.event_types import JsonObject, PoochFilterSpec
 
 logger = logging.getLogger(__name__)
@@ -275,7 +275,7 @@ async def _execute_single_stray_action(
                 if isinstance(cooldown, str) and cooldown.strip().lower() == "base":
                     resolved = max(
                         POOCH_BREEDING_COOLDOWN
-                        + await get_pooch_mutation_advanced_option_total(pooch_id, "breeding_cooldown"),
+                        + await get_pooch_mutation_parameter_total(pooch_id, "breeding_cooldown"),
                         0,
                     )
                 else:
@@ -285,7 +285,20 @@ async def _execute_single_stray_action(
 
         elif action_type == "create_pooch":
             kwargs: dict[str, object] = {"rng": rng}
-            for key in ("name", "sex", "age", "base_health", "breeding_cooldown"):
+            for key in (
+                "name",
+                "sex",
+                "age",
+                "base_health",
+                "strength",
+                "cuteness",
+                "fluffiness",
+                "intelligence",
+                "dexterity",
+                "fertility",
+                "aggressiveness",
+                "breeding_cooldown",
+            ):
                 if key in parameters:
                     kwargs[key] = parameters[key]
             pooch = await create_pooch(**kwargs)
@@ -314,6 +327,13 @@ async def _execute_single_stray_action(
                         "sex": parameters.get("sex", source.sex),
                         "age": parameters.get("age", source.age),
                         "base_health": parameters.get("base_health", source.base_health),
+                        "strength": parameters.get("strength", source.strength),
+                        "cuteness": parameters.get("cuteness", source.cuteness),
+                        "fluffiness": parameters.get("fluffiness", source.fluffiness),
+                        "intelligence": parameters.get("intelligence", source.intelligence),
+                        "dexterity": parameters.get("dexterity", source.dexterity),
+                        "fertility": parameters.get("fertility", source.fertility),
+                        "aggressiveness": parameters.get("aggressiveness", source.aggressiveness),
                         "breeding_cooldown": parameters.get("breeding_cooldown", source.breeding_cooldown),
                     }
                     clone = await create_pooch(**clone_kwargs)
@@ -451,6 +471,12 @@ async def _execute_single_stray_action(
                         server_discord_id, followup.actions, context, rng
                     )
                     result.merge(followup_result)
+                    followup_outcome = _choose_stray_event_outcome(followup, rng)
+                    if followup_outcome is not None:
+                        outcome_result = await _execute_stray_event_actions(
+                            server_discord_id, followup_outcome.actions, context, rng
+                        )
+                        result.merge(outcome_result)
 
         else:
             logger.warning(f"Unknown stray action type: {action_type}")
@@ -475,6 +501,37 @@ async def _execute_stray_event_actions(
             action_result = await _execute_single_stray_action(server_discord_id, action, context, rng)
             result.merge(action_result)
     return result
+
+
+def _choose_stray_event_outcome(
+    event: "StrayEvent",
+    rng: random.Random,
+) -> "Optional[StrayEventOutcome]":
+    """Pick one outcome from the event's outcomes list using weighted random selection."""
+    if not event.outcomes:
+        return None
+
+    explicit = [o for o in event.outcomes if o.chance is not None]
+    if not explicit:
+        return rng.choice(event.outcomes)
+
+    total_explicit = sum(float(o.chance) for o in explicit)
+    implicit = [o for o in event.outcomes if o.chance is None]
+
+    weighted: list[tuple["StrayEventOutcome", float]] = []
+    if implicit:
+        remaining = max(0.0, 1.0 - total_explicit)
+        implicit_weight = remaining / len(implicit) if remaining > 0 else 0.0
+        weighted.extend((o, implicit_weight) for o in implicit)
+    weighted.extend((o, float(o.chance)) for o in explicit)
+
+    roll = rng.random()
+    cumulative = 0.0
+    for outcome, weight in weighted:
+        cumulative += weight
+        if roll < cumulative:
+            return outcome
+    return rng.choice(event.outcomes)
 
 
 async def _trigger_stray_event_for_server(
@@ -509,6 +566,12 @@ async def _trigger_stray_event_for_server(
     )
 
     result = await _execute_stray_event_actions(server_discord_id, event.actions, context, rng)
+
+    selected_outcome = _choose_stray_event_outcome(event, rng)
+    if selected_outcome is not None:
+        outcome_result = await _execute_stray_event_actions(server_discord_id, selected_outcome.actions, context, rng)
+        result.merge(outcome_result)
+
     logger.info(
         "Stray event '%s' ran on server %s — affected %d pooches",
         event.name,

@@ -38,6 +38,7 @@ from .manage_owners import (
     get_or_create_owner,
     list_all_owners,
     list_owner_kennels,
+    spend_bone_at_park,
     update_owner_names,
     visit_park,
 )
@@ -113,6 +114,7 @@ __all__ = [
     "get_or_create_owner",
     "list_all_owners",
     "list_owner_kennels",
+    "spend_bone_at_park",
     "update_owner_names",
     "visit_park",
     # Pooch commands

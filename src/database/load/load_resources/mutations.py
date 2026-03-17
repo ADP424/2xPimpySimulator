@@ -29,7 +29,7 @@ def _validate_mutations_json(mutations_json: dict[str, dict[str, dict[str, Any]]
         "rarity",
         "affects_males",
         "affects_females",
-        "advanced_options",
+        "parameters",
     }
     if not isinstance(mutations_json, dict):
         raise ResourceValidationError("Invalid mutation resources: root value must be an object keyed by category")
@@ -67,9 +67,9 @@ def _validate_mutations_json(mutations_json: dict[str, dict[str, dict[str, Any]]
                 field_value = attributes.get(field_name)
                 if field_value is not None and not isinstance(field_value, bool):
                     errors.append(f"{path}.{field_name}: must be a boolean")
-            advanced_options = attributes.get("advanced_options")
-            if advanced_options is not None and not isinstance(advanced_options, dict):
-                errors.append(f"{path}.advanced_options: must be an object")
+            parameters = attributes.get("parameters")
+            if parameters is not None and not isinstance(parameters, dict):
+                errors.append(f"{path}.parameters: must be an object")
     if errors:
         joined = "\n".join(f"- {error}" for error in errors)
         raise ResourceValidationError(f"Invalid mutation resources:\n{joined}")
@@ -99,7 +99,7 @@ async def load_mutations():
                         rarity=str(attributes.get("rarity", "common")).lower(),
                         affects_males=bool(attributes.get("affects_males", True)),
                         affects_females=bool(attributes.get("affects_females", True)),
-                        advanced_options=attributes.get("advanced_options", {}),
+                        parameters=attributes.get("parameters", {}),
                     )
                 )
 

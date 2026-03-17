@@ -56,6 +56,7 @@ Owner events live in `resources/owner_events/**/*.jsonc`. Each event is its own 
         }
     ]
 }
+```
 
 ---
 

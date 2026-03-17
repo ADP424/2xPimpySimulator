@@ -22,14 +22,14 @@ from src.database import (
 
 from .constants import (
     NUM_INCEST_MUTATION_ROLLS,
-    POOCH_BASE_HEALTH_RANGE,
     POOCH_BREEDING_COOLDOWN,
     POOCH_FETAL_AGE,
+    POOCH_STATS,
     TRIPLETS_CHANCE,
     TWINS_CHANCE,
 )
 from .exceptions import PoochNotFound
-from .utils import get_pooch_mutation_advanced_option_total
+from .utils import get_pooch_mutation_parameter_total
 
 
 def _combine_puppy_name(father_name: str, mother_name: str) -> str:
@@ -97,15 +97,11 @@ async def breed_pooches(
 
     await set_pooch_breeding_cooldown(
         father.id,
-        max(
-            POOCH_BREEDING_COOLDOWN + await get_pooch_mutation_advanced_option_total(father.id, "breeding_cooldown"), 0
-        ),
+        max(POOCH_BREEDING_COOLDOWN + await get_pooch_mutation_parameter_total(father.id, "breeding_cooldown"), 0),
     )
     await set_pooch_breeding_cooldown(
         mother.id,
-        max(
-            POOCH_BREEDING_COOLDOWN + await get_pooch_mutation_advanced_option_total(mother.id, "breeding_cooldown"), 0
-        ),
+        max(POOCH_BREEDING_COOLDOWN + await get_pooch_mutation_parameter_total(mother.id, "breeding_cooldown"), 0),
     )
     await set_pooch_virgin(father.id, False)
     await set_pooch_virgin(mother.id, False)
@@ -127,13 +123,21 @@ async def breed_pooches(
 
     puppies: list[int] = []
 
+    def _inherit_stat(parent_a: int, parent_b: int) -> int:
+        lo = min(parent_a, parent_b)
+        hi = max(parent_a, parent_b)
+        return max(0, rng.randint(lo - 1, hi + 1))
+
     for _ in range(litter_size):
         puppy_name = _combine_puppy_name(father.name, mother.name)
+        inherited_base_health = _inherit_stat(father.base_health, mother.base_health)
+        inherited_stats = {stat: _inherit_stat(getattr(father, stat), getattr(mother, stat)) for stat in POOCH_STATS}
         puppy = await create_pooch(
             owner_discord_id=mother.owner_discord_id,
             name=puppy_name,
             age=POOCH_FETAL_AGE,
-            base_health=rng.randint(POOCH_BASE_HEALTH_RANGE[0], POOCH_BASE_HEALTH_RANGE[1]),
+            base_health=inherited_base_health,
+            **inherited_stats,
             rng=rng,
         )
 
@@ -187,7 +191,7 @@ async def breed_pooches(
         await set_pooch_breeding_cooldown(
             puppy.id,
             max(
-                POOCH_BREEDING_COOLDOWN + await get_pooch_mutation_advanced_option_total(puppy.id, "breeding_cooldown"),
+                POOCH_BREEDING_COOLDOWN + await get_pooch_mutation_parameter_total(puppy.id, "breeding_cooldown"),
                 0,
             ),
         )

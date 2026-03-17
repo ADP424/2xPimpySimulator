@@ -1,7 +1,5 @@
 {
     "name": "Stray Adoption",
-    "description": "A wandering stray finds its way into an owner's kennel.",
-    "flavor_text": "Every dog deserves a home.",
     "severity": "MINOR",
     "rarity": "UNCOMMON",
     "filter": {
@@ -10,7 +8,6 @@
     "actions": [
         {
             "action_type": "enter_kennel",
-            "target_type": "pooch",
             "parameters": {
                 "selector": "random"
             }

@@ -5,7 +5,7 @@
     "heritability": 0.4,
     "health_impact": "NEUTRAL",
     "rarity": "UNPRECEDENTED",
-    "advanced_options": {
+    "parameters": {
         "dollar_value_add": 50
     }
 }

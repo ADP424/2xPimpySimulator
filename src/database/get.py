@@ -27,6 +27,7 @@ from .models import (
     ServerEventOutcome,
     ServerEventParticipation,
     StrayEvent,
+    StrayEventOutcome,
     Vendor,
 )
 from .session import session_scope
@@ -217,6 +218,14 @@ async def get_mutation_by_id(mutation_id: int) -> Optional[Mutation]:
         query = select(Mutation).where(Mutation.id == mutation_id)
         response = await session.execute(query)
 
+    return response.scalar_one_or_none()
+
+
+async def get_mutation_by_name(name: str) -> Optional[Mutation]:
+    """Fetch a mutation by its name (case-insensitive)."""
+    async with session_scope() as session:
+        query = select(Mutation).where(Mutation.name.ilike(name))
+        response = await session.execute(query)
     return response.scalar_one_or_none()
 
 
@@ -758,16 +767,23 @@ async def get_random_eligible_server_event_for_server(
         return weighted_choice(rng, rows)
 
 
+def _stray_event_load_options():
+    return [
+        selectinload(StrayEvent.actions),
+        selectinload(StrayEvent.outcomes).selectinload(StrayEventOutcome.actions),
+    ]
+
+
 async def get_stray_event_by_id(stray_event_id: int) -> Optional[StrayEvent]:
     async with session_scope() as session:
-        query = select(StrayEvent).where(StrayEvent.id == stray_event_id).options(selectinload(StrayEvent.actions))
+        query = select(StrayEvent).where(StrayEvent.id == stray_event_id).options(*_stray_event_load_options())
         response = await session.execute(query)
     return response.scalar_one_or_none()
 
 
 async def get_stray_event_by_name(name: str) -> Optional[StrayEvent]:
     async with session_scope() as session:
-        query = select(StrayEvent).where(StrayEvent.name == name).options(selectinload(StrayEvent.actions))
+        query = select(StrayEvent).where(StrayEvent.name == name).options(*_stray_event_load_options())
         response = await session.execute(query)
     return response.scalar_one_or_none()
 
@@ -792,7 +808,7 @@ async def get_random_eligible_stray_event_for_server(
             .where(
                 true() if include_triggered_only else StrayEvent.triggered_only.is_(False),
             )
-            .options(selectinload(StrayEvent.actions))
+            .options(*_stray_event_load_options())
         )
         response = await session.execute(query)
         rows = [(event, weight) for event, weight in response.tuples().all()]

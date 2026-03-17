@@ -3,7 +3,7 @@
     "alt_name": "Moscow Retriever",
     "description": "The Moscow Water Dog was produced only by the Red Star Kennels, the state-operated organization chartered to provide working dogs for the armed services of the Soviet Union.",
     "rarity": "UNIQUE",
-    "advanced_options": {
+    "parameters": {
         "sold_by_vendors": 0
     }
 }

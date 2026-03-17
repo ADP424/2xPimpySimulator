@@ -9,6 +9,7 @@ from ...session import session_scope
 from .utils import (
     RARITY_VALUES,
     RESOURCE_ROOT,
+    SIZE_VALUES,
     ResourceValidationError,
     load_categorized_resource_objects,
 )
@@ -20,7 +21,7 @@ _BREEDS_ROOT = RESOURCE_ROOT / "breeds"
 
 def _validate_breeds_json(breeds_json: dict[str, dict[str, dict[str, Any]]]) -> None:
     errors: list[str] = []
-    allowed_keys = {"alt_name", "description", "rarity", "advanced_options"}
+    allowed_keys = {"alt_name", "description", "rarity", "size", "parameters"}
     if not isinstance(breeds_json, dict):
         raise ResourceValidationError("Invalid breed resources: root value must be an object keyed by category")
     for category_name, breeds in breeds_json.items():
@@ -45,9 +46,12 @@ def _validate_breeds_json(breeds_json: dict[str, dict[str, dict[str, Any]]]) -> 
             rarity = attributes.get("rarity")
             if rarity is not None and (not isinstance(rarity, str) or rarity.strip().lower() not in RARITY_VALUES):
                 errors.append(f"{path}.rarity: must be one of: {', '.join(sorted(RARITY_VALUES))}")
-            advanced_options = attributes.get("advanced_options")
-            if advanced_options is not None and not isinstance(advanced_options, dict):
-                errors.append(f"{path}.advanced_options: must be an object")
+            size = attributes.get("size")
+            if size is not None and (not isinstance(size, str) or size.strip().lower() not in SIZE_VALUES):
+                errors.append(f"{path}.size: must be one of: {', '.join(sorted(SIZE_VALUES))}")
+            parameters = attributes.get("parameters")
+            if parameters is not None and not isinstance(parameters, dict):
+                errors.append(f"{path}.parameters: must be an object")
     if errors:
         joined = "\n".join(f"- {error}" for error in errors)
         raise ResourceValidationError(f"Invalid breed resources:\n{joined}")
@@ -71,7 +75,8 @@ async def load_breeds():
                         category=breed_category,
                         description=attributes.get("description", f"{breed.capitalize()} is a type of dog."),
                         rarity=attributes.get("rarity", "common").lower(),
-                        advanced_options=attributes.get("advanced_options", {}),
+                        size=attributes.get("size", "average").lower(),
+                        parameters=attributes.get("parameters", {}),
                     )
                 )
 

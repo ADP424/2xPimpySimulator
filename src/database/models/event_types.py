@@ -222,6 +222,13 @@ class EventCreatePoochParameters(TypedDict, total=False):
     sex: str
     age: int
     base_health: int
+    strength: int
+    cuteness: int
+    fluffiness: int
+    intelligence: int
+    dexterity: int
+    fertility: int
+    aggressiveness: int
     breeding_cooldown: int
     destination: str  # "kennel" | "graveyard" | "hell" | "town"
     save_as: str
@@ -233,6 +240,13 @@ class EventClonePoochParameters(EventActionBaseParameters, total=False):
     sex: str
     age: int
     base_health: int
+    strength: int
+    cuteness: int
+    fluffiness: int
+    intelligence: int
+    dexterity: int
+    fertility: int
+    aggressiveness: int
     breeding_cooldown: int
     destination: str  # "kennel" | "graveyard" | "hell" | "town"
     # save_as here supports either a plain str (saves clone) or a list of {slot, target} dicts

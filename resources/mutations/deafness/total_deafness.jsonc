@@ -5,7 +5,7 @@
     "heritability": 0.25,
     "health_impact": "NEUTRAL",
     "rarity": "NOVEL",
-    "advanced_options": {
+    "parameters": {
         "dollar_value_add": -30,
         "incompatible_mutations": [
             "Partial Deafness"

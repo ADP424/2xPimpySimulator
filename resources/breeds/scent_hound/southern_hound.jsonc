@@ -3,7 +3,7 @@
     "alt_name": "Sodder Hound",
     "description": "The Southern Hound was a tall, heavy dog with a square head, and long ears. It had a deep chest, a long bony body and a deep melodious voice. It was a slow dog, but with excellent scenting abilities and was employed to follow the trail of the quarry during a hunt.",
     "rarity": "REMARKABLE",
-    "advanced_options": {
+    "parameters": {
         "sold_by_vendors": 0
     }
 }

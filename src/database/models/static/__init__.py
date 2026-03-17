@@ -1,7 +1,7 @@
 from .catalog import Breed, DogName, Mutation, VendorFirstName, VendorLastName
 from .owner_events import Event, EventAction, EventOption, EventOutcome
 from .server_events import ServerEvent, ServerEventOption, ServerEventOutcome
-from .stray_events import StrayEvent, StrayEventAction
+from .stray_events import StrayEvent, StrayEventAction, StrayEventOutcome
 
 __all__ = [
     "Breed",
@@ -18,4 +18,5 @@ __all__ = [
     "ServerEventOutcome",
     "StrayEvent",
     "StrayEventAction",
+    "StrayEventOutcome",
 ]

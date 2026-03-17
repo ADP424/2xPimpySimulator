@@ -38,30 +38,30 @@ A floating point number between 0.0 and 1.0 (inclusive) representing the chance 
 
 #### Health Impact
 The positive/negative severity of the health impact the mutation has on the dog with it, written in all caps. There are 13 categories of health impact corresponding to different levels of numerical impact. For reference, a pooch has an average of 10 base health.
-- INSTANT_DEATH (-1000)
-- FATAL (-5)
-- BRUTAL (-4)
-- SEVERE (-3)
-- UNHEALTHY (-2)
-- HARMFUL (-1)
-- NEUTRAL (0)
-- HELPFUL (+1)
-- HEALTHY (+2)
-- GREAT (+3)
-- FANTASTIC (+4)
-- BRILLIANT (+5)
-- IMMORTALITY (+1000)
+- `INSTANT_DEATH` (-1000)
+- `FATAL` (-5)
+- `BRUTAL` (-4)
+- `SEVERE` (-3)
+- `UNHEALTHY` (-2)
+- `HARMFUL` (-1)
+- `NEUTRAL` (0)
+- `HELPFUL` (+1)
+- `HEALTHY` (+2)
+- `GREAT` (+3)
+- `FANTASTIC` (+4)
+- `BRILLIANT` (+5)
+- `IMMORTALITY` (+1000)
 
 #### Rarity
 How relatively likely/unlikely it is for a pooch to develop this mutation. There are eight categories of rarity corresponding to different levels of relative abundance. For example, "COMMON" has a relative abundance of 1000, while "RARE" has a relative abundance of 50, meaning a common mutation is 20 times more likely to show up compared to a rare one.
-- COMMON (1000)
-- UNCOMMON (250)
-- NOVEL (100)
-- RARE (50)
-- UNPRECEDENTED (25)
-- REMARKABLE (10)
-- EXTRAORDINARY (5)
-- UNIQUE (1)
+- `COMMON` (1000)
+- `UNCOMMON` (250)
+- `NOVEL` (100)
+- `RARE` (50)
+- `UNPRECEDENTED` (25)
+- `REMARKABLE` (10)
+- `EXTRAORDINARY` (5)
+- `UNIQUE` (1)
 
 #### Advanced Options
 An object representing more complex options for the mutatation (more information in "Advanced Options Guide").

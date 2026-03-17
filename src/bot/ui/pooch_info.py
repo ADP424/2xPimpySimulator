@@ -1,3 +1,4 @@
+import os
 from typing import TYPE_CHECKING, Optional, Sequence
 
 import discord
@@ -153,15 +154,26 @@ class PoochInfoView(View):
             return True
         return interaction.user.id == self.owner.discord_id
 
+    _SIZE_LABELS = {1: "Tiny", 2: "Small", 3: "Average", 4: "Large", 5: "Massive"}
+
+    @staticmethod
+    def _format_size(size: float) -> str:
+        rounded = round(size)
+        label = PoochInfoView._SIZE_LABELS.get(rounded, "Average")
+        if size == rounded:
+            return label
+        return f"{label} ({size:.2f})"
+
     async def build_embed(self) -> discord.Embed:
         self.clear_items()
 
         family = await get_pooch_family(self.pooch.id)
+        is_dev = os.getenv("STAGE", "dev").lower() == "dev"
 
         embed = discord.Embed(title=self.pooch.name)
         embed.add_field(name="Age", value=str(self.pooch.age), inline=True)
         embed.add_field(name="Sex", value=self.pooch.sex.capitalize(), inline=True)
-        embed.add_field(name="Health", value=str(self.pooch.health), inline=True)
+        embed.add_field(name="Size", value=self._format_size(self.pooch.size), inline=True)
 
         embed.add_field(
             name="Owner",
@@ -177,7 +189,7 @@ class PoochInfoView(View):
 
         embed.add_field(name="Days Until Heat", value=str(self.pooch.breeding_cooldown), inline=True)
         embed.add_field(name="Sexual Status", value=("Virgin" if self.pooch.virgin else "Debauched"), inline=True)
-        embed.add_field(name="-", value=(""), inline=True)
+        embed.add_field(name="\u200b", value="\u200b", inline=True)
 
         parents = family.get("parents", [])
         children = family.get("children", [])
@@ -202,6 +214,20 @@ class PoochInfoView(View):
 
         embed.add_field(name="Breeds", value=breed_text, inline=False)
         embed.add_field(name="Mutations", value=mutation_text, inline=False)
+
+        if is_dev:
+            p = self.pooch
+            dev_lines = [
+                f"Health: {p.health} (base {p.base_health}, age loss {p.health_loss_age})",
+                f"Strength: {p.strength}",
+                f"Cuteness: {p.cuteness}",
+                f"Fluffiness: {p.fluffiness}",
+                f"Intelligence: {p.intelligence}",
+                f"Dexterity: {p.dexterity}",
+                f"Fertility: {p.fertility}",
+                f"Aggressiveness: {p.aggressiveness}",
+            ]
+            embed.add_field(name="[DEV] Stats", value="\n".join(dev_lines), inline=False)
 
         row = 0
         if parents:

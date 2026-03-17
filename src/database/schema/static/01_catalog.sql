@@ -8,8 +8,9 @@ CREATE TABLE breeds (
     description         TEXT NOT NULL,
 
     rarity              rarity NOT NULL DEFAULT 'common',
+    size                size NOT NULL DEFAULT 'average',
 
-    advanced_options    JSONB NOT NULL DEFAULT '{}'::jsonb
+    parameters          JSONB NOT NULL DEFAULT '{}'::jsonb
 );
 
 
@@ -30,7 +31,7 @@ CREATE TABLE mutations (
     affects_females     BOOLEAN NOT NULL DEFAULT TRUE,
     affects_males       BOOLEAN NOT NULL DEFAULT TRUE,
 
-    advanced_options    JSONB NOT NULL DEFAULT '{}'::jsonb,
+    parameters          JSONB NOT NULL DEFAULT '{}'::jsonb,
 
     CONSTRAINT bounded_heritability CHECK (heritability BETWEEN 0 AND 1)
 );

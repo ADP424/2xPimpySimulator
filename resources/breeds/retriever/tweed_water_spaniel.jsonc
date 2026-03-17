@@ -3,7 +3,7 @@
     "alt_name": "Ladykirk Spaniel",
     "description": "The Tweed Water Spaniel, or Tweed Spaniel, is a breed of dog extinct since the 19th century. It is best known for being involved in the early development of the modern Curly Coated Retriever and Golden Retriever breeds of dogs. They were described as generally brown, athletic dogs from the area around Berwick-upon-Tweed near the River Tweed and close to the Scottish Borders.",
     "rarity": "REMARKABLE",
-    "advanced_options": {
+    "parameters": {
         "sold_by_vendors": 0
     }
 }

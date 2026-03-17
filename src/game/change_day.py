@@ -43,9 +43,10 @@ from .constants import (
     NUM_BREEDS_PER_VENDOR_POOCH_RANGE,
     NUM_MUTATIONS_PER_VENDOR_POOCH_RANGE,
     NUM_VENDORS_PER_SERVER,
-    POOCH_BASE_HEALTH_RANGE,
     POOCH_BREEDING_COOLDOWN,
     POOCH_HEALTH_LOSS_STARTING_AGE,
+    POOCH_STAT_RANGE,
+    POOCH_STATS,
     VENDOR_MARKUP_RANGE,
     VENDOR_POOCH_AGE_RANGE,
     VENDOR_POOCH_STOCK_COUNT_RANGE,
@@ -65,7 +66,7 @@ from .models import (
 if TYPE_CHECKING:
     from src.database.models import Mutation, Pooch
 
-from .utils import get_pooch_mutation_advanced_option_total
+from .utils import get_pooch_mutation_parameter_total
 
 logger = get_logger("game/change_day")
 
@@ -207,7 +208,7 @@ async def run_day_change(
                     if negative_pooch_mutations
                     else None
                 )
-                death_message = death_cause.advanced_options.get("death_message", f"{pooch.name} died.").replace(
+                death_message = death_cause.parameters.get("death_message", f"{pooch.name} died.").replace(
                     "[pooch]", pooch.name
                 )
             elif pooch.health_loss_age > 0:
@@ -221,9 +222,9 @@ async def run_day_change(
                 )
 
             for pooch_mutation in pooch_mutations:
-                on_death: Optional[str] = pooch_mutation.advanced_options.get("on_death", "none").lower()
-                always_on_death = bool(pooch_mutation.advanced_options.get("on_death", 0))
-                on_death_chance: float = pooch_mutation.advanced_options.get("on_death_chance", 1.0)
+                on_death: Optional[str] = pooch_mutation.parameters.get("on_death", "none").lower()
+                always_on_death = bool(pooch_mutation.parameters.get("on_death", 0))
+                on_death_chance: float = pooch_mutation.parameters.get("on_death_chance", 1.0)
 
                 if (
                     on_death == "none"
@@ -232,7 +233,7 @@ async def run_day_change(
                 ):
                     continue
 
-                on_death_targets: str = pooch_mutation.advanced_options.get("on_death_targets", "none").lower()
+                on_death_targets: str = pooch_mutation.parameters.get("on_death_targets", "none").lower()
 
                 target_pooches: list[Pooch] = []
                 if on_death_targets == "all":
@@ -259,7 +260,7 @@ async def run_day_change(
                     for target in target_pooches:
                         await _kill_pooch(target)
                         death_message = (
-                            pooch_mutation.advanced_options.get(
+                            pooch_mutation.parameters.get(
                                 "impact_message", f"{target.name} died from {pooch.name}'s {pooch_mutation.name}."
                             )
                             .replace("[pooch]", pooch.name)
@@ -278,7 +279,7 @@ async def run_day_change(
                         await add_mutation_to_pooch(target.id, pooch_mutation.id)
                         target = await get_pooch_by_id(target.id)
                         spread_message = (
-                            pooch_mutation.advanced_options.get(
+                            pooch_mutation.parameters.get(
                                 "impact_message",
                                 f"{pooch.name} spread its {pooch_mutation.name} to {target.name} as they died.",
                             )
@@ -299,7 +300,7 @@ async def run_day_change(
                             await add_mutation_to_pooch(target.id, mutation.id)
                         target = await get_pooch_by_id(target.id)
                         spread_message = (
-                            pooch_mutation.advanced_options.get(
+                            pooch_mutation.parameters.get(
                                 "impact_message",
                                 (
                                     f"{pooch.name} spread ALL its mutations to {target.name} as they died, "
@@ -328,7 +329,8 @@ async def run_day_change(
         strays = await list_strays_for_server(server.discord_id)
         if not strays:
             stray_pooch = await create_pooch(
-                base_health=rng.randint(POOCH_BASE_HEALTH_RANGE[0], POOCH_BASE_HEALTH_RANGE[1]),
+                base_health=rng.randint(POOCH_STAT_RANGE[0], POOCH_STAT_RANGE[1]),
+                **{stat: rng.randint(POOCH_STAT_RANGE[0], POOCH_STAT_RANGE[1]) for stat in POOCH_STATS},
                 age=0,
                 rng=rng,
             )
@@ -354,7 +356,8 @@ async def run_day_change(
                 vendor_pooch = await create_pooch(
                     vendor_id=vendor.id,
                     age=rng.randint(VENDOR_POOCH_AGE_RANGE[0], VENDOR_POOCH_AGE_RANGE[1]),
-                    base_health=rng.randint(POOCH_BASE_HEALTH_RANGE[0], POOCH_BASE_HEALTH_RANGE[1]),
+                    base_health=rng.randint(POOCH_STAT_RANGE[0], POOCH_STAT_RANGE[1]),
+                    **{stat: rng.randint(POOCH_STAT_RANGE[0], POOCH_STAT_RANGE[1]) for stat in POOCH_STATS},
                     rng=rng,
                 )
                 await set_pooch_breeding_cooldown(
@@ -362,7 +365,7 @@ async def run_day_change(
                     (
                         max(
                             POOCH_BREEDING_COOLDOWN
-                            + await get_pooch_mutation_advanced_option_total(vendor_pooch.id, "breeding_cooldown"),
+                            + await get_pooch_mutation_parameter_total(vendor_pooch.id, "breeding_cooldown"),
                             0,
                         )
                     )

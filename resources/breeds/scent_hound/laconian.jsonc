@@ -3,7 +3,7 @@
     "alt_name": "Spartan",
     "description": "The Laconian is an extinct dog breed from ancient Laconia, in Greece. In antiquity, it was famous for its swiftness and keen sense of smell, and typically used for hunting.",
     "rarity": "EXTRAORDINARY",
-    "advanced_options": {
+    "parameters": {
         "sold_by_vendors": 0
     }
 }

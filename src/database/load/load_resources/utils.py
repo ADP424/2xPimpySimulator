@@ -13,6 +13,7 @@ from ...models import (
     HEALTH_IMPACT,
     RARITY,
     SEX,
+    SIZE,
 )
 
 logger = get_logger("database/load/load_resources")
@@ -89,6 +90,7 @@ EVENT_SEVERITY_VALUES = _enum_values(EVENT_SEVERITY)
 HEALTH_IMPACT_VALUES = _enum_values(HEALTH_IMPACT)
 RARITY_VALUES = _enum_values(RARITY)
 SEX_VALUES = _enum_values(SEX)
+SIZE_VALUES = _enum_values(SIZE)
 LOCATION_VALUES = {"kennel", "graveyard", "hell", "town", "all", "any"}
 
 
@@ -484,6 +486,8 @@ class BaseEventValidator:
                 params_path,
                 parameters,
                 {
+                    "selector",
+                    "filter",
                     "first_pooch_selector",
                     "first_filter",
                     "second_pooch_selector",
@@ -520,7 +524,7 @@ class BaseEventValidator:
             self._validate_optional_int(params_path, parameters, "baby_base_health")
             self._validate_optional_int(params_path, parameters, "baby_breeding_cooldown", minimum=0)
             self._validate_save_as_with_targets(params_path, parameters, {"baby", "first_parent", "second_parent"})
-            self._validate_target_type(path, action_type, target_type, {"owner"})
+            self._validate_target_type(path, action_type, target_type, {"owner", "kennel"})
 
         elif action_type == "sell_pooch":
             self._validate_allowed_keys(
@@ -577,11 +581,14 @@ class BaseEventValidator:
             self._validate_allowed_keys(
                 params_path,
                 parameters,
-                {"destination", "count"},
+                {"destination", "count", "use_saved"},
             )
             self._validate_optional_int(params_path, parameters, "count", minimum=1)
             self._validate_enum_string(params_path, parameters, "destination", {"kennel", "graveyard", "hell", "town"})
-            self._validate_target_type(path, action_type, target_type, {"owner"})
+            self._validate_optional_string(params_path, parameters, "use_saved", allow_blank=False)
+            if "use_saved" in parameters and "count" in parameters:
+                self.error(params_path, "'use_saved' and 'count' cannot both be present")
+            self._validate_target_type(path, action_type, target_type, {"owner", "pooch"})
 
         else:
             self.error(path, f"unsupported action type '{action_type}'")

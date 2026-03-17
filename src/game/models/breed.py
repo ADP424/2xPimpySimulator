@@ -17,6 +17,7 @@ class Breed:
     description: str
 
     rarity: str
+    size: str
 
 
 async def to_breed(breed: BreedORM) -> Breed:
@@ -41,4 +42,5 @@ async def to_breed(breed: BreedORM) -> Breed:
         category=breed.category,
         description=breed.description,
         rarity=breed.rarity,
+        size=breed.size,
     )

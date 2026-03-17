@@ -41,6 +41,13 @@ class Pooch(Base):
         ),
         CheckConstraint("age >= -1", name="pooch_age_minimum"),
         CheckConstraint("base_health >= 0", name="pooch_base_health_minimum"),
+        CheckConstraint("strength >= 0", name="pooch_strength_minimum"),
+        CheckConstraint("cuteness >= 0", name="pooch_cuteness_minimum"),
+        CheckConstraint("fluffiness >= 0", name="pooch_fluffiness_minimum"),
+        CheckConstraint("intelligence >= 0", name="pooch_intelligence_minimum"),
+        CheckConstraint("dexterity >= 0", name="pooch_dexterity_minimum"),
+        CheckConstraint("fertility >= 0", name="pooch_fertility_minimum"),
+        CheckConstraint("aggressiveness >= 0", name="pooch_aggressiveness_minimum"),
         CheckConstraint("breeding_cooldown >= 0", name="pooch_breeding_cooldown_minimum"),
     )
 
@@ -52,6 +59,14 @@ class Pooch(Base):
 
     base_health: Mapped[int] = mapped_column(Integer, default=10)
     health_loss_age: Mapped[int] = mapped_column(Integer, default=0)
+
+    strength: Mapped[int] = mapped_column(Integer, default=10)
+    cuteness: Mapped[int] = mapped_column(Integer, default=10)
+    fluffiness: Mapped[int] = mapped_column(Integer, default=10)
+    intelligence: Mapped[int] = mapped_column(Integer, default=10)
+    dexterity: Mapped[int] = mapped_column(Integer, default=10)
+    fertility: Mapped[int] = mapped_column(Integer, default=10)
+    aggressiveness: Mapped[int] = mapped_column(Integer, default=10)
 
     breeding_cooldown: Mapped[int] = mapped_column(Integer, default=2)
     alive: Mapped[bool] = mapped_column(Boolean, default=True)

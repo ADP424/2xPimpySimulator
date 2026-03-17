@@ -5,7 +5,7 @@ from discord.ui import Button, View
 
 from src.bot.constants import VIEW_TIMEOUT
 from src.bot.ui.util import InteractionResponder
-from src.game import visit_park
+from src.game import spend_bone_at_park, visit_park
 from src.logger import get_logger
 
 logger = get_logger("bot/ui/park")
@@ -20,6 +20,7 @@ class ParkView(View):
         self.owner_discord_id = owner_discord_id
 
         self.add_item(_AttractStrayButton(server_discord_id=server_discord_id, owner_discord_id=owner_discord_id))
+        self.add_item(_UseBoneButton(server_discord_id=server_discord_id, owner_discord_id=owner_discord_id))
         self.add_item(_TownButton())
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
@@ -54,6 +55,30 @@ class _AttractStrayButton(Button):
             )
         except Exception as exception:
             logger.error(f"Error during park visit: '{exception}'")
+            await r.finish_with_error("Something went wrong at the park.")
+            return
+
+        prefix = "✅ " if caught else ""
+        await r.reply(content=f"{prefix}{message}")
+
+
+class _UseBoneButton(Button):
+    def __init__(self, server_discord_id: int, owner_discord_id: int):
+        super().__init__(label="Use a Bone", style=discord.ButtonStyle.secondary, row=0, emoji="🦴")
+        self.server_discord_id = server_discord_id
+        self.owner_discord_id = owner_discord_id
+
+    async def callback(self, interaction: discord.Interaction):
+        r = InteractionResponder(interaction)
+        await r.defer(thinking=True)
+
+        try:
+            caught, message = await spend_bone_at_park(
+                server_discord_id=self.server_discord_id,
+                owner_discord_id=self.owner_discord_id,
+            )
+        except Exception as exception:
+            logger.error(f"Error during bone park attempt: '{exception}'")
             await r.finish_with_error("Something went wrong at the park.")
             return
 

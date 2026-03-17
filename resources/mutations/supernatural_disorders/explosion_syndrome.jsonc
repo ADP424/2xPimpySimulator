@@ -5,7 +5,7 @@
     "heritability": 1.0,
     "health_impact": "INSTANT_DEATH",
     "rarity": "EXTRAORDINARY",
-    "advanced_options": {
+    "parameters": {
         "on_death": "kill",
         "on_death_targets": "all",
         "death_message": "[pooch] exploded all over the walls.",

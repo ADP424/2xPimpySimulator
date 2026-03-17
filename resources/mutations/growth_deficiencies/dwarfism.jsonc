@@ -5,7 +5,7 @@
     "heritability": 0.45,
     "health_impact": "NEUTRAL",
     "rarity": "RARE",
-    "advanced_options": {
+    "parameters": {
         "incompatible_mutations": [
             "Gigantism"
         ]

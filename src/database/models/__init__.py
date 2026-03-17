@@ -6,6 +6,7 @@ from .enums import (
     HEALTH_IMPACT,
     RARITY,
     SEX,
+    SIZE,
     HealthImpactWeight,
     RarityWeight,
 )
@@ -42,6 +43,7 @@ from .static import (
     ServerEventOutcome,
     StrayEvent,
     StrayEventAction,
+    StrayEventOutcome,
     VendorFirstName,
     VendorLastName,
 )
@@ -54,6 +56,7 @@ __all__ = [
     "HEALTH_IMPACT",
     "RARITY",
     "SEX",
+    "SIZE",
     "HealthImpactWeight",
     "RarityWeight",
     "Kennel",
@@ -86,6 +89,7 @@ __all__ = [
     "ServerEventOutcome",
     "StrayEvent",
     "StrayEventAction",
+    "StrayEventOutcome",
     "VendorFirstName",
     "VendorLastName",
 ]

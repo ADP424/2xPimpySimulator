@@ -5,7 +5,7 @@
     "heritability": 0.15,
     "health_impact": "NEUTRAL",
     "rarity": "UNCOMMON",
-    "advanced_options": {
+    "parameters": {
         "incompatible_mutations": [
             "Partial Blindness",
             "Total Blindness"

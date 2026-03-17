@@ -136,6 +136,36 @@ async def give_bloodskulls_to_owner(owner_discord_id: int, bloodskulls: int) -> 
     return owner
 
 
+async def give_bones_to_owner(owner_discord_id: int, bones: int) -> Optional[Owner]:
+    """
+    Add a number to the given owner's `bones`.
+
+    Parameters
+    ----------
+    owner_discord_id: int
+        The Discord ID of the owner to give the bones to.
+
+    bones: int
+        The number of bones to give to the owner (negative to spend).
+
+    Returns
+    -------
+    Owner, optional
+        The Owner ORM object the bones were added to, or None if no owner with the given Discord ID was found.
+    """
+
+    async with session_scope() as session:
+        query = select(Owner).where(Owner.discord_id == owner_discord_id)
+        owner = (await session.execute(query)).scalar_one_or_none()
+
+        if owner is None:
+            return None
+
+        owner.bones += bones
+
+    return owner
+
+
 async def give_money_to_owner(owner_discord_id: int, dollars: int) -> Optional[Owner]:
     """
     Add an amount of money to the given owner's `dollars`.

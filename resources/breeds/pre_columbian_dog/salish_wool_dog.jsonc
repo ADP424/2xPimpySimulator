@@ -3,7 +3,7 @@
     "alt_name": "Comox Dog",
     "description": "An extinct breed of white, long-haired, Spitz-type dog that was developed and bred by the Coast Salish peoples of what is now Washington state and British Columbia for textile production.",
     "rarity": "EXTRAORDINARY",
-    "advanced_options": {
+    "parameters": {
         "sold_by_vendors": 0
     }
 }

@@ -13,6 +13,7 @@ class Owner:
     discord_name: str | None
     dollars: int
     bloodskulls: int
+    bones: int
 
 
 async def to_owner(owner: OwnerORM) -> Owner:
@@ -35,4 +36,5 @@ async def to_owner(owner: OwnerORM) -> Owner:
         discord_name=owner.discord_name,
         dollars=owner.dollars,
         bloodskulls=owner.bloodskulls,
+        bones=owner.bones,
     )

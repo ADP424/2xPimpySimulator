@@ -5,7 +5,7 @@
     "heritability": 0.0,
     "health_impact": "HEALTHY",
     "rarity": "UNIQUE",
-    "advanced_options": {
+    "parameters": {
         "bloodskull_value_mult": 0.0,
         "sold_by_vendors": 0,
         "born_from_ritual": 0

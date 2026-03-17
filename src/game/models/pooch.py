@@ -43,6 +43,14 @@ class Pooch:
     base_health: int
     health_loss_age: int
 
+    strength: int
+    cuteness: int
+    fluffiness: int
+    intelligence: int
+    dexterity: int
+    fertility: int
+    aggressiveness: int
+
     breeding_cooldown: int
     alive: bool
     virgin: bool
@@ -61,6 +69,10 @@ class Pooch:
     mutations: list[Mutation]
 
     @property
+    def size(self) -> float:
+        return (sum(breed.relative_weight for breed in self.breeds) / len(self.breeds)) if self.breeds else 0.0
+
+    @property
     def birthday(self) -> Optional[datetime]:
         return self.created_at
 
@@ -70,7 +82,7 @@ class Pooch:
             return "dead"
         elif self.age >= 12:
             return "old"
-        elif self.health <= 3:
+        elif self.health <= 5:
             return "sick"
         return "healthy"
 
@@ -103,6 +115,13 @@ async def to_pooch(pooch: PoochORM) -> Pooch:
         sex=pooch.sex,
         base_health=pooch.base_health,
         health_loss_age=pooch.health_loss_age,
+        strength=pooch.strength,
+        cuteness=pooch.cuteness,
+        fluffiness=pooch.fluffiness,
+        intelligence=pooch.intelligence,
+        dexterity=pooch.dexterity,
+        fertility=pooch.fertility,
+        aggressiveness=pooch.aggressiveness,
         breeding_cooldown=pooch.breeding_cooldown,
         alive=pooch.alive,
         virgin=pooch.virgin,

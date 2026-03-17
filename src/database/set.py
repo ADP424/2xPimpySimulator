@@ -11,6 +11,7 @@ from .constants import (
     POOCH_BREEDING_COOLDOWN,
     POOCH_FETAL_AGE,
     POOCH_HEALTH_LOSS_AGE,
+    POOCH_STAT_DEFAULT,
     RANDOM_SEED_SIZE_LIMIT,
     VENDOR_PRICE_MARKUP,
 )
@@ -97,9 +98,9 @@ async def add_breed_to_pooch(
                 .where(Breed.id.not_in(select(PoochBreed.breed_id).where(PoochBreed.pooch_id == pooch_id)))
             )
             if from_vendor:
-                breed_query = breed_query.where(not_(Breed.advanced_options.contains({"sold_by_vendors": 0})))
+                breed_query = breed_query.where(not_(Breed.parameters.contains({"sold_by_vendors": 0})))
             if from_ritual:
-                breed_query = breed_query.where(not_(Breed.advanced_options.contains({"born_from_ritual": 0})))
+                breed_query = breed_query.where(not_(Breed.parameters.contains({"born_from_ritual": 0})))
 
             breed_response = await session.execute(breed_query)
             rows = [(breed, breed_weight) for breed, breed_weight in breed_response.tuples().all()]
@@ -199,9 +200,9 @@ async def add_mutation_to_pooch(
                 )
             )
             if from_vendor:
-                mutation_query = mutation_query.where(not_(Mutation.advanced_options.contains({"sold_by_vendors": 0})))
+                mutation_query = mutation_query.where(not_(Mutation.parameters.contains({"sold_by_vendors": 0})))
             if from_ritual:
-                mutation_query = mutation_query.where(not_(Mutation.advanced_options.contains({"born_from_ritual": 0})))
+                mutation_query = mutation_query.where(not_(Mutation.parameters.contains({"born_from_ritual": 0})))
 
             mutation_response = await session.execute(mutation_query)
             rows = [(mutation, weight) for mutation, weight in mutation_response.tuples().all()]
@@ -226,7 +227,7 @@ async def add_mutation_to_pooch(
             return None
 
         new_name = new_mutation.name
-        new_incompatible_mutations: set[str] = set(new_mutation.advanced_options.get("incompatible_mutations", []))
+        new_incompatible_mutations: set[str] = set(new_mutation.parameters.get("incompatible_mutations", []))
 
         existing_mutations = (
             (
@@ -247,7 +248,7 @@ async def add_mutation_to_pooch(
 
         # Check if an existing mutation is incompatible with this new one
         for mutation in existing_mutations:
-            incompatible_mutations: set[str] = set(mutation.advanced_options.get("incompatible_mutations", []))
+            incompatible_mutations: set[str] = set(mutation.parameters.get("incompatible_mutations", []))
             if new_name in incompatible_mutations:
                 return None
 
@@ -564,6 +565,13 @@ async def create_pooch(
     sex: Optional[str] = None,
     age: int = POOCH_FETAL_AGE,
     base_health: int = POOCH_BASE_HEALTH,
+    strength: int = POOCH_STAT_DEFAULT,
+    cuteness: int = POOCH_STAT_DEFAULT,
+    fluffiness: int = POOCH_STAT_DEFAULT,
+    intelligence: int = POOCH_STAT_DEFAULT,
+    dexterity: int = POOCH_STAT_DEFAULT,
+    fertility: int = POOCH_STAT_DEFAULT,
+    aggressiveness: int = POOCH_STAT_DEFAULT,
     breeding_cooldown: int = POOCH_BREEDING_COOLDOWN,
     rng: Optional[random.Random] = None,
 ) -> Pooch:
@@ -636,6 +644,13 @@ async def create_pooch(
             age=age,
             base_health=base_health,
             health_loss_age=POOCH_HEALTH_LOSS_AGE,
+            strength=strength,
+            cuteness=cuteness,
+            fluffiness=fluffiness,
+            intelligence=intelligence,
+            dexterity=dexterity,
+            fertility=fertility,
+            aggressiveness=aggressiveness,
             breeding_cooldown=breeding_cooldown,
             alive=True,
             virgin=True,

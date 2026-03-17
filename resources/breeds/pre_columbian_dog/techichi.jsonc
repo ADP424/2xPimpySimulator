@@ -3,7 +3,7 @@
     "alt_name": "Prechihuahua",
     "description": "The Techichi is an extinct breed of small dog bred by the Toltec culture in the 9th century C.E. It is thought to be an ancestor of the modern Chihuahua.",
     "rarity": "EXTRAORDINARY",
-    "advanced_options": {
+    "parameters": {
         "sold_by_vendors": 0
     }
 }

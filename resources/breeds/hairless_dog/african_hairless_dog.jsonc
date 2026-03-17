@@ -3,7 +3,7 @@
     "alt_name": "Abyssinian Sand Terrier",
     "description": "African hairless dogs were hairless dogs from Africa. It is unknown if any examples still exist.",
     "rarity": "REMARKABLE",
-    "advanced_options": {
+    "parameters": {
         "sold_by_vendors": 0
     }
 }

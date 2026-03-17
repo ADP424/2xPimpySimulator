@@ -5,14 +5,17 @@ from typing import TYPE_CHECKING, Optional
 
 from src.database import (
     add_breed_to_pooch,
+    add_mutation_to_pooch,
     add_pooch_to_kennel,
     create_pooch,
     damn_pooch,
     delete_pooch,
+    get_mutation_by_name,
     get_owner_by_discord_id,
     get_pooch_by_id,
     get_pooch_health,
     give_bloodskulls_to_owner,
+    give_bones_to_owner,
 )
 from src.database import list_hell_pooches as db_list_hell_pooches
 from src.database import (
@@ -30,8 +33,9 @@ from .constants import (
     BLOODSKULL_PRICE_PER_POOCH_SUMMON_ROLL,
     BREED_RARITY_TO_POOCH_VALUE_MULT,
     NUM_BREEDS_PER_SUMMON_POOCH_RANGE,
-    POOCH_BASE_HEALTH_RANGE,
     POOCH_BLOODSKULL_VALUE_LOSS_BY_HEALTH_BELOW_AVERAGE,
+    POOCH_STAT_RANGE,
+    POOCH_STATS,
 )
 from .exceptions import PoochNotFound
 from .models import to_pooch
@@ -61,7 +65,7 @@ async def get_pooch_bloodskull_value(pooch_id: int) -> int:
 
     # Health loss reduces a pooch's value (or increases if its health is higher than average)
     pooch_health: int = await get_pooch_health(pooch.id)
-    average_base_health = (POOCH_BASE_HEALTH_RANGE[1] - POOCH_BASE_HEALTH_RANGE[0]) / 2
+    average_base_health = (POOCH_STAT_RANGE[1] - POOCH_STAT_RANGE[0]) / 2
     value = BASE_POOCH_BLOODSKULL_VALUE - (
         POOCH_BLOODSKULL_VALUE_LOSS_BY_HEALTH_BELOW_AVERAGE * (average_base_health - pooch_health)
     )
@@ -71,8 +75,8 @@ async def get_pooch_bloodskull_value(pooch_id: int) -> int:
     mutation_value_add = 0
     mutation_value_mult = 1
     for mutation in pooch_mutations:
-        mutation_value_add += mutation.advanced_options.get("bloodskull_value_add", 0.0)
-        mutation_value_mult *= mutation.advanced_options.get("bloodskull_value_mult", 1.0)
+        mutation_value_add += mutation.parameters.get("bloodskull_value_add", 0.0)
+        mutation_value_mult *= mutation.parameters.get("bloodskull_value_mult", 1.0)
     value = max(value + mutation_value_add, 0)
     value *= mutation_value_mult
 
@@ -156,6 +160,7 @@ async def sacrifice_pooch(owner_discord_id: int, pooch_id: int) -> tuple[bool, s
         return (False, "That pooch is already dead.")
 
     await give_bloodskulls_to_owner(owner_discord_id, value)
+    await give_bones_to_owner(owner_discord_id, 1)
     await set_pooch_dead(pooch.id)
     await remove_pooch_from_kennel(pooch.id)
     await damn_pooch(pooch_id)
@@ -218,7 +223,8 @@ async def summon_pooch(owner_discord_id: int, num_rolls: int = 1, rng_seed: Opti
         pooch = await create_pooch(
             owner_discord_id=owner.discord_id,
             age=0,
-            base_health=rng.randint(POOCH_BASE_HEALTH_RANGE[0], POOCH_BASE_HEALTH_RANGE[1]),
+            base_health=rng.randint(POOCH_STAT_RANGE[0], POOCH_STAT_RANGE[1]),
+            **{stat: rng.randint(POOCH_STAT_RANGE[0], POOCH_STAT_RANGE[1]) for stat in POOCH_STATS},
             rng=rng,
         )
         num_breeds = rng.randint(NUM_BREEDS_PER_SUMMON_POOCH_RANGE[0], NUM_BREEDS_PER_SUMMON_POOCH_RANGE[1])
@@ -236,6 +242,10 @@ async def summon_pooch(owner_discord_id: int, num_rolls: int = 1, rng_seed: Opti
 
     await give_bloodskulls_to_owner(owner_discord_id, -price)
     await add_pooch_to_kennel(target_kennel.id, summon_pooch.id)
+
+    mark = await get_mutation_by_name("Mark of the Beast")
+    if mark is not None:
+        await add_mutation_to_pooch(summon_pooch.id, mutation_id=mark.id)
 
     return (
         True,

@@ -5,7 +5,7 @@
     "heritability": 0.25,
     "health_impact": "NEUTRAL",
     "rarity": "RARE",
-    "advanced_options": {
+    "parameters": {
         "dollar_value_add": -50,
         "incompatible_mutations": [
             "Cataracts",

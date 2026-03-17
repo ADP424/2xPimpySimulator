@@ -31,9 +31,9 @@ from src.database import (
 from .constants import (
     BASE_POOCH_DOLLAR_VALUE,
     BREED_RARITY_TO_POOCH_VALUE_MULT,
-    POOCH_BASE_HEALTH_RANGE,
     POOCH_DOLLAR_VALUE_LOSS_BY_AGE,
     POOCH_DOLLAR_VALUE_LOSS_BY_HEALTH_BELOW_AVERAGE,
+    POOCH_STAT_RANGE,
     VENDOR_DESIRED_MUTATION_MULT,
 )
 from .exceptions import PoochNotFound, VendorNotFound
@@ -114,7 +114,7 @@ async def _get_pooch_base_price(pooch_id: int) -> int:
 
     # Health loss reduces a pooch's value (or increases if its health is higher than average)
     pooch_health: int = await get_pooch_health(pooch.id)
-    average_base_health = (POOCH_BASE_HEALTH_RANGE[1] - POOCH_BASE_HEALTH_RANGE[0]) / 2
+    average_base_health = (POOCH_STAT_RANGE[1] - POOCH_STAT_RANGE[0]) / 2
     price = price - (POOCH_DOLLAR_VALUE_LOSS_BY_HEALTH_BELOW_AVERAGE * (average_base_health - pooch_health))
 
     # Mutations have advanced options that affect a pooch's value
@@ -122,8 +122,8 @@ async def _get_pooch_base_price(pooch_id: int) -> int:
     mutation_price_add = 0
     mutation_price_mult = 1
     for mutation in pooch_mutations:
-        mutation_price_add += mutation.advanced_options.get("dollar_value_add", 0.0)
-        mutation_price_mult *= mutation.advanced_options.get("dollar_value_mult", 1.0)
+        mutation_price_add += mutation.parameters.get("dollar_value_add", 0.0)
+        mutation_price_mult *= mutation.parameters.get("dollar_value_mult", 1.0)
     price = max(price + mutation_price_add, 0)
     price *= mutation_price_mult
 

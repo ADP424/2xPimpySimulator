@@ -14,6 +14,7 @@ from src.database import (
     create_pooch,
     get_owner_by_discord_id,
     get_owner_server,
+    give_bones_to_owner,
     give_money_to_owner,
     list_kennels_for_owner,
     list_owners,
@@ -220,6 +221,45 @@ async def update_owner_names(names: dict[int, str]) -> int:
     return updated
 
 
+async def _attempt_catch_stray(
+    server_discord_id: int,
+    owner_discord_id: int,
+    rng: random.Random,
+) -> tuple[bool, str]:
+    """Roll one attempt to attract a stray. Does NOT check or set any daily flags."""
+    strays = await list_strays_for_server(server_discord_id)
+    if not strays:
+        return False, "You sit in the park for a while, but no stray pooches appear."
+
+    owner_count = await count_owners_for_server(server_discord_id)
+    catch_chance = min(len(strays) / max(owner_count, 1) / PARK_STRAY_CATCH_DIVISOR, 1.0)
+
+    if rng.random() > catch_chance:
+        return False, "You sit in the park for a while, but no stray pooches come close enough to catch."
+
+    chosen = rng.choice(strays)
+    await remove_pooch_from_strays(chosen.id)
+    await transfer_pooch_to_owner(chosen.id, owner_discord_id)
+
+    kennels = await list_kennels_for_owner(owner_discord_id)
+    for kennel in kennels:
+        pooches_in_kennel = await list_pooches_for_kennel(kennel.id)
+        if len(pooches_in_kennel) < kennel.pooch_limit:
+            await add_pooch_to_kennel(kennel.id, chosen.id)
+            return (
+                True,
+                f"A stray pooch named **{chosen.name}** trotted up to you! They've been placed in **{kennel.name}**.",
+            )
+
+    return (
+        True,
+        (
+            f"A stray pooch named **{chosen.name}** trotted up to you! "
+            "They're waiting in town until you make room in a kennel."
+        ),
+    )
+
+
 async def visit_park(
     server_discord_id: int, owner_discord_id: int, rng: random.Random | None = None
 ) -> tuple[bool, str]:
@@ -249,38 +289,39 @@ async def visit_park(
 
     await set_owner_visited_park_today(owner_discord_id)
 
-    strays = await list_strays_for_server(server_discord_id)
-    if not strays:
-        return False, "You sit in the park for a while, but no stray pooches appear."
+    return await _attempt_catch_stray(server_discord_id, owner_discord_id, rng)
 
-    owner_count = await count_owners_for_server(server_discord_id)
-    catch_chance = min(len(strays) / max(owner_count, 1) / PARK_STRAY_CATCH_DIVISOR, 1.0)
 
-    if rng.random() > catch_chance:
-        return False, "You sit in the park for a while, but no stray pooches come close enough to catch."
+async def spend_bone_at_park(
+    server_discord_id: int, owner_discord_id: int, rng: random.Random | None = None
+) -> tuple[bool, str]:
+    """
+    Spend one bone to get an additional stray-attraction attempt at the park.
 
-    chosen = rng.choice(strays)
-    await remove_pooch_from_strays(chosen.id)
-    await transfer_pooch_to_owner(chosen.id, owner_discord_id)
+    Bones are earned by sacrificing pooches. Unlike the free daily visit, bone
+    attempts are not limited — each bone buys exactly one roll.
 
-    # Deliver to first free kennel
-    kennels = await list_kennels_for_owner(owner_discord_id)
-    for kennel in kennels:
-        pooches_in_kennel = await list_pooches_for_kennel(kennel.id)
-        if len(pooches_in_kennel) < kennel.pooch_limit:
-            await add_pooch_to_kennel(kennel.id, chosen.id)
-            return (
-                True,
-                f"A stray pooch named **{chosen.name}** trotted up to you! They've been placed in **{kennel.name}**.",
-            )
+    Returns
+    -------
+    tuple[bool, str]
+        (caught, message) — caught is True if a stray was attracted, False otherwise.
+        Returns (False, error_message) if the owner has no bones.
+    """
 
-    return (
-        True,
-        (
-            f"A stray pooch named **{chosen.name}** trotted up to you! "
-            "They're waiting in town until you make room in a kennel."
-        ),
-    )
+    rng = rng if rng is not None else random.Random()
+
+    await get_or_create_owner(server_discord_id, owner_discord_id)
+
+    owner = await get_owner_by_discord_id(owner_discord_id)
+    if owner is None:
+        raise OwnerNotFound(owner_discord_id)
+
+    if owner.bones < 1:
+        return False, "You don't have any bones to spend."
+
+    await give_bones_to_owner(owner_discord_id, -1)
+
+    return await _attempt_catch_stray(server_discord_id, owner_discord_id, rng)
 
 
 async def cast_out_pooch(pooch_id: int, server_discord_id: int) -> None:

@@ -18,7 +18,8 @@ async def build_home_content(guild_id: int, user_id: int) -> str:
     return (
         f"**{mention(owner.discord_id)}'s Home**\n"
         f"You have ${owner.dollars}.\n"
-        f"You have {owner.bloodskulls} bloodskulls."
+        f"You have {owner.bloodskulls} bloodskulls.\n"
+        f"You have {owner.bones} bone(s)."
     )
 
 

@@ -5,7 +5,7 @@
     "heritability": 0.0,
     "health_impact": "HEALTHY",
     "rarity": "REMARKABLE",
-    "advanced_options": {
+    "parameters": {
         "bloodskull_value_mult": 3
     }
 }

@@ -5,7 +5,7 @@
     "heritability": 0.1,
     "health_impact": "HARMFUL",
     "rarity": "UNCOMMON",
-    "advanced_options": {
+    "parameters": {
         "incompatible_mutations": [
             "Extreme Phocomelia"
         ]

@@ -3,7 +3,7 @@
     "alt_name": "Cockhill's Finnish Lapphound",
     "description": "The Lapponian Shepherd  is an extinct dog breed originating from Finland. Despite its name, it did not come from Lapland, but from the southern parts of the country.",
     "rarity": "REMARKABLE",
-    "advanced_options": {
+    "parameters": {
         "sold_by_vendors": 0
     }
 }

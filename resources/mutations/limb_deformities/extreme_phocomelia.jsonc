@@ -5,7 +5,7 @@
     "heritability": 0.1,
     "health_impact": "UNHEALTHY",
     "rarity": "UNPRECEDENTED",
-    "advanced_options": {
+    "parameters": {
         "dollar_value_mult": 0.5,
         "incompatible_mutations": [
             "Clubfoot",

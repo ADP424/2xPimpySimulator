@@ -2,8 +2,20 @@
 MIN_HEALTH_FOR_DEATH_CHANCE = 5
 POOCH_HEALTH_LOSS_STARTING_AGE = 5
 DEATH_CHANCE_PER_HEALTH_UNDER_MIN = 0.2
-POOCH_BASE_HEALTH_RANGE = (8, 12)
+POOCH_STAT_RANGE = (8, 12)
 POOCH_BREEDING_COOLDOWN = 2
+
+# All heritable pooch stats (all use POOCH_STAT_RANGE)
+POOCH_STATS = [
+    "strength",
+    "cuteness",
+    "fluffiness",
+    "intelligence",
+    "dexterity",
+    "fertility",
+    "aggressiveness",
+]
+
 POOCH_FETAL_AGE = -1
 TWINS_CHANCE = 0.25
 TRIPLETS_CHANCE = 0.05
@@ -11,7 +23,6 @@ NUM_INCEST_MUTATION_ROLLS = 3
 
 # Vendor Creation
 NUM_VENDORS_PER_SERVER = 3
-# VENDOR_POOCH_STOCK_COUNT_RANGE = (2, 5)
 VENDOR_POOCH_STOCK_COUNT_RANGE = (5, 12)
 
 # Vendor Pooch Creation

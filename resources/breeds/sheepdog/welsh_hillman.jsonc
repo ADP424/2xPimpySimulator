@@ -3,7 +3,7 @@
     "alt_name": "Pudelin",
     "description": "The Welsh Hillman was thought to have been descended from ancient Welsh herding dogs. It was possibly the oldest Welsh sheepdog, and may have been the descendant of the old gellgi or Welsh wolfhounds used around 1,000 years ago.",
     "rarity": "REMARKABLE",
-    "advanced_options": {
+    "parameters": {
         "sold_by_vendors": 0
     }
 }

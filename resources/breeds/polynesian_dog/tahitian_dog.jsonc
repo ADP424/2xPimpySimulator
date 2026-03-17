@@ -3,7 +3,7 @@
     "alt_name": "Otaheite Dog",
     "description": "The Tahitian Dog is an extinct breed of dog from Tahiti and the Society Islands.",
     "rarity": "EXTRAORDINARY",
-    "advanced_options": {
+    "parameters": {
         "sold_by_vendors": 0
     }
 }
