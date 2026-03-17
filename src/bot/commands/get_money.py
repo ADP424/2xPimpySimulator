@@ -16,7 +16,7 @@ def register_get_money_command(tree: app_commands.CommandTree):
             await interaction.response.send_message("Amount must be > 0.", ephemeral=True)
             return
 
-        owner = await add_money(interaction.guild_id), interaction.user.id, amount
+        owner = await add_money(interaction.guild_id, interaction.user.id, amount)
         await interaction.response.send_message(
             f"✅ Added ${amount}. You now have ${owner.dollars}.",
             ephemeral=True,

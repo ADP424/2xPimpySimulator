@@ -16,8 +16,12 @@ from .manage_hell import (
     summon_pooch,
 )
 from .manage_kennels import (
+    buy_kennel,
+    get_kennel_buy_price,
+    get_kennel_upgrade_price,
     list_kennel_pooches,
     rename_kennel,
+    upgrade_kennel,
 )
 from .manage_owner_events import (
     get_active_events_for_owner,
@@ -46,6 +50,7 @@ from .manage_pooches import (
     get_pooch_by_id,
     get_pooch_family,
     rename_pooch,
+    run_hourly_breeding_cooldown_check,
 )
 from .manage_server_events import (
     get_active_server_event,
@@ -105,8 +110,12 @@ __all__ = [
     "sacrifice_pooch",
     "summon_pooch",
     # Kennel commands
+    "buy_kennel",
+    "get_kennel_buy_price",
+    "get_kennel_upgrade_price",
     "list_kennel_pooches",
     "rename_kennel",
+    "upgrade_kennel",
     # Owner commands
     "add_money",
     "beg_for_money",
@@ -121,6 +130,7 @@ __all__ = [
     "get_pooch_by_id",
     "get_pooch_family",
     "rename_pooch",
+    "run_hourly_breeding_cooldown_check",
     # Stray event commands
     "run_daily_stray_event_check",
     # Server commands

@@ -1,3 +1,4 @@
+import random
 from datetime import datetime, timezone
 from typing import Any, Optional
 
@@ -47,6 +48,42 @@ async def age_pooch(pooch_id: int, health_loss_starting_age: int = POOCH_HEALTH_
             pooch.health_loss_age += 1
 
     return pooch
+
+
+async def tick_hourly_breeding_cooldowns(fertility_divisor: float, rng_seed: Optional[int] = None) -> int:
+    """
+    For each living pooch whose breeding_cooldown > 0, roll a chance equal to
+    (fertility / fertility_divisor) to decrement the cooldown by 1.
+
+    Parameters
+    ----------
+    fertility_divisor: float
+        Divisor applied to each pooch's fertility stat to compute the per-hour
+        decrement chance.
+
+    rng_seed: int, optional
+        Seed for the random number generator.
+
+    Returns
+    -------
+    int
+        The number of pooches whose cooldown was decremented.
+    """
+
+    rng = random.Random(rng_seed)
+
+    async with session_scope() as session:
+        query = select(Pooch).where(Pooch.alive.is_(True), Pooch.breeding_cooldown > 0)
+        pooches = (await session.execute(query)).scalars().all()
+
+        decremented = 0
+        for pooch in pooches:
+            chance = pooch.fertility / fertility_divisor
+            if rng.random() < chance:
+                pooch.breeding_cooldown = max(pooch.breeding_cooldown - 1, 0)
+                decremented += 1
+
+    return decremented
 
 
 async def decrement_pooch_breeding_cooldown(pooch_id: int) -> Optional[Pooch]:

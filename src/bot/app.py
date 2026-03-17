@@ -54,7 +54,6 @@ def run(update_names_only: bool = False, skip_startup_day_change: bool = False):
     async def sync_commands():
         if stage == "dev":
             for guild in GUILDS:
-                tree.clear_commands(guild=guild)
                 tree.copy_global_to(guild=guild)
                 await tree.sync(guild=guild)
                 logger.info(f"Synced commands to guild {guild.id}")

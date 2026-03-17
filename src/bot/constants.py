@@ -14,3 +14,6 @@ ITEMS_PER_PAGE = 10
 
 # Text / naming limits
 MAX_NAME_LENGTH = 100
+
+# Breeding status display thresholds
+BREEDING_COOLDOWN_HEATING_UP_THRESHOLD = 5

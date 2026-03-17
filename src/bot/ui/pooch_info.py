@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Optional, Sequence
 import discord
 from discord.ui import Select, View
 
-from src.bot.constants import VIEW_TIMEOUT
+from src.bot.constants import BREEDING_COOLDOWN_HEATING_UP_THRESHOLD, VIEW_TIMEOUT
 from src.bot.ui.util import (
     InteractionResponder,
     mention,
@@ -157,6 +157,14 @@ class PoochInfoView(View):
     _SIZE_LABELS = {1: "Tiny", 2: "Small", 3: "Average", 4: "Large", 5: "Massive"}
 
     @staticmethod
+    def _format_breeding_status(cooldown: int) -> str:
+        if cooldown == 0:
+            return "In Heat"
+        if cooldown <= BREEDING_COOLDOWN_HEATING_UP_THRESHOLD:
+            return "Heating Up"
+        return "Cooled"
+
+    @staticmethod
     def _format_size(size: float) -> str:
         rounded = round(size)
         label = PoochInfoView._SIZE_LABELS.get(rounded, "Average")
@@ -187,7 +195,9 @@ class PoochInfoView(View):
         embed.add_field(name="Health Status", value=self.pooch.status.capitalize(), inline=True)
         embed.add_field(name="Birthday", value=str(self.pooch.birthday.date()), inline=True)
 
-        embed.add_field(name="Days Until Heat", value=str(self.pooch.breeding_cooldown), inline=True)
+        embed.add_field(
+            name="Breeding Status", value=self._format_breeding_status(self.pooch.breeding_cooldown), inline=True
+        )
         embed.add_field(name="Sexual Status", value=("Virgin" if self.pooch.virgin else "Debauched"), inline=True)
         embed.add_field(name="\u200b", value="\u200b", inline=True)
 
@@ -219,6 +229,7 @@ class PoochInfoView(View):
             p = self.pooch
             dev_lines = [
                 f"Health: {p.health} (base {p.base_health}, age loss {p.health_loss_age})",
+                f"Breeding Cooldown: {p.breeding_cooldown}",
                 f"Strength: {p.strength}",
                 f"Cuteness: {p.cuteness}",
                 f"Fluffiness: {p.fluffiness}",

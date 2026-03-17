@@ -133,6 +133,7 @@ from .update import (
     set_pooch_dead,
     set_pooch_virgin,
     set_server_event_occurrence_message_discord_id,
+    tick_hourly_breeding_cooldowns,
     transfer_pooch_to_owner,
     transfer_pooch_to_vendor,
     update_active_event_context,
@@ -250,6 +251,7 @@ __all__ = [
     # Update
     "age_pooch",
     "decrement_pooch_breeding_cooldown",
+    "tick_hourly_breeding_cooldowns",
     "give_bloodskulls_to_owner",
     "give_bones_to_owner",
     "give_money_to_owner",
