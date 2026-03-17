@@ -1,0 +1,18 @@
+{
+    "name": "Breed added",
+    "description": "A wandering stray becomes partly a new breed.",
+    "flavor_text": "Every dog deserves to become something else.",
+    "severity": "MINOR",
+    "rarity": "NOVEL",
+    "filter": {
+        "min_count": 1
+    },
+   "actions": [
+        {
+            "action_type": "add_breed",
+            "parameters": {
+                "weight": 0.33
+            }
+        }
+    ]
+}
