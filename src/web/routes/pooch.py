@@ -9,18 +9,34 @@ pooch_bp = Blueprint("pooch", __name__)
 @pooch_bp.route("/<int:pooch_id>/embed")
 def pooch_embed(pooch_id: int):
     """Public endpoint for Discord/social link embeds (Open Graph meta tags)."""
-    from game import get_pooch_by_id
+    from game import get_pooch_by_id, get_pooch_family
 
     pooch_meta = None
     try:
         pooch = run_async(get_pooch_by_id(pooch_id))
+        family = run_async(get_pooch_family(pooch_id))
         breeds = ", ".join(b.breed.name for b in pooch.breeds) if pooch.breeds else "Unknown"
         mutations = ", ".join(m.name for m in pooch.mutations) if pooch.mutations else "None"
         sex = "Female" if pooch.sex == "female" else "Male"
         status = pooch.status.capitalize() if pooch.status else "Unknown"
+
+        parents = family.get("parents", [])
+        children = family.get("children", [])
+        siblings = family.get("siblings", [])
+        parents_str = ", ".join(p.name for p in parents) if parents else "Unknown"
+        children_str = ", ".join(c.name for c in children) if children else "None"
+        siblings_str = ", ".join(s.name for s in siblings) if siblings else "None"
+
         pooch_meta = {
             "title": f"{pooch.name} - Pooch Breeder",
-            "description": f"{sex} | Age: {pooch.age} days | {status}\nBreeds: {breeds}\nMutations: {mutations}",
+            "description": (
+                f"{sex} | Age: {pooch.age} days | {status}\n"
+                f"Breeds: {breeds}\n"
+                f"Mutations: {mutations}\n"
+                f"Parents: {parents_str}\n"
+                f"Children: {children_str}\n"
+                f"Siblings: {siblings_str}"
+            ),
             "url": f"/pooch/{pooch_id}",
         }
     except Exception:
