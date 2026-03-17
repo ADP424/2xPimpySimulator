@@ -12,7 +12,7 @@ CREATE TABLE owners (
     dollars         INTEGER NOT NULL DEFAULT 100,
     bloodskulls     INTEGER NOT NULL DEFAULT 0,
     bones           INTEGER NOT NULL DEFAULT 0,
-    begged_today            BOOLEAN NOT NULL DEFAULT TRUE,
+    begged_today            BOOLEAN NOT NULL DEFAULT FALSE,
     visited_park_today      BOOLEAN NOT NULL DEFAULT FALSE,
     joined_at       TIMESTAMPTZ NOT NULL DEFAULT now()
 );

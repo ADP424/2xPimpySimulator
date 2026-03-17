@@ -17,7 +17,6 @@ CREATE TABLE stray_event_outcomes (
     stray_event_id  BIGINT NOT NULL REFERENCES stray_events(id) ON DELETE CASCADE,
 
     outcome_order   INTEGER NOT NULL DEFAULT 0,
-    message         TEXT NOT NULL DEFAULT '',
     chance          DOUBLE PRECISION,
 
     CONSTRAINT stray_event_outcomes_chance_range CHECK (chance IS NULL OR (chance >= 0 AND chance <= 1))

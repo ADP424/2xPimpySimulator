@@ -142,7 +142,10 @@ async def _build_pooch_query(
         elif normalized_location == "hell":
             hell_subquery = select(HellPooch.pooch_id).distinct()
             conditions.append(Pooch.id.in_(hell_subquery))
-        # "town", "all", "any" — no location restriction
+        elif normalized_location == "town":
+            stray_subquery = select(StrayPooch.pooch_id).distinct()
+            conditions.append(Pooch.id.in_(stray_subquery))
+        # "all", "any" — no location restriction
 
     if conditions:
         query = query.where(and_(*conditions))

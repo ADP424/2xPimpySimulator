@@ -522,6 +522,7 @@ async def _deliver_pooch(owner_discord_id: int, pooch_id: int, destination: str)
 
     Destinations: "kennel" | "graveyard" | "hell" | "town"
     For "kennel", places in the first kennel with free space. If no kennel has space, falls back to "town".
+    For "town", releases the pooch as a stray on a random server the owner belongs to.
     """
 
     destination = destination.strip().lower() if isinstance(destination, str) else "town"
@@ -534,6 +535,13 @@ async def _deliver_pooch(owner_discord_id: int, pooch_id: int, destination: str)
                 await add_pooch_to_kennel(kennel.id, pooch_id)
                 return "kennel", kennel.name
         # No kennel with free space — fall through to town
+        destination = "town"
+
+    if destination == "town":
+        servers = await list_servers_for_owner(owner_discord_id)
+        if servers:
+            server = random.choice(servers)
+            await add_pooch_to_strays(pooch_id, server.discord_id)
         return "town", None
 
     elif destination == "graveyard":
@@ -544,7 +552,7 @@ async def _deliver_pooch(owner_discord_id: int, pooch_id: int, destination: str)
         await damn_pooch(pooch_id)
         return "hell", None
 
-    else:  # "town" or unknown
+    else:  # unknown
         return "town", None
 
 
@@ -829,7 +837,7 @@ async def _execute_single_action(
                     else:
                         result.message = "A new pooch has appeared!"
                 else:
-                    destination_str = parameters.get("destination", "town")
+                    destination_str = parameters.get("destination", "kennel")
                     dest_key, kennel_name = await _deliver_pooch(owner_discord_id, pooch.id, destination_str)
                     if dest_key == "kennel":
                         result.message = f"A new pooch has appeared and was placed in {kennel_name}!"
@@ -889,7 +897,7 @@ async def _execute_single_action(
                         result.pooches_created.append(clone.id)
                         result.pooches_affected.append(clone.id)
 
-                        destination_str = parameters.get("destination", "town")
+                        destination_str = parameters.get("destination", "kennel")
                         dest_key, kennel_name = await _deliver_pooch(owner_discord_id, clone.id, destination_str)
                         if dest_key == "kennel":
                             result.message = f"A clone of {source.name} appeared and was placed in {kennel_name}!"
@@ -1023,7 +1031,7 @@ async def _execute_single_action(
                         else:
                             dest_key, kennel_name = "town", None
                     else:
-                        destination_str = str(parameters.get("destination", "town")).strip().lower()
+                        destination_str = str(parameters.get("destination", "kennel")).strip().lower()
                         dest_key, kennel_name = await _deliver_pooch(owner_discord_id, chosen.id, destination_str)
 
                     result.pooches_created.append(chosen.id)

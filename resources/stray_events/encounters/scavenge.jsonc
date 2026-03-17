@@ -8,7 +8,6 @@
     "outcomes": [
         {
             "chance": 0.5,
-            "message": "A stray rummages through the bins and finds some scraps — it looks healthier for it.",
             "actions": [
                 {
                     "action_type": "modify_pooch_health",
@@ -21,13 +20,10 @@
             ]
         },
         {
-            "chance": 0.3,
-            "message": "A stray pokes around but finds nothing useful.",
-            "actions": []
+            "chance": 0.3
         },
         {
             "chance": 0.2,
-            "message": "A stray eats something it really shouldn't have.",
             "actions": [
                 {
                     "action_type": "modify_pooch_health",

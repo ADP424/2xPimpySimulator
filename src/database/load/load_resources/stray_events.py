@@ -30,7 +30,6 @@ _EVENT_ALLOWED_KEYS = {
 }
 
 _OUTCOME_ALLOWED_KEYS = {
-    "message",
     "chance",
     "actions",
 }
@@ -128,7 +127,6 @@ class _StrayEventValidator(BaseEventValidator):
                 continue
 
             self._validate_unknown_keys(current_path, outcome, _OUTCOME_ALLOWED_KEYS)
-            self._validate_optional_string(current_path, outcome, "message")
             chance = self._validate_optional_probability(current_path, outcome, "chance")
             if chance is not None:
                 explicit_chances.append(chance)
@@ -270,7 +268,6 @@ async def load_stray_events():
                     outcome = StrayEventOutcome(
                         stray_event_id=event.id,
                         outcome_order=outcome_idx,
-                        message=str(outcome_data.get("message", "")),
                         chance=float(outcome_data["chance"]) if "chance" in outcome_data else None,
                     )
                     session.add(outcome)

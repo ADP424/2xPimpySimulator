@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import BigInteger, CheckConstraint, Float, ForeignKey, Integer, Text
+from sqlalchemy import BigInteger, CheckConstraint, Float, ForeignKey, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ... import Base
@@ -27,7 +27,6 @@ class StrayEventOutcome(Base):
     )
 
     outcome_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    message: Mapped[str] = mapped_column(Text, nullable=False, default="")
     chance: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     stray_event: Mapped[StrayEvent] = relationship("StrayEvent", back_populates="outcomes")

@@ -483,7 +483,7 @@ Pooch filter objects live either:
   - `"kennel"`: the pooch must currently be in a kennel
   - `"graveyard"`: the pooch is dead and buried
   - `"hell"`: the pooch has been damned
-  - `"town"`: no location restriction (reserved for future use, currently acts like `"all"`)
+  - `"town"`: the pooch is a stray in a server
   - `"all"` / `"any"`: no location restriction
 
 For top-level `filter.pooches`, matching is across all pooches the owner owns.  
@@ -1028,7 +1028,7 @@ Creates a new pooch and optionally delivers it to a destination.
 | `age` | int | no | Default: 0 |
 | `base_health` | int | no | Default value from constants |
 | `breeding_cooldown` | int | no | Default value from constants |
-| `destination` | string | no | Where to deliver the pooch (see below) — default: `"town"`. Ignored when `target_type` is `"kennel"`. |
+| `destination` | string | no | Where to deliver the pooch (see below) — default: `"kennel"`. Ignored when `target_type` is `"kennel"`. |
 | `selector` | string | yes (kennel) | `"random"`, `"selected"`, `"all"`, `"random_exclude"`, or `"all_exclude"` — selects which kennel to deliver to. Multi-kennel selectors use the first resolved kennel. |
 | `filter` | object | no | Kennel filter — only used when `target_type` is `"kennel"` |
 | `save_as` | string | no | Save the new pooch's ID into a named slot for use by later actions |
@@ -1039,10 +1039,10 @@ When `target_type` is `"kennel"`, the pooch is placed directly into the resolved
 
 | Value | Effect |
 |-------|--------|
-| `"kennel"` | Place in the first kennel the owner has with free space. Falls back to `"town"` if all kennels are full. The result message names the kennel. |
+| `"kennel"` (default) | Place in the first kennel the owner has with free space. Falls back to `"town"` (stray) if all kennels are full. The result message names the kennel. |
 | `"graveyard"` | Send directly to the owner's graveyard. |
 | `"hell"` | Damn the pooch to Hell. |
-| `"town"` (default) | Do nothing extra — the pooch simply exists, unhoused. |
+| `"town"` | Release the pooch as a stray — it becomes unowned and joins the server's stray pool. |
 
 ---
 
@@ -1071,7 +1071,7 @@ Duplicates an existing pooch, inheriting its name, stats, breeds, and mutations.
 | `age` | int | no | Override — defaults to source's age |
 | `base_health` | int | no | Override — defaults to source's base health |
 | `breeding_cooldown` | int | no | Override — defaults to source's breeding cooldown |
-| `destination` | string | no | Same values as `create_pooch` — default: `"town"` |
+| `destination` | string | no | Same values as `create_pooch` — default: `"kennel"` |
 | `save_as` | string or list | no | Save clone and/or source into named slots (see below) |
 
 The clone always starts as a virgin with `alive = true`, regardless of the source's state.
@@ -1339,7 +1339,7 @@ By default a random stray is chosen. If `use_saved` is set, the action instead r
 
 | Parameter | Type | Required | Notes |
 |-----------|------|----------|-------|
-| `destination` | string | no | Where to deliver the stray — `"kennel"`, `"graveyard"`, `"hell"`, or `"town"` (default: `"town"`). Ignored when `target_type` is `"kennel"`. |
+| `destination` | string | no | Where to deliver the stray — `"kennel"`, `"graveyard"`, `"hell"`, or `"town"` (default: `"kennel"`). Ignored when `target_type` is `"kennel"`. |
 | `count` | int | no | How many strays to sample as candidates before randomly picking one (default: `1`). Ignored when `use_saved` is set. |
 | `use_saved` | string | no | Slot name to read saved pooch IDs from. When set, the pool is restricted to those specific stray IDs instead of picking randomly. |
 | `selector` | string | yes (kennel) | `"random"`, `"selected"`, `"all"`, `"random_exclude"`, or `"all_exclude"` — selects which kennel to deliver to. Multi-kennel selectors use the first resolved kennel. |
