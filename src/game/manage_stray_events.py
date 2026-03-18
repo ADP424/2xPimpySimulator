@@ -11,10 +11,13 @@ Selectors available to stray event actions: "random", "random_exclude", "all",
 that passed the event-level filter at trigger time.
 
 Actions available (subset of owner-event actions, stray-specific):
-    Pooch mutations/properties: modify_pooch_health, modify_pooch_age,
-        kill_pooch, add_mutation, remove_mutation, add_breed,
-        rename_pooch, set_breeding_cooldown, breed_pooches,
-        create_pooch, clone_pooch
+    Pooch mutations/properties: modify_base_health, modify_pooch_health,
+        modify_pooch_age, kill_pooch, add_mutation, remove_mutation,
+        add_breed, remove_breed, rename_pooch, modify_breeding_cooldown,
+        set_breeding_cooldown, modify_strength, modify_cuteness,
+        modify_fluffiness, modify_intelligence, modify_dexterity,
+        modify_fertility, modify_aggressiveness, damn_pooch, revive_pooch,
+        breed_pooches, create_pooch, clone_pooch
     Stray placement: enter_kennel, enter_vendor_stock
     Meta: start_stray_event
 """
@@ -33,6 +36,8 @@ from src.database import (
     add_pooch_to_strays,
     add_pooch_to_vendor_stock,
     create_pooch,
+    damn_pooch,
+    get_mutation_by_name,
     get_pooch_aggressiveness,
     get_pooch_base_health,
     get_pooch_by_id,
@@ -55,16 +60,34 @@ from src.database import (
     list_strays_for_server,
     list_vendors,
     modify_pooch_age,
+    modify_pooch_aggressiveness,
     modify_pooch_base_health,
+    modify_pooch_breeding_cooldown,
+    modify_pooch_cuteness,
+    modify_pooch_dexterity,
+    modify_pooch_fertility,
+    modify_pooch_fluffiness,
+    modify_pooch_intelligence,
+    modify_pooch_strength,
+    remove_breed_from_pooch,
     remove_mutation_from_pooch,
     remove_pooch_from_strays,
+    remove_random_breed_from_pooch,
     remove_random_mutation_from_pooch,
     rename_pooch,
     reset_pooch_breeding_cooldown,
+    revive_pooch,
     set_pooch_age,
+    set_pooch_aggressiveness,
     set_pooch_base_health,
     set_pooch_breeding_cooldown,
+    set_pooch_cuteness,
     set_pooch_dead,
+    set_pooch_dexterity,
+    set_pooch_fertility,
+    set_pooch_fluffiness,
+    set_pooch_intelligence,
+    set_pooch_strength,
     transfer_pooch_to_owner,
     transfer_pooch_to_vendor,
 )
@@ -203,7 +226,7 @@ async def _execute_single_stray_action(
         return "set" if isinstance(raw, str) and raw.strip().lower() == "set" else "modify"
 
     try:
-        if action_type == "modify_pooch_health":
+        if action_type in ("modify_base_health", "modify_pooch_health"):
             pooch_ids = await _resolve_stray_target_ids(context, selector, parameters, rng)
             pre_rolled = _get_amount(parameters) if parameters.get("roll_once") else None
             mode = _get_mode(parameters)
@@ -239,22 +262,56 @@ async def _execute_single_stray_action(
 
         elif action_type == "add_mutation":
             pooch_ids = await _resolve_stray_target_ids(context, selector, parameters, rng)
+            mutation_name = parameters.get("mutation")
             mutation_id = parameters.get("mutation_id")
+            min_rarity = parameters.get("min_rarity")
+            max_rarity = parameters.get("max_rarity")
+            min_health_impact = parameters.get("min_health_impact")
+            max_health_impact = parameters.get("max_health_impact")
             for pooch_id in pooch_ids:
-                if mutation_id:
+                if mutation_name:
+                    mut = await get_mutation_by_name(str(mutation_name))
+                    if mut:
+                        await add_mutation_to_pooch(pooch_id, mut.id)
+                elif mutation_id:
                     await add_mutation_to_pooch(pooch_id, mutation_id)
                 else:
-                    await add_mutation_to_pooch(pooch_id, rng=rng)
+                    await add_mutation_to_pooch(
+                        pooch_id,
+                        rng=rng,
+                        min_rarity=min_rarity,
+                        max_rarity=max_rarity,
+                        min_health_impact=min_health_impact,
+                        max_health_impact=max_health_impact,
+                    )
                 result.pooches_affected.append(pooch_id)
 
         elif action_type == "remove_mutation":
             pooch_ids = await _resolve_stray_target_ids(context, selector, parameters, rng)
+            mutation_name = parameters.get("mutation")
             mutation_id = parameters.get("mutation_id")
+            min_rarity = parameters.get("min_rarity")
+            max_rarity = parameters.get("max_rarity")
+            min_health_impact = parameters.get("min_health_impact")
+            max_health_impact = parameters.get("max_health_impact")
             for pooch_id in pooch_ids:
-                if mutation_id:
+                if mutation_name:
+                    mut = await get_mutation_by_name(str(mutation_name))
+                    if mut:
+                        removed = await remove_mutation_from_pooch(pooch_id, mut.id)
+                    else:
+                        removed = False
+                elif mutation_id:
                     removed = await remove_mutation_from_pooch(pooch_id, mutation_id)
                 else:
-                    removed = await remove_random_mutation_from_pooch(pooch_id, rng=rng)
+                    removed = await remove_random_mutation_from_pooch(
+                        pooch_id,
+                        rng=rng,
+                        min_rarity=min_rarity,
+                        max_rarity=max_rarity,
+                        min_health_impact=min_health_impact,
+                        max_health_impact=max_health_impact,
+                    )
                 if removed:
                     result.pooches_affected.append(pooch_id)
 
@@ -262,12 +319,38 @@ async def _execute_single_stray_action(
             pooch_ids = await _resolve_stray_target_ids(context, selector, parameters, rng)
             breed_id = parameters.get("breed_id")
             weight = parameters.get("weight", 0.5)
+            min_rarity = parameters.get("min_rarity")
+            max_rarity = parameters.get("max_rarity")
             for pooch_id in pooch_ids:
                 if breed_id:
                     await add_breed_to_pooch(pooch_id, breed_id, weight=weight)
                 else:
-                    await add_breed_to_pooch(pooch_id, rng=rng, weight=weight)
+                    await add_breed_to_pooch(
+                        pooch_id,
+                        rng=rng,
+                        weight=weight,
+                        min_rarity=min_rarity,
+                        max_rarity=max_rarity,
+                    )
                 result.pooches_affected.append(pooch_id)
+
+        elif action_type == "remove_breed":
+            pooch_ids = await _resolve_stray_target_ids(context, selector, parameters, rng)
+            breed_id = parameters.get("breed_id")
+            min_rarity = parameters.get("min_rarity")
+            max_rarity = parameters.get("max_rarity")
+            for pooch_id in pooch_ids:
+                if breed_id:
+                    removed = await remove_breed_from_pooch(pooch_id, breed_id)
+                else:
+                    removed = await remove_random_breed_from_pooch(
+                        pooch_id,
+                        rng=rng,
+                        min_rarity=min_rarity,
+                        max_rarity=max_rarity,
+                    )
+                if removed:
+                    result.pooches_affected.append(pooch_id)
 
         elif action_type == "rename_pooch":
             pooch_ids = await _resolve_stray_target_ids(context, selector, parameters, rng)
@@ -277,15 +360,101 @@ async def _execute_single_stray_action(
                     await rename_pooch(pooch_id, str(new_name))
                     result.pooches_affected.append(pooch_id)
 
-        elif action_type == "set_breeding_cooldown":
+        elif action_type in ("modify_breeding_cooldown", "set_breeding_cooldown"):
             pooch_ids = await _resolve_stray_target_ids(context, selector, parameters, rng)
-            cooldown = parameters.get("cooldown", 0)
+            mode = _get_mode(parameters)
+            # Legacy "cooldown" key (set_breeding_cooldown compat) or amount-based
+            if "cooldown" in parameters and "amount" not in parameters and "min_amount" not in parameters:
+                cooldown = parameters["cooldown"]
+                for pooch_id in pooch_ids:
+                    if isinstance(cooldown, str) and cooldown.strip().lower() == "base":
+                        await reset_pooch_breeding_cooldown(pooch_id, base_cooldown=POOCH_BREEDING_COOLDOWN)
+                    else:
+                        await set_pooch_breeding_cooldown(pooch_id, int(cooldown))
+                    result.pooches_affected.append(pooch_id)
+            else:
+                pre_rolled = _get_amount(parameters) if parameters.get("roll_once") else None
+                for pooch_id in pooch_ids:
+                    amount = pre_rolled if pre_rolled is not None else _get_amount(parameters)
+                    if mode == "set":
+                        await set_pooch_breeding_cooldown(pooch_id, max(0, amount))
+                    else:
+                        await modify_pooch_breeding_cooldown(pooch_id, amount)
+                    result.pooches_affected.append(pooch_id)
+
+        elif action_type in (
+            "modify_strength",
+            "modify_cuteness",
+            "modify_fluffiness",
+            "modify_intelligence",
+            "modify_dexterity",
+            "modify_fertility",
+            "modify_aggressiveness",
+        ):
+            stat = action_type[len("modify_") :]
+            modify_fn = {
+                "strength": modify_pooch_strength,
+                "cuteness": modify_pooch_cuteness,
+                "fluffiness": modify_pooch_fluffiness,
+                "intelligence": modify_pooch_intelligence,
+                "dexterity": modify_pooch_dexterity,
+                "fertility": modify_pooch_fertility,
+                "aggressiveness": modify_pooch_aggressiveness,
+            }[stat]
+            set_fn = {
+                "strength": set_pooch_strength,
+                "cuteness": set_pooch_cuteness,
+                "fluffiness": set_pooch_fluffiness,
+                "intelligence": set_pooch_intelligence,
+                "dexterity": set_pooch_dexterity,
+                "fertility": set_pooch_fertility,
+                "aggressiveness": set_pooch_aggressiveness,
+            }[stat]
+            pooch_ids = await _resolve_stray_target_ids(context, selector, parameters, rng)
+            pre_rolled = _get_amount(parameters) if parameters.get("roll_once") else None
+            mode = _get_mode(parameters)
             for pooch_id in pooch_ids:
-                if isinstance(cooldown, str) and cooldown.strip().lower() == "base":
-                    await reset_pooch_breeding_cooldown(pooch_id, base_cooldown=POOCH_BREEDING_COOLDOWN)
+                amount = pre_rolled if pre_rolled is not None else _get_amount(parameters)
+                if mode == "set":
+                    await set_fn(pooch_id, amount)
                 else:
-                    await set_pooch_breeding_cooldown(pooch_id, int(cooldown))
+                    await modify_fn(pooch_id, amount)
                 result.pooches_affected.append(pooch_id)
+
+        elif action_type == "damn_pooch":
+            pooch_ids = await _resolve_stray_target_ids(context, selector, parameters, rng)
+            for pooch_id in pooch_ids:
+                await set_pooch_dead(pooch_id)
+                hell_entry = await damn_pooch(pooch_id)
+                if hell_entry:
+                    result.pooches_killed.append(pooch_id)
+                    save_as = parameters.get("save_as")
+                    if isinstance(save_as, str) and save_as:
+                        context.extra_data[save_as] = {"pooch_ids": [pooch_id]}
+                if pooch_id in context.candidate_stray_ids:
+                    context.candidate_stray_ids.remove(pooch_id)
+
+        elif action_type == "revive_pooch":
+            pooch_ids = await _resolve_stray_target_ids(context, selector, parameters, rng)
+            destination = str(parameters.get("destination", "stray")).strip().lower()
+            for pooch_id in pooch_ids:
+                pooch = await revive_pooch(pooch_id)
+                if pooch:
+                    if destination == "kennel":
+                        placed = await _deliver_stray_to_kennel(pooch_id, server_discord_id, rng)
+                        if not placed:
+                            await add_pooch_to_strays(pooch_id, server_discord_id)
+                            context.candidate_stray_ids.append(pooch_id)
+                    elif destination == "vendor":
+                        placed = await _deliver_stray_to_vendor(pooch_id, server_discord_id, rng)
+                        if not placed:
+                            await add_pooch_to_strays(pooch_id, server_discord_id)
+                            context.candidate_stray_ids.append(pooch_id)
+                    else:
+                        # "stray" or anything else — put back in strays
+                        await add_pooch_to_strays(pooch_id, server_discord_id)
+                        context.candidate_stray_ids.append(pooch_id)
+                    result.pooches_affected.append(pooch_id)
 
         elif action_type == "create_pooch":
             kwargs: dict[str, object] = {"rng": rng}

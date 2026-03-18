@@ -9,14 +9,14 @@ from src.bot.constants import VIEW_TIMEOUT
 from src.bot.ui.util import InteractionResponder
 from src.game import (
     beg_for_money,
+    conjure_pooch,
+    get_conjure_pooch_price,
     get_or_create_server,
     get_pooch_bloodskull_value,
-    get_summon_pooch_price,
     list_hell_pooches,
     list_kennel_pooches,
     list_owner_kennels,
     sacrifice_pooch,
-    summon_pooch,
 )
 from src.logger import get_logger
 
@@ -190,7 +190,7 @@ class _SummonView(View):
 
 class _SummonRollButton(Button):
     def __init__(self, owner_discord_id: int, rolls: int):
-        price = get_summon_pooch_price(rolls)
+        price = get_conjure_pooch_price(rolls)
         super().__init__(
             label=f"Summon ({rolls} roll{'s' if rolls != 1 else ''}) — {price} 𖤐",
             style=discord.ButtonStyle.danger,
@@ -202,7 +202,7 @@ class _SummonRollButton(Button):
         r = InteractionResponder(interaction)
         await r.defer(thinking=True)
         try:
-            success, message = await summon_pooch(self._owner_id, num_rolls=self._rolls)
+            success, message = await conjure_pooch(self._owner_id, num_rolls=self._rolls)
         except Exception as exception:
             logger.error(f"Error during pooch summon: '{exception}'")
             await r.finish_with_error("The ritual fizzled unexpectedly.")
@@ -260,7 +260,7 @@ class _CustomSummonModal(discord.ui.Modal):
             await r.reply(content="That many rolls would tear the veil. Pick a smaller number.")
             return
 
-        price = get_summon_pooch_price(num_rolls)
+        price = get_conjure_pooch_price(num_rolls)
         view = _ConfirmSummonView(owner_discord_id=self._owner_id, num_rolls=num_rolls, price=price)
         await r.reply(
             content=(
@@ -295,7 +295,7 @@ class _ConfirmSummonButton(Button):
         r = InteractionResponder(interaction)
         await r.defer(thinking=True)
         try:
-            success, message = await summon_pooch(self._owner_id, num_rolls=self._num_rolls)
+            success, message = await conjure_pooch(self._owner_id, num_rolls=self._num_rolls)
         except Exception as exception:
             logger.error(f"Error during pooch summon: '{exception}'")
             await r.finish_with_error("The ritual fizzled unexpectedly.")

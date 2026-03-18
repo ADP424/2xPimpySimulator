@@ -11,29 +11,13 @@
         {
             "label": "Accept",
             "description": "Exchange the pooch's fertility for its soul.",
-            "actions": [ // TODO: This should give the pooch an infertile mutation rather than this other gunk
+            "actions": [
                 {
-                    "action_type": "set_breeding_cooldown", // TODO: Make this match the "modify_*" with "mode": "set" option
+                    "action_type": "revive_pooch",
                     "target_type": "pooch",
                     "parameters": {
                         "use_saved": "damned_pooch",
-                        "cooldown": 99
-                    }
-                },
-                {
-                    "action_type": "modify_fertility", // TODO
-                    "target_type": "pooch",
-                    "parameters": {
-                        "use_saved": "damned_pooch",
-                        "mode": "set",
-                        "amount": 0
-                    }
-                },
-                {
-                    "action_type": "???", // TODO: Action to fetch pooch out of Hell
-                    "target_type": "pooch",
-                    "parameters": {
-                        "use_saved": "damned_pooch" // TODO: Make sure this works
+                        "destination": "kennel"
                     }
                 },
                 {
@@ -42,6 +26,14 @@
                     "parameters": {
                         "use_saved": "damned_pooch",
                         "mutation": "Haunted by Flames"
+                    }
+                },
+                {
+                    "action_type": "add_mutation",
+                    "target_type": "pooch",
+                    "parameters": {
+                        "use_saved": "damned_pooch",
+                        "mutation": "Infertile"
                     }
                 }
             ]

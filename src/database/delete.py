@@ -5,10 +5,29 @@ from sqlalchemy import and_, delete, func, or_, select
 
 from src.database.models.enums.health_impact_weight import HealthImpactWeight
 
+_RARITY_ORDER = ["common", "uncommon", "novel", "rare", "unprecedented", "remarkable", "extraordinary", "unique"]
+_HEALTH_IMPACT_ORDER = [
+    "instant_death",
+    "fatal",
+    "brutal",
+    "severe",
+    "unhealthy",
+    "harmful",
+    "neutral",
+    "helpful",
+    "healthy",
+    "great",
+    "fantastic",
+    "brilliant",
+    "immortality",
+]
+
 from .models import (
+    Breed,
     KennelPooch,
     Mutation,
     Pooch,
+    PoochBreed,
     PoochMutation,
     PoochPregnancy,
     StrayPooch,
@@ -280,12 +299,82 @@ async def remove_pooch_from_strays(pooch_id: int) -> Optional[StrayPooch]:
         return stray
 
 
+async def remove_breed_from_pooch(pooch_id: int, breed_id: int) -> Optional[PoochBreed]:
+    """Remove a specific breed from a pooch by breed ID. Returns the removed row or None."""
+
+    async with session_scope() as session:
+        row = (
+            await session.execute(
+                select(PoochBreed).where(PoochBreed.pooch_id == pooch_id, PoochBreed.breed_id == breed_id)
+            )
+        ).scalar_one_or_none()
+        if row is None:
+            return None
+        await session.delete(row)
+        return row
+
+
+async def remove_random_breed_from_pooch(
+    pooch_id: int,
+    rng: Optional[random.Random] = None,
+    min_rarity: Optional[str] = None,
+    max_rarity: Optional[str] = None,
+) -> Optional[PoochBreed]:
+    """
+    Remove a random breed from a pooch.
+
+    Parameters
+    ----------
+    pooch_id: int
+        The ID of the pooch to remove a breed from.
+
+    rng: Random, optional
+        The random generator to use for selection.
+
+    min_rarity: str, optional
+        Minimum rarity to allow when selecting (inclusive).
+
+    max_rarity: str, optional
+        Maximum rarity to allow when selecting (inclusive).
+
+    Returns
+    -------
+    PoochBreed, optional
+        The removed PoochBreed relationship, or None if the pooch had no breeds.
+    """
+
+    rng = rng if rng is not None else random.Random()
+
+    async with session_scope() as session:
+        query = select(PoochBreed).join(Breed, Breed.id == PoochBreed.breed_id).where(PoochBreed.pooch_id == pooch_id)
+        if min_rarity is not None and min_rarity.lower() in _RARITY_ORDER:
+            min_idx = _RARITY_ORDER.index(min_rarity.lower())
+            query = query.where(Breed.rarity.in_(_RARITY_ORDER[min_idx:]))
+        if max_rarity is not None and max_rarity.lower() in _RARITY_ORDER:
+            max_idx = _RARITY_ORDER.index(max_rarity.lower())
+            query = query.where(Breed.rarity.in_(_RARITY_ORDER[: max_idx + 1]))
+
+        result = await session.execute(query)
+        breeds = list(result.scalars().all())
+
+        if not breeds:
+            return None
+
+        selected = rng.choice(breeds)
+        await session.delete(selected)
+        return selected
+
+
 async def remove_random_mutation_from_pooch(
     pooch_id: int,
     rng: Optional[random.Random] = None,
     positive: bool = True,
     negative: bool = True,
     neutral: bool = True,
+    min_rarity: Optional[str] = None,
+    max_rarity: Optional[str] = None,
+    min_health_impact: Optional[str] = None,
+    max_health_impact: Optional[str] = None,
 ) -> Optional[PoochMutation]:
     """
     Remove a random mutation from a pooch.
@@ -306,6 +395,18 @@ async def remove_random_mutation_from_pooch(
 
     neutral: bool
         Whether to include neutral health impact mutations.
+
+    min_rarity: str, optional
+        Minimum rarity to allow (inclusive).
+
+    max_rarity: str, optional
+        Maximum rarity to allow (inclusive).
+
+    min_health_impact: str, optional
+        Minimum health_impact to allow (inclusive).
+
+    max_health_impact: str, optional
+        Maximum health_impact to allow (inclusive).
 
     Returns
     -------
@@ -338,6 +439,19 @@ async def remove_random_mutation_from_pooch(
                 )
             )
         )
+        if min_rarity is not None and min_rarity.lower() in _RARITY_ORDER:
+            min_idx = _RARITY_ORDER.index(min_rarity.lower())
+            query = query.where(Mutation.rarity.in_(_RARITY_ORDER[min_idx:]))
+        if max_rarity is not None and max_rarity.lower() in _RARITY_ORDER:
+            max_idx = _RARITY_ORDER.index(max_rarity.lower())
+            query = query.where(Mutation.rarity.in_(_RARITY_ORDER[: max_idx + 1]))
+        if min_health_impact is not None and min_health_impact.lower() in _HEALTH_IMPACT_ORDER:
+            min_idx = _HEALTH_IMPACT_ORDER.index(min_health_impact.lower())
+            query = query.where(Mutation.health_impact.in_(_HEALTH_IMPACT_ORDER[min_idx:]))
+        if max_health_impact is not None and max_health_impact.lower() in _HEALTH_IMPACT_ORDER:
+            max_idx = _HEALTH_IMPACT_ORDER.index(max_health_impact.lower())
+            query = query.where(Mutation.health_impact.in_(_HEALTH_IMPACT_ORDER[: max_idx + 1]))
+
         result = await session.execute(query)
         mutations = list(result.scalars().all())
 

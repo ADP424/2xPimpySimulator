@@ -17,15 +17,16 @@
                     "target_type": "pooch",
                     "parameters": {
                         "use_saved": "damned_pooch",
-                        "weight": 0.5
-                        // TODO: Add "rarity_filter"
+                        "weight": 0.5,
+                        "min_rarity": "rare"
                     }
                 },
                 {
-                    "action_type": "???", // TODO: Action to fetch pooch out of Hell
+                    "action_type": "revive_pooch",
                     "target_type": "pooch",
                     "parameters": {
-                        "use_saved": "damned_pooch" // TODO: Make sure this works
+                        "use_saved": "damned_pooch",
+                        "destination": "kennel"
                     }
                 },
                 {

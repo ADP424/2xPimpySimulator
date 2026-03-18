@@ -673,6 +673,198 @@ async def set_owner_begged_today(owner_discord_id: int, begged_today: bool = Tru
     return owner
 
 
+async def modify_pooch_strength(pooch_id: int, amount: int) -> Optional[Pooch]:
+    """Modify a pooch's strength by a given amount (minimum 0)."""
+
+    async with session_scope() as session:
+        pooch = (await session.execute(select(Pooch).where(Pooch.id == pooch_id))).scalar_one_or_none()
+        if pooch is None:
+            return None
+        pooch.strength = max(0, pooch.strength + amount)
+        await session.flush()
+    return pooch
+
+
+async def set_pooch_strength(pooch_id: int, value: int) -> Optional[Pooch]:
+    """Set a pooch's strength to a specific value (minimum 0)."""
+
+    async with session_scope() as session:
+        pooch = (await session.execute(select(Pooch).where(Pooch.id == pooch_id))).scalar_one_or_none()
+        if pooch is None:
+            return None
+        pooch.strength = max(0, value)
+        await session.flush()
+    return pooch
+
+
+async def modify_pooch_cuteness(pooch_id: int, amount: int) -> Optional[Pooch]:
+    """Modify a pooch's cuteness by a given amount (minimum 0)."""
+
+    async with session_scope() as session:
+        pooch = (await session.execute(select(Pooch).where(Pooch.id == pooch_id))).scalar_one_or_none()
+        if pooch is None:
+            return None
+        pooch.cuteness = max(0, pooch.cuteness + amount)
+        await session.flush()
+    return pooch
+
+
+async def set_pooch_cuteness(pooch_id: int, value: int) -> Optional[Pooch]:
+    """Set a pooch's cuteness to a specific value (minimum 0)."""
+
+    async with session_scope() as session:
+        pooch = (await session.execute(select(Pooch).where(Pooch.id == pooch_id))).scalar_one_or_none()
+        if pooch is None:
+            return None
+        pooch.cuteness = max(0, value)
+        await session.flush()
+    return pooch
+
+
+async def modify_pooch_fluffiness(pooch_id: int, amount: int) -> Optional[Pooch]:
+    """Modify a pooch's fluffiness by a given amount (minimum 0)."""
+
+    async with session_scope() as session:
+        pooch = (await session.execute(select(Pooch).where(Pooch.id == pooch_id))).scalar_one_or_none()
+        if pooch is None:
+            return None
+        pooch.fluffiness = max(0, pooch.fluffiness + amount)
+        await session.flush()
+    return pooch
+
+
+async def set_pooch_fluffiness(pooch_id: int, value: int) -> Optional[Pooch]:
+    """Set a pooch's fluffiness to a specific value (minimum 0)."""
+
+    async with session_scope() as session:
+        pooch = (await session.execute(select(Pooch).where(Pooch.id == pooch_id))).scalar_one_or_none()
+        if pooch is None:
+            return None
+        pooch.fluffiness = max(0, value)
+        await session.flush()
+    return pooch
+
+
+async def modify_pooch_intelligence(pooch_id: int, amount: int) -> Optional[Pooch]:
+    """Modify a pooch's intelligence by a given amount (minimum 0)."""
+
+    async with session_scope() as session:
+        pooch = (await session.execute(select(Pooch).where(Pooch.id == pooch_id))).scalar_one_or_none()
+        if pooch is None:
+            return None
+        pooch.intelligence = max(0, pooch.intelligence + amount)
+        await session.flush()
+    return pooch
+
+
+async def set_pooch_intelligence(pooch_id: int, value: int) -> Optional[Pooch]:
+    """Set a pooch's intelligence to a specific value (minimum 0)."""
+
+    async with session_scope() as session:
+        pooch = (await session.execute(select(Pooch).where(Pooch.id == pooch_id))).scalar_one_or_none()
+        if pooch is None:
+            return None
+        pooch.intelligence = max(0, value)
+        await session.flush()
+    return pooch
+
+
+async def modify_pooch_dexterity(pooch_id: int, amount: int) -> Optional[Pooch]:
+    """Modify a pooch's dexterity by a given amount (minimum 0)."""
+
+    async with session_scope() as session:
+        pooch = (await session.execute(select(Pooch).where(Pooch.id == pooch_id))).scalar_one_or_none()
+        if pooch is None:
+            return None
+        pooch.dexterity = max(0, pooch.dexterity + amount)
+        await session.flush()
+    return pooch
+
+
+async def set_pooch_dexterity(pooch_id: int, value: int) -> Optional[Pooch]:
+    """Set a pooch's dexterity to a specific value (minimum 0)."""
+
+    async with session_scope() as session:
+        pooch = (await session.execute(select(Pooch).where(Pooch.id == pooch_id))).scalar_one_or_none()
+        if pooch is None:
+            return None
+        pooch.dexterity = max(0, value)
+        await session.flush()
+    return pooch
+
+
+async def modify_pooch_fertility(pooch_id: int, amount: int) -> Optional[Pooch]:
+    """Modify a pooch's fertility by a given amount (minimum 0)."""
+
+    async with session_scope() as session:
+        pooch = (await session.execute(select(Pooch).where(Pooch.id == pooch_id))).scalar_one_or_none()
+        if pooch is None:
+            return None
+        pooch.fertility = max(0, pooch.fertility + amount)
+        await session.flush()
+    return pooch
+
+
+async def set_pooch_fertility(pooch_id: int, value: int) -> Optional[Pooch]:
+    """Set a pooch's fertility to a specific value (minimum 0)."""
+
+    async with session_scope() as session:
+        pooch = (await session.execute(select(Pooch).where(Pooch.id == pooch_id))).scalar_one_or_none()
+        if pooch is None:
+            return None
+        pooch.fertility = max(0, value)
+        await session.flush()
+    return pooch
+
+
+async def modify_pooch_aggressiveness(pooch_id: int, amount: int) -> Optional[Pooch]:
+    """Modify a pooch's aggressiveness by a given amount (minimum 0)."""
+
+    async with session_scope() as session:
+        pooch = (await session.execute(select(Pooch).where(Pooch.id == pooch_id))).scalar_one_or_none()
+        if pooch is None:
+            return None
+        pooch.aggressiveness = max(0, pooch.aggressiveness + amount)
+        await session.flush()
+    return pooch
+
+
+async def set_pooch_aggressiveness(pooch_id: int, value: int) -> Optional[Pooch]:
+    """Set a pooch's aggressiveness to a specific value (minimum 0)."""
+
+    async with session_scope() as session:
+        pooch = (await session.execute(select(Pooch).where(Pooch.id == pooch_id))).scalar_one_or_none()
+        if pooch is None:
+            return None
+        pooch.aggressiveness = max(0, value)
+        await session.flush()
+    return pooch
+
+
+async def modify_pooch_breeding_cooldown(pooch_id: int, amount: int) -> Optional[Pooch]:
+    """Modify a pooch's breeding cooldown by a given amount (minimum 0)."""
+
+    async with session_scope() as session:
+        pooch = (await session.execute(select(Pooch).where(Pooch.id == pooch_id))).scalar_one_or_none()
+        if pooch is None:
+            return None
+        pooch.breeding_cooldown = max(0, pooch.breeding_cooldown + amount)
+        await session.flush()
+    return pooch
+
+
+async def set_pooch_alive(pooch_id: int) -> Optional[Pooch]:
+    """Set a pooch to alive (alive=True)."""
+
+    async with session_scope() as session:
+        pooch = (await session.execute(select(Pooch).where(Pooch.id == pooch_id))).scalar_one_or_none()
+        if pooch is None:
+            return None
+        pooch.alive = True
+        await session.flush()
+    return pooch
+
+
 async def set_pooch_breeding_cooldown(pooch_id: int, cooldown: int) -> Optional[Pooch]:
     """
     Set the breeding cooldown of a pooch, to a minimum of 0.

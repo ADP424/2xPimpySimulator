@@ -16,8 +16,10 @@ from src.database import (
     create_active_owner_event,
     create_pooch,
     damn_pooch,
+    delete_pooch,
     get_active_owner_event_by_id,
     get_kennel_by_id,
+    get_mutation_by_name,
     get_owner_by_discord_id,
 )
 from src.database import get_owner_event_by_id as db_get_owner_event_by_id
@@ -39,6 +41,7 @@ from src.database import (
     get_random_matching_kennel_id,
     get_random_matching_pooch_id,
     give_bloodskulls_to_owner,
+    give_bones_to_owner,
     give_money_to_owner,
     list_active_owner_events_for_owner,
 )
@@ -61,22 +64,40 @@ from src.database import (
     list_vendors,
     modify_kennel_pooch_limit,
     modify_pooch_age,
+    modify_pooch_aggressiveness,
     modify_pooch_base_health,
+    modify_pooch_breeding_cooldown,
+    modify_pooch_cuteness,
+    modify_pooch_dexterity,
+    modify_pooch_fertility,
+    modify_pooch_fluffiness,
+    modify_pooch_intelligence,
+    modify_pooch_strength,
+    remove_breed_from_pooch,
     remove_mutation_from_pooch,
     remove_pooch_from_kennel,
     remove_pooch_from_strays,
     remove_pooch_from_vendor_stock,
+    remove_random_breed_from_pooch,
     remove_random_mutation_from_pooch,
     rename_pooch,
     reset_pooch_breeding_cooldown,
     respond_to_active_owner_event,
+    revive_pooch,
     set_kennel_pooch_limit,
     set_owner_bloodskulls,
     set_owner_dollars,
     set_pooch_age,
+    set_pooch_aggressiveness,
     set_pooch_base_health,
     set_pooch_breeding_cooldown,
+    set_pooch_cuteness,
     set_pooch_dead,
+    set_pooch_dexterity,
+    set_pooch_fertility,
+    set_pooch_fluffiness,
+    set_pooch_intelligence,
+    set_pooch_strength,
     transfer_pooch_to_owner,
     transfer_pooch_to_vendor,
     update_active_event_context,
@@ -87,14 +108,19 @@ from .breeding import breed_pooches
 from .constants import (
     EVENT_HOURLY_TRIGGER_CHANCE,
     EVENT_MAX_ACTIVE_PER_OWNER,
+    NUM_BREEDS_PER_SUMMON_POOCH_RANGE,
     POOCH_BREEDING_COOLDOWN,
+    POOCH_STAT_RANGE,
+    POOCH_STATS,
 )
+from .manage_hell import get_pooch_bloodskull_value
 from .manage_vendors import get_pooch_buy_price, get_pooch_sell_price
 from .models import (
     OwnerEvent,
     OwnerEventContext,
     OwnerEventHistory,
     OwnerEventResult,
+    StrayEventContext,
     TriggeredOwnerEvent,
     to_owner_event,
     to_owner_event_history,
@@ -1064,7 +1090,7 @@ async def _execute_single_action(
                     result.extra_data.setdefault("kennel_capacity_changes", {})[kennel_id] = amount
 
         # Pooch Actions
-        elif action_type == "modify_pooch_health":
+        elif action_type in ("modify_base_health", "modify_pooch_health"):
             pooch_ids = await _get_target_pooch_ids(target_type, selector, parameters)
             pre_rolled, roll_once = _resolve_amount(parameters, rng)
             mode = _get_mode(parameters)
@@ -1167,21 +1193,43 @@ async def _execute_single_action(
         elif action_type == "add_mutation":
             pooch_ids = await _get_target_pooch_ids(target_type, selector, parameters)
             mutation_id = parameters.get("mutation_id")
+            min_rarity = parameters.get("min_rarity")
+            max_rarity = parameters.get("max_rarity")
+            min_health_impact = parameters.get("min_health_impact")
+            max_health_impact = parameters.get("max_health_impact")
             for pooch_id in pooch_ids:
                 if mutation_id:
                     await add_mutation_to_pooch(pooch_id, mutation_id)
                 else:
-                    await add_mutation_to_pooch(pooch_id, rng=rng)
+                    await add_mutation_to_pooch(
+                        pooch_id,
+                        rng=rng,
+                        min_rarity=min_rarity if isinstance(min_rarity, str) else None,
+                        max_rarity=max_rarity if isinstance(max_rarity, str) else None,
+                        min_health_impact=min_health_impact if isinstance(min_health_impact, str) else None,
+                        max_health_impact=max_health_impact if isinstance(max_health_impact, str) else None,
+                    )
                 result.pooches_affected.append(pooch_id)
 
         elif action_type == "remove_mutation":
             pooch_ids = await _get_target_pooch_ids(target_type, selector, parameters)
             mutation_id = parameters.get("mutation_id")
+            min_rarity = parameters.get("min_rarity")
+            max_rarity = parameters.get("max_rarity")
+            min_health_impact = parameters.get("min_health_impact")
+            max_health_impact = parameters.get("max_health_impact")
             for pooch_id in pooch_ids:
                 if mutation_id:
                     removed = await remove_mutation_from_pooch(pooch_id, mutation_id)
                 else:
-                    removed = await remove_random_mutation_from_pooch(pooch_id, rng=rng)
+                    removed = await remove_random_mutation_from_pooch(
+                        pooch_id,
+                        rng=rng,
+                        min_rarity=min_rarity if isinstance(min_rarity, str) else None,
+                        max_rarity=max_rarity if isinstance(max_rarity, str) else None,
+                        min_health_impact=min_health_impact if isinstance(min_health_impact, str) else None,
+                        max_health_impact=max_health_impact if isinstance(max_health_impact, str) else None,
+                    )
                 if removed:
                     result.mutations_removed.append((pooch_id, removed.mutation_id))
                     result.pooches_affected.append(pooch_id)
@@ -1190,12 +1238,38 @@ async def _execute_single_action(
             pooch_ids = await _get_target_pooch_ids(target_type, selector, parameters)
             breed_id = parameters.get("breed_id")
             weight = parameters.get("weight", 0.5)
+            min_rarity = parameters.get("min_rarity")
+            max_rarity = parameters.get("max_rarity")
             for pooch_id in pooch_ids:
                 if breed_id:
                     await add_breed_to_pooch(pooch_id, breed_id, weight=weight)
                 else:
-                    await add_breed_to_pooch(pooch_id, rng=rng, weight=weight)
+                    await add_breed_to_pooch(
+                        pooch_id,
+                        rng=rng,
+                        weight=weight,
+                        min_rarity=min_rarity if isinstance(min_rarity, str) else None,
+                        max_rarity=max_rarity if isinstance(max_rarity, str) else None,
+                    )
                 result.pooches_affected.append(pooch_id)
+
+        elif action_type == "remove_breed":
+            pooch_ids = await _get_target_pooch_ids(target_type, selector, parameters)
+            breed_id = parameters.get("breed_id")
+            min_rarity = parameters.get("min_rarity")
+            max_rarity = parameters.get("max_rarity")
+            for pooch_id in pooch_ids:
+                if breed_id:
+                    removed = await remove_breed_from_pooch(pooch_id, breed_id)
+                else:
+                    removed = await remove_random_breed_from_pooch(
+                        pooch_id,
+                        rng=rng,
+                        min_rarity=min_rarity if isinstance(min_rarity, str) else None,
+                        max_rarity=max_rarity if isinstance(max_rarity, str) else None,
+                    )
+                if removed:
+                    result.pooches_affected.append(pooch_id)
 
         elif action_type == "transfer_pooch":
             pooch_ids = await _get_target_pooch_ids(target_type, selector, parameters)
@@ -1208,14 +1282,22 @@ async def _execute_single_action(
                     await transfer_pooch_to_vendor(pooch_id, vendor_id)
                 result.pooches_affected.append(pooch_id)
 
-        elif action_type == "set_breeding_cooldown":
+        elif action_type in ("modify_breeding_cooldown", "set_breeding_cooldown"):
             pooch_ids = await _get_target_pooch_ids(target_type, selector, parameters)
             cooldown = parameters.get("cooldown", 0)
+            mode = _get_mode(parameters)
+            pre_rolled, roll_once = _resolve_amount(parameters, rng)
             for pooch_id in pooch_ids:
                 if isinstance(cooldown, str) and cooldown.strip().lower() == "base":
                     await reset_pooch_breeding_cooldown(pooch_id, base_cooldown=POOCH_BREEDING_COOLDOWN)
+                elif mode == "set":
+                    amount = pre_rolled if roll_once else _get_amount_from_parameters(parameters, rng)
+                    await set_pooch_breeding_cooldown(
+                        pooch_id, amount if not isinstance(cooldown, str) else int(cooldown)
+                    )
                 else:
-                    await set_pooch_breeding_cooldown(pooch_id, int(cooldown))
+                    amount = pre_rolled if roll_once else _get_amount_from_parameters(parameters, rng)
+                    await modify_pooch_breeding_cooldown(pooch_id, amount)
                 result.pooches_affected.append(pooch_id)
 
         elif action_type == "rename_pooch":
@@ -1434,30 +1516,255 @@ async def _execute_single_action(
         # Other Actions
         elif action_type == "start_event":
             if bool(parameters.get("random_event", False)):
-                started_event = await trigger_random_event(owner_discord_id, rng=rng)
+                followup_event = await get_random_eligible_owner_event_for_owner(owner_discord_id, rng=rng)
             else:
                 event_name = parameters.get("event")
-                event = await db_get_owner_event_by_name(event_name.strip())
-                if event is None:
+                followup_event = await db_get_owner_event_by_name(event_name.strip())
+                if followup_event is None:
                     logger.warning(f"Unknown event '{event_name}' triggered. Skipping...")
                     result.message = "Error starting followup event."
                     return result
-                started_event = await trigger_specific_event(owner_discord_id, event.id, rng=rng)
 
-            if started_event is not None:
-                started_events = result.extra_data.setdefault("started_events", [])
-                started_events.append(
-                    {
-                        "active_owner_event_id": started_event.active_owner_event_id,
-                        "event_id": started_event.event_id,
-                        "name": started_event.name,
+            if followup_event is not None:
+                if followup_event.requires_response:
+                    # Response-required events run as independent active events but inherit named slots
+                    _internal_keys = {"candidate_pooch_ids", "candidate_kennel_ids", "suppressed_option_ids"}
+                    slots_to_forward = {
+                        k: v for k, v in context.extra_data.items() if not k.startswith("_") and k not in _internal_keys
                     }
-                )
-                result.message = f"Started event '{started_event.name}'."
+                    started_event = await trigger_specific_event(
+                        owner_discord_id, followup_event.id, rng=rng, inherited_slots=slots_to_forward
+                    )
+                    if started_event is not None:
+                        started_events = result.extra_data.setdefault("started_events", [])
+                        started_events.append(
+                            {
+                                "active_owner_event_id": started_event.active_owner_event_id,
+                                "event_id": started_event.event_id,
+                                "name": started_event.name,
+                            }
+                        )
+                        result.message = f"Started event '{started_event.name}'."
+                else:
+                    # Instant events run inline, sharing the current context so save_as/use_saved slots carry over
+                    followup_result = await _execute_event_actions(
+                        owner_discord_id, followup_event.actions, context, rng
+                    )
+                    result.merge(followup_result)
+                    default_option = next((opt for opt in followup_event.options if opt.is_default), None)
+                    if default_option is not None:
+                        option_result = await _execute_event_actions(
+                            owner_discord_id, default_option.actions, context, rng
+                        )
+                        result.merge(option_result)
+                        selected_outcome = await _choose_option_outcome(default_option, context, rng)
+                        if selected_outcome is not None:
+                            outcome_result = await _execute_event_actions(
+                                owner_discord_id, selected_outcome.actions, context, rng
+                            )
+                            result.merge(outcome_result)
+
+        elif action_type == "start_stray_event":
+            from src.database import (
+                get_stray_event_by_name,
+                list_matching_stray_pooch_ids,
+            )
+
+            from .manage_stray_events import (
+                _choose_stray_event_outcome,
+                _execute_stray_event_actions,
+            )
+
+            event_name = parameters.get("event")
+            if not isinstance(event_name, str) or not event_name.strip():
+                logger.warning("start_stray_event: missing 'event' parameter; skipping")
+            else:
+                stray_event = await get_stray_event_by_name(event_name.strip())
+                if stray_event is None:
+                    logger.warning(f"start_stray_event: unknown stray event '{event_name}'; skipping")
+                else:
+                    servers = await list_servers_for_owner(owner_discord_id)
+                    if not servers:
+                        logger.warning(f"start_stray_event: owner {owner_discord_id} has no servers; skipping")
+                    else:
+                        server = rng.choice(servers)
+                        stray_filter: dict = stray_event.filter or {}
+                        pooch_filters = stray_filter.get("pooches", [])
+                        if pooch_filters:
+                            first_f = {
+                                k: v
+                                for k, v in pooch_filters[0].items()
+                                if k not in {"min_count", "max_count", "description"}
+                            }
+                            candidate_ids = await list_matching_stray_pooch_ids(server.discord_id, first_f)
+                        else:
+                            candidate_ids = [p.id for p in await list_strays_for_server(server.discord_id)]
+                        stray_context = StrayEventContext(
+                            server_discord_id=server.discord_id,
+                            candidate_stray_ids=list(candidate_ids),
+                        )
+                        stray_result = await _execute_stray_event_actions(
+                            server.discord_id, stray_event.actions, stray_context, rng
+                        )
+                        result.merge(stray_result)
+                        stray_outcome = await _choose_stray_event_outcome(stray_event, stray_context, rng)
+                        if stray_outcome is not None:
+                            outcome_result = await _execute_stray_event_actions(
+                                server.discord_id, stray_outcome.actions, stray_context, rng
+                            )
+                            result.merge(outcome_result)
 
         elif action_type == "select_pooch":
             # Resolves and saves pooches into a named slot; no other side effects
             await _get_target_pooch_ids(target_type, selector, parameters)
+
+        # Stat modify/set actions
+        elif action_type in (
+            "modify_strength",
+            "modify_cuteness",
+            "modify_fluffiness",
+            "modify_intelligence",
+            "modify_dexterity",
+            "modify_fertility",
+            "modify_aggressiveness",
+        ):
+            stat = action_type[len("modify_") :]
+            modify_fn = {
+                "strength": modify_pooch_strength,
+                "cuteness": modify_pooch_cuteness,
+                "fluffiness": modify_pooch_fluffiness,
+                "intelligence": modify_pooch_intelligence,
+                "dexterity": modify_pooch_dexterity,
+                "fertility": modify_pooch_fertility,
+                "aggressiveness": modify_pooch_aggressiveness,
+            }[stat]
+            set_fn = {
+                "strength": set_pooch_strength,
+                "cuteness": set_pooch_cuteness,
+                "fluffiness": set_pooch_fluffiness,
+                "intelligence": set_pooch_intelligence,
+                "dexterity": set_pooch_dexterity,
+                "fertility": set_pooch_fertility,
+                "aggressiveness": set_pooch_aggressiveness,
+            }[stat]
+            pooch_ids = await _get_target_pooch_ids(target_type, selector, parameters)
+            pre_rolled, roll_once = _resolve_amount(parameters, rng)
+            mode = _get_mode(parameters)
+            for pooch_id in pooch_ids:
+                amount = pre_rolled if roll_once else _get_amount_from_parameters(parameters, rng)
+                if mode == "set":
+                    pooch = await set_fn(pooch_id, amount)
+                else:
+                    pooch = await modify_fn(pooch_id, amount)
+                if pooch:
+                    result.pooches_affected.append(pooch_id)
+
+        # Hell / soul actions
+        elif action_type == "damn_pooch":
+            pooch_ids = await _get_target_pooch_ids(target_type, selector, parameters)
+            for pooch_id in pooch_ids:
+                pooch = await get_pooch_by_id(pooch_id)
+                if pooch:
+                    await set_pooch_dead(pooch_id)
+                    await damn_pooch(pooch_id)
+                    result.pooches_killed.append(pooch_id)
+            if result.pooches_killed:
+                count = len(result.pooches_killed)
+                result.message = (
+                    "A pooch has been damned to Hell!" if count == 1 else f"{count} pooches have been damned to Hell!"
+                )
+
+        elif action_type == "revive_pooch":
+            pooch_ids = await _get_target_pooch_ids(target_type, selector, parameters)
+            destination_str = str(parameters.get("destination", "kennel")).strip().lower()
+            for pooch_id in pooch_ids:
+                pooch = await revive_pooch(pooch_id)
+                if pooch:
+                    dest_key, kennel_name = await _deliver_pooch(owner_discord_id, pooch_id, destination_str)
+                    result.pooches_affected.append(pooch_id)
+                    if dest_key == "kennel":
+                        result.message = f"{pooch.name} has been revived and placed in {kennel_name}!"
+                    elif dest_key == "hell":
+                        result.message = f"{pooch.name} has been revived and sent back to Hell..."
+                    elif dest_key == "graveyard":
+                        result.message = f"{pooch.name} has been revived and placed in the graveyard."
+                    else:
+                        result.message = f"{pooch.name} has been revived!"
+                    save_as = parameters.get("save_as")
+                    if isinstance(save_as, str) and save_as:
+                        context.extra_data.setdefault(save_as, {}).setdefault("pooch_ids", []).append(pooch_id)
+
+        elif action_type == "conjure_pooch":
+            # Create a new pooch from Hell ritual — does NOT charge bloodskulls (handle with modify_bloodskulls)
+            num_rolls = int(parameters.get("num_rolls", 1))
+            num_rolls = max(1, num_rolls)
+            destination_str = str(parameters.get("destination", "kennel")).strip().lower()
+
+            conjured: Any = None
+            for _ in range(num_rolls):
+                pooch = await create_pooch(
+                    owner_discord_id=owner_discord_id,
+                    age=0,
+                    base_health=rng.randint(POOCH_STAT_RANGE[0], POOCH_STAT_RANGE[1]),
+                    **{stat: rng.randint(POOCH_STAT_RANGE[0], POOCH_STAT_RANGE[1]) for stat in POOCH_STATS},
+                    rng=rng,
+                )
+                num_breeds = rng.randint(NUM_BREEDS_PER_SUMMON_POOCH_RANGE[0], NUM_BREEDS_PER_SUMMON_POOCH_RANGE[1])
+                for _ in range(num_breeds):
+                    await add_breed_to_pooch(pooch.id, weight=(1.0 / num_breeds), from_ritual=True, rng=rng)
+
+                if conjured is None or (
+                    await get_pooch_bloodskull_value(pooch.id) > await get_pooch_bloodskull_value(conjured.id)
+                ):
+                    if conjured is not None:
+                        await delete_pooch(conjured.id)
+                    conjured = pooch
+                else:
+                    await delete_pooch(pooch.id)
+
+            if conjured:
+                mark = await get_mutation_by_name("Mark of the Beast")
+                if mark is not None:
+                    await add_mutation_to_pooch(conjured.id, mutation_id=mark.id)
+
+                dest_key, kennel_name = await _deliver_pooch(owner_discord_id, conjured.id, destination_str)
+                context.selected_pooch_id = conjured.id
+                candidate_pooch_ids = context.extra_data.setdefault("candidate_pooch_ids", [])
+                if isinstance(candidate_pooch_ids, list) and conjured.id not in candidate_pooch_ids:
+                    candidate_pooch_ids.append(conjured.id)
+                if conjured.id not in context.affected_pooch_ids:
+                    context.affected_pooch_ids.append(conjured.id)
+                result.pooches_created.append(conjured.id)
+                result.pooches_affected.append(conjured.id)
+                if dest_key == "kennel":
+                    result.message = f"{conjured.name} was conjured and placed in {kennel_name}!"
+                else:
+                    result.message = f"{conjured.name} was conjured!"
+                save_as = parameters.get("save_as")
+                if isinstance(save_as, str) and save_as:
+                    context.extra_data[save_as] = {"pooch_ids": [conjured.id]}
+
+        elif action_type == "sacrifice_pooch":
+            pooch_ids = await _get_target_pooch_ids(target_type, selector, parameters)
+            value_multiplier = parameters.get("value_multiplier")
+            multiplier = float(value_multiplier) if isinstance(value_multiplier, (int, float)) else 1.0
+            for pooch_id in pooch_ids:
+                pooch = await get_pooch_by_id(pooch_id)
+                if pooch is None or not pooch.alive:
+                    continue
+                value = round((await get_pooch_bloodskull_value(pooch_id)) * multiplier)
+                await give_bloodskulls_to_owner(owner_discord_id, value)
+                await give_bones_to_owner(owner_discord_id, 1)
+                await set_pooch_dead(pooch_id)
+                await remove_pooch_from_kennel(pooch_id)
+                await damn_pooch(pooch_id)
+                result.bloodskulls_changed += value
+                result.pooches_killed.append(pooch_id)
+            if result.pooches_killed:
+                count = len(result.pooches_killed)
+                result.message = (
+                    "A pooch has been sacrificed!" if count == 1 else f"{count} pooches have been sacrificed!"
+                )
 
         else:
             logger.warning(f"Unknown action type: {action_type}")
@@ -1489,7 +1796,10 @@ async def _execute_event_actions(
 
 
 async def _create_and_execute_event(
-    owner_discord_id: int, event: EventDB, rng: random.Random
+    owner_discord_id: int,
+    event: EventDB,
+    rng: random.Random,
+    inherited_slots: Optional[dict] = None,
 ) -> Optional[TriggeredOwnerEvent]:
     """
     Create an active event and execute it if it doesn't require a response.
@@ -1512,6 +1822,8 @@ async def _create_and_execute_event(
     """
 
     context = await _create_event_context(owner_discord_id, event, rng)
+    if inherited_slots:
+        context.extra_data.update(inherited_slots)
 
     expires_at = None
     if event.requires_response:
@@ -1623,7 +1935,10 @@ async def trigger_random_event(
 
 
 async def trigger_specific_event(
-    owner_discord_id: int, event_id: int, rng: Optional[random.Random] = None
+    owner_discord_id: int,
+    event_id: int,
+    rng: Optional[random.Random] = None,
+    inherited_slots: Optional[dict] = None,
 ) -> Optional[TriggeredOwnerEvent]:
     """
     Trigger a specific event for an owner (for testing or admin purposes).
@@ -1653,7 +1968,7 @@ async def trigger_specific_event(
         logger.warning(f"OwnerEvent {event_id} not found")
         return None
 
-    return await _create_and_execute_event(owner_discord_id, event, rng)
+    return await _create_and_execute_event(owner_discord_id, event, rng, inherited_slots=inherited_slots)
 
 
 async def trigger_event_by_name(

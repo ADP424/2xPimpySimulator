@@ -777,16 +777,29 @@ An optional integer column (default: `1`) that controls how many times in a row 
 | `modify_bloodskulls` | `owner` | Adjusts the owner's bloodskulls |
 | `create_pooch` | `owner`, `kennel` | Creates a new pooch for the owner |
 | `clone_pooch` | `pooch`, `kennel`, `owner` | Duplicates an existing pooch |
-| `start_event` | `owner` | Triggers another event |
-| `modify_pooch_health` | `pooch`, `kennel`, `owner` | Modifies base health |
+| `conjure_pooch` | `owner` | Conjures a pooch via the ritual without charging bloodskulls |
+| `start_event` | `owner` | Triggers another owner event |
+| `start_stray_event` | `owner` | Triggers a stray event on one of the owner's servers |
+| `modify_base_health` | `pooch`, `kennel`, `owner` | Modifies base health (alias: `modify_pooch_health`) |
 | `modify_pooch_age` | `pooch`, `kennel`, `owner` | Modifies age |
+| `modify_strength` | `pooch`, `kennel`, `owner` | Modifies strength stat |
+| `modify_cuteness` | `pooch`, `kennel`, `owner` | Modifies cuteness stat |
+| `modify_fluffiness` | `pooch`, `kennel`, `owner` | Modifies fluffiness stat |
+| `modify_intelligence` | `pooch`, `kennel`, `owner` | Modifies intelligence stat |
+| `modify_dexterity` | `pooch`, `kennel`, `owner` | Modifies dexterity stat |
+| `modify_fertility` | `pooch`, `kennel`, `owner` | Modifies fertility stat |
+| `modify_aggressiveness` | `pooch`, `kennel`, `owner` | Modifies aggressiveness stat |
 | `kill_pooch` | `pooch`, `kennel`, `owner` | Kills the pooch(es) |
+| `damn_pooch` | `pooch`, `kennel`, `owner` | Sends a pooch to Hell without reward |
+| `revive_pooch` | `pooch`, `kennel`, `owner` | Revives a dead or damned pooch and routes it to a destination |
+| `sacrifice_pooch` | `pooch`, `kennel`, `owner` | Sacrifices a pooch to Hell, granting bloodskulls |
 | `add_mutation` | `pooch`, `kennel`, `owner` | Adds a mutation |
 | `remove_mutation` | `pooch`, `kennel`, `owner` | Removes a mutation |
 | `add_breed` | `pooch`, `kennel`, `owner` | Adds a breed weight |
+| `remove_breed` | `pooch`, `kennel`, `owner` | Removes a breed |
 | `transfer_pooch` | `pooch`, `kennel`, `owner` | Transfers to another owner or vendor |
 | `rename_pooch` | `pooch`, `kennel`, `owner` | Renames the pooch |
-| `set_breeding_cooldown` | `pooch`, `kennel`, `owner` | Sets breeding cooldown |
+| `modify_breeding_cooldown` | `pooch`, `kennel`, `owner` | Modifies or sets breeding cooldown (alias: `set_breeding_cooldown`) |
 | `modify_kennel_capacity` | `kennel`, `owner` | Adjusts the kennel's pooch limit |
 | `breed_pooches` | `owner`, `kennel` | Breeds two of the owner's pooches together |
 | `sell_pooch` | `pooch`, `kennel`, `owner` | Sells a pooch, crediting the owner |
@@ -880,6 +893,13 @@ Instead of resolving targets via `selector`/`filter`, pull IDs directly from the
 
 Slots persist for the lifetime of the event, and you can use them between phases (for instance, using `"save_as": "pooch"` in the event-level action list, then using `"use_saved": "pooch"` in an outcome-level action list).
 
+**Named slots are always forwarded to follow-up events triggered by `start_event`.** The mechanism differs by `requires_response`:
+
+- **Instant follow-up events** (`requires_response: false`) run inline within the same context object — all slots are shared bidirectionally.
+- **Response-required follow-up events** (`requires_response: true`) run as independent active events (separate DB record, own expiry timer). All named slots from the triggering event are copied into the new event's context at creation time, so `use_saved` works in the follow-up. Slots written *by* the follow-up are not visible back in the original event.
+
+Internal runtime keys (`candidate_pooch_ids`, `candidate_kennel_ids`, `suppressed_option_ids`, and any key starting with `_`) are never forwarded.
+
 ---
 
 ### Action Parameter Reference
@@ -918,7 +938,9 @@ Slots persist for the lifetime of the event, and you can use them between phases
 
 ---
 
-#### `modify_pooch_health` / `modify_pooch_age`
+#### `modify_base_health` / `modify_pooch_age`
+
+> `modify_pooch_health` is a supported alias for `modify_base_health`.
 
 ```json
 {
@@ -976,6 +998,77 @@ Slots persist for the lifetime of the event, and you can use them between phases
 
 ---
 
+#### `modify_strength` / `modify_cuteness` / `modify_fluffiness` / `modify_intelligence` / `modify_dexterity` / `modify_fertility` / `modify_aggressiveness`
+
+Modifies one of the seven pooch stats. All support the same parameters as `modify_base_health`.
+
+| Parameter | Type | Required | Notes |
+|-----------|------|----------|-------|
+| `selector` | string | yes (except `owner`) | `"random"`, `"selected"`, `"all"`, `"random_exclude"`, or `"all_exclude"` |
+| `count` | int | no | |
+| `filter` / `pooch_filter` | object | no | |
+| `amount` | int | one of | Fixed delta; or absolute value when `mode` is `"set"` |
+| `min_amount` / `max_amount` | int | one of | Random delta in range |
+| `exclude_amount` | list[int] | no | |
+| `roll_once` | bool | no | Roll once for all targets |
+| `mode` | string | no | `"modify"` (default) or `"set"` |
+| `save_as` / `use_saved` | string | no | Named slots |
+
+---
+
+#### `damn_pooch`
+
+Sends a pooch to Hell without any reward (unlike `sacrifice_pooch`). The pooch is killed and removed from its current location (kennel, stray pool, or graveyard) before being placed in Hell.
+
+| Parameter | Type | Required | Notes |
+|-----------|------|----------|-------|
+| `selector` | string | yes (except `owner`) | `"random"`, `"selected"`, `"all"`, `"random_exclude"`, or `"all_exclude"` |
+| `count` | int | no | |
+| `filter` / `pooch_filter` | object | no | |
+| `save_as` / `use_saved` | string | no | Named slots — the damned pooch's ID is saved for later use (e.g. `revive_pooch`) |
+
+---
+
+#### `revive_pooch`
+
+Revives a dead or damned pooch, setting it back to alive, removing it from the graveyard or Hell, and routing it to a destination.
+
+| Parameter | Type | Required | Notes |
+|-----------|------|----------|-------|
+| `selector` | string | yes (except `owner`) | `"random"`, `"selected"`, `"all"`, `"random_exclude"`, or `"all_exclude"` |
+| `count` | int | no | |
+| `filter` / `pooch_filter` | object | no | |
+| `destination` | string | no | Where to deliver the revived pooch — `"kennel"` (default), `"town"`, `"hell"`, `"graveyard"` |
+| `save_as` / `use_saved` | string | no | Named slots |
+
+---
+
+#### `sacrifice_pooch`
+
+Sacrifices a pooch to Hell. The owner receives bloodskulls equal to the pooch's bloodskull value (optionally multiplied), plus 1 bone. The pooch is killed and damned.
+
+| Parameter | Type | Required | Notes |
+|-----------|------|----------|-------|
+| `selector` | string | yes (except `owner`) | `"random"`, `"selected"`, `"all"`, `"random_exclude"`, or `"all_exclude"` |
+| `count` | int | no | |
+| `filter` / `pooch_filter` | object | no | |
+| `value_multiplier` | float | no | Multiply bloodskulls received by this factor (default: `1.0`) |
+| `save_as` / `use_saved` | string | no | Named slots |
+
+---
+
+#### `conjure_pooch`
+
+Creates a pooch via the conjure ritual without charging bloodskulls. Use separate `modify_bloodskulls` actions to handle any cost. Adds the Mark of the Beast mutation to the conjured pooch automatically.
+
+| Parameter | Type | Required | Notes |
+|-----------|------|----------|-------|
+| `num_rolls` | int | no | Number of candidate pooches to generate; the best one by bloodskull value is kept (default: `1`) |
+| `destination` | string | no | Where to deliver the conjured pooch — same values as `create_pooch` (default: `"kennel"`) |
+| `save_as` | string | no | Save the conjured pooch's ID into a named slot |
+
+---
+
 #### `kill_pooch`
 
 ```json
@@ -1019,7 +1112,13 @@ Slots persist for the lifetime of the event, and you can use them between phases
 | `selector` | string | yes (except `owner`) | `"random"`, `"selected"`, `"all"`, `"random_exclude"`, or `"all_exclude"` |
 | `count` | int | no | Number to pick (`"random"`) or exclude (`"random_exclude"`) |
 | `filter` / `pooch_filter` | object | no | Filters |
-| `mutation_id` | int | no | Internal mutation ID to add/remove — omit for a random mutation |
+| `mutation` | string | no | Mutation name — omit for a random mutation |
+| `mutation_id` | int | no | Internal mutation ID — omit for a random mutation (prefer `mutation` over this) |
+| `min_rarity` / `max_rarity` | string | no | Filter random mutation pool by rarity — values: `common`, `uncommon`, `novel`, `rare`, `unprecedented`, `remarkable`, `extraordinary`, `unique` |
+| `min_health_impact` / `max_health_impact` | string | no | Filter random mutation pool by health impact — values: `instant_death`, `fatal`, `brutal`, `severe`, `unhealthy`, `harmful`, `neutral`, `helpful`, `healthy`, `great`, `fantastic`, `brilliant`, `immortality` |
+| `save_as` / `use_saved` | string | no | Named slots |
+
+Rarity and health_impact filters only apply when no specific `mutation` / `mutation_id` is given (i.e. when selecting randomly).
 
 ---
 
@@ -1031,7 +1130,26 @@ Slots persist for the lifetime of the event, and you can use them between phases
 | `count` | int | no | Number to pick or exclude |
 | `filter` / `pooch_filter` | object | no | |
 | `breed` | string | no | Breed name — omit for a random breed |
-| `weight` | float | no | Breed weight, must be > 0 (default: 0.5) |
+| `weight` | float | no | Breed weight, must be > 0 (default: `0.5`) |
+| `min_rarity` / `max_rarity` | string | no | Filter random breed pool by rarity — values: `common`, `uncommon`, `novel`, `rare`, `unprecedented`, `remarkable`, `extraordinary`, `unique` |
+| `save_as` / `use_saved` | string | no | Named slots |
+
+Rarity filters only apply when no specific `breed` is given.
+
+---
+
+#### `remove_breed`
+
+Removes a breed from a pooch. If no breed is specified, removes a random breed from the pooch.
+
+| Parameter | Type | Required | Notes |
+|-----------|------|----------|-------|
+| `selector` | string | yes (except `owner`) | `"random"`, `"selected"`, `"all"`, `"random_exclude"`, or `"all_exclude"` |
+| `count` | int | no | Number to pick or exclude |
+| `filter` / `pooch_filter` | object | no | |
+| `breed_id` | int | no | Internal breed ID to remove — omit for a random breed |
+| `min_rarity` / `max_rarity` | string | no | Filter random breed removal by rarity (same values as `add_breed`) |
+| `save_as` / `use_saved` | string | no | Named slots |
 
 ---
 
@@ -1176,14 +1294,22 @@ Examples:
 
 ---
 
-#### `set_breeding_cooldown`
+#### `modify_breeding_cooldown`
+
+Modifies or sets breeding cooldown. The legacy name `set_breeding_cooldown` still works as an alias.
 
 | Parameter | Type | Required | Notes |
 |-----------|------|----------|-------|
 | `selector` | string | yes (except `owner`) | `"random"`, `"selected"`, `"all"`, `"random_exclude"`, or `"all_exclude"` |
 | `count` | int | no | Number to pick or exclude |
 | `filter` / `pooch_filter` | object | no | |
-| `cooldown` | int or `"base"` | yes | Days to set; `"base"` resets to the pooch's mutation-adjusted base cooldown |
+| `amount` | int | one of | Fixed delta; or absolute value when `mode` is `"set"` |
+| `min_amount` / `max_amount` | int | one of | Random delta in range |
+| `exclude_amount` | list[int] | no | Values to exclude from the random range |
+| `roll_once` | bool | no | Roll once for all targets |
+| `mode` | string | no | `"modify"` (default) — add/subtract the amount; `"set"` — set to exactly `amount` (clamped to ≥ 0) |
+| `cooldown` | int or `"base"` | legacy | Legacy key from `set_breeding_cooldown` — sets cooldown to this value. `"base"` resets to the mutation-adjusted base. Use `amount` + `mode: "set"` instead. |
+| `save_as` / `use_saved` | string | no | Named slots |
 
 ---
 
@@ -1193,6 +1319,18 @@ Examples:
 |-----------|------|----------|-------|
 | `event` | string | one of | Event name to trigger |
 | `random_event` | bool | one of | If true, trigger a random eligible event instead |
+
+Named slots from the current event are always forwarded to the triggered event (see Named Slots section for details on what is and isn't forwarded).
+
+---
+
+#### `start_stray_event`
+
+Triggers a stray event on one of the owner's servers (chosen randomly). The stray event runs immediately and its results are merged into the current owner event result. Named slots are **not** shared between the owner event and the stray event (they use separate contexts).
+
+| Parameter | Type | Required | Notes |
+|-----------|------|----------|-------|
+| `event` | string | yes | Name of the stray event to trigger |
 
 ---
 

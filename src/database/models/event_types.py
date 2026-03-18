@@ -13,19 +13,34 @@ EventEntitySelector: TypeAlias = Literal["selected", "random", "all", "random_ex
 EventActionType: TypeAlias = Literal[
     "modify_money",
     "modify_bloodskulls",
-    "modify_pooch_health",
+    "modify_base_health",
+    "modify_pooch_health",  # legacy alias for modify_base_health
     "modify_pooch_age",
+    "modify_strength",
+    "modify_cuteness",
+    "modify_fluffiness",
+    "modify_intelligence",
+    "modify_dexterity",
+    "modify_fertility",
+    "modify_aggressiveness",
+    "modify_breeding_cooldown",
+    "set_breeding_cooldown",  # legacy alias for modify_breeding_cooldown
     "kill_pooch",
+    "damn_pooch",
+    "revive_pooch",
+    "conjure_pooch",
+    "sacrifice_pooch",
     "add_mutation",
     "remove_mutation",
     "add_breed",
+    "remove_breed",
     "transfer_pooch",
     "create_pooch",
     "clone_pooch",
     "modify_kennel_capacity",
     "rename_pooch",
-    "set_breeding_cooldown",
     "start_event",
+    "start_stray_event",
     "breed_pooches",
     "sell_pooch",
     "buy_pooch",
@@ -37,16 +52,28 @@ EventActionType: TypeAlias = Literal[
 ]
 
 StrayEventActionType: TypeAlias = Literal[
-    "modify_pooch_health",
+    "modify_base_health",
+    "modify_pooch_health",  # legacy alias for modify_base_health
     "modify_pooch_age",
+    "modify_strength",
+    "modify_cuteness",
+    "modify_fluffiness",
+    "modify_intelligence",
+    "modify_dexterity",
+    "modify_fertility",
+    "modify_aggressiveness",
+    "modify_breeding_cooldown",
+    "set_breeding_cooldown",  # legacy alias for modify_breeding_cooldown
     "kill_pooch",
+    "damn_pooch",
+    "revive_pooch",
     "add_mutation",
     "remove_mutation",
     "add_breed",
+    "remove_breed",
     "create_pooch",
     "clone_pooch",
     "rename_pooch",
-    "set_breeding_cooldown",
     "breed_pooches",
     "enter_kennel",
     "enter_vendor_stock",
@@ -213,12 +240,21 @@ class EventAmountParameters(EventActionBaseParameters, total=False):
 class EventMutationParameters(EventActionBaseParameters, total=False):
     mutation: str
     mutation_id: int
+    # Rarity filter (for random selection only — ignored when mutation_id is specified)
+    min_rarity: str  # e.g. "common", "rare", "unique"
+    max_rarity: str
+    # Health impact filter (for random selection only)
+    min_health_impact: str  # e.g. "instant_death", "neutral", "immortality"
+    max_health_impact: str
 
 
 class EventBreedParameters(EventActionBaseParameters, total=False):
     breed: str
     breed_id: int
     weight: float
+    # Rarity filter (for random selection only — ignored when breed_id is specified)
+    min_rarity: str  # e.g. "common", "rare", "unique"
+    max_rarity: str
 
 
 class EventTransferPoochParameters(EventActionBaseParameters, total=False):
@@ -266,8 +302,32 @@ class EventRenamePoochParameters(EventActionBaseParameters, total=False):
     name: str
 
 
-class EventSetBreedingCooldownParameters(EventActionBaseParameters, total=False):
-    cooldown: int | Literal["base"]
+class EventModifyBreedingCooldownParameters(EventActionBaseParameters, total=False):
+    cooldown: int | Literal["base"]  # "base" resets to the base cooldown constant; only meaningful with mode="set"
+    mode: Literal["modify", "set"]  # default "modify"
+    amount: int
+    min_amount: int
+    max_amount: int
+    roll_once: bool
+
+
+# Legacy alias
+EventSetBreedingCooldownParameters = EventModifyBreedingCooldownParameters
+
+
+class EventRevivePoochParameters(EventActionBaseParameters, total=False):
+    destination: str  # "kennel" | "graveyard" | "hell" | "town"
+    save_as: str
+
+
+class EventConjurePoochParameters(TypedDict, total=False):
+    num_rolls: int  # number of rolls to make (highest value kept), default 1
+    destination: str  # "kennel" | "graveyard" | "hell" | "town"
+    save_as: str
+
+
+class EventSacrificePoochParameters(EventActionBaseParameters, total=False):
+    value_multiplier: float  # multiply bloodskulls received by this amount
 
 
 class EventStartEventParameters(TypedDict, total=False):
@@ -315,11 +375,14 @@ EventActionParameters: TypeAlias = (
     | EventCreatePoochParameters
     | EventClonePoochParameters
     | EventRenamePoochParameters
-    | EventSetBreedingCooldownParameters
+    | EventModifyBreedingCooldownParameters
     | EventStartEventParameters
     | EventBreedPoochesParameters
     | EventSellPoochParameters
     | EventBuyPoochParameters
+    | EventRevivePoochParameters
+    | EventConjurePoochParameters
+    | EventSacrificePoochParameters
 )
 
 

@@ -90,22 +90,26 @@ async def get_pooch_bloodskull_value(pooch_id: int) -> int:
     return max(round(value), 0)
 
 
-def get_summon_pooch_price(num_rolls: int) -> int:
+def get_conjure_pooch_price(num_rolls: int) -> int:
     """
-    Return the bloodskull price to summon a pooch with `num_rolls` rolls.
+    Return the bloodskull price to conjure a pooch with `num_rolls` rolls.
 
     Parameters
     ----------
     num_rolls: int
-        The number of rolls being made during the pooch summoning. Minimum of 1.
+        The number of rolls being made during the pooch conjuring. Minimum of 1.
 
     Returns
     -------
     int
-        The number of bloodskulls the summon will cost.
+        The number of bloodskulls the conjure will cost.
     """
 
     return BASE_POOCH_SUMMON_PRICE + BLOODSKULL_PRICE_PER_POOCH_SUMMON_ROLL * max(num_rolls, 1)
+
+
+# Backwards-compat alias used by web UI routes (do not remove)
+get_summon_pooch_price = get_conjure_pooch_price
 
 
 async def list_hell_pooches() -> list[Pooch]:
@@ -168,22 +172,22 @@ async def sacrifice_pooch(owner_discord_id: int, pooch_id: int) -> tuple[bool, s
     return (True, f"You sacrificed {pooch.name} for {value} bloodskulls... 𖤐")
 
 
-async def summon_pooch(owner_discord_id: int, num_rolls: int = 1, rng_seed: Optional[int] = None) -> tuple[bool, str]:
+async def conjure_pooch(owner_discord_id: int, num_rolls: int = 1, rng_seed: Optional[int] = None) -> tuple[bool, str]:
     """
-    Have the given owner summon a pooch for bloodskulls.
+    Have the given owner conjure a pooch for bloodskulls.
     Fails with a specific error message if:
     - `num_rolls` is less than 1.
     - The owner doesn't exist.
-    - The owner can't afford the summon price.
+    - The owner can't afford the conjure price.
     - The owner doesn't have space in any of their kennels.
 
     Parameters
     ----------
     owner_discord_id: int
-        The Discord ID of the owner summoning the pooch.
+        The Discord ID of the owner conjuring the pooch.
 
     num_rolls: int, default : 1
-        The number of rolls to make for the summoned pooch (the highest value one is kept). Minimum of 1.
+        The number of rolls to make for the conjured pooch (the highest value one is kept). Minimum of 1.
 
     rng_seed: int, optional
         The int to seed `random.Random` with for determining random values (like the pooch's breeds and stats).
@@ -199,13 +203,13 @@ async def summon_pooch(owner_discord_id: int, num_rolls: int = 1, rng_seed: Opti
     if num_rolls < 1:
         return (False, "You need to make at least 1 roll.")
 
-    price = get_summon_pooch_price(num_rolls)
+    price = get_conjure_pooch_price(num_rolls)
 
     owner = await get_owner_by_discord_id(owner_discord_id)
     if owner is None:
         return (False, "You need to visit /home first to set up your account.")
     if owner.bloodskulls < price:
-        return (False, f"That summon costs {price} bloodskulls but only have {owner.bloodskulls}.")
+        return (False, f"That conjure costs {price} bloodskulls but only have {owner.bloodskulls}.")
 
     kennels = await list_kennels_for_owner(owner_discord_id)
     target_kennel = None
@@ -218,7 +222,7 @@ async def summon_pooch(owner_discord_id: int, num_rolls: int = 1, rng_seed: Opti
     if target_kennel is None:
         return (False, "You don't have any kennel space available.")
 
-    summon_pooch = None
+    conjured_pooch = None
     for _ in range(num_rolls):
         pooch = await create_pooch(
             owner_discord_id=owner.discord_id,
@@ -231,26 +235,31 @@ async def summon_pooch(owner_discord_id: int, num_rolls: int = 1, rng_seed: Opti
         for _ in range(num_breeds):
             await add_breed_to_pooch(pooch.id, weight=(1.0 / num_breeds), from_ritual=True)
 
-        if summon_pooch is None or (
-            await get_pooch_bloodskull_value(pooch.id) > await get_pooch_bloodskull_value(summon_pooch.id)
+        if conjured_pooch is None or (
+            await get_pooch_bloodskull_value(pooch.id) > await get_pooch_bloodskull_value(conjured_pooch.id)
         ):
-            if summon_pooch is not None:
-                await delete_pooch(summon_pooch.id)
-            summon_pooch = pooch
+            if conjured_pooch is not None:
+                await delete_pooch(conjured_pooch.id)
+            conjured_pooch = pooch
         else:
             await delete_pooch(pooch.id)
 
     await give_bloodskulls_to_owner(owner_discord_id, -price)
-    await add_pooch_to_kennel(target_kennel.id, summon_pooch.id)
+    await add_pooch_to_kennel(target_kennel.id, conjured_pooch.id)
 
     mark = await get_mutation_by_name("Mark of the Beast")
     if mark is not None:
-        await add_mutation_to_pooch(summon_pooch.id, mutation_id=mark.id)
+        await add_mutation_to_pooch(conjured_pooch.id, mutation_id=mark.id)
 
     return (
         True,
         (
-            f"You summoned {summon_pooch.name} ({await get_pooch_bloodskull_value(summon_pooch.id)} bloodskull value) "
+            f"You conjured {conjured_pooch.name} "
+            f"({await get_pooch_bloodskull_value(conjured_pooch.id)} bloodskull value) "
             f"for {price} bloodskulls... 𖤐"
         ),
     )
+
+
+# Backwards-compat alias used by web UI routes (do not remove)
+summon_pooch = conjure_pooch

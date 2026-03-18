@@ -45,6 +45,26 @@ from .models import (
 from .session import session_scope
 from .utils import weighted_choice
 
+# Ordered rarity values from most common to most rare
+_RARITY_ORDER = ["common", "uncommon", "novel", "rare", "unprecedented", "remarkable", "extraordinary", "unique"]
+
+# Ordered health_impact values from most negative to most positive
+_HEALTH_IMPACT_ORDER = [
+    "instant_death",
+    "fatal",
+    "brutal",
+    "severe",
+    "unhealthy",
+    "harmful",
+    "neutral",
+    "helpful",
+    "healthy",
+    "great",
+    "fantastic",
+    "brilliant",
+    "immortality",
+]
+
 
 async def add_breed_to_pooch(
     pooch_id: int,
@@ -53,6 +73,8 @@ async def add_breed_to_pooch(
     rng: Optional[random.Random] = None,
     from_vendor: bool = False,
     from_ritual: bool = False,
+    min_rarity: Optional[str] = None,
+    max_rarity: Optional[str] = None,
 ) -> Optional[PoochBreed]:
     """
     Add the breed with the given ID to the pooch with the given ID.
@@ -80,6 +102,13 @@ async def add_breed_to_pooch(
         Specify whether this breed is being added from a bloodskull ritual or not.
         This matters because some breeds can't show up on pooches created by sacrificial rituals.
 
+    min_rarity: str, optional
+        The minimum rarity to allow when choosing randomly (inclusive).
+        Uses rarity order: common → uncommon → novel → rare → unprecedented → remarkable → extraordinary → unique.
+
+    max_rarity: str, optional
+        The maximum rarity to allow when choosing randomly (inclusive).
+
     Returns
     -------
     PoochBreed, optional
@@ -101,6 +130,14 @@ async def add_breed_to_pooch(
                 breed_query = breed_query.where(not_(Breed.parameters.contains({"sold_by_vendors": False})))
             if from_ritual:
                 breed_query = breed_query.where(not_(Breed.parameters.contains({"born_from_ritual": False})))
+            if min_rarity is not None and min_rarity.lower() in _RARITY_ORDER:
+                min_idx = _RARITY_ORDER.index(min_rarity.lower())
+                allowed = _RARITY_ORDER[min_idx:]
+                breed_query = breed_query.where(Breed.rarity.in_(allowed))
+            if max_rarity is not None and max_rarity.lower() in _RARITY_ORDER:
+                max_idx = _RARITY_ORDER.index(max_rarity.lower())
+                allowed = _RARITY_ORDER[: max_idx + 1]
+                breed_query = breed_query.where(Breed.rarity.in_(allowed))
 
             breed_response = await session.execute(breed_query)
             rows = [(breed, breed_weight) for breed, breed_weight in breed_response.tuples().all()]
@@ -149,6 +186,10 @@ async def add_mutation_to_pooch(
     rng: Optional[random.Random] = None,
     from_vendor: bool = False,
     from_ritual: bool = False,
+    min_rarity: Optional[str] = None,
+    max_rarity: Optional[str] = None,
+    min_health_impact: Optional[str] = None,
+    max_health_impact: Optional[str] = None,
 ) -> Optional[PoochMutation]:
     """
     Add the mutation with the given ID to the pooch with the given ID.
@@ -172,6 +213,20 @@ async def add_mutation_to_pooch(
     from_ritual: bool, default : False
         Specify whether this mutation is being added from a bloodskull ritual or not.
         This matters because some mutations can't show up on pooches created by sacrificial rituals.
+
+    min_rarity: str, optional
+        Minimum rarity to allow when choosing randomly (inclusive).
+
+    max_rarity: str, optional
+        Maximum rarity to allow when choosing randomly (inclusive).
+
+    min_health_impact: str, optional
+        Minimum health_impact to allow when choosing randomly (inclusive).
+        Order: instant_death → fatal → brutal → severe → unhealthy → harmful → neutral →
+               helpful → healthy → great → fantastic → brilliant → immortality.
+
+    max_health_impact: str, optional
+        Maximum health_impact to allow when choosing randomly (inclusive).
 
     Returns
     -------
@@ -203,6 +258,18 @@ async def add_mutation_to_pooch(
                 mutation_query = mutation_query.where(not_(Mutation.parameters.contains({"sold_by_vendors": False})))
             if from_ritual:
                 mutation_query = mutation_query.where(not_(Mutation.parameters.contains({"born_from_ritual": False})))
+            if min_rarity is not None and min_rarity.lower() in _RARITY_ORDER:
+                min_idx = _RARITY_ORDER.index(min_rarity.lower())
+                mutation_query = mutation_query.where(Mutation.rarity.in_(_RARITY_ORDER[min_idx:]))
+            if max_rarity is not None and max_rarity.lower() in _RARITY_ORDER:
+                max_idx = _RARITY_ORDER.index(max_rarity.lower())
+                mutation_query = mutation_query.where(Mutation.rarity.in_(_RARITY_ORDER[: max_idx + 1]))
+            if min_health_impact is not None and min_health_impact.lower() in _HEALTH_IMPACT_ORDER:
+                min_idx = _HEALTH_IMPACT_ORDER.index(min_health_impact.lower())
+                mutation_query = mutation_query.where(Mutation.health_impact.in_(_HEALTH_IMPACT_ORDER[min_idx:]))
+            if max_health_impact is not None and max_health_impact.lower() in _HEALTH_IMPACT_ORDER:
+                max_idx = _HEALTH_IMPACT_ORDER.index(max_health_impact.lower())
+                mutation_query = mutation_query.where(Mutation.health_impact.in_(_HEALTH_IMPACT_ORDER[: max_idx + 1]))
 
             mutation_response = await session.execute(mutation_query)
             rows = [(mutation, weight) for mutation, weight in mutation_response.tuples().all()]
@@ -782,7 +849,7 @@ async def create_vendor(
 
 async def damn_pooch(pooch_id: int) -> Optional[HellPooch]:
     """
-    Move the given pooch to Hell.
+    Move the given pooch to Hell, removing it from any kennel, stray pool, or graveyard first.
 
     Parameters
     ----------
@@ -800,11 +867,72 @@ async def damn_pooch(pooch_id: int) -> Optional[HellPooch]:
         return None
 
     async with session_scope() as session:
-        hell_pooch = HellPooch(pooch_id=pooch.id)
-        session.add(hell_pooch)
+        # Remove from kennel if present
+        kennel_row = (
+            await session.execute(select(KennelPooch).where(KennelPooch.pooch_id == pooch_id))
+        ).scalar_one_or_none()
+        if kennel_row is not None:
+            await session.delete(kennel_row)
+
+        # Remove from strays if present
+        stray_row = await session.get(StrayPooch, pooch_id)
+        if stray_row is not None:
+            await session.delete(stray_row)
+
+        # Remove from graveyard if present
+        grave_row = (
+            await session.execute(select(GraveyardPooch).where(GraveyardPooch.pooch_id == pooch_id))
+        ).scalar_one_or_none()
+        if grave_row is not None:
+            await session.delete(grave_row)
+
+        # Only add to hell if not already there
+        existing_hell = await session.get(HellPooch, pooch_id)
+        if existing_hell is None:
+            hell_pooch = HellPooch(pooch_id=pooch.id)
+            session.add(hell_pooch)
+            await session.flush()
+            return hell_pooch
+
+    return existing_hell
+
+
+async def revive_pooch(pooch_id: int) -> Optional[Pooch]:
+    """
+    Revive a pooch — sets alive=True and removes it from hell or graveyard if present.
+    Does not place the pooch anywhere; the caller is responsible for routing.
+
+    Parameters
+    ----------
+    pooch_id: int
+        The ID of the pooch to revive.
+
+    Returns
+    -------
+    Pooch, optional
+        The updated Pooch ORM object, or None if the pooch wasn't found.
+    """
+
+    async with session_scope() as session:
+        pooch = (await session.execute(select(Pooch).where(Pooch.id == pooch_id))).scalar_one_or_none()
+        if pooch is None:
+            return None
+
+        pooch.alive = True
+
+        hell_row = await session.get(HellPooch, pooch_id)
+        if hell_row is not None:
+            await session.delete(hell_row)
+
+        grave_row = (
+            await session.execute(select(GraveyardPooch).where(GraveyardPooch.pooch_id == pooch_id))
+        ).scalar_one_or_none()
+        if grave_row is not None:
+            await session.delete(grave_row)
+
         await session.flush()
 
-    return hell_pooch
+    return pooch
 
 
 async def set_pooch_parentage(child_id: int, father_id: int | None, mother_id: int | None) -> PoochParentage:

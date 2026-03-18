@@ -17,16 +17,14 @@
     },
     "actions": [
         {
-            "action_type": "damn_pooch", // TODO
+            "action_type": "damn_pooch",
             "target_type": "pooch",
             "parameters": {
                 "selector": "random",
-                "filter": [
-                    { 
-                        "is_alive": true,
-                        "has_all_mutations": ["Haunted by Flames"]
-                    }
-                ],
+                "filter": {
+                    "is_alive": true,
+                    "has_all_mutations": ["Haunted by Flames"]
+                },
                 "save_as": "damned_pooch"
             }
         }

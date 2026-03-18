@@ -42,6 +42,8 @@
 | Clone your pooches by spending bloodskulls (better breeds = more expensive)                                                   | 5      |
 | Spend bloodskulls to reset pooch age (but at some EVIL cost)                                                                  | 5      |
 | Spend a LOT of bloodskulls to make your pooch IMMORTAL (but infertile, like a vampire, also can't go out at night)            | 5      |
+| Change pooch's gender for bloodskulls                                                                                         | 5      |
+| Have lots of body parts, not just bloodskulls, each with different uses ? (frankenweenie)                                     | 21     |
 
 ## Diseases
 | Feature                                                                                                                       | Points |
@@ -83,12 +85,6 @@
 | ----------------------------------------------------------------------------------------------------------------------------- | ------ |
 | Vendors desire specific breeds (at least one of each rarity)                                                                  | 5      |
 | Fix exploit where you can buy and resell pooches between vendors (make vendors unable to sell what other vendors want)        | 5      |
-
-## Kennel Management
-| Feature                                                                                                                       | Points |
-| ----------------------------------------------------------------------------------------------------------------------------- | ------ |
-| Add ability to upgrade kennel slots (5 starting, +5 each tier, 20 max)                                                        | 3      |
-| Add ability to buy more kennels (limit of 5 total kennels)                                                                    | 3      |
 
 ## Stat Management
 | Feature                                                                                                                       | Points |

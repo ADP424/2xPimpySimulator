@@ -9,6 +9,8 @@ from .manage_graveyard import (
     list_graveyard_pooches,
 )
 from .manage_hell import (
+    conjure_pooch,
+    get_conjure_pooch_price,
     get_pooch_bloodskull_value,
     get_summon_pooch_price,
     list_hell_pooches,
@@ -104,6 +106,8 @@ __all__ = [
     # Graveyard commands
     "list_graveyard_pooches",
     # Hell / ritual commands
+    "conjure_pooch",
+    "get_conjure_pooch_price",
     "get_pooch_bloodskull_value",
     "get_summon_pooch_price",
     "list_hell_pooches",

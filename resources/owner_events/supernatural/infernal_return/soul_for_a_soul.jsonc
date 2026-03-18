@@ -21,17 +21,18 @@
             },
             "actions": [
                 {
-                    "action_type": "damn_pooch", // TODO
+                    "action_type": "damn_pooch",
                     "target_type": "pooch",
                     "parameters": {
                         "selector": "random"
                     }
                 },
                 {
-                    "action_type": "???", // TODO: Action to fetch pooch out of Hell
+                    "action_type": "revive_pooch",
                     "target_type": "pooch",
                     "parameters": {
-                        "use_saved": "damned_pooch" // TODO: Make sure this works
+                        "use_saved": "damned_pooch",
+                        "destination": "kennel"
                     }
                 },
                 {
