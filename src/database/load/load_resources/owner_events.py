@@ -50,6 +50,7 @@ _OUTCOME_ALLOWED_KEYS = {
     "description",
     "message",
     "chance",
+    "stat_weights",
     "advanced_options",
     "actions",
 }
@@ -158,7 +159,7 @@ class _OwnerEventValidator(BaseEventValidator):
             return []
 
         validated: list[dict[str, Any]] = []
-        explicit_chances: list[float] = []
+        fixed_chances: list[float] = []
 
         for index, outcome in enumerate(outcomes):
             current_path = f"{outcomes_path}[{index}]"
@@ -172,26 +173,21 @@ class _OwnerEventValidator(BaseEventValidator):
             self._validate_optional_string(current_path, outcome, "message")
             self._validate_optional_json_object(current_path, outcome, "advanced_options")
             chance = self._validate_optional_probability(current_path, outcome, "chance")
-            if chance is not None:
-                explicit_chances.append(chance)
+            stat_weights = outcome.get("stat_weights", [])
+            self._validate_stat_weights(current_path, stat_weights)
+            # Only count as a fixed (reserved) chance if there are no stat_weights
+            if chance is not None and not stat_weights:
+                fixed_chances.append(chance)
             self._validate_actions_list(current_path, outcome.get("actions", []), "actions")
             validated.append(outcome)
 
-        if explicit_chances:
-            total = sum(explicit_chances)
-            all_explicit = len(explicit_chances) == len(validated)
-            if all_explicit:
-                if abs(total - 1.0) > 0.001:
-                    self.error(
-                        outcomes_path,
-                        f"all outcomes have explicit chances but they sum to {total:.4f} (must sum to 1.0)",
-                    )
-            else:
-                if total > 1.0 + 0.001:
-                    self.error(
-                        outcomes_path,
-                        f"explicit outcome chances sum to {total:.4f} which exceeds 1.0",
-                    )
+        if fixed_chances:
+            total = sum(fixed_chances)
+            if total > 1.0 + 0.001:
+                self.error(
+                    outcomes_path,
+                    f"fixed outcome chances sum to {total:.4f} which exceeds 1.0",
+                )
 
         return validated
 
@@ -296,6 +292,7 @@ async def load_owner_events():
                             description=str(outcome_data.get("description", "")),
                             message=str(outcome_data.get("message", "")),
                             chance=float(outcome_data["chance"]) if "chance" in outcome_data else None,
+                            stat_weights=list(outcome_data.get("stat_weights", [])),
                             advanced_options=outcome_data.get("advanced_options", {}),
                         )
                         session.add(outcome)

@@ -32,6 +32,7 @@ class EventOutcome(Base):
     chance: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     advanced_options: Mapped[EventOutcomeAdvancedOptions] = mapped_column(JSONB, nullable=False, default=dict)
+    stat_weights: Mapped[list] = mapped_column(JSONB, nullable=False, server_default="'[]'::jsonb")
 
     option: Mapped[EventOption] = relationship("EventOption", back_populates="outcomes")
     actions: Mapped[list[EventAction]] = relationship(

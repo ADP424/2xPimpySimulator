@@ -17,6 +17,7 @@ from .models import (
     Owner,
     OwnerServer,
     Pooch,
+    PoochBreed,
     PoochMutation,
     PoochParentage,
     RarityWeight,
@@ -401,6 +402,100 @@ async def get_pooch_health(pooch_id: int) -> Optional[int]:
         response = await session.execute(query)
 
     return response.scalar_one_or_none()
+
+
+async def _get_pooch_stat(pooch_id: int, stat: str) -> Optional[int]:
+    """
+    Return the effective value of a single stat for the given pooch, accounting for
+    mutation and breed `{stat}_add` / `{stat}_mult` parameters.
+
+    Add modifiers are summed first, then mult modifiers are applied. Mutation mults
+    multiply together; breed mults are weighted-averaged by the breed's relative weight
+    in the pooch. The final value is rounded to the nearest integer.
+    """
+
+    async with session_scope() as session:
+        pooch = await session.scalar(select(Pooch).where(Pooch.id == pooch_id))
+        if pooch is None:
+            return None
+
+        base: int = getattr(pooch, stat)
+
+        mutations = (
+            (
+                await session.execute(
+                    select(Mutation)
+                    .join(PoochMutation, PoochMutation.mutation_id == Mutation.id)
+                    .where(PoochMutation.pooch_id == pooch_id)
+                )
+            )
+            .scalars()
+            .all()
+        )
+
+        breed_rows = (
+            await session.execute(
+                select(Breed, PoochBreed.weight)
+                .join(PoochBreed, PoochBreed.breed_id == Breed.id)
+                .where(PoochBreed.pooch_id == pooch_id)
+            )
+        ).all()
+
+    total = float(base)
+
+    mut_add = sum(m.parameters.get(f"{stat}_add", 0) for m in mutations)
+    mut_mult = 1.0
+    for m in mutations:
+        mut_mult *= m.parameters.get(f"{stat}_mult", 1.0)
+    total = (total + mut_add) * mut_mult
+
+    total_weight = sum(w for _, w in breed_rows)
+    if total_weight > 0:
+        breed_add = sum(b.parameters.get(f"{stat}_add", 0) * (w / total_weight) for b, w in breed_rows)
+        breed_mult = sum(b.parameters.get(f"{stat}_mult", 1.0) * (w / total_weight) for b, w in breed_rows)
+        total = (total + breed_add) * breed_mult
+
+    return round(total)
+
+
+async def get_pooch_base_health(pooch_id: int) -> Optional[int]:
+    """Return the effective base health of the pooch, accounting for mutation/breed stat parameters."""
+    return await _get_pooch_stat(pooch_id, "base_health")
+
+
+async def get_pooch_strength(pooch_id: int) -> Optional[int]:
+    """Return the effective strength of the pooch, accounting for mutation/breed stat parameters."""
+    return await _get_pooch_stat(pooch_id, "strength")
+
+
+async def get_pooch_cuteness(pooch_id: int) -> Optional[int]:
+    """Return the effective cuteness of the pooch, accounting for mutation/breed stat parameters."""
+    return await _get_pooch_stat(pooch_id, "cuteness")
+
+
+async def get_pooch_fluffiness(pooch_id: int) -> Optional[int]:
+    """Return the effective fluffiness of the pooch, accounting for mutation/breed stat parameters."""
+    return await _get_pooch_stat(pooch_id, "fluffiness")
+
+
+async def get_pooch_intelligence(pooch_id: int) -> Optional[int]:
+    """Return the effective intelligence of the pooch, accounting for mutation/breed stat parameters."""
+    return await _get_pooch_stat(pooch_id, "intelligence")
+
+
+async def get_pooch_dexterity(pooch_id: int) -> Optional[int]:
+    """Return the effective dexterity of the pooch, accounting for mutation/breed stat parameters."""
+    return await _get_pooch_stat(pooch_id, "dexterity")
+
+
+async def get_pooch_fertility(pooch_id: int) -> Optional[int]:
+    """Return the effective fertility of the pooch, accounting for mutation/breed stat parameters."""
+    return await _get_pooch_stat(pooch_id, "fertility")
+
+
+async def get_pooch_aggressiveness(pooch_id: int) -> Optional[int]:
+    """Return the effective aggressiveness of the pooch, accounting for mutation/breed stat parameters."""
+    return await _get_pooch_stat(pooch_id, "aggressiveness")
 
 
 async def get_pooch_kennel(pooch_id: int) -> Optional[Kennel]:

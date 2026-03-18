@@ -4,6 +4,6 @@
     "description": "The Molossus is an extinct dog breed from Ancient Greece.",
     "rarity": "EXTRAORDINARY",
     "parameters": {
-        "sold_by_vendors": 0
+        "sold_by_vendors": false
     }
 }

@@ -31,8 +31,8 @@ from src.database import (
     list_vendors,
     remove_pooch_from_kennel,
     reset_begged_today,
+    reset_pooch_breeding_cooldown,
     reset_visited_park_today,
-    set_pooch_breeding_cooldown,
     set_pooch_dead,
 )
 from src.logger import get_logger
@@ -65,8 +65,6 @@ from .models import (
 
 if TYPE_CHECKING:
     from src.database.models import Mutation, Pooch
-
-from .utils import get_pooch_mutation_parameter_total
 
 logger = get_logger("game/change_day")
 
@@ -223,7 +221,7 @@ async def run_day_change(
 
             for pooch_mutation in pooch_mutations:
                 on_death: Optional[str] = pooch_mutation.parameters.get("on_death", "none").lower()
-                always_on_death = bool(pooch_mutation.parameters.get("on_death", 0))
+                always_on_death = bool(pooch_mutation.parameters.get("always_on_death", False))
                 on_death_chance: float = pooch_mutation.parameters.get("on_death_chance", 1.0)
 
                 if (
@@ -360,16 +358,8 @@ async def run_day_change(
                     **{stat: rng.randint(POOCH_STAT_RANGE[0], POOCH_STAT_RANGE[1]) for stat in POOCH_STATS},
                     rng=rng,
                 )
-                await set_pooch_breeding_cooldown(
-                    vendor_pooch.id,
-                    (
-                        max(
-                            POOCH_BREEDING_COOLDOWN
-                            + await get_pooch_mutation_parameter_total(vendor_pooch.id, "breeding_cooldown"),
-                            0,
-                        )
-                    )
-                    // 2,  # Make the breeding cooldown half to start with for vendor pooches
+                await reset_pooch_breeding_cooldown(
+                    vendor_pooch.id, base_cooldown=POOCH_BREEDING_COOLDOWN, multiplier=0.5
                 )
                 num_breeds = rng.randint(NUM_BREEDS_PER_VENDOR_POOCH_RANGE[0], NUM_BREEDS_PER_VENDOR_POOCH_RANGE[1])
                 for _ in range(num_breeds):
@@ -377,7 +367,7 @@ async def run_day_change(
                 for _ in range(
                     rng.randint(NUM_MUTATIONS_PER_VENDOR_POOCH_RANGE[0], NUM_MUTATIONS_PER_VENDOR_POOCH_RANGE[1])
                 ):
-                    await add_mutation_to_pooch(vendor_pooch.id)
+                    await add_mutation_to_pooch(vendor_pooch.id, from_vendor=True)
                 await add_pooch_to_vendor_stock(vendor.id, vendor_pooch.id)
     logger.info("Completed daily vendor restock.")
 

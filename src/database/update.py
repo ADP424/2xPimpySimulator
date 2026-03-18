@@ -4,12 +4,16 @@ from typing import Any, Optional
 
 from sqlalchemy import select, update
 
-from .constants import POOCH_HEALTH_LOSS_STARTING_AGE
+from .constants import POOCH_BREEDING_COOLDOWN, POOCH_HEALTH_LOSS_STARTING_AGE
 from .models import (
+    Breed,
     EventOccurrence,
     Kennel,
+    Mutation,
     Owner,
     Pooch,
+    PoochBreed,
+    PoochMutation,
     Server,
     ServerEventOccurrence,
     ServerEventParticipation,
@@ -78,7 +82,39 @@ async def tick_hourly_breeding_cooldowns(fertility_divisor: float, rng_seed: Opt
 
         decremented = 0
         for pooch in pooches:
-            chance = pooch.fertility / fertility_divisor
+            mutations = (
+                (
+                    await session.execute(
+                        select(Mutation)
+                        .join(PoochMutation, PoochMutation.mutation_id == Mutation.id)
+                        .where(PoochMutation.pooch_id == pooch.id)
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            breed_rows = (
+                await session.execute(
+                    select(Breed, PoochBreed.weight)
+                    .join(PoochBreed, PoochBreed.breed_id == Breed.id)
+                    .where(PoochBreed.pooch_id == pooch.id)
+                )
+            ).all()
+
+            effective_fertility = float(pooch.fertility)
+            mut_add = sum(m.parameters.get("fertility_add", 0) for m in mutations)
+            mut_mult = 1.0
+            for m in mutations:
+                mut_mult *= m.parameters.get("fertility_mult", 1.0)
+            effective_fertility = (effective_fertility + mut_add) * mut_mult
+
+            total_weight = sum(w for _, w in breed_rows)
+            if total_weight > 0:
+                breed_add = sum(b.parameters.get("fertility_add", 0) * (w / total_weight) for b, w in breed_rows)
+                breed_mult = sum(b.parameters.get("fertility_mult", 1.0) * (w / total_weight) for b, w in breed_rows)
+                effective_fertility = (effective_fertility + breed_add) * breed_mult
+
+            chance = round(effective_fertility) / fertility_divisor
             if rng.random() < chance:
                 pooch.breeding_cooldown = max(pooch.breeding_cooldown - 1, 0)
                 decremented += 1
@@ -661,6 +697,52 @@ async def set_pooch_breeding_cooldown(pooch_id: int, cooldown: int) -> Optional[
         if pooch is None:
             return None
         pooch.breeding_cooldown = max(cooldown, 0)
+
+    return pooch
+
+
+async def reset_pooch_breeding_cooldown(
+    pooch_id: int,
+    base_cooldown: int = POOCH_BREEDING_COOLDOWN,
+    multiplier: float = 1.0,
+) -> Optional[Pooch]:
+    """
+    Reset a pooch's breeding cooldown to its natural value, accounting for any mutation-based
+    adjustments to the cooldown. The final value is `base_cooldown + sum(breeding_cooldown params)`,
+    multiplied by `multiplier` and rounded to the nearest integer, clamped to a minimum of 0.
+
+    Parameters
+    ----------
+    pooch_id: int
+        The ID of the pooch whose cooldown to reset.
+
+    base_cooldown: int, default : `POOCH_BREEDING_COOLDOWN`
+        The base cooldown before mutation adjustments are applied.
+
+    multiplier: float, default : 1.0
+        A scalar applied to the final cooldown. Pass 0.5 to give vendor pooches half cooldown.
+
+    Returns
+    -------
+    Pooch, optional
+        The updated Pooch, or None if not found.
+    """
+
+    async with session_scope() as session:
+        query = select(Pooch).where(Pooch.id == pooch_id)
+        pooch = (await session.execute(query)).scalar_one_or_none()
+        if pooch is None:
+            return None
+
+        mutation_query = (
+            select(Mutation)
+            .join(PoochMutation, PoochMutation.mutation_id == Mutation.id)
+            .where(PoochMutation.pooch_id == pooch_id)
+        )
+        mutations = (await session.execute(mutation_query)).scalars().all()
+        cooldown_add = sum(m.parameters.get("breeding_cooldown", 0) for m in mutations)
+        raw = (base_cooldown + cooldown_add) * multiplier
+        pooch.breeding_cooldown = max(round(raw), 0)
 
     return pooch
 

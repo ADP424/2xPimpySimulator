@@ -4,6 +4,6 @@
     "description": "The Belgian Mastiff was a breed of mastiff-type dog from the Low Countries that was used as a draught dog.",
     "rarity": "REMARKABLE",
     "parameters": {
-        "sold_by_vendors": 0
+        "sold_by_vendors": false
     }
 }

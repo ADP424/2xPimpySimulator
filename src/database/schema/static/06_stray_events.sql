@@ -18,6 +18,7 @@ CREATE TABLE stray_event_outcomes (
 
     outcome_order   INTEGER NOT NULL DEFAULT 0,
     chance          DOUBLE PRECISION,
+    stat_weights    JSONB NOT NULL DEFAULT '[]'::jsonb,
 
     CONSTRAINT stray_event_outcomes_chance_range CHECK (chance IS NULL OR (chance >= 0 AND chance <= 1))
 );

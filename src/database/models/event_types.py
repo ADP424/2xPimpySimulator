@@ -33,6 +33,7 @@ EventActionType: TypeAlias = Literal[
     "receive_stray",
     "enter_kennel",
     "enter_vendor_stock",
+    "select_pooch",
 ]
 
 StrayEventActionType: TypeAlias = Literal[
@@ -183,6 +184,14 @@ class EventOptionAdvancedOptions(TypedDict, total=False):
 class EventOutcomeAdvancedOptions(TypedDict, total=False):
     enabled: bool
     metadata: JsonObject
+
+
+class OutcomeStatWeight(TypedDict, total=False):
+    stat: str  # required: stat name (strength, fertility, base_health, size, etc.)
+    pooch: str  # optional: named save_as slot or "random"; default "random"
+    scale: float  # required: multiplier magnitude per stat point from pivot
+    pivot: float  # optional: stat value where modifier = 1.0; default 10.0
+    direction: float  # optional: 1.0 = higher stat boosts outcome, -1.0 = hurts it; default 1.0
 
 
 class EventActionBaseParameters(TypedDict, total=False):

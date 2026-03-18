@@ -943,6 +943,30 @@ class BaseEventValidator:
             return None
         return numeric_value
 
+    def _validate_stat_weights(self, path: str, stat_weights: Any) -> None:
+        """Validate a stat_weights list on an outcome."""
+        sw_path = f"{path}.stat_weights"
+        if not isinstance(stat_weights, list):
+            self.error(sw_path, "must be a list")
+            return
+        _allowed = {"stat", "pooch", "scale", "pivot", "direction"}
+        for i, entry in enumerate(stat_weights):
+            ep = f"{sw_path}[{i}]"
+            if not isinstance(entry, dict):
+                self.error(ep, "each entry must be an object")
+                continue
+            self._validate_unknown_keys(ep, entry, _allowed)
+            if "stat" not in entry or not isinstance(entry["stat"], str) or not entry["stat"].strip():
+                self.error(ep, "'stat' is required and must be a non-empty string")
+            if "scale" not in entry or isinstance(entry["scale"], bool) or not isinstance(entry["scale"], (int, float)):
+                self.error(ep, "'scale' is required and must be a number")
+            if "pivot" in entry:
+                if isinstance(entry["pivot"], bool) or not isinstance(entry["pivot"], (int, float)):
+                    self.error(ep, "'pivot' must be a number")
+            if "direction" in entry:
+                if isinstance(entry["direction"], bool) or not isinstance(entry["direction"], (int, float)):
+                    self.error(ep, "'direction' must be a number")
+
     def _validate_enum_string(
         self,
         path: str,

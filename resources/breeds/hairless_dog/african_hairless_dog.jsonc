@@ -4,6 +4,6 @@
     "description": "African hairless dogs were hairless dogs from Africa. It is unknown if any examples still exist.",
     "rarity": "REMARKABLE",
     "parameters": {
-        "sold_by_vendors": 0
+        "sold_by_vendors": false
     }
 }

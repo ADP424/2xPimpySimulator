@@ -7,7 +7,7 @@
     "rarity": "UNIQUE",
     "parameters": {
         "bloodskull_value_mult": 0.0,
-        "sold_by_vendors": 0,
-        "born_from_ritual": 0
+        "sold_by_vendors": false,
+        "born_from_ritual": false
     }
 }

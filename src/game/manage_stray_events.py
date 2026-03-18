@@ -33,13 +33,22 @@ from src.database import (
     add_pooch_to_strays,
     add_pooch_to_vendor_stock,
     create_pooch,
+    get_pooch_aggressiveness,
+    get_pooch_base_health,
     get_pooch_by_id,
+    get_pooch_cuteness,
+    get_pooch_dexterity,
+    get_pooch_fertility,
+    get_pooch_fluffiness,
+    get_pooch_intelligence,
+    get_pooch_strength,
     get_random_eligible_stray_event_for_server,
     get_stray_event_by_name,
     list_kennels_for_owner,
     list_matching_stray_pooch_ids,
     list_owners,
     list_pooch_breed_weights,
+    list_pooch_breeds,
     list_pooch_mutations,
     list_pooches_for_kennel,
     list_servers,
@@ -51,6 +60,7 @@ from src.database import (
     remove_pooch_from_strays,
     remove_random_mutation_from_pooch,
     rename_pooch,
+    reset_pooch_breeding_cooldown,
     set_pooch_age,
     set_pooch_base_health,
     set_pooch_breeding_cooldown,
@@ -62,7 +72,6 @@ from src.database import (
 from .breeding import breed_pooches as _breed_pooches
 from .constants import POOCH_BREEDING_COOLDOWN
 from .models import StrayEventContext, StrayEventResult
-from .utils import get_pooch_mutation_parameter_total
 
 if TYPE_CHECKING:
     from src.database.models import StrayEvent, StrayEventAction, StrayEventOutcome
@@ -273,14 +282,9 @@ async def _execute_single_stray_action(
             cooldown = parameters.get("cooldown", 0)
             for pooch_id in pooch_ids:
                 if isinstance(cooldown, str) and cooldown.strip().lower() == "base":
-                    resolved = max(
-                        POOCH_BREEDING_COOLDOWN
-                        + await get_pooch_mutation_parameter_total(pooch_id, "breeding_cooldown"),
-                        0,
-                    )
+                    await reset_pooch_breeding_cooldown(pooch_id, base_cooldown=POOCH_BREEDING_COOLDOWN)
                 else:
-                    resolved = int(cooldown)
-                await set_pooch_breeding_cooldown(pooch_id, resolved)
+                    await set_pooch_breeding_cooldown(pooch_id, int(cooldown))
                 result.pooches_affected.append(pooch_id)
 
         elif action_type == "create_pooch":
@@ -471,12 +475,16 @@ async def _execute_single_stray_action(
                         server_discord_id, followup.actions, context, rng
                     )
                     result.merge(followup_result)
-                    followup_outcome = _choose_stray_event_outcome(followup, rng)
+                    followup_outcome = await _choose_stray_event_outcome(followup, context, rng)
                     if followup_outcome is not None:
                         outcome_result = await _execute_stray_event_actions(
                             server_discord_id, followup_outcome.actions, context, rng
                         )
                         result.merge(outcome_result)
+
+        elif action_type == "select_pooch":
+            # Resolves and saves pooches into a named slot; no other side effects
+            await _resolve_stray_target_ids(context, selector, parameters, rng)
 
         else:
             logger.warning(f"Unknown stray action type: {action_type}")
@@ -503,35 +511,151 @@ async def _execute_stray_event_actions(
     return result
 
 
-def _choose_stray_event_outcome(
+_SIZE_SCORES: dict[str, float] = {
+    "tiny": 4.0,
+    "small": 7.0,
+    "average": 10.0,
+    "large": 13.0,
+    "massive": 16.0,
+}
+
+_STAT_GETTERS = {
+    "strength": get_pooch_strength,
+    "cuteness": get_pooch_cuteness,
+    "fluffiness": get_pooch_fluffiness,
+    "intelligence": get_pooch_intelligence,
+    "dexterity": get_pooch_dexterity,
+    "fertility": get_pooch_fertility,
+    "aggressiveness": get_pooch_aggressiveness,
+    "base_health": get_pooch_base_health,
+}
+
+
+def _resolve_single_stat_pooch_id(
+    selector: str,
+    context: "StrayEventContext",
+    rng: random.Random,
+) -> Optional[int]:
+    """Resolve a single pooch ID for a stat_weights entry selector."""
+    if selector == "random":
+        return rng.choice(context.candidate_stray_ids) if context.candidate_stray_ids else None
+    slot = context.extra_data.get(selector)
+    if isinstance(slot, dict):
+        ids = slot.get("pooch_ids", [])
+        return ids[0] if ids else None
+    return None
+
+
+async def _get_effective_pooch_stat(stat: str, pooch_id: int) -> Optional[float]:
+    """Return the effective value of a named stat for a pooch. Returns None if stat is unknown."""
+    if stat == "size":
+        breed_pairs = await list_pooch_breeds(pooch_id)
+        if not breed_pairs:
+            return 10.0  # default: average
+        total_w = sum(w for _, w in breed_pairs)
+        if total_w <= 0:
+            return 10.0
+        return sum(_SIZE_SCORES.get(breed.size, 10.0) * (w / total_w) for breed, w in breed_pairs)
+    getter = _STAT_GETTERS.get(stat)
+    if getter is None:
+        return None
+    result = await getter(pooch_id)
+    return float(result) if result is not None else None
+
+
+async def _compute_outcome_stat_multiplier(
+    stat_weights: list,
+    context: "StrayEventContext",
+    rng: random.Random,
+) -> float:
+    """Compute the combined stat multiplier for a weighted outcome."""
+    multiplier = 1.0
+    for entry in stat_weights:
+        if not isinstance(entry, dict):
+            continue
+        stat = str(entry.get("stat", "")).strip().lower()
+        selector = str(entry.get("pooch", "random")).strip().lower()
+        scale = float(entry.get("scale", 0.0))
+        pivot = float(entry.get("pivot", 10.0))
+        direction = float(entry.get("direction", 1.0))
+
+        pooch_id = _resolve_single_stat_pooch_id(selector, context, rng)
+        if pooch_id is None:
+            continue
+
+        effective = await _get_effective_pooch_stat(stat, pooch_id)
+        if effective is None:
+            logger.warning(f"stat_weights: unknown stat '{stat}'; skipping entry")
+            continue
+
+        entry_mult = 1.0 + (effective - pivot) * scale * direction
+        multiplier *= max(0.0, entry_mult)
+    return multiplier
+
+
+async def _choose_stray_event_outcome(
     event: "StrayEvent",
+    context: "StrayEventContext",
     rng: random.Random,
 ) -> "Optional[StrayEventOutcome]":
-    """Pick one outcome from the event's outcomes list using weighted random selection."""
+    """Pick one outcome from the event's outcomes list using weighted random selection.
+
+    Outcomes are partitioned into three groups:
+    - Fixed: explicit ``chance`` with no ``stat_weights`` — reserved probability, unchanged.
+    - Weighted: have ``stat_weights`` (optionally also a base ``chance``) — compete for the
+      remaining probability share after fixed outcomes are subtracted.
+    - Implicit: no ``chance`` and no ``stat_weights`` — treated as weight-1 entries in the
+      weighted pool.
+    """
     if not event.outcomes:
         return None
 
-    explicit = [o for o in event.outcomes if o.chance is not None]
-    if not explicit:
+    fixed = [o for o in event.outcomes if o.chance is not None and not o.stat_weights]
+    dynamic = [o for o in event.outcomes if o.stat_weights or o.chance is None]
+
+    if not dynamic:
+        # All outcomes are fixed — standard weighted roll
+        roll = rng.random()
+        cumulative = 0.0
+        for o in fixed:
+            cumulative += float(o.chance)
+            if roll < cumulative:
+                return o
+        return fixed[-1]
+
+    fixed_total = sum(float(o.chance) for o in fixed)
+    remaining = max(0.0, 1.0 - fixed_total)
+
+    # Compute raw scores for the dynamic pool
+    raw_scores: list[float] = []
+    for o in dynamic:
+        if o.stat_weights:
+            base = float(o.chance) if o.chance is not None else 1.0
+            multiplier = await _compute_outcome_stat_multiplier(o.stat_weights, context, rng)
+            raw_scores.append(max(0.0, base * multiplier))
+        else:
+            # Implicit: weight 1.0
+            raw_scores.append(1.0)
+
+    raw_sum = sum(raw_scores)
+    if raw_sum <= 0:
+        # All dynamic outcomes cancelled out — fall back to fixed or random
         return rng.choice(event.outcomes)
 
-    total_explicit = sum(float(o.chance) for o in explicit)
-    implicit = [o for o in event.outcomes if o.chance is None]
-
-    weighted: list[tuple["StrayEventOutcome", float]] = []
-    if implicit:
-        remaining = max(0.0, 1.0 - total_explicit)
-        implicit_weight = remaining / len(implicit) if remaining > 0 else 0.0
-        weighted.extend((o, implicit_weight) for o in implicit)
-    weighted.extend((o, float(o.chance)) for o in explicit)
+    # Build final probability table
+    entries: list[tuple["StrayEventOutcome", float]] = []
+    for o, raw in zip(dynamic, raw_scores):
+        entries.append((o, (raw / raw_sum) * remaining))
+    for o in fixed:
+        entries.append((o, float(o.chance)))
 
     roll = rng.random()
     cumulative = 0.0
-    for outcome, weight in weighted:
+    for outcome, weight in entries:
         cumulative += weight
         if roll < cumulative:
             return outcome
-    return rng.choice(event.outcomes)
+    return entries[-1][0]
 
 
 async def _trigger_stray_event_for_server(
@@ -567,7 +691,7 @@ async def _trigger_stray_event_for_server(
 
     result = await _execute_stray_event_actions(server_discord_id, event.actions, context, rng)
 
-    selected_outcome = _choose_stray_event_outcome(event, rng)
+    selected_outcome = await _choose_stray_event_outcome(event, context, rng)
     if selected_outcome is not None:
         outcome_result = await _execute_stray_event_actions(server_discord_id, selected_outcome.actions, context, rng)
         result.merge(outcome_result)

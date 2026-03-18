@@ -4,6 +4,6 @@
     "description": "The Dogo Cubano, also called the Cuban Bloodhound or Cuban Bullmastiff, is an extinct Cuban breed of domestic dog. It was of the dogo sub-type of the bullmastiff dog type, which as a general class was used for bull-baiting and dog fighting.",
     "rarity": "REMARKABLE",
     "parameters": {
-        "sold_by_vendors": 0
+        "sold_by_vendors": false
     }
 }

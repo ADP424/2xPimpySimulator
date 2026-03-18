@@ -4,6 +4,6 @@
     "description": "The Black and Tan Terrier was a broad breed or type of terrier that was one of the earliest terrier breeds. Although it is now extinct, it is believed to be the ancestor of all modern Fell Terrier breeds and the Welsh Terrier.",
     "rarity": "REMARKABLE",
     "parameters": {
-        "sold_by_vendors": 0
+        "sold_by_vendors": false
     }
 }

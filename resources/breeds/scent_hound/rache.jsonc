@@ -4,6 +4,6 @@
     "description": "Rache also spelled racch, rach, and ratch, from Old English ræcc, linked to Old Norse rakkí, is an obsolete name for a type of hunting dog used in Great Britain in the Middle Ages. It was a scenthound used in a pack to run down and kill game, or bring it to bay.",
     "rarity": "REMARKABLE",
     "parameters": {
-        "sold_by_vendors": 0
+        "sold_by_vendors": false
     }
 }

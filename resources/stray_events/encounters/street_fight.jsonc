@@ -6,21 +6,103 @@
         "min_count": 2
     },
     "actions": [
+        // Select two distinct fighters from the stray pool and save them for outcome stat weighting
         {
-            "action_type": "modify_pooch_health",
+            "action_type": "select_pooch",
             "parameters": {
                 "selector": "random",
-                "min_amount": -8,
-                "max_amount": -3
+                "save_as": "fighter_a"
             }
         },
         {
-            "action_type": "modify_pooch_health",
+            "action_type": "select_pooch",
             "parameters": {
                 "selector": "random",
-                "min_amount": -5,
-                "max_amount": -2
+                "save_as": "fighter_b"
             }
+        }
+    ],
+    "outcomes": [
+        // Fighter A dominates — boosted by A's strength/aggressiveness/size, hindered by B's strength and size
+        {
+            "chance": 0.35,
+            "stat_weights": [
+                { "stat": "strength",       "pooch": "fighter_a", "scale": 0.04, "pivot": 10, "direction":  1 },
+                { "stat": "aggressiveness", "pooch": "fighter_a", "scale": 0.03, "pivot": 10, "direction":  1 },
+                { "stat": "size",           "pooch": "fighter_a", "scale": 0.02, "pivot": 10, "direction":  1 },
+                { "stat": "strength",       "pooch": "fighter_b", "scale": 0.04, "pivot": 10, "direction": -1 },
+                { "stat": "size",           "pooch": "fighter_b", "scale": 0.03, "pivot": 10, "direction": -1 }
+            ],
+            "actions": [
+                // A takes minor damage, B takes heavy damage
+                {
+                    "action_type": "modify_pooch_health",
+                    "parameters": {
+                        "use_saved": "fighter_a",
+                        "min_amount": -3,
+                        "max_amount": -1
+                    }
+                },
+                {
+                    "action_type": "modify_pooch_health",
+                    "parameters": {
+                        "use_saved": "fighter_b",
+                        "min_amount": -10,
+                        "max_amount": -5
+                    }
+                }
+            ]
+        },
+        // Fighter B dominates — mirror of the above
+        {
+            "chance": 0.35,
+            "stat_weights": [
+                { "stat": "strength",       "pooch": "fighter_b", "scale": 0.04, "pivot": 10, "direction":  1 },
+                { "stat": "aggressiveness", "pooch": "fighter_b", "scale": 0.03, "pivot": 10, "direction":  1 },
+                { "stat": "size",           "pooch": "fighter_b", "scale": 0.02, "pivot": 10, "direction":  1 },
+                { "stat": "strength",       "pooch": "fighter_a", "scale": 0.04, "pivot": 10, "direction": -1 },
+                { "stat": "size",           "pooch": "fighter_a", "scale": 0.03, "pivot": 10, "direction": -1 }
+            ],
+            "actions": [
+                {
+                    "action_type": "modify_pooch_health",
+                    "parameters": {
+                        "use_saved": "fighter_b",
+                        "min_amount": -3,
+                        "max_amount": -1
+                    }
+                },
+                {
+                    "action_type": "modify_pooch_health",
+                    "parameters": {
+                        "use_saved": "fighter_a",
+                        "min_amount": -10,
+                        "max_amount": -5
+                    }
+                }
+            ]
+        },
+        // Draw — both take moderate damage; fixed chance, unaffected by stats
+        {
+            "chance": 0.30,
+            "actions": [
+                {
+                    "action_type": "modify_pooch_health",
+                    "parameters": {
+                        "use_saved": "fighter_a",
+                        "min_amount": -6,
+                        "max_amount": -3
+                    }
+                },
+                {
+                    "action_type": "modify_pooch_health",
+                    "parameters": {
+                        "use_saved": "fighter_b",
+                        "min_amount": -6,
+                        "max_amount": -3
+                    }
+                }
+            ]
         }
     ]
 }

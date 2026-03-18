@@ -15,7 +15,7 @@ from src.database import (
     list_pooch_children,
     list_pooch_mutations,
     list_pooch_siblings,
-    set_pooch_breeding_cooldown,
+    reset_pooch_breeding_cooldown,
     set_pooch_parentage,
     set_pooch_virgin,
 )
@@ -29,7 +29,6 @@ from .constants import (
     TWINS_CHANCE,
 )
 from .exceptions import PoochNotFound
-from .utils import get_pooch_mutation_parameter_total
 
 
 def _combine_puppy_name(father_name: str, mother_name: str) -> str:
@@ -95,14 +94,8 @@ async def breed_pooches(
     if (father.breeding_cooldown > 0 or mother.breeding_cooldown > 0) and not skip_validation:
         raise ValueError("One or both pooches are still on breeding cooldown.")
 
-    await set_pooch_breeding_cooldown(
-        father.id,
-        max(POOCH_BREEDING_COOLDOWN + await get_pooch_mutation_parameter_total(father.id, "breeding_cooldown"), 0),
-    )
-    await set_pooch_breeding_cooldown(
-        mother.id,
-        max(POOCH_BREEDING_COOLDOWN + await get_pooch_mutation_parameter_total(mother.id, "breeding_cooldown"), 0),
-    )
+    await reset_pooch_breeding_cooldown(father.id, base_cooldown=POOCH_BREEDING_COOLDOWN)
+    await reset_pooch_breeding_cooldown(mother.id, base_cooldown=POOCH_BREEDING_COOLDOWN)
     await set_pooch_virgin(father.id, False)
     await set_pooch_virgin(mother.id, False)
 
@@ -188,13 +181,7 @@ async def breed_pooches(
             if incest_level > 0 and rng.random() < incest_level:
                 await add_mutation_to_pooch(puppy.id, rng=rng)
 
-        await set_pooch_breeding_cooldown(
-            puppy.id,
-            max(
-                POOCH_BREEDING_COOLDOWN + await get_pooch_mutation_parameter_total(puppy.id, "breeding_cooldown"),
-                0,
-            ),
-        )
+        await reset_pooch_breeding_cooldown(puppy.id, base_cooldown=POOCH_BREEDING_COOLDOWN)
 
         puppies.append(puppy.id)
 

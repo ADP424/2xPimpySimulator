@@ -98,9 +98,9 @@ async def add_breed_to_pooch(
                 .where(Breed.id.not_in(select(PoochBreed.breed_id).where(PoochBreed.pooch_id == pooch_id)))
             )
             if from_vendor:
-                breed_query = breed_query.where(not_(Breed.parameters.contains({"sold_by_vendors": 0})))
+                breed_query = breed_query.where(not_(Breed.parameters.contains({"sold_by_vendors": False})))
             if from_ritual:
-                breed_query = breed_query.where(not_(Breed.parameters.contains({"born_from_ritual": 0})))
+                breed_query = breed_query.where(not_(Breed.parameters.contains({"born_from_ritual": False})))
 
             breed_response = await session.execute(breed_query)
             rows = [(breed, breed_weight) for breed, breed_weight in breed_response.tuples().all()]
@@ -200,9 +200,9 @@ async def add_mutation_to_pooch(
                 )
             )
             if from_vendor:
-                mutation_query = mutation_query.where(not_(Mutation.parameters.contains({"sold_by_vendors": 0})))
+                mutation_query = mutation_query.where(not_(Mutation.parameters.contains({"sold_by_vendors": False})))
             if from_ritual:
-                mutation_query = mutation_query.where(not_(Mutation.parameters.contains({"born_from_ritual": 0})))
+                mutation_query = mutation_query.where(not_(Mutation.parameters.contains({"born_from_ritual": False})))
 
             mutation_response = await session.execute(mutation_query)
             rows = [(mutation, weight) for mutation, weight in mutation_response.tuples().all()]

@@ -4,6 +4,6 @@
     "description": "The Chiribaya Dog is an ancient pre-Columbian breed of dog from the southwest of Peru. It has been established that it is a llama herding dog.",
     "rarity": "EXTRAORDINARY",
     "parameters": {
-        "sold_by_vendors": 0
+        "sold_by_vendors": false
     }
 }

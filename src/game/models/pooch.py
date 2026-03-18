@@ -87,6 +87,27 @@ class Pooch:
         return "healthy"
 
 
+def _apply_stat_params(base: int, stat: str, mutation_orms: list, breed_pairs: list) -> int:
+    """Apply _add and _mult parameters from mutations and breeds to a base stat value."""
+    total = float(base)
+
+    # Mutations: flat add then mult
+    mut_add = sum(m.parameters.get(f"{stat}_add", 0) for m in mutation_orms)
+    mut_mult = 1.0
+    for m in mutation_orms:
+        mut_mult *= m.parameters.get(f"{stat}_mult", 1.0)
+    total = (total + mut_add) * mut_mult
+
+    # Breeds: weighted add and weighted-average mult
+    total_weight = sum(rel for _, rel in breed_pairs)
+    if total_weight > 0:
+        breed_add = sum(b.parameters.get(f"{stat}_add", 0) * (rel / total_weight) for b, rel in breed_pairs)
+        breed_mult = sum(b.parameters.get(f"{stat}_mult", 1.0) * (rel / total_weight) for b, rel in breed_pairs)
+        total = (total + breed_add) * breed_mult
+
+    return round(total)
+
+
 async def to_pooch(pooch: PoochORM) -> Pooch:
     """
     Convert an ORM Pooch object to a game Pooch object.
@@ -113,15 +134,15 @@ async def to_pooch(pooch: PoochORM) -> Pooch:
         name=pooch.name,
         age=pooch.age,
         sex=pooch.sex,
-        base_health=pooch.base_health,
+        base_health=_apply_stat_params(pooch.base_health, "base_health", mutation_orms, breed_pairs),
         health_loss_age=pooch.health_loss_age,
-        strength=pooch.strength,
-        cuteness=pooch.cuteness,
-        fluffiness=pooch.fluffiness,
-        intelligence=pooch.intelligence,
-        dexterity=pooch.dexterity,
-        fertility=pooch.fertility,
-        aggressiveness=pooch.aggressiveness,
+        strength=_apply_stat_params(pooch.strength, "strength", mutation_orms, breed_pairs),
+        cuteness=_apply_stat_params(pooch.cuteness, "cuteness", mutation_orms, breed_pairs),
+        fluffiness=_apply_stat_params(pooch.fluffiness, "fluffiness", mutation_orms, breed_pairs),
+        intelligence=_apply_stat_params(pooch.intelligence, "intelligence", mutation_orms, breed_pairs),
+        dexterity=_apply_stat_params(pooch.dexterity, "dexterity", mutation_orms, breed_pairs),
+        fertility=_apply_stat_params(pooch.fertility, "fertility", mutation_orms, breed_pairs),
+        aggressiveness=_apply_stat_params(pooch.aggressiveness, "aggressiveness", mutation_orms, breed_pairs),
         breeding_cooldown=pooch.breeding_cooldown,
         alive=pooch.alive,
         virgin=pooch.virgin,

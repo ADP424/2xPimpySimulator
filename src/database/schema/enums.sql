@@ -140,5 +140,6 @@ CREATE TYPE event_action_type AS ENUM (
     'receive_stray',
     'enter_kennel',
     'enter_vendor_stock',
-    'start_stray_event'
+    'start_stray_event',
+    'select_pooch'
 );

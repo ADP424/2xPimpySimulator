@@ -25,8 +25,16 @@ from src.database import get_owner_event_by_name as db_get_owner_event_by_name
 from src.database import (
     get_owner_event_option_by_id,
     get_pending_active_owner_event,
+    get_pooch_aggressiveness,
+    get_pooch_base_health,
     get_pooch_by_id,
+    get_pooch_cuteness,
+    get_pooch_dexterity,
+    get_pooch_fertility,
+    get_pooch_fluffiness,
+    get_pooch_intelligence,
     get_pooch_kennel,
+    get_pooch_strength,
     get_random_eligible_owner_event_for_owner,
     get_random_matching_kennel_id,
     get_random_matching_pooch_id,
@@ -44,6 +52,7 @@ from src.database import (
     list_owner_event_history_for_owner,
     list_owners,
     list_pooch_breed_weights,
+    list_pooch_breeds,
     list_pooch_mutations,
     list_pooches_for_kennel,
     list_servers_for_owner,
@@ -59,6 +68,7 @@ from src.database import (
     remove_pooch_from_vendor_stock,
     remove_random_mutation_from_pooch,
     rename_pooch,
+    reset_pooch_breeding_cooldown,
     respond_to_active_owner_event,
     set_kennel_pooch_limit,
     set_owner_bloodskulls,
@@ -90,7 +100,6 @@ from .models import (
     to_owner_event_history,
     to_triggered_owner_event,
 )
-from .utils import get_pooch_mutation_parameter_total
 
 if TYPE_CHECKING:
     from src.database.models import Event as EventDB
@@ -234,7 +243,7 @@ async def process_expired_events(rng: Optional[random.Random] = None) -> list[tu
             )
             result.merge(option_result)
 
-            selected_outcome = _choose_option_outcome(default_option, rng)
+            selected_outcome = await _choose_option_outcome(default_option, context, rng)
             if selected_outcome is not None:
                 outcome_result = await _execute_event_actions(
                     active_event.owner_discord_id, selected_outcome.actions, context, rng
@@ -267,35 +276,145 @@ async def process_expired_events(rng: Optional[random.Random] = None) -> list[tu
     return results
 
 
-def _choose_option_outcome(option: EventOption, rng: random.Random) -> Optional[EventOutcome]:
-    explicit = [outcome for outcome in option.outcomes if outcome.chance is not None]
-    if not explicit:
-        return rng.choice(option.outcomes) if option.outcomes else None
+_SIZE_SCORES: dict[str, float] = {
+    "tiny": 4.0,
+    "small": 7.0,
+    "average": 10.0,
+    "large": 13.0,
+    "massive": 16.0,
+}
 
-    total_explicit = sum(float(outcome.chance) for outcome in explicit)
-    implicit = [outcome for outcome in option.outcomes if outcome.chance is None]
+_STAT_GETTERS = {
+    "strength": get_pooch_strength,
+    "cuteness": get_pooch_cuteness,
+    "fluffiness": get_pooch_fluffiness,
+    "intelligence": get_pooch_intelligence,
+    "dexterity": get_pooch_dexterity,
+    "fertility": get_pooch_fertility,
+    "aggressiveness": get_pooch_aggressiveness,
+    "base_health": get_pooch_base_health,
+}
 
-    weighted: list[tuple[EventOutcome, float]] = []
-    if implicit and total_explicit < 1:
-        remaining = 1 - total_explicit
-        implicit_weight = remaining / len(implicit)
-        weighted.extend((outcome, implicit_weight) for outcome in implicit)
-    elif implicit:
-        weighted.extend((outcome, 1.0) for outcome in implicit)
 
-    weighted.extend((outcome, float(outcome.chance)) for outcome in explicit)
-    total_weight = sum(weight for _, weight in weighted)
-    if total_weight <= 0:
-        return rng.choice(option.outcomes) if option.outcomes else None
+def _resolve_single_stat_pooch_id_owner(
+    selector: str,
+    context: "OwnerEventContext",
+    rng: random.Random,
+) -> Optional[int]:
+    """Resolve a single pooch ID for a stat_weights entry selector (owner event context)."""
+    if selector == "random":
+        return rng.choice(context.affected_pooch_ids) if context.affected_pooch_ids else None
+    slot = context.extra_data.get(selector)
+    if isinstance(slot, dict):
+        ids = slot.get("pooch_ids", [])
+        return ids[0] if ids else None
+    return None
 
-    roll = rng.uniform(0, total_weight)
-    running_total = 0.0
-    for outcome, weight in weighted:
-        running_total += weight
-        if roll <= running_total:
+
+async def _get_effective_pooch_stat_owner(stat: str, pooch_id: int) -> Optional[float]:
+    """Return the effective value of a named stat for a pooch."""
+    if stat == "size":
+        breed_pairs = await list_pooch_breeds(pooch_id)
+        if not breed_pairs:
+            return 10.0
+        total_w = sum(w for _, w in breed_pairs)
+        if total_w <= 0:
+            return 10.0
+        return sum(_SIZE_SCORES.get(breed.size, 10.0) * (w / total_w) for breed, w in breed_pairs)
+    getter = _STAT_GETTERS.get(stat)
+    if getter is None:
+        return None
+    result = await getter(pooch_id)
+    return float(result) if result is not None else None
+
+
+async def _compute_outcome_stat_multiplier_owner(
+    stat_weights: list,
+    context: "OwnerEventContext",
+    rng: random.Random,
+) -> float:
+    """Compute the combined stat multiplier for a weighted owner event outcome."""
+    multiplier = 1.0
+    for entry in stat_weights:
+        if not isinstance(entry, dict):
+            continue
+        stat = str(entry.get("stat", "")).strip().lower()
+        selector = str(entry.get("pooch", "random")).strip().lower()
+        scale = float(entry.get("scale", 0.0))
+        pivot = float(entry.get("pivot", 10.0))
+        direction = float(entry.get("direction", 1.0))
+
+        pooch_id = _resolve_single_stat_pooch_id_owner(selector, context, rng)
+        if pooch_id is None:
+            continue
+
+        effective = await _get_effective_pooch_stat_owner(stat, pooch_id)
+        if effective is None:
+            logger.warning(f"stat_weights: unknown stat '{stat}'; skipping entry")
+            continue
+
+        entry_mult = 1.0 + (effective - pivot) * scale * direction
+        multiplier *= max(0.0, entry_mult)
+    return multiplier
+
+
+async def _choose_option_outcome(
+    option: "EventOption", context: "OwnerEventContext", rng: random.Random
+) -> "Optional[EventOutcome]":
+    """Pick one outcome using weighted random selection with optional stat-based weighting.
+
+    Outcomes are partitioned into three groups:
+    - Fixed: explicit ``chance`` with no ``stat_weights`` — reserved probability, unchanged.
+    - Weighted: have ``stat_weights`` (optionally also a base ``chance``) — compete for the
+      remaining probability share after fixed outcomes are subtracted.
+    - Implicit: no ``chance`` and no ``stat_weights`` — treated as weight-1 entries in the
+      weighted pool.
+    """
+    if not option.outcomes:
+        return None
+
+    fixed = [o for o in option.outcomes if o.chance is not None and not o.stat_weights]
+    dynamic = [o for o in option.outcomes if o.stat_weights or o.chance is None]
+
+    if not dynamic:
+        # All outcomes are fixed — standard weighted roll
+        roll = rng.random()
+        cumulative = 0.0
+        for o in fixed:
+            cumulative += float(o.chance)
+            if roll < cumulative:
+                return o
+        return fixed[-1]
+
+    fixed_total = sum(float(o.chance) for o in fixed)
+    remaining = max(0.0, 1.0 - fixed_total)
+
+    raw_scores: list[float] = []
+    for o in dynamic:
+        if o.stat_weights:
+            base = float(o.chance) if o.chance is not None else 1.0
+            multiplier = await _compute_outcome_stat_multiplier_owner(o.stat_weights, context, rng)
+            raw_scores.append(max(0.0, base * multiplier))
+        else:
+            raw_scores.append(1.0)
+
+    raw_sum = sum(raw_scores)
+    if raw_sum <= 0:
+        return rng.choice(option.outcomes)
+
+    entries: list[tuple[EventOutcome, float]] = []
+    for o, raw in zip(dynamic, raw_scores):
+        entries.append((o, (raw / raw_sum) * remaining))
+    for o in fixed:
+        entries.append((o, float(o.chance)))
+
+    roll = rng.random()
+    cumulative = 0.0
+    for outcome, weight in entries:
+        cumulative += weight
+        if roll < cumulative:
             return outcome
-
-    return weighted[-1][0]
+    return entries[-1][0]
 
 
 async def respond_to_event(
@@ -372,7 +491,7 @@ async def respond_to_event(
     option_result = await _execute_event_actions(owner_discord_id, option.actions, context, rng)
     result.merge(option_result)
 
-    selected_outcome = _choose_option_outcome(option, rng)
+    selected_outcome = await _choose_option_outcome(option, context, rng)
     outcome_message = None
     if selected_outcome is not None:
         outcome_result = await _execute_event_actions(owner_discord_id, selected_outcome.actions, context, rng)
@@ -1094,14 +1213,9 @@ async def _execute_single_action(
             cooldown = parameters.get("cooldown", 0)
             for pooch_id in pooch_ids:
                 if isinstance(cooldown, str) and cooldown.strip().lower() == "base":
-                    resolved_cooldown = max(
-                        POOCH_BREEDING_COOLDOWN
-                        + await get_pooch_mutation_parameter_total(pooch_id, "breeding_cooldown"),
-                        0,
-                    )
+                    await reset_pooch_breeding_cooldown(pooch_id, base_cooldown=POOCH_BREEDING_COOLDOWN)
                 else:
-                    resolved_cooldown = cooldown
-                await set_pooch_breeding_cooldown(pooch_id, resolved_cooldown)
+                    await set_pooch_breeding_cooldown(pooch_id, int(cooldown))
                 result.pooches_affected.append(pooch_id)
 
         elif action_type == "rename_pooch":
@@ -1340,6 +1454,10 @@ async def _execute_single_action(
                     }
                 )
                 result.message = f"Started event '{started_event.name}'."
+
+        elif action_type == "select_pooch":
+            # Resolves and saves pooches into a named slot; no other side effects
+            await _get_target_pooch_ids(target_type, selector, parameters)
 
         else:
             logger.warning(f"Unknown action type: {action_type}")

@@ -4,6 +4,6 @@
     "description": "The Hawaiian Poi Dog (Hawaiian: ʻīlio or ʻīlio mākuʻe) is an extinct breed of pariah dog from Hawaiʻi which was used by Native Hawaiians as a spiritual protector of children and as a source of food.",
     "rarity": "EXTRAORDINARY",
     "parameters": {
-        "sold_by_vendors": 0
+        "sold_by_vendors": false
     }
 }

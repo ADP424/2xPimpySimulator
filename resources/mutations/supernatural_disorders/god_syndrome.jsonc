@@ -8,6 +8,6 @@
     "parameters": {
         "on_death": "spread",
         "on_death_targets": "random",
-        "always_on_death": 1
+        "always_on_death": true
     }
 }

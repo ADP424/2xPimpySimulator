@@ -4,6 +4,6 @@
     "description": "The Buckhound was a breed of scent hound from England; they were used to hunt fallow deer in packs.",
     "rarity": "REMARKABLE",
     "parameters": {
-        "sold_by_vendors": 0
+        "sold_by_vendors": false
     }
 }

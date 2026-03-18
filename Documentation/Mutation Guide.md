@@ -63,31 +63,31 @@ How relatively likely/unlikely it is for a pooch to develop this mutation. There
 - `EXTRAORDINARY` (5)
 - `UNIQUE` (1)
 
-#### Advanced Options
-An object representing more complex options for the mutatation (more information in "Advanced Options Guide").
+#### Parameters
+An object representing more complex options for the mutatation (more information in "Parameters Guide").
 
 
-# Advanced Options Guide
+# Parameters Guide
 
-## Aquisition Options
+## Aquisition
 
-### `born_from_ritual` : `bool (int)`
-Whether the breed can show up in pooches created by spending bloodskulls on the altar.
-- `1`: The breed can show up in pooches created from sacrifice. This is the default.
-- `0`: The breed will not show up in pooches created from sacrifice.
+### `born_from_ritual` : `bool`
+Whether the mutation can show up in pooches created by spending bloodskulls on the altar.
+- `true`: The mutation can show up in pooches created from sacrifice. This is the default.
+- `false`: The mutation will not show up in pooches created from sacrifice.
 
-### `sold_by_vendors` : `bool (int)`
-Whether the breed can show up on pooches generated to be sold by vendors or not.
-- `1`: The breed can show up in vendor pooches. This is the default.
-- `0`: The breed will not show up in vendor pooches.
+### `sold_by_vendors` : `bool`
+Whether the mutation can show up on pooches generated to be sold by vendors or not.
+- `true`: The mutation can show up in vendor pooches. This is the default.
+- `false`: The mutation will not show up in vendor pooches.
 
-## Breeding Options
+## Breeding
 
 ### `breeding_cooldown` : `int`
 How many more/fewer age cycles before the pooch can breed again. Added to the base breeding cooldown.
 
 
-## Death Options
+## Death
 
 ### `death_message` : `string`
 A custom message to replace the standard one with when the pooch dies of this mutation.
@@ -109,10 +109,10 @@ The chance, as a float between 0 and 1, inclusive, that the `on_death` effect wi
 This chance is rolled individually for each member in the `on_death_targets`.
 The chance is 1.0 (100%) by default.
 
-### `always_on_death` : `bool (int)`
+### `always_on_death` : `bool`
 Whether the `on_death` effect should always trigger or only trigger if the mutation is the one that killed the pooch.
-- `0`: The `on_death` will only trigger if it was this mutation that killed the pooch. This is the default.
-- `1`: The `on_death` will trigger when the pooch dies, no matter what kills it.
+- `false`: The `on_death` will only trigger if it was this mutation that killed the pooch. This is the default.
+- `true`: The `on_death` will trigger when the pooch dies, no matter what kills it.
 
 ### `on_death_targets` : `string`
 If the pooch has an on_death impact, who are the targets?
@@ -121,14 +121,32 @@ If the pooch has an on_death impact, who are the targets?
 - `random`: A random pooch in the kennel is a target.
 
 
-## Heritability Options
+## Heritability
 
 ### `incompatible_mutations` : `list[string]`
 A list of names of other mutations the pooch cannot get if they have this mutation.<br>
 You can also list mutation categories here.
 
 
-## Value Options
+## Stats
+
+Stat modifiers adjust the effective value of a pooch's stats. The add modifier is applied before the mult modifier, and all mutations stack (adds sum, mults multiply together).
+
+The following `_add` (int) and `_mult` (float) parameters are available for each stat:
+
+| Stat | Add parameter | Mult parameter |
+|------|--------------|----------------|
+| Base Health | `base_health_add` | `base_health_mult` |
+| Strength | `strength_add` | `strength_mult` |
+| Cuteness | `cuteness_add` | `cuteness_mult` |
+| Fluffiness | `fluffiness_add` | `fluffiness_mult` |
+| Intelligence | `intelligence_add` | `intelligence_mult` |
+| Dexterity | `dexterity_add` | `dexterity_mult` |
+| Fertility | `fertility_add` | `fertility_mult` |
+| Aggressiveness | `aggressiveness_add` | `aggressiveness_mult` |
+
+
+## Value
 
 ### `bloodskull_value_add` : `int`
 A number to add to the pooch's bloodskull value (before multiplication).

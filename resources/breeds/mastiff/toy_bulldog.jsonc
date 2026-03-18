@@ -4,6 +4,6 @@
     "description": "The toy bulldog was a British type of miniature or toy bulldog in the nineteenth and early twentieth centuries. It was a miniature version of the Old English Bulldog, and derived from it either when natural small-sized sports were whelped from full-sized parents, or through systematic selective breeding for small size.",
     "rarity": "REMARKABLE",
     "parameters": {
-        "sold_by_vendors": 0
+        "sold_by_vendors": false
     }
 }

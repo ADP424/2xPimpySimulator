@@ -45,6 +45,7 @@ CREATE TABLE owner_event_outcomes (
     chance              DOUBLE PRECISION,
 
     advanced_options    JSONB NOT NULL DEFAULT '{}'::jsonb,
+    stat_weights        JSONB NOT NULL DEFAULT '[]'::jsonb,
 
     CONSTRAINT owner_event_outcomes_chance_range CHECK (chance IS NULL OR (chance >= 0 AND chance <= 1))
 );

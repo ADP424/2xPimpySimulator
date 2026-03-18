@@ -4,6 +4,6 @@
     "description": "They were purposely bred for the sport of dog fighting until the early 20th century. They became extinct after dog fighting became illegal in Argentina in 1954.",
     "rarity": "REMARKABLE",
     "parameters": {
-        "sold_by_vendors": 0
+        "sold_by_vendors": false
     }
 }

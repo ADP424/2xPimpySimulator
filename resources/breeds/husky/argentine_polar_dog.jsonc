@@ -4,6 +4,6 @@
     "description": "The Argentine polar dog is an extinct breed of dog. It was created by the Argentine Army to haul freight around its bases in Antarctica.",
     "rarity": "UNIQUE",
     "parameters": {
-        "sold_by_vendors": 0
+        "sold_by_vendors": false
     }
 }

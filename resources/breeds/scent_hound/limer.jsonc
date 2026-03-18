@@ -4,6 +4,6 @@
     "description": "A limer was a kind of dog, a scenthound, used on a leash in medieval times to find large game before it was hunted down by the pack.",
     "rarity": "REMARKABLE",
     "parameters": {
-        "sold_by_vendors": 0
+        "sold_by_vendors": false
     }
 }

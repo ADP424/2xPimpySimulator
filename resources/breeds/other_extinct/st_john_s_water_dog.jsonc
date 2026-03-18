@@ -4,6 +4,6 @@
     "description": "The St. John's water dog is an extinct landrace of domestic dog from Newfoundland. Little is known of the types that went into its genetic makeup, although it was probably a random-bred mix of old English, Irish and Portuguese working dogs.",
     "rarity": "REMARKABLE",
     "parameters": {
-        "sold_by_vendors": 0
+        "sold_by_vendors": false
     }
 }

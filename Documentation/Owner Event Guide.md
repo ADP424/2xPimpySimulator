@@ -167,7 +167,7 @@ See **Filtering Guide** below for the full format.
 
 ---
 
-### Advanced Options
+### Parameters
 
 A free-form object for specialized or future behavior.
 
@@ -244,7 +244,12 @@ Guaranteed actions that happen immediately when this option is selected (or exec
 
 Chance-based branches that happen after the option's guaranteed actions.
 
-If all outcomes have explicit `chance` values, they must sum to exactly `1.0`. If only some outcomes have explicit chances, the sum must not exceed `1.0` and the remaining weight is distributed among the implicit ones.
+Outcomes are split into two groups:
+
+- **Fixed** — has an explicit `chance` and **no** `stat_weights`. The exact probability is reserved and cannot be modified.
+- **Dynamic** — has `stat_weights`, or has no `chance` at all (implicit). Dynamic outcomes compete for whatever probability is left after all fixed outcomes reserve their share.
+
+If every outcome is fixed (no `stat_weights` anywhere) they must sum to exactly `1.0`. Fixed-only chances must not exceed `1.0` total.
 
 ---
 
@@ -252,9 +257,10 @@ If all outcomes have explicit `chance` values, they must sum to exactly `1.0`. I
 
 Outcomes are objects inside an option's `outcomes` list.
 
-```json
+```jsonc
 {
     "chance": "float",
+    "stat_weights": [],
     "message": "string",
     "actions": []
 }
@@ -262,7 +268,47 @@ Outcomes are objects inside an option's `outcomes` list.
 
 ### Chance
 
-A floating point value between `0.0` and `1.0` determining how likely this outcome is to randomly occur.
+A floating point value between `0.0` and `1.0`.
+
+- For **fixed** outcomes (no `stat_weights`): the exact probability reserved for this outcome.
+- For **dynamic** outcomes (has `stat_weights`): the base weight before stat modifiers are applied. Omitting `chance` on a dynamic outcome uses a base weight of `1.0`.
+
+### `stat_weights`
+
+An optional list of stat modifier entries. When present, the outcome's weight is adjusted by the pooches' stats before normalisation.
+
+Each entry:
+
+| Field | Type | Default | Notes |
+|-------|------|---------|-------|
+| `stat` | string | **required** | `strength`, `cuteness`, `fluffiness`, `intelligence`, `dexterity`, `fertility`, `aggressiveness`, `base_health`, or `size` |
+| `pooch` | string | `"random"` | Named `save_as` slot or `"random"` to pick randomly from affected pooches |
+| `scale` | float | **required** | Multiplier magnitude per stat point away from `pivot` |
+| `pivot` | float | `10.0` | Stat value at which this entry contributes a multiplier of exactly `1.0` |
+| `direction` | float | `1.0` | `1.0` = higher stat boosts this outcome; `-1.0` = higher stat hurts it |
+
+**Entry multiplier:** `max(0, 1.0 + (stat_value − pivot) × scale × direction)`
+
+**Outcome multiplier:** product of all entry multipliers.
+
+The final weight of a dynamic outcome = `chance × multiplier`, normalised so all dynamic outcomes share `1.0 − sum(fixed chances)`.
+
+**`size`** maps breed size to a number: `tiny=4, small=7, average=10, large=13, massive=16` (weighted average for mixed-breed pooches).
+
+To reference specific pooches, write them to named slots with `select_pooch` or `save_as` in top-level/option actions, then use the slot name as the `pooch` value in `stat_weights`.
+
+### `select_pooch` action
+
+Resolves a pooch and saves the ID into a named slot with no other side effects. Useful for naming participants before outcomes reference them via `stat_weights`.
+
+| Parameter | Type | Notes |
+|-----------|------|-------|
+| `target_type` | string | `"pooch"`, `"owner"`, or `"kennel"` |
+| `selector` | string | `"selected"`, `"random"`, `"all"`, `"random_exclude"`, `"all_exclude"` |
+| `count` | int | For `"random"`: number to pick |
+| `filter` | object | Pooch filter to narrow the pool |
+| `save_as` | string | **Required** for this action to be useful |
+| `use_saved` | string | Use IDs from a named slot |
 
 ### Message
 

@@ -42,20 +42,37 @@ How relatively likely/unlikely it is for a pooch to get this breed when generate
 - EXTRAORDINARY (5)
 - UNIQUE (1)
 
-#### Advanced Options
-An object representing more complex options for the breed (more information in "Advanced Options Guide").
+#### Parameters
+An object representing more complex options for the breed (more information in "Parameters Guide").
 
 
-# Advanced Options Guide
+# Parameters Guide
 
-## Aquisition Options
+## Aquisition
 
-### `born_from_ritual` : `bool (int)`
+### `born_from_ritual` : `bool`
 Whether the breed can show up in pooches created by spending bloodskulls on the altar.
-- `1`: The breed can show up in pooches created from sacrifice. This is the default.
-- `0`: The breed will not show up in pooches created from sacrifice.
+- `true`: The breed can show up in pooches created from sacrifice. This is the default.
+- `false`: The breed will not show up in pooches created from sacrifice.
 
-### `sold_by_vendors` : `bool (int)`
+### `sold_by_vendors` : `bool`
 Whether the breed can show up on pooches generated to be sold by vendors or not.
-- `1`: The breed can show up in vendor pooches. This is the default.
-- `0`: The breed will not show up in vendor pooches.
+- `true`: The breed can show up in vendor pooches. This is the default.
+- `false`: The breed will not show up in vendor pooches.
+
+## Stats
+
+Stat modifiers adjust the effective value of a pooch's stats based on its breed composition. Each breed's contribution is weighted by its relative proportion in the pooch (e.g. a 50% husky with `strength_add: 4` contributes +2 strength). The add modifier is applied before the mult modifier.
+
+The following `_add` (int) and `_mult` (float) parameters are available for each stat:
+
+| Stat | Add parameter | Mult parameter |
+|------|--------------|----------------|
+| Base Health | `base_health_add` | `base_health_mult` |
+| Strength | `strength_add` | `strength_mult` |
+| Cuteness | `cuteness_add` | `cuteness_mult` |
+| Fluffiness | `fluffiness_add` | `fluffiness_mult` |
+| Intelligence | `intelligence_add` | `intelligence_mult` |
+| Dexterity | `dexterity_add` | `dexterity_mult` |
+| Fertility | `fertility_add` | `fertility_mult` |
+| Aggressiveness | `aggressiveness_add` | `aggressiveness_mult` |

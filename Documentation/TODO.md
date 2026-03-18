@@ -37,7 +37,6 @@
 ## Blood Magic
 | Feature                                                                                                                       | Points |
 | ----------------------------------------------------------------------------------------------------------------------------- | ------ |
-| Make sacrificing pooches give bones (which can be used to tame strays)                                                        | 3      |
 | Clone your pooches by spending bloodskulls (better breeds = more expensive)                                                   | 5      |
 | Spend bloodskulls to reset pooch age (but at some EVIL cost)                                                                  | 5      |
 | Spend a LOT of bloodskulls to make your pooch IMMORTAL (but infertile, like a vampire, also can't go out at night)            | 5      |
@@ -72,10 +71,8 @@
 ## Breeding
 | Feature                                                                                                                       | Points |
 | ----------------------------------------------------------------------------------------------------------------------------- | ------ |
-| Fertility stat (higher fertility = can breed more often, more likely to unapproved breed)                                     | 5      |
 | Make breeding have a chance to involve a second member you didn't choose (affected by fertility)                              | 5      |
 | Stillbirths/miscarriages                                                                                                      | 3      |
-| Have pooch stats (fertility, aggressiveness, etc.) be partially inherited                                                     | 3      |
 | Add option to neuter dogs at the vet                                                                                          | 3      |
 | Have percentage of a breed increase by more if both pooches have a bit of that breed (so you can get closer to pure)          | 2      |
 
@@ -91,22 +88,14 @@
 | Add ability to upgrade kennel slots (5 starting, +5 each tier, 20 max)                                                        | 3      |
 | Add ability to buy more kennels (limit of 5 total kennels)                                                                    | 3      |
 
-## Strays
-| Feature                                                                                                                       | Points |
-| ----------------------------------------------------------------------------------------------------------------------------- | ------ |
-| Players can adopt strays by spending bones for a chance to attract one                                                        | 3      |
-
 ## Stat Management
 | Feature                                                                                                                       | Points |
 | ----------------------------------------------------------------------------------------------------------------------------- | ------ |
-| Add stat increase/decrease advanced options that mutations have to breeds also                                                | 5      |
-| Add stat increase/decrease advanced options for fertility and aggressiveness                                                  | 3      |
 | Add strength stat that affects how good a do is at fighting (> change to deal injury, < chance to take injury)                | 5      |
 | Add size stat whose base is affected solely by breed (in fighting, size matters as well as strength)                          | 5      |
 | Add a cuteness stat, which could reduce the chance to be killed in combat slightly (mostly for pageants and stuff)            | 5      |
 | Add a fluffiness stat, which affects temperature regulation (important for seasons)                                           | 3      |
 | Add intelligence and dexterity as placeholder stats (don't affect anything yet)                                               | 2      |
-| Heritable stats (parent stats increase or decrease the upper/lower bounds the child can get)                                  | 3      |
 | Add "pooch snapshots" you can get from the vet clinic that show a pooch's stats at that point in time                         | 13     |
 | Special procedure to get exact numbers on the buffs/debuffs pooches have on their stats                                       | 13     |
 | Pooch snapshots should display on pooch info pages (and it makes it easier to tell the value of auction pooches)              | 5      |

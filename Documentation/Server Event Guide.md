@@ -127,7 +127,7 @@ Accepted values:
 - `"selected_pooch_health"`
 - `"participation_only"`
 
-#### Advanced Options
+#### Parameters
 
 `advanced_options` is an escape hatch for special-case metadata.
 

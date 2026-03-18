@@ -4,6 +4,6 @@
     "description": "The Kurī is an extinct breed of Polynesian Dog kept by Māori people. It was introduced to New Zealand by the Polynesian ancestors of the Māori during their migration from East Polynesia in the 13th century AD. According to Māori tradition, the demigod Māui transformed his brother-in-law Irawaru into the first dog.",
     "rarity": "EXTRAORDINARY",
     "parameters": {
-        "sold_by_vendors": 0
+        "sold_by_vendors": false
     }
 }

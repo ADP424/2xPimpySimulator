@@ -4,6 +4,6 @@
     "description": "esem was the ancient Egyptian name for hunting dog. In popular literature it denotes the prick-eared, leggy dog with a curled tail from the early Egyptian age, but it was also used with reference to the lop-eared Saluki/Sloughi type.",
     "rarity": "REMARKABLE",
     "parameters": {
-        "sold_by_vendors": 0
+        "sold_by_vendors": false
     }
 }

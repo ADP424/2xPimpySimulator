@@ -117,7 +117,7 @@ These use the same fields as owner event pooch filters, except `location` is not
 
 The `pooches` filter also determines the initial **candidate pool** for event actions. If the first entry in `pooches` contains attribute filters (beyond counts), those attributes are used to build the initial stray pool the event works with.
 
-### Advanced Options
+### Parameters
 
 A free-form object reserved for future use.
 
@@ -351,6 +351,77 @@ Chains into another stray event. The sub-event's actions run immediately within 
 |-----------|------|-------|
 | `event` | string | **Required.** Name of the stray event to trigger |
 
+### `select_pooch`
+
+Resolves a stray from the candidate pool and saves the ID into a named slot. No other side effects. Useful for naming participants before `outcomes` reference them via `stat_weights`.
+
+| Parameter | Type | Notes |
+|-----------|------|-------|
+| `selector` | string | `"random"` (default), `"all"`, `"random_exclude"`, `"all_exclude"` |
+| `count` | int | Number to pick or exclude |
+| `filter` | object | Pooch filter to narrow the pool |
+| `save_as` | string | **Required** for this action to be useful. Saves resolved IDs into a named slot. |
+| `use_saved` | string | Use IDs from a named slot instead of resolving via `selector` |
+
+---
+
+## Outcomes
+
+Stray events can have an `outcomes` list alongside (or instead of) top-level `actions`. After the top-level actions run, exactly one outcome is selected and its `actions` execute.
+
+```jsonc
+"outcomes": [
+    {
+        "chance": 0.6,
+        "actions": [/* ... */]
+    },
+    {
+        "chance": 0.4,
+        "stat_weights": [
+            { "stat": "strength", "pooch": "fighter_a", "scale": 0.05 }
+        ],
+        "actions": [/* ... */]
+    }
+]
+```
+
+### Outcome Parameters
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `chance` | float (0–1) | Base probability for this outcome |
+| `stat_weights` | list | Optional list of stat modifier entries (see below) |
+| `actions` | list | Actions executed when this outcome is selected |
+
+### Outcome Selection Rules
+
+Outcomes are split into two groups:
+
+- **Fixed** — has an explicit `chance` and **no** `stat_weights`. The exact probability is reserved and untouched by stat weighting.
+- **Dynamic** — has `stat_weights`, or has no `chance` at all (implicit). Dynamic outcomes compete for whatever probability is left after all fixed outcomes are reserved.
+
+For dynamic outcomes:
+1. Each outcome's *raw score* = `chance * stat_multiplier` (where `chance` defaults to `1.0` if omitted, and `stat_multiplier` is the product of all stat modifier entries).
+2. Raw scores are normalised so the dynamic pool shares exactly `1.0 − sum(fixed chances)` of the total probability.
+
+### `stat_weights` Entries
+
+Each entry computes a multiplier that adjusts an outcome's raw score based on one pooch stat.
+
+| Field | Type | Default | Notes |
+|-------|------|---------|-------|
+| `stat` | string | **required** | Stat name: `strength`, `cuteness`, `fluffiness`, `intelligence`, `dexterity`, `fertility`, `aggressiveness`, `base_health`, or `size` |
+| `pooch` | string | `"random"` | Named `save_as` slot (e.g. `"fighter_a"`) or `"random"` to pick a random candidate |
+| `scale` | float | **required** | Multiplier magnitude per stat point away from `pivot` |
+| `pivot` | float | `10.0` | Stat value at which this entry contributes a multiplier of exactly `1.0` |
+| `direction` | float | `1.0` | `1.0` = higher stat boosts this outcome; `-1.0` = higher stat hurts it |
+
+**Entry multiplier formula:** `max(0, 1.0 + (stat_value − pivot) × scale × direction)`
+
+**Outcome multiplier:** product of all entry multipliers.
+
+**`size`** maps breed size strings to numeric values: `tiny=4, small=7, average=10, large=13, massive=16`. For mixed-breed pooches the weighted average across breeds is used.
+
 ---
 
 ## Example Events
@@ -379,35 +450,55 @@ Chains into another stray event. The sub-event's actions run immediately within 
 
 ### Street fight between two strays
 
+Outcomes are stat-weighted: a stronger, more aggressive, or larger fighter is more likely to win. The draw outcome has a fixed `chance` that is never affected by stats.
+
 ```jsonc
 // resources/stray_events/encounters/street_fight.jsonc
 {
     "name": "Street Fight",
-    "description": "Two strays get into a vicious fight.",
     "severity": "MAJOR",
     "rarity": "COMMON",
-    "filter": {
-        "min_count": 2
-    },
+    "filter": { "min_count": 2 },
     "actions": [
+        // Name the two fighters via select_pooch (no side effects)
+        { "action_type": "select_pooch", "parameters": { "selector": "random", "save_as": "fighter_a" } },
+        { "action_type": "select_pooch", "parameters": { "selector": "random", "save_as": "fighter_b" } }
+    ],
+    "outcomes": [
         {
-            "action_type": "modify_pooch_health",
-            "target_type": "pooch",
-            "parameters": {
-                "selector": "random",
-                "save_as": "combatant_a",
-                "min_amount": -8,
-                "max_amount": -3
-            }
+            "chance": 0.35,
+            "stat_weights": [
+                { "stat": "strength",       "pooch": "fighter_a", "scale": 0.04, "direction":  1 },
+                { "stat": "aggressiveness", "pooch": "fighter_a", "scale": 0.03, "direction":  1 },
+                { "stat": "size",           "pooch": "fighter_a", "scale": 0.02, "direction":  1 },
+                { "stat": "strength",       "pooch": "fighter_b", "scale": 0.04, "direction": -1 },
+                { "stat": "aggressiveness", "pooch": "fighter_b", "scale": 0.03, "direction": -1 }
+            ],
+            "actions": [
+                { "action_type": "modify_pooch_health", "parameters": { "use_saved": "fighter_a", "min_amount": -3, "max_amount": -1 } },
+                { "action_type": "modify_pooch_health", "parameters": { "use_saved": "fighter_b", "min_amount": -10, "max_amount": -5 } }
+            ]
         },
         {
-            "action_type": "modify_pooch_health",
-            "target_type": "pooch",
-            "parameters": {
-                "selector": "random",
-                "min_amount": -5,
-                "max_amount": -2
-            }
+            "chance": 0.35,
+            "stat_weights": [
+                { "stat": "strength",       "pooch": "fighter_b", "scale": 0.04, "direction":  1 },
+                { "stat": "aggressiveness", "pooch": "fighter_b", "scale": 0.03, "direction":  1 },
+                { "stat": "size",           "pooch": "fighter_b", "scale": 0.02, "direction":  1 },
+                { "stat": "strength",       "pooch": "fighter_a", "scale": 0.04, "direction": -1 },
+                { "stat": "aggressiveness", "pooch": "fighter_a", "scale": 0.03, "direction": -1 }
+            ],
+            "actions": [
+                { "action_type": "modify_pooch_health", "parameters": { "use_saved": "fighter_b", "min_amount": -3, "max_amount": -1 } },
+                { "action_type": "modify_pooch_health", "parameters": { "use_saved": "fighter_a", "min_amount": -10, "max_amount": -5 } }
+            ]
+        },
+        {
+            "chance": 0.30,
+            "actions": [
+                { "action_type": "modify_pooch_health", "parameters": { "use_saved": "fighter_a", "min_amount": -6, "max_amount": -3 } },
+                { "action_type": "modify_pooch_health", "parameters": { "use_saved": "fighter_b", "min_amount": -6, "max_amount": -3 } }
+            ]
         }
     ]
 }

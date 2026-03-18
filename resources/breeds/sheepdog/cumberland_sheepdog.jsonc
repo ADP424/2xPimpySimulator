@@ -4,6 +4,6 @@
     "description": "The Cumberland sheepdog is an extinct dog breed related to the border collie and other old working collie types.",
     "rarity": "REMARKABLE",
     "parameters": {
-        "sold_by_vendors": 0
+        "sold_by_vendors": false
     }
 }
