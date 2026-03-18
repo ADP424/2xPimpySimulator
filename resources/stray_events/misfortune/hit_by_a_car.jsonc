@@ -1,0 +1,20 @@
+{
+    "name": "Hit by a car",
+    "description": "A wandering stray gets hit by a car.",
+    "flavor_text": "Every dog deserves a to die.",
+    "severity": "MODERATE",
+    "rarity": "UNCOMMON",
+    "filter": {
+        "min_count": 1
+    },
+   "actions": [
+        {
+            "action_type": "modify_pooch_health",
+            "parameters": {
+                "selector": "random",
+                "min_amount": -15,
+                "max_amount": -5
+            }
+        }
+    ]
+}

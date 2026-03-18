@@ -1,0 +1,18 @@
+{
+    "name": "Straynge Glow",
+    "description": "A stray ate something strange, and now it's glowing.",
+    "flavor_text": "They can't help but to eat stuff off the ground.",
+    "severity": "MODERATE",
+    "rarity": "UNCOMMON",
+    "filter": {
+        "min_count": 1
+    },
+    "actions": [
+        {
+            "action_type": "add_mutation",
+            "parameters": {
+                "selector": "random"
+            }
+        }
+    ]
+}

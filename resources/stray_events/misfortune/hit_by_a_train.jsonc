@@ -1,0 +1,18 @@
+{
+    "name": "Hit by a train",
+    "description": "A wandering stray gets hit by a train.",
+    "flavor_text": "Every dog deserves a to die.",
+    "severity": "MODERATE",
+    "rarity": "RARE",
+    "filter": {
+        "min_count": 1
+    },
+   "actions": [
+        {
+            "action_type": "kill_pooch",
+            "parameters": {
+                "selector": "random"
+            }
+        }
+    ]
+}

@@ -1,7 +1,7 @@
 {
     "name": "Lucky Stray",
     "severity": "MINOR",
-    "rarity": "UNCOMMON",
+    "rarity": "RARE",
     "actions": [
         {
             "action_type": "create_pooch",

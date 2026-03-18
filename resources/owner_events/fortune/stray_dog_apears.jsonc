@@ -1,0 +1,73 @@
+{
+    "name": "Stray Dog Apears",
+    "description": "A stray dog apears at one of your kennels.",
+    "flavor_text": "Do be careful though starys might come with diseases or other problems.",
+    "severity": "MINOR",
+    "rarity": "COMMON",
+    "requires_response": true,
+    "response_timeout": 7200,
+    "filter": {
+        "pooches": [
+            {
+                "min_count": 1, // TODO: Check if a stray exists
+                "is_alive": true
+            }
+        ],
+        "kennels": [
+            {
+                // TODO: Check if there is a kennel with space.
+            }
+        ]
+    },
+    "options": [
+        {
+            "label": "Let them in.",
+            "description": "The pooch will join one of your kennels.",
+            "actions": [
+                {
+                    "action_type": "receive_stray",
+                    "target_type": "owner",
+                    "parameters": {
+                        "destination": "kennel",
+                        "count": 1
+                    }
+                }
+            ]
+        },
+        {
+            "label": "Ignore them",
+            "description": "You don't want to take the risks.",
+            "default": true,
+            "visible": true,
+            "outcomes": [
+                {
+                    "chance": 0.1,
+                    "message": "As you close the door you hear the stray yelp. When you open the door again there is nothing left of it but ash",
+                    "actions": [
+                        {
+                            "action_type": "receive_stray",
+                            "target_type": "owner",
+                            "parameters": {
+                                "destination": "hell",
+                                "count": 1,
+                                "save_as": "damned_pooch" // TODO: Save as wasn't listed in receive stray so I don't know if this works.
+                            }
+                        },
+                        {
+                            "action_type": "rename_pooch",
+                            "target_type": "pooch",
+                            "parameters": {
+                                "use_saved": "damned_pooch", // TODO: Use saved wasn't listed in rename pooch so I don't know if this works.
+                                "name": "Forsaken Soul"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "chance": 0.9,
+                    "message": "The stray leaves sadly."
+                }
+            ]
+        }
+    ]
+}
