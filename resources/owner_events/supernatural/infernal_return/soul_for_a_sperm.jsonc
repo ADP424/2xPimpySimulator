@@ -1,0 +1,56 @@
+{
+    "name": "Soul for a Sperm", 
+    "description": "You've decided to bargain for your pooch's soul.",
+    "flavor_text": "Good luck.",
+    "severity": "MAJOR",
+    "rarity": "COMMON",
+    "triggered_only": true,
+    "requires_response": true,
+    "response_timeout": 3600,
+    "options": [
+        {
+            "label": "Accept",
+            "description": "Exchange the pooch's fertility for its soul.",
+            "actions": [ // TODO: This should give the pooch an infertile mutation rather than this other gunk
+                {
+                    "action_type": "set_breeding_cooldown", // TODO: Make this match the "modify_*" with "mode": "set" option
+                    "target_type": "pooch",
+                    "parameters": {
+                        "use_saved": "damned_pooch",
+                        "cooldown": 99
+                    }
+                },
+                {
+                    "action_type": "modify_fertility", // TODO
+                    "target_type": "pooch",
+                    "parameters": {
+                        "use_saved": "damned_pooch",
+                        "mode": "set",
+                        "amount": 0
+                    }
+                },
+                {
+                    "action_type": "???", // TODO: Action to fetch pooch out of Hell
+                    "target_type": "pooch",
+                    "parameters": {
+                        "use_saved": "damned_pooch" // TODO: Make sure this works
+                    }
+                },
+                {
+                    "action_type": "remove_mutation",
+                    "target_type": "pooch",
+                    "parameters": {
+                        "use_saved": "damned_pooch",
+                        "mutation": "Haunted by Flames"
+                    }
+                }
+            ]
+        },
+        {
+            "label": "Decline Deal",
+            "description": "The price is too steep...",
+            "default": true,
+            "visible": true
+        }
+    ]
+}

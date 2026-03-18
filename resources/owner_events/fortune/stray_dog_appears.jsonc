@@ -1,7 +1,7 @@
 {
-    "name": "Stray Dog Apears",
+    "name": "Stray Dog Appears",
     "description": "A stray dog apears at one of your kennels.",
-    "flavor_text": "Do be careful though starys might come with diseases or other problems.",
+    "flavor_text": "Do be careful though, strays might come with diseases or other problems.",
     "severity": "MINOR",
     "rarity": "COMMON",
     "requires_response": true,
@@ -15,7 +15,8 @@
         ],
         "kennels": [
             {
-                // TODO: Check if there is a kennel with space.
+                "min_count": 1,
+                "max_pooches": "capacity - 1"
             }
         ]
     },
@@ -42,7 +43,7 @@
             "outcomes": [
                 {
                     "chance": 0.1,
-                    "message": "As you close the door you hear the stray yelp. When you open the door again there is nothing left of it but ash",
+                    "message": "As you close the door you hear the stray yelp. When you open the door again there is nothing left of it but ash.",
                     "actions": [
                         {
                             "action_type": "receive_stray",

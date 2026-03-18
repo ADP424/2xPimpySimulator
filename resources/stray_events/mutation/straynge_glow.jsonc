@@ -1,7 +1,5 @@
 {
     "name": "Straynge Glow",
-    "description": "A stray ate something strange, and now it's glowing.",
-    "flavor_text": "They can't help but to eat stuff off the ground.",
     "severity": "MODERATE",
     "rarity": "UNCOMMON",
     "filter": {

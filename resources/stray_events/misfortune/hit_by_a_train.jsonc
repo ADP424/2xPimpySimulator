@@ -1,7 +1,5 @@
 {
-    "name": "Hit by a train",
-    "description": "A wandering stray gets hit by a train.",
-    "flavor_text": "Every dog deserves a to die.",
+    "name": "Hit By a Train",
     "severity": "MODERATE",
     "rarity": "RARE",
     "filter": {

@@ -26,6 +26,8 @@
 | Add a dog fighting ring in each server with gambling (winner gets skulls of dead pooches as bloodskulls)                      | 8      |
 | Dog show where you want to match closest to breed, mutations, and stats                                                       | 13     |
 | Major weekly server events guaranteed each week, minor events change per day (except major weekly start day)                  | 21     |
+| Add event action to take a pooch from hell and move it somewhere else                                                         | 3      |
+| Add summon pooch, sacrifice pooch, then more general send pooch to Hell (damn_pooch) event action types                       | 5      |
 
 ## Seasons
 | Feature                                                                                                                       | Points |
@@ -66,6 +68,7 @@
 | Add injure on_death as an advanced option to mutations                                                                        | 3      |
 | Add aggressiveness stat that makes dogs have a chance each day to fight another dog (causing injury or DEATH)                 | 8      |
 | Add a strength stat which dictates how well a dog fights (and how likely they are to be injured/injure another in a fight)    | 3      |
+| Add a pooch fight event action type with its own internal logic for determining winners and damage and such                   | 5      |
 
 ## Breeding
 | Feature                                                                                                                       | Points |
@@ -91,13 +94,13 @@
 | Feature                                                                                                                       | Points |
 | ----------------------------------------------------------------------------------------------------------------------------- | ------ |
 | Add strength stat that affects how good a do is at fighting (> change to deal injury, < chance to take injury)                | 5      |
-| Add size stat whose base is affected solely by breed (in fighting, size matters as well as strength)                          | 5      |
 | Add a cuteness stat, which could reduce the chance to be killed in combat slightly (mostly for pageants and stuff)            | 5      |
 | Add a fluffiness stat, which affects temperature regulation (important for seasons)                                           | 3      |
 | Add intelligence and dexterity as placeholder stats (don't affect anything yet)                                               | 2      |
 | Add "pooch snapshots" you can get from the vet clinic that show a pooch's stats at that point in time                         | 13     |
 | Special procedure to get exact numbers on the buffs/debuffs pooches have on their stats                                       | 13     |
 | Pooch snapshots should display on pooch info pages (and it makes it easier to tell the value of auction pooches)              | 5      |
+| Make size act like all the other stats except its bounds are determined by the breed                                          | 3      |
 
 ## Food
 | Feature                                                                                                                       | Points |

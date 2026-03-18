@@ -1,7 +1,5 @@
 {
-    "name": "Hit by a car",
-    "description": "A wandering stray gets hit by a car.",
-    "flavor_text": "Every dog deserves a to die.",
+    "name": "Hit By a Car",
     "severity": "MODERATE",
     "rarity": "UNCOMMON",
     "filter": {

@@ -1,0 +1,49 @@
+{
+    "name": "Soul for a Bloodskull", 
+    "description": "You've decided to bargain for your pooch's soul.",
+    "flavor_text": "Good luck.",
+    "severity": "MAJOR",
+    "rarity": "COMMON",
+    "triggered_only": true,
+    "requires_response": true,
+    "response_timeout": 3600,
+    "options": [
+        {
+            "label": "Accept",
+            "description": "Exchange bloodskulls for your pooch's soul.",
+            "filter": {
+                "min_bloodskulls": 15
+            },
+            "actions": [
+                {
+                    "action_type": "modify_bloodskulls",
+                    "target_type": "owner",
+                    "parameters": {
+                        "amount": -15
+                    }
+                },
+                {
+                    "action_type": "???", // TODO: Action to fetch pooch out of Hell
+                    "target_type": "pooch",
+                    "parameters": {
+                        "use_saved": "damned_pooch" // TODO: Make sure this works
+                    }
+                },
+                {
+                    "action_type": "remove_mutation",
+                    "target_type": "pooch",
+                    "parameters": {
+                        "use_saved": "damned_pooch",
+                        "mutation": "Haunted by Flames"
+                    }
+                }
+            ]
+        },
+        {
+            "label": "Decline Deal",
+            "description": "The price is too steep...",
+            "default": true,
+            "visible": true
+        }
+    ]
+}

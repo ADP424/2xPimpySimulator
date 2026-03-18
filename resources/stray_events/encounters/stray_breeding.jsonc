@@ -1,7 +1,5 @@
 {
     "name": "Stray Breeding",
-    "description": "Two wandering strays breeded.",
-    "flavor_text": "Every dog deserves love.",
     "severity": "MODERATE",
     "rarity": "COMMON",
     "filter": {

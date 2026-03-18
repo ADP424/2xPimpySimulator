@@ -1,7 +1,5 @@
 {
-    "name": "Breed added",
-    "description": "A wandering stray becomes partly a new breed.",
-    "flavor_text": "Every dog deserves to become something else.",
+    "name": "Breed Added",
     "severity": "MINOR",
     "rarity": "NOVEL",
     "filter": {
