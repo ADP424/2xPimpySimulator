@@ -15,6 +15,9 @@ CREATE TABLE pooches (
     dexterity           INTEGER NOT NULL DEFAULT 10,
     fertility           INTEGER NOT NULL DEFAULT 10,
     aggressiveness      INTEGER NOT NULL DEFAULT 10,
+    constitution        INTEGER NOT NULL DEFAULT 10,
+
+    size                INTEGER NOT NULL DEFAULT 10,
 
     breeding_cooldown   INTEGER NOT NULL DEFAULT 2,
     alive               BOOLEAN NOT NULL DEFAULT TRUE,
@@ -35,5 +38,7 @@ CREATE TABLE pooches (
     CONSTRAINT pooch_dexterity_minimum CHECK (dexterity >= 0),
     CONSTRAINT pooch_fertility_minimum CHECK (fertility >= 0),
     CONSTRAINT pooch_aggressiveness_minimum CHECK (aggressiveness >= 0),
+    CONSTRAINT pooch_constitution_minimum CHECK (constitution >= 0),
+    CONSTRAINT pooch_size_minimum CHECK (size >= 0),
     CONSTRAINT pooch_breeding_cooldown_minimum CHECK (breeding_cooldown >= 0)
 );

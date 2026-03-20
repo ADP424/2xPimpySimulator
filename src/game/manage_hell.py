@@ -4,7 +4,6 @@ import random
 from typing import TYPE_CHECKING, Optional
 
 from src.database import (
-    add_breed_to_pooch,
     add_mutation_to_pooch,
     add_pooch_to_kennel,
     create_pooch,
@@ -14,6 +13,7 @@ from src.database import (
     get_owner_by_discord_id,
     get_pooch_by_id,
     get_pooch_health,
+    get_random_breed_ids,
     give_bloodskulls_to_owner,
     give_bones_to_owner,
 )
@@ -224,16 +224,16 @@ async def conjure_pooch(owner_discord_id: int, num_rolls: int = 1, rng_seed: Opt
 
     conjured_pooch = None
     for _ in range(num_rolls):
+        num_breeds = rng.randint(NUM_BREEDS_PER_SUMMON_POOCH_RANGE[0], NUM_BREEDS_PER_SUMMON_POOCH_RANGE[1])
+        ritual_breed_ids = await get_random_breed_ids(num_breeds, rng=rng, from_ritual=True)
         pooch = await create_pooch(
             owner_discord_id=owner.discord_id,
             age=0,
             base_health=rng.randint(POOCH_STAT_RANGE[0], POOCH_STAT_RANGE[1]),
             **{stat: rng.randint(POOCH_STAT_RANGE[0], POOCH_STAT_RANGE[1]) for stat in POOCH_STATS},
+            breeds=ritual_breed_ids,
             rng=rng,
         )
-        num_breeds = rng.randint(NUM_BREEDS_PER_SUMMON_POOCH_RANGE[0], NUM_BREEDS_PER_SUMMON_POOCH_RANGE[1])
-        for _ in range(num_breeds):
-            await add_breed_to_pooch(pooch.id, weight=(1.0 / num_breeds), from_ritual=True)
 
         if conjured_pooch is None or (
             await get_pooch_bloodskull_value(pooch.id) > await get_pooch_bloodskull_value(conjured_pooch.id)

@@ -185,7 +185,7 @@ class ServerEventOptionSelect(discord.ui.Select):
         )
 
     async def callback(self, interaction: discord.Interaction):
-        option = self.server_options[self.values[0]]
+        option = self.server_options[int(self.values[0])]
         if option.requires_pooch_selection:
             pooches = await _list_owner_living_pooches(self.server_discord_id, interaction.user.id)
             if not pooches:

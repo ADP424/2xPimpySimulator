@@ -639,11 +639,15 @@ async def create_pooch(
     dexterity: int = POOCH_STAT_DEFAULT,
     fertility: int = POOCH_STAT_DEFAULT,
     aggressiveness: int = POOCH_STAT_DEFAULT,
+    constitution: int = POOCH_STAT_DEFAULT,
     breeding_cooldown: int = POOCH_BREEDING_COOLDOWN,
+    size: Optional[int] = None,
+    breeds: Optional[list[int | str]] = None,
+    mutations: Optional[list[int | str]] = None,
     rng: Optional[random.Random] = None,
 ) -> Pooch:
     """
-    Create a pooch.
+    Create a pooch, optionally assigning breeds and mutations in the same operation.
 
     Parameters
     ----------
@@ -668,8 +672,23 @@ async def create_pooch(
     breeding_cooldown: int, default : `POOCH_BREEDING_COOLDOWN`
         The breeding cooldown to start the pooch off with. Defaults to the base breeding cooldown.
 
+    size: int, optional
+        An explicit size to give the pooch. If not provided and breeds are given, size is computed
+        as a random value within the weighted-average min/max size bounds of the breeds.
+        If no breeds are given either, defaults to POOCH_STAT_DEFAULT.
+
+    breeds: list[int | str], optional
+        Breeds to assign to the pooch. Each entry is either a breed ID (int) or breed name (str).
+        Duplicates are allowed and increase the relative weight of that breed by 1 per occurrence.
+        Unresolvable entries are silently skipped.
+
+    mutations: list[int | str], optional
+        Mutations to assign to the pooch. Each entry is a mutation ID (int) or mutation name (str).
+        Duplicate entries are deduplicated — a pooch cannot have the same mutation twice.
+        Unresolvable entries are silently skipped.
+
     rng: Random, optional
-        The random generator to determine randomness, if any pooch traits are left to chance (name, sex).
+        The random generator to determine randomness, if any pooch traits are left to chance (name, sex, size).
 
     Returns
     -------
@@ -679,13 +698,13 @@ async def create_pooch(
 
     rng = rng if rng is not None else random.Random()
 
-    async def _get_random_pooch_name() -> str:
+    async def _get_random_pooch_name(session) -> str:
         statement = select(DogName).order_by(func.hashtextextended(DogName.name, bindparam("seed"))).limit(1)
         response = await session.execute(statement, {"seed": rng.randint(0, RANDOM_SEED_SIZE_LIMIT)})
         dog_name = response.scalar_one_or_none()
         return dog_name.name if dog_name is not None else "Dog"
 
-    async def _get_random_sex():
+    def _get_random_sex():
         return "female" if rng.randint(0, 1) == 0 else "male"
 
     if owner_discord_id is not None:
@@ -703,11 +722,55 @@ async def create_pooch(
         vendor_id = None
 
     async with session_scope() as session:
+        # Resolve breeds: build {breed_id: weight} where weight = occurrence count
+        breed_weights: dict[int, int] = {}
+        resolved_breed_objects: list[Breed] = []
+        if breeds:
+            for entry in breeds:
+                if isinstance(entry, int):
+                    row = await session.scalar(select(Breed).where(Breed.id == entry))
+                elif isinstance(entry, str):
+                    row = await session.scalar(select(Breed).where(Breed.name.ilike(entry)))
+                else:
+                    row = None
+                if row is not None:
+                    breed_weights[row.id] = breed_weights.get(row.id, 0) + 1
+                    if row.id not in {b.id for b in resolved_breed_objects}:
+                        resolved_breed_objects.append(row)
+
+        # Compute size from breed bounds if not explicitly provided
+        if size is None:
+            if resolved_breed_objects:
+                total_weight = sum(breed_weights[b.id] for b in resolved_breed_objects)
+                avg_min = round(sum(b.min_size * breed_weights[b.id] for b in resolved_breed_objects) / total_weight)
+                avg_max = round(sum(b.max_size * breed_weights[b.id] for b in resolved_breed_objects) / total_weight)
+                size = rng.randint(avg_min, avg_max) if avg_min <= avg_max else avg_min
+            else:
+                size = POOCH_STAT_DEFAULT
+
+        # Resolve mutations: deduplicate, skip unknown
+        mutation_ids: list[int] = []
+        seen_mutation_ids: set[int] = set()
+        if mutations:
+            for entry in mutations:
+                if isinstance(entry, int):
+                    row = await session.scalar(select(Mutation).where(Mutation.id == entry))
+                elif isinstance(entry, str):
+                    row = await session.scalar(select(Mutation).where(Mutation.name.ilike(entry)))
+                else:
+                    row = None
+                if row is not None and row.id not in seen_mutation_ids:
+                    seen_mutation_ids.add(row.id)
+                    mutation_ids.append(row.id)
+
+        pooch_name = name or await _get_random_pooch_name(session)
+        pooch_sex = sex or _get_random_sex()
+
         pooch = Pooch(
             owner_discord_id=owner_discord_id,
             vendor_id=vendor_id,
-            name=name or await _get_random_pooch_name(),
-            sex=sex or await _get_random_sex(),
+            name=pooch_name,
+            sex=pooch_sex,
             age=age,
             base_health=base_health,
             health_loss_age=POOCH_HEALTH_LOSS_AGE,
@@ -718,11 +781,20 @@ async def create_pooch(
             dexterity=dexterity,
             fertility=fertility,
             aggressiveness=aggressiveness,
+            constitution=constitution,
+            size=size,
             breeding_cooldown=breeding_cooldown,
             alive=True,
             virgin=True,
         )
         session.add(pooch)
+        await session.flush()
+
+        for breed_id, weight in breed_weights.items():
+            session.add(PoochBreed(pooch_id=pooch.id, breed_id=breed_id, weight=weight))
+        for mutation_id in mutation_ids:
+            session.add(PoochMutation(pooch_id=pooch.id, mutation_id=mutation_id))
+
         await session.flush()
 
     return pooch

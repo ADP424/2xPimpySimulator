@@ -15,8 +15,10 @@ POOCH_STATS = [
     "dexterity",
     "fertility",
     "aggressiveness",
+    "constitution",
 ]
 
+# Baby
 POOCH_FETAL_AGE = -1
 TWINS_CHANCE = 0.25
 TRIPLETS_CHANCE = 0.05
@@ -76,8 +78,9 @@ KENNEL_UPGRADE_PRICES = [200, 400, 600]
 BEG_DOLLARS_RANGE = (5, 25)
 BEG_MAX_DOLLARS = 50
 
-# Park
+# Strays
 PARK_STRAY_CATCH_DIVISOR = 5
+STRAY_EVENT_TRIGGER_CHANCE = 0.5
 
 # Other
 MAX_NAME_LENGTH = 100

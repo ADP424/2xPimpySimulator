@@ -1,25 +1,3 @@
--- SIZE (for breeds)
-CREATE TYPE size AS ENUM (
-    'tiny',
-    'small',
-    'average',
-    'large',
-    'massive'
-);
-
-CREATE TABLE size_values (
-    size    size    PRIMARY KEY,
-    value   integer NOT NULL
-);
-INSERT INTO size_values VALUES
-    ('tiny',    1),
-    ('small',   2),
-    ('average', 3),
-    ('large',   4),
-    ('massive', 5)
-;
-
-
 -- SEX (for pooches)
 CREATE TYPE sex AS ENUM (
     'female',

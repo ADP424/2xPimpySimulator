@@ -6,7 +6,6 @@ from .enums import (
     HEALTH_IMPACT,
     RARITY,
     SEX,
-    SIZE,
     HealthImpactWeight,
     RarityWeight,
 )
@@ -56,7 +55,6 @@ __all__ = [
     "HEALTH_IMPACT",
     "RARITY",
     "SEX",
-    "SIZE",
     "HealthImpactWeight",
     "RarityWeight",
     "Kennel",

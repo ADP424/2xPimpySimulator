@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Optional
 import numpy
 
 from src.database import (
-    add_breed_to_pooch,
     add_mutation_to_pooch,
     add_pooch_to_strays,
     add_pooch_to_vendor_stock,
@@ -21,6 +20,7 @@ from src.database import (
     get_mutation_health_impact,
     get_pooch_health,
     get_pooch_kennel,
+    get_random_breed_ids,
     list_living_pooches,
     list_pooch_mutations,
     list_pooch_pregnancies,
@@ -326,10 +326,12 @@ async def run_day_change(
     for server in servers:
         strays = await list_strays_for_server(server.discord_id)
         if not strays:
+            stray_breed_ids = await get_random_breed_ids(1, rng=rng)
             stray_pooch = await create_pooch(
                 base_health=rng.randint(POOCH_STAT_RANGE[0], POOCH_STAT_RANGE[1]),
                 **{stat: rng.randint(POOCH_STAT_RANGE[0], POOCH_STAT_RANGE[1]) for stat in POOCH_STATS},
                 age=0,
+                breeds=stray_breed_ids,
                 rng=rng,
             )
             if stray_pooch:
@@ -351,19 +353,19 @@ async def run_day_change(
             await clear_vendor_pooch_stock(vendor.id, delete_pooches=True)
             stock_count = rng.randint(VENDOR_POOCH_STOCK_COUNT_RANGE[0], VENDOR_POOCH_STOCK_COUNT_RANGE[1])
             for _ in range(stock_count):
+                num_breeds = rng.randint(NUM_BREEDS_PER_VENDOR_POOCH_RANGE[0], NUM_BREEDS_PER_VENDOR_POOCH_RANGE[1])
+                vendor_breed_ids = await get_random_breed_ids(num_breeds, rng=rng, from_vendor=True)
                 vendor_pooch = await create_pooch(
                     vendor_id=vendor.id,
                     age=rng.randint(VENDOR_POOCH_AGE_RANGE[0], VENDOR_POOCH_AGE_RANGE[1]),
                     base_health=rng.randint(POOCH_STAT_RANGE[0], POOCH_STAT_RANGE[1]),
                     **{stat: rng.randint(POOCH_STAT_RANGE[0], POOCH_STAT_RANGE[1]) for stat in POOCH_STATS},
+                    breeds=vendor_breed_ids,
                     rng=rng,
                 )
                 await reset_pooch_breeding_cooldown(
                     vendor_pooch.id, base_cooldown=POOCH_BREEDING_COOLDOWN, multiplier=0.5
                 )
-                num_breeds = rng.randint(NUM_BREEDS_PER_VENDOR_POOCH_RANGE[0], NUM_BREEDS_PER_VENDOR_POOCH_RANGE[1])
-                for _ in range(num_breeds):
-                    await add_breed_to_pooch(vendor_pooch.id, weight=(1.0 / num_breeds), from_vendor=True)
                 for _ in range(
                     rng.randint(NUM_MUTATIONS_PER_VENDOR_POOCH_RANGE[0], NUM_MUTATIONS_PER_VENDOR_POOCH_RANGE[1])
                 ):

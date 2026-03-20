@@ -1,7 +1,7 @@
 import random
 from typing import Optional
 
-from sqlalchemy import and_, func, select, true
+from sqlalchemy import and_, func, not_, select, true
 from sqlalchemy.orm import selectinload
 
 from .models import (
@@ -88,6 +88,84 @@ async def get_breed_by_id(breed_id: int) -> Optional[Breed]:
         response = await session.execute(query)
 
     return response.scalar_one_or_none()
+
+
+async def get_breed_by_name(name: str) -> Optional[Breed]:
+    """
+    Fetch a breed by its name (case-insensitive).
+
+    Parameters
+    ----------
+    name: str
+        The name of the breed to fetch.
+
+    Returns
+    -------
+    Breed, optional
+        The Breed ORM object, or None if no breed with the given name exists.
+    """
+
+    async with session_scope() as session:
+        query = select(Breed).where(Breed.name.ilike(name))
+        response = await session.execute(query)
+
+    return response.scalar_one_or_none()
+
+
+async def get_random_breed_ids(
+    n: int,
+    rng: Optional[random.Random] = None,
+    from_vendor: bool = False,
+    from_ritual: bool = False,
+) -> list[int]:
+    """
+    Return a list of `n` randomly-selected breed IDs, weighted by rarity.
+    Sampling is done with replacement, so the same breed can appear more than once.
+
+    Parameters
+    ----------
+    n: int
+        How many breed IDs to return.
+
+    rng: Random, optional
+        The random generator to use. A fresh one is created if not given.
+
+    from_vendor: bool, default : False
+        When True, exclude breeds whose parameters contain ``{"sold_by_vendors": False}``.
+
+    from_ritual: bool, default : False
+        When True, exclude breeds whose parameters contain ``{"born_from_ritual": False}``.
+
+    Returns
+    -------
+    list[int]
+        A list of `n` breed IDs (with possible duplicates). Empty if no eligible
+        breeds exist in the database.
+    """
+
+    rng = rng if rng is not None else random.Random()
+    result: list[int] = []
+    if n <= 0:
+        return result
+
+    async with session_scope() as session:
+        query = select(Breed, RarityWeight.weight).join(RarityWeight, RarityWeight.rarity == Breed.rarity)
+        if from_vendor:
+            query = query.where(not_(Breed.parameters.contains({"sold_by_vendors": False})))
+        if from_ritual:
+            query = query.where(not_(Breed.parameters.contains({"born_from_ritual": False})))
+        response = await session.execute(query)
+        rows = [(breed, weight) for breed, weight in response.tuples().all()]
+
+    if not rows:
+        return result
+
+    for _ in range(n):
+        breed = weighted_choice(rng, rows)
+        if breed is not None:
+            result.append(breed.id)
+
+    return result
 
 
 async def get_owner_event_by_id(event_id: int) -> Optional[Event]:
@@ -496,6 +574,18 @@ async def get_pooch_fertility(pooch_id: int) -> Optional[int]:
 async def get_pooch_aggressiveness(pooch_id: int) -> Optional[int]:
     """Return the effective aggressiveness of the pooch, accounting for mutation/breed stat parameters."""
     return await _get_pooch_stat(pooch_id, "aggressiveness")
+
+
+async def get_pooch_constitution(pooch_id: int) -> Optional[int]:
+    """Return the effective constitution of the pooch, accounting for mutation/breed stat parameters."""
+    return await _get_pooch_stat(pooch_id, "constitution")
+
+
+async def get_pooch_size(pooch_id: int) -> Optional[int]:
+    """Return the stored size of the pooch (raw column value, not breed-derived)."""
+    async with session_scope() as session:
+        result = await session.scalar(select(Pooch.size).where(Pooch.id == pooch_id))
+    return result
 
 
 async def get_pooch_kennel(pooch_id: int) -> Optional[Kennel]:

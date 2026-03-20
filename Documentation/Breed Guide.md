@@ -76,3 +76,19 @@ The following `_add` (int) and `_mult` (float) parameters are available for each
 | Dexterity | `dexterity_add` | `dexterity_mult` |
 | Fertility | `fertility_add` | `fertility_mult` |
 | Aggressiveness | `aggressiveness_add` | `aggressiveness_mult` |
+| Constitution | `constitution_add` | `constitution_mult` |
+
+## Size
+
+### `min_size` / `max_size` : `string`
+
+Restrict the sizes a pooch can be when this breed is present during generation. Both are optional and independent.
+
+Size values (in ascending order):
+- `tiny`
+- `small`
+- `average`
+- `large`
+- `massive`
+
+For example, `"min_size": "large"` means a pooch with this breed will never be smaller than large. Setting both `min_size` and `max_size` to the same value pins the pooch to exactly that size.

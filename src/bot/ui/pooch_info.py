@@ -154,8 +154,6 @@ class PoochInfoView(View):
             return True
         return interaction.user.id == self.owner.discord_id
 
-    _SIZE_LABELS = {1: "Tiny", 2: "Small", 3: "Average", 4: "Large", 5: "Massive"}
-
     @staticmethod
     def _format_breeding_status(cooldown: int) -> str:
         if cooldown == 0:
@@ -165,12 +163,8 @@ class PoochInfoView(View):
         return "Cooled"
 
     @staticmethod
-    def _format_size(size: float) -> str:
-        rounded = round(size)
-        label = PoochInfoView._SIZE_LABELS.get(rounded, "Average")
-        if size == rounded:
-            return label
-        return f"{label} ({size:.2f})"
+    def _format_size(size: int) -> str:
+        return str(size)
 
     async def build_embed(self) -> discord.Embed:
         self.clear_items()

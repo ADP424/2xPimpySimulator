@@ -50,6 +50,7 @@ class Pooch:
     dexterity: int
     fertility: int
     aggressiveness: int
+    constitution: int
 
     breeding_cooldown: int
     alive: bool
@@ -60,6 +61,8 @@ class Pooch:
 
     created_at: Optional[datetime]
 
+    size: int
+
     health: int
 
     owner: Optional[Owner]
@@ -67,10 +70,6 @@ class Pooch:
 
     breeds: list[PoochBreedInfo]
     mutations: list[Mutation]
-
-    @property
-    def size(self) -> float:
-        return (sum(breed.relative_weight for breed in self.breeds) / len(self.breeds)) if self.breeds else 0.0
 
     @property
     def birthday(self) -> Optional[datetime]:
@@ -143,6 +142,8 @@ async def to_pooch(pooch: PoochORM) -> Pooch:
         dexterity=_apply_stat_params(pooch.dexterity, "dexterity", mutation_orms, breed_pairs),
         fertility=_apply_stat_params(pooch.fertility, "fertility", mutation_orms, breed_pairs),
         aggressiveness=_apply_stat_params(pooch.aggressiveness, "aggressiveness", mutation_orms, breed_pairs),
+        constitution=_apply_stat_params(pooch.constitution, "constitution", mutation_orms, breed_pairs),
+        size=pooch.size,
         breeding_cooldown=pooch.breeding_cooldown,
         alive=pooch.alive,
         virgin=pooch.virgin,

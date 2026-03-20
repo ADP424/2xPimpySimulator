@@ -8,7 +8,8 @@ CREATE TABLE breeds (
     description         TEXT NOT NULL,
 
     rarity              rarity NOT NULL DEFAULT 'common',
-    size                size NOT NULL DEFAULT 'average',
+    min_size            INTEGER NOT NULL DEFAULT 8,
+    max_size            INTEGER NOT NULL DEFAULT 12,
 
     parameters          JSONB NOT NULL DEFAULT '{}'::jsonb
 );

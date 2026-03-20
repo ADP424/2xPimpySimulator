@@ -191,6 +191,7 @@ Named slots persist for the lifetime of the event execution (including any chain
 | `modify_dexterity` | Modify dexterity stat |
 | `modify_fertility` | Modify fertility stat |
 | `modify_aggressiveness` | Modify aggressiveness stat |
+| `modify_constitution` | Modify constitution stat |
 | `kill_pooch` | Kill the stray |
 | `damn_pooch` | Send a stray to Hell without reward |
 | `revive_pooch` | Revive a dead/damned stray and route it to a destination |
@@ -314,9 +315,9 @@ Modifies or sets breeding cooldown. The legacy name `set_breeding_cooldown` stil
 | `cooldown` | int or `"base"` | Legacy key — sets cooldown directly. `"base"` resets to mutation-adjusted base. Use `amount` + `mode: "set"` instead. |
 | `save_as` / `use_saved` | string | Named slots |
 
-### `modify_strength` / `modify_cuteness` / `modify_fluffiness` / `modify_intelligence` / `modify_dexterity` / `modify_fertility` / `modify_aggressiveness`
+### `modify_strength` / `modify_cuteness` / `modify_fluffiness` / `modify_intelligence` / `modify_dexterity` / `modify_fertility` / `modify_aggressiveness` / `modify_constitution`
 
-Modifies one of the seven pooch stats. All support the same parameters as `modify_base_health` / `modify_pooch_age`.
+Modifies one of the eight pooch stats. All support the same parameters as `modify_base_health` / `modify_pooch_age`.
 
 | Parameter | Type | Notes |
 |-----------|------|-------|
@@ -363,6 +364,7 @@ Creates a new ownerless pooch and adds it directly to the server's stray pool.
 | `sex` | string | `"male"` or `"female"` — random if omitted |
 | `age` | int | Default: `0` |
 | `base_health` | int | Default value from constants |
+| `strength` / `cuteness` / `fluffiness` / `intelligence` / `dexterity` / `fertility` / `aggressiveness` / `constitution` | int | Default value from constants |
 | `breeding_cooldown` | int | Default value from constants |
 | `save_as` | string | Save the new pooch's ID into a named slot |
 
@@ -377,6 +379,7 @@ Duplicates an existing stray into the stray pool.
 | `selector` | string | Selector for the source pooch |
 | `filter` | object | Pooch filter for source selection |
 | `name` / `sex` / `age` / `base_health` / `breeding_cooldown` | various | Override clone attributes |
+| `strength` / `cuteness` / `fluffiness` / `intelligence` / `dexterity` / `fertility` / `aggressiveness` / `constitution` | int | Override individual stat attributes on the clone |
 | `save_as` | string or list | Save clone and/or source into named slots |
 
 `save_as` list form: `[{ "slot": "...", "target": "clone" \| "source" }]`
@@ -489,7 +492,7 @@ Each entry computes a multiplier that adjusts an outcome's raw score based on on
 
 | Field | Type | Default | Notes |
 |-------|------|---------|-------|
-| `stat` | string | **required** | Stat name: `strength`, `cuteness`, `fluffiness`, `intelligence`, `dexterity`, `fertility`, `aggressiveness`, `base_health`, or `size` |
+| `stat` | string | **required** | Stat name: `strength`, `cuteness`, `fluffiness`, `intelligence`, `dexterity`, `fertility`, `aggressiveness`, `constitution`, `base_health`, or `size` |
 | `pooch` | string | `"random"` | Named `save_as` slot (e.g. `"fighter_a"`) or `"random"` to pick a random candidate |
 | `scale` | float | **required** | Multiplier magnitude per stat point away from `pivot` |
 | `pivot` | float | `10.0` | Stat value at which this entry contributes a multiplier of exactly `1.0` |

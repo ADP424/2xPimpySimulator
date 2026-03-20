@@ -6,7 +6,6 @@ from .health_impact_weight import HealthImpactWeight
 from .rarity import RARITY
 from .rarity_weight import RarityWeight
 from .sex import SEX
-from .size import SIZE
 
 __all__ = [
     "EVENT_ACTION_TYPE",
@@ -17,5 +16,4 @@ __all__ = [
     "RARITY",
     "RarityWeight",
     "SEX",
-    "SIZE",
 ]

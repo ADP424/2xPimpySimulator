@@ -125,11 +125,13 @@ async def breed_pooches(
         puppy_name = _combine_puppy_name(father.name, mother.name)
         inherited_base_health = _inherit_stat(father.base_health, mother.base_health)
         inherited_stats = {stat: _inherit_stat(getattr(father, stat), getattr(mother, stat)) for stat in POOCH_STATS}
+        inherited_size = _inherit_stat(father.size, mother.size)
         puppy = await create_pooch(
             owner_discord_id=mother.owner_discord_id,
             name=puppy_name,
             age=POOCH_FETAL_AGE,
             base_health=inherited_base_health,
+            size=inherited_size,
             **inherited_stats,
             rng=rng,
         )

@@ -9,7 +9,6 @@ from ...session import session_scope
 from .utils import (
     RARITY_VALUES,
     RESOURCE_ROOT,
-    SIZE_VALUES,
     ResourceValidationError,
     load_categorized_resource_objects,
 )
@@ -21,7 +20,7 @@ _BREEDS_ROOT = RESOURCE_ROOT / "breeds"
 
 def _validate_breeds_json(breeds_json: dict[str, dict[str, dict[str, Any]]]) -> None:
     errors: list[str] = []
-    allowed_keys = {"alt_name", "description", "rarity", "size", "parameters"}
+    allowed_keys = {"alt_name", "description", "rarity", "min_size", "max_size", "parameters"}
     if not isinstance(breeds_json, dict):
         raise ResourceValidationError("Invalid breed resources: root value must be an object keyed by category")
     for category_name, breeds in breeds_json.items():
@@ -46,9 +45,14 @@ def _validate_breeds_json(breeds_json: dict[str, dict[str, dict[str, Any]]]) -> 
             rarity = attributes.get("rarity")
             if rarity is not None and (not isinstance(rarity, str) or rarity.strip().lower() not in RARITY_VALUES):
                 errors.append(f"{path}.rarity: must be one of: {', '.join(sorted(RARITY_VALUES))}")
-            size = attributes.get("size")
-            if size is not None and (not isinstance(size, str) or size.strip().lower() not in SIZE_VALUES):
-                errors.append(f"{path}.size: must be one of: {', '.join(sorted(SIZE_VALUES))}")
+            min_size = attributes.get("min_size")
+            if min_size is not None and (not isinstance(min_size, int) or min_size < 0):
+                errors.append(f"{path}.min_size: must be a non-negative integer when provided")
+            max_size = attributes.get("max_size")
+            if max_size is not None and (not isinstance(max_size, int) or max_size < 0):
+                errors.append(f"{path}.max_size: must be a non-negative integer when provided")
+            if min_size is not None and max_size is not None and min_size > max_size:
+                errors.append(f"{path}: min_size ({min_size}) must not exceed max_size ({max_size})")
             parameters = attributes.get("parameters")
             if parameters is not None and not isinstance(parameters, dict):
                 errors.append(f"{path}.parameters: must be an object")
@@ -75,7 +79,8 @@ async def load_breeds():
                         category=breed_category,
                         description=attributes.get("description", f"{breed.capitalize()} is a type of dog."),
                         rarity=attributes.get("rarity", "common").lower(),
-                        size=attributes.get("size", "average").lower(),
+                        min_size=attributes.get("min_size", 8),
+                        max_size=attributes.get("max_size", 12),
                         parameters=attributes.get("parameters", {}),
                     )
                 )

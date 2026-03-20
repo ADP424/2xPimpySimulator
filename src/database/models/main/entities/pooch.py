@@ -48,6 +48,8 @@ class Pooch(Base):
         CheckConstraint("dexterity >= 0", name="pooch_dexterity_minimum"),
         CheckConstraint("fertility >= 0", name="pooch_fertility_minimum"),
         CheckConstraint("aggressiveness >= 0", name="pooch_aggressiveness_minimum"),
+        CheckConstraint("constitution >= 0", name="pooch_constitution_minimum"),
+        CheckConstraint("size >= 0", name="pooch_size_minimum"),
         CheckConstraint("breeding_cooldown >= 0", name="pooch_breeding_cooldown_minimum"),
     )
 
@@ -67,6 +69,9 @@ class Pooch(Base):
     dexterity: Mapped[int] = mapped_column(Integer, default=10)
     fertility: Mapped[int] = mapped_column(Integer, default=10)
     aggressiveness: Mapped[int] = mapped_column(Integer, default=10)
+    constitution: Mapped[int] = mapped_column(Integer, default=10)
+
+    size: Mapped[int] = mapped_column(Integer, default=10)
 
     breeding_cooldown: Mapped[int] = mapped_column(Integer, default=2)
     alive: Mapped[bool] = mapped_column(Boolean, default=True)

@@ -841,6 +841,30 @@ async def set_pooch_aggressiveness(pooch_id: int, value: int) -> Optional[Pooch]
     return pooch
 
 
+async def modify_pooch_constitution(pooch_id: int, amount: int) -> Optional[Pooch]:
+    """Modify a pooch's constitution by a given amount (minimum 0)."""
+
+    async with session_scope() as session:
+        pooch = (await session.execute(select(Pooch).where(Pooch.id == pooch_id))).scalar_one_or_none()
+        if pooch is None:
+            return None
+        pooch.constitution = max(0, pooch.constitution + amount)
+        await session.flush()
+    return pooch
+
+
+async def set_pooch_constitution(pooch_id: int, value: int) -> Optional[Pooch]:
+    """Set a pooch's constitution to a specific value (minimum 0)."""
+
+    async with session_scope() as session:
+        pooch = (await session.execute(select(Pooch).where(Pooch.id == pooch_id))).scalar_one_or_none()
+        if pooch is None:
+            return None
+        pooch.constitution = max(0, value)
+        await session.flush()
+    return pooch
+
+
 async def modify_pooch_breeding_cooldown(pooch_id: int, amount: int) -> Optional[Pooch]:
     """Modify a pooch's breeding cooldown by a given amount (minimum 0)."""
 

@@ -13,7 +13,6 @@ from ...models import (
     HEALTH_IMPACT,
     RARITY,
     SEX,
-    SIZE,
 )
 
 logger = get_logger("database/load/load_resources")
@@ -90,7 +89,6 @@ EVENT_SEVERITY_VALUES = _enum_values(EVENT_SEVERITY)
 HEALTH_IMPACT_VALUES = _enum_values(HEALTH_IMPACT)
 RARITY_VALUES = _enum_values(RARITY)
 SEX_VALUES = _enum_values(SEX)
-SIZE_VALUES = _enum_values(SIZE)
 LOCATION_VALUES = {"kennel", "graveyard", "hell", "town", "all", "any"}
 
 

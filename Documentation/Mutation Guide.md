@@ -144,6 +144,7 @@ The following `_add` (int) and `_mult` (float) parameters are available for each
 | Dexterity | `dexterity_add` | `dexterity_mult` |
 | Fertility | `fertility_add` | `fertility_mult` |
 | Aggressiveness | `aggressiveness_add` | `aggressiveness_mult` |
+| Constitution | `constitution_add` | `constitution_mult` |
 
 
 ## Value

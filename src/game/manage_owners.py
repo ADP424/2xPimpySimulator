@@ -4,7 +4,6 @@ import random
 from typing import TYPE_CHECKING, Optional
 
 from src.database import (
-    add_breed_to_pooch,
     add_owner_to_server,
     add_pooch_to_kennel,
     add_pooch_to_strays,
@@ -14,6 +13,7 @@ from src.database import (
     create_pooch,
     get_owner_by_discord_id,
     get_owner_server,
+    get_random_breed_ids,
     give_bones_to_owner,
     give_money_to_owner,
     list_kennels_for_owner,
@@ -28,7 +28,13 @@ from src.database import (
 )
 from src.logger import get_logger
 
-from .constants import BEG_DOLLARS_RANGE, BEG_MAX_DOLLARS, PARK_STRAY_CATCH_DIVISOR
+from .constants import (
+    BEG_DOLLARS_RANGE,
+    BEG_MAX_DOLLARS,
+    PARK_STRAY_CATCH_DIVISOR,
+    POOCH_STAT_RANGE,
+    POOCH_STATS,
+)
 from .exceptions import OwnerNotFound
 from .manage_servers import get_or_create_server
 from .models import to_kennel, to_owner
@@ -111,7 +117,11 @@ async def beg_for_money(
     return amount, None
 
 
-async def get_or_create_owner(server_discord_id: int, owner_discord_id: int) -> Owner:
+async def get_or_create_owner(
+    server_discord_id: int,
+    owner_discord_id: int,
+    rng: Optional[random.Random] = None,
+) -> Owner:
     """
     Get an owner with the given Discord ID for the server with the given Discord ID.
     If no owner with that ID exists on that server yet, create it.
@@ -125,22 +135,44 @@ async def get_or_create_owner(server_discord_id: int, owner_discord_id: int) -> 
     owner_discord_id: int
         The Discord ID of the owner to get / create / add to the server.
 
+    rng: Random, optional
+        The random generator to use when creating starting pooches. A fresh one is created if not given.
+
     Returns
     -------
     Owner
         The Owner with the given Discord ID in the server with the given Discord ID.
     """
 
+    rng = rng if rng is not None else random.Random()
+
     async def _create_owner_starting_objects(owner_discord_id: int):
-        """Add the owner to the sever and give them their starting items."""
+        """Add the owner to the server and give them their starting items."""
 
         await add_owner_to_server(server_discord_id, owner_discord_id)
         kennel = await create_kennel(owner_discord_id)
-        # TODO pass random
-        female_pooch = await create_pooch(owner_discord_id=owner_discord_id, sex="female", age=1, breeding_cooldown=0)
-        male_pooch = await create_pooch(owner_discord_id=owner_discord_id, sex="male", age=1, breeding_cooldown=0)
-        await add_breed_to_pooch(female_pooch.id, from_vendor=True)
-        await add_breed_to_pooch(male_pooch.id, from_vendor=True)
+        female_breed_ids = await get_random_breed_ids(1, rng=rng, from_vendor=True)
+        male_breed_ids = await get_random_breed_ids(1, rng=rng, from_vendor=True)
+        female_pooch = await create_pooch(
+            owner_discord_id=owner_discord_id,
+            sex="female",
+            age=1,
+            breeding_cooldown=0,
+            base_health=rng.randint(POOCH_STAT_RANGE[0], POOCH_STAT_RANGE[1]),
+            **{stat: rng.randint(POOCH_STAT_RANGE[0], POOCH_STAT_RANGE[1]) for stat in POOCH_STATS},
+            breeds=female_breed_ids,
+            rng=rng,
+        )
+        male_pooch = await create_pooch(
+            owner_discord_id=owner_discord_id,
+            sex="male",
+            age=1,
+            breeding_cooldown=0,
+            base_health=rng.randint(POOCH_STAT_RANGE[0], POOCH_STAT_RANGE[1]),
+            **{stat: rng.randint(POOCH_STAT_RANGE[0], POOCH_STAT_RANGE[1]) for stat in POOCH_STATS},
+            breeds=male_breed_ids,
+            rng=rng,
+        )
         await add_pooch_to_kennel(kennel.id, female_pooch.id)
         await add_pooch_to_kennel(kennel.id, male_pooch.id)
 

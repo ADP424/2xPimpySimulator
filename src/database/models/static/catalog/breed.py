@@ -1,9 +1,9 @@
-from sqlalchemy import BigInteger, Text, text
+from sqlalchemy import BigInteger, Integer, Text, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ... import Base
-from ...enums import RARITY, SIZE
+from ...enums import RARITY
 
 
 class Breed(Base):
@@ -17,7 +17,8 @@ class Breed(Base):
     description: Mapped[str] = mapped_column(Text, nullable=False)
 
     rarity: Mapped[str] = mapped_column(RARITY, nullable=False, server_default=text("'common'"))
-    size: Mapped[str] = mapped_column(SIZE, nullable=False, server_default=text("'average'"))
+    min_size: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("8"))
+    max_size: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("12"))
 
     parameters: Mapped[dict[str, str | int | float | list[str]]] = mapped_column(
         JSONB, nullable=False, server_default="{}"

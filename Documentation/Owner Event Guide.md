@@ -281,7 +281,7 @@ Each entry:
 
 | Field | Type | Default | Notes |
 |-------|------|---------|-------|
-| `stat` | string | **required** | `strength`, `cuteness`, `fluffiness`, `intelligence`, `dexterity`, `fertility`, `aggressiveness`, `base_health`, or `size` |
+| `stat` | string | **required** | `strength`, `cuteness`, `fluffiness`, `intelligence`, `dexterity`, `fertility`, `aggressiveness`, `constitution`, `base_health`, or `size` |
 | `pooch` | string | `"random"` | Named `save_as` slot or `"random"` to pick randomly from affected pooches |
 | `scale` | float | **required** | Multiplier magnitude per stat point away from `pivot` |
 | `pivot` | float | `10.0` | Stat value at which this entry contributes a multiplier of exactly `1.0` |
@@ -789,6 +789,7 @@ An optional integer column (default: `1`) that controls how many times in a row 
 | `modify_dexterity` | `pooch`, `kennel`, `owner` | Modifies dexterity stat |
 | `modify_fertility` | `pooch`, `kennel`, `owner` | Modifies fertility stat |
 | `modify_aggressiveness` | `pooch`, `kennel`, `owner` | Modifies aggressiveness stat |
+| `modify_constitution` | `pooch`, `kennel`, `owner` | Modifies constitution stat |
 | `kill_pooch` | `pooch`, `kennel`, `owner` | Kills the pooch(es) |
 | `damn_pooch` | `pooch`, `kennel`, `owner` | Sends a pooch to Hell without reward |
 | `revive_pooch` | `pooch`, `kennel`, `owner` | Revives a dead or damned pooch and routes it to a destination |
@@ -998,9 +999,9 @@ Internal runtime keys (`candidate_pooch_ids`, `candidate_kennel_ids`, `suppresse
 
 ---
 
-#### `modify_strength` / `modify_cuteness` / `modify_fluffiness` / `modify_intelligence` / `modify_dexterity` / `modify_fertility` / `modify_aggressiveness`
+#### `modify_strength` / `modify_cuteness` / `modify_fluffiness` / `modify_intelligence` / `modify_dexterity` / `modify_fertility` / `modify_aggressiveness` / `modify_constitution`
 
-Modifies one of the seven pooch stats. All support the same parameters as `modify_base_health`.
+Modifies one of the eight pooch stats. All support the same parameters as `modify_base_health`.
 
 | Parameter | Type | Required | Notes |
 |-----------|------|----------|-------|
@@ -1191,6 +1192,7 @@ Creates a new pooch and optionally delivers it to a destination.
 | `sex` | string | no | `"male"` or `"female"` — random if omitted |
 | `age` | int | no | Default: 0 |
 | `base_health` | int | no | Default value from constants |
+| `strength` / `cuteness` / `fluffiness` / `intelligence` / `dexterity` / `fertility` / `aggressiveness` / `constitution` | int | no | Default value from constants |
 | `breeding_cooldown` | int | no | Default value from constants |
 | `destination` | string | no | Where to deliver the pooch (see below) — default: `"kennel"`. Ignored when `target_type` is `"kennel"`. |
 | `selector` | string | yes (kennel) | `"random"`, `"selected"`, `"all"`, `"random_exclude"`, or `"all_exclude"` — selects which kennel to deliver to. Multi-kennel selectors use the first resolved kennel. |
@@ -1234,6 +1236,7 @@ Duplicates an existing pooch, inheriting its name, stats, breeds, and mutations.
 | `sex` | string | no | Override — defaults to source's sex |
 | `age` | int | no | Override — defaults to source's age |
 | `base_health` | int | no | Override — defaults to source's base health |
+| `strength` / `cuteness` / `fluffiness` / `intelligence` / `dexterity` / `fertility` / `aggressiveness` / `constitution` | int | no | Override individual stat — defaults to source's value |
 | `breeding_cooldown` | int | no | Override — defaults to source's breeding cooldown |
 | `destination` | string | no | Same values as `create_pooch` — default: `"kennel"` |
 | `save_as` | string or list | no | Save clone and/or source into named slots (see below) |
