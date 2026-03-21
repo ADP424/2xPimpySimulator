@@ -35,6 +35,7 @@ def serialize_mutation(mutation: Any) -> dict:
         "rarity": mutation.rarity,
         "affects_females": mutation.affects_females,
         "affects_males": mutation.affects_males,
+        "advanced_options": getattr(mutation, "advanced_options", {}),
     }
 
 
