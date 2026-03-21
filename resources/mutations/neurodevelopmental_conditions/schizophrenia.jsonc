@@ -8,6 +8,7 @@
     "parameters": {
         "incompatible_mutations": [
             "Total Blindness"
-        ]
+        ],
+        "aggressiveness_add": 2
     }
 }

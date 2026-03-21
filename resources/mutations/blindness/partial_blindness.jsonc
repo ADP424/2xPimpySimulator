@@ -10,6 +10,9 @@
         "incompatible_mutations": [
             "Cataracts",
             "Total Blindness"
-        ]
+        ],
+        "cuteness_add": -1,
+        "strength_add": -2,
+        "fertility_mult": 0.9
     }
 }

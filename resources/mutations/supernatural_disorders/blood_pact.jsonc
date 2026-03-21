@@ -6,6 +6,14 @@
     "health_impact": "HEALTHY",
     "rarity": "REMARKABLE",
     "parameters": {
-        "bloodskull_value_mult": 3
+        "bloodskull_value_mult": 3,
+        "strength_add": 1,
+        "cuteness_add": 1,
+        "fluffiness_add": 1,
+        "intelligence_add": 1,
+        "dexterity_add": 1,
+        "fertility_add": 1,
+        "aggressiveness_add": 1,
+        "constitution_add": 1
     }
 }

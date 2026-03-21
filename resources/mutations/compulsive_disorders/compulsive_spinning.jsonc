@@ -4,5 +4,10 @@
     "description": "This pooch spins around like a Beyblade™.",
     "heritability": 0.05,
     "health_impact": "NEUTRAL",
-    "rarity": "UNCOMMON"
+    "rarity": "UNCOMMON",
+    "parameters": {
+        "dexterity_add": 1,
+        "cuteness_add": 2,
+        "intelligence_add": -1
+    }
 }

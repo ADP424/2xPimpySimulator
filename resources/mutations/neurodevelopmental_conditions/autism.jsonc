@@ -7,6 +7,10 @@
     "rarity": "COMMON",
     "parameters": {
         "breeding_cooldown": 2,
-        "dollar_value_mult": 0.95
+        "dollar_value_mult": 0.95,
+        "cuteness_add": 1,
+        "intelligence_add": 1,
+        "aggressiveness_add": -1,
+        "fertility_mult": 0.9
     }
 }

@@ -4,5 +4,10 @@
     "description": "This pooch can't stop licking itself.",
     "heritability": 0.05,
     "health_impact": "HARMFUL",
-    "rarity": "UNCOMMON"
+    "rarity": "UNCOMMON",
+    "parameters": {
+        "fluffiness_add": -1,
+        "cuteness_add": -2,
+        "constitution_add": -1
+    }
 }

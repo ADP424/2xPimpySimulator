@@ -8,6 +8,9 @@
     "parameters": {
         "incompatible_mutations": [
             "Gigantism"
-        ]
+        ],
+        "cuteness_mult": 1.5,
+        "strength_mult": 0.5, // TODO: SIZE MULT
+        "dexterity_add": 2
     }
 }
