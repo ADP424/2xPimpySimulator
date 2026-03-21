@@ -369,7 +369,7 @@ function createHellCard(pooch) {
                     </div>
                     ${pooch.mood ? `
                     <div class="flex gap-2">
-                        <span class="shrink-0">Mood:</span><span>${moodEmoji[pooch.mood] || ''} ${pooch.mood}</span>
+                        <span class="shrink-0">Mood:</span><span class="capitalize">${moodEmoji[pooch.mood] || ''} ${pooch.mood}</span>
                     </div>
                     ` : ''}
                     <div class="flex gap-2">
