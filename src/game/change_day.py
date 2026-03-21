@@ -18,6 +18,7 @@ from database import (
     get_mutation_health_impact,
     get_pooch_health,
     get_pooch_kennel,
+    list_hell_pooches,
     list_living_pooches,
     list_pooch_mutations,
     list_pooch_pregnancies,
@@ -116,13 +117,26 @@ async def refresh_moods(rng_seed: Optional[int] = None) -> int:
         The number of pooches whose mood was updated.
     """
     rng = random.Random(rng_seed)
+    count = 0
+
     pooches = await list_living_pooches()
     for pooch in pooches:
         total_health: int = await get_pooch_health(pooch.id)
         new_mood = _pick_mood(total_health, pooch.age, rng)
         await update_pooch_mood(pooch.id, new_mood)
-    logger.info("Refreshed moods for %d pooches.", len(pooches))
-    return len(pooches)
+    count += len(pooches)
+
+    # Set "dead" mood on hell pooches that don't have one
+    hell_pooches = await list_hell_pooches()
+    hell_updated = 0
+    for pooch in hell_pooches:
+        if pooch.mood is None:
+            await update_pooch_mood(pooch.id, "dead")
+            hell_updated += 1
+    count += hell_updated
+
+    logger.info("Refreshed moods for %d pooches (%d hell pooches).", count, hell_updated)
+    return count
 
 
 def _death_roll(total_health: int, rng: random.Random) -> bool:
