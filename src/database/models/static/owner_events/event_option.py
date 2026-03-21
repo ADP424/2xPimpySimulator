@@ -29,7 +29,7 @@ class EventOption(Base):
     is_visible: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     filter: Mapped[OwnerEventFilterSpec] = mapped_column(JSONB, nullable=False, default=dict)
-    advanced_options: Mapped[EventOptionAdvancedOptions] = mapped_column(JSONB, nullable=False, default=dict)
+    parameters: Mapped[EventOptionAdvancedOptions] = mapped_column(JSONB, nullable=False, default=dict)
 
     event: Mapped[Event] = relationship("Event", back_populates="options")
     actions: Mapped[list[EventAction]] = relationship(

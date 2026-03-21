@@ -308,7 +308,7 @@ class TestEvent:
         assert not col.nullable
 
     def test_advanced_options_column(self):
-        col = Event.__table__.c["advanced_options"]
+        col = Event.__table__.c["parameters"]
         assert not col.nullable
 
     def test_actions_relationship_exists(self):
@@ -478,7 +478,7 @@ class TestEventOption:
         assert not col.nullable
 
     def test_advanced_options_column(self):
-        col = EventOption.__table__.c["advanced_options"]
+        col = EventOption.__table__.c["parameters"]
         assert not col.nullable
 
     def test_event_relationship_exists(self):
@@ -554,7 +554,7 @@ class TestEventOutcome:
         assert col.nullable
 
     def test_advanced_options_column(self):
-        col = EventOutcome.__table__.c["advanced_options"]
+        col = EventOutcome.__table__.c["parameters"]
         assert not col.nullable
 
     def test_check_constraint_exists(self):

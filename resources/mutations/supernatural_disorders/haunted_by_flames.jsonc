@@ -5,7 +5,7 @@
     "heritability": 0.0,
     "health_impact": "HARMFUL",
     "rarity": "UNPRECEDENTED",
-    "advanced_options": {
+    "parameters": {
         "bloodskull_value_mult": 1.1,
         "born_from_ritual": false,
         // TODO: Add an on death for the dog to be sent to hell instead of the graveyard

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -23,6 +23,8 @@ class Mutation:
 
     affects_females: bool
     affects_males: bool
+
+    parameters: dict = field(default_factory=dict)
 
 
 async def to_mutation(mutation: MutationORM) -> Mutation:
@@ -51,4 +53,5 @@ async def to_mutation(mutation: MutationORM) -> Mutation:
         rarity=mutation.rarity,
         affects_females=mutation.affects_females,
         affects_males=mutation.affects_males,
+        parameters=mutation.parameters or {},
     )

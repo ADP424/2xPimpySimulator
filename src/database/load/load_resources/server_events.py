@@ -36,7 +36,7 @@ _SERVER_EVENT_ALLOWED_KEYS = {
     "rarity",
     "filter",
     "default_actions",
-    "advanced_options",
+    "parameters",
     "actions",
     "menus",
     "outcomes",
@@ -63,7 +63,7 @@ _SERVER_MENU_ALLOWED_KEYS = {
     "max_uses_per_player",
     "depends_on",
     "options",
-    "advanced_options",
+    "parameters",
 }
 
 _SERVER_MENU_OPTION_ALLOWED_KEYS = {
@@ -73,7 +73,7 @@ _SERVER_MENU_OPTION_ALLOWED_KEYS = {
     "requires",
     "actions",
     "scoring",
-    "advanced_options",
+    "parameters",
 }
 
 _SERVER_MENU_OPTION_REQUIRES_ALLOWED_KEYS = {"pooch"}
@@ -92,7 +92,7 @@ _SERVER_EVENT_OUTCOME_ALLOWED_KEYS = {
     "min_rank",
     "max_rank",
     "chance",
-    "advanced_options",
+    "parameters",
     "actions",
 }
 
@@ -124,7 +124,7 @@ class _ServerEventValidator(BaseEventValidator):
         self._validate_optional_string(path, attributes, "name", allow_blank=False)
         self._validate_optional_string(path, attributes, "description")
         self._validate_optional_string(path, attributes, "flavor_text")
-        self._validate_optional_json_object(path, attributes, "advanced_options")
+        self._validate_optional_json_object(path, attributes, "parameters")
         self._validate_enum_string(path, attributes, "severity", EVENT_SEVERITY_VALUES)
         self._validate_enum_string(path, attributes, "rarity", RARITY_VALUES)
 
@@ -198,7 +198,7 @@ class _ServerEventValidator(BaseEventValidator):
             self._validate_unknown_keys(menu_path, menu_data, _SERVER_MENU_ALLOWED_KEYS)
             self._validate_optional_string(menu_path, menu_data, "label")
             self._validate_optional_string(menu_path, menu_data, "description")
-            self._validate_optional_json_object(menu_path, menu_data, "advanced_options")
+            self._validate_optional_json_object(menu_path, menu_data, "parameters")
 
             max_uses = menu_data.get("max_uses_per_player", 1)
             if max_uses != "unlimited":
@@ -236,7 +236,7 @@ class _ServerEventValidator(BaseEventValidator):
         self._validate_unknown_keys(path, option_data, _SERVER_MENU_OPTION_ALLOWED_KEYS)
         self._validate_optional_string(path, option_data, "label", allow_blank=False)
         self._validate_optional_string(path, option_data, "description")
-        self._validate_optional_json_object(path, option_data, "advanced_options")
+        self._validate_optional_json_object(path, option_data, "parameters")
 
         if "filter" in option_data:
             self._validate_owner_filter(f"{path}.filter", option_data["filter"])
@@ -352,7 +352,7 @@ class _ServerEventValidator(BaseEventValidator):
             chance = self._validate_optional_probability(current_path, outcome, "chance")
             if chance is not None:
                 explicit_chances.append(chance)
-            self._validate_optional_json_object(current_path, outcome, "advanced_options")
+            self._validate_optional_json_object(current_path, outcome, "parameters")
             self._validate_actions_list(current_path, outcome.get("actions", []), "actions")
             validated.append(outcome)
 
@@ -425,7 +425,7 @@ async def load_server_events():
                     rarity=str(attributes.get("rarity", "common")).lower(),
                     filter=raw_filter if isinstance(raw_filter, dict) else {},
                     default_actions_data=default_actions_raw if isinstance(default_actions_raw, list) else [],
-                    advanced_options=attributes.get("advanced_options", {}),
+                    parameters=attributes.get("parameters", {}),
                 )
                 session.add(event)
                 await session.flush()
@@ -458,7 +458,7 @@ async def load_server_events():
                         description=str(menu_data.get("description", "")),
                         max_uses_per_player=max_uses,
                         depends_on=list(menu_data.get("depends_on", [])),
-                        advanced_options=menu_data.get("advanced_options", {}),
+                        parameters=menu_data.get("parameters", {}),
                     )
                     session.add(menu)
                     await session.flush()
@@ -472,7 +472,7 @@ async def load_server_events():
                             filter=option_data.get("filter", {}),
                             requires=option_data.get("requires", {}),
                             scoring=option_data.get("scoring", {}),
-                            advanced_options=option_data.get("advanced_options", {}),
+                            parameters=option_data.get("parameters", {}),
                         )
                         session.add(menu_option)
                         await session.flush()
@@ -502,7 +502,7 @@ async def load_server_events():
                         min_rank=outcome_data["min_rank"] if "min_rank" in outcome_data else None,
                         max_rank=outcome_data["max_rank"] if "max_rank" in outcome_data else None,
                         chance=float(outcome_data["chance"]) if "chance" in outcome_data else None,
-                        advanced_options=outcome_data.get("advanced_options", {}),
+                        parameters=outcome_data.get("parameters", {}),
                     )
                     session.add(outcome)
                     await session.flush()

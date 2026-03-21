@@ -41,6 +41,14 @@
                             <span class="info-label">Also Known As</span>
                             <span class="info-value" id="breed-alt-name"></span>
                         </div>
+                        <div class="info-item">
+                            <span class="info-label">Sold by Vendors</span>
+                            <span class="info-value" id="breed-sold-by-vendors"></span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Born from Ritual</span>
+                            <span class="info-value" id="breed-born-from-ritual"></span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -74,6 +82,17 @@ document.addEventListener('DOMContentLoaded', async function() {
         document.getElementById('breed-rarity').innerHTML = `<span class="rarity-badge rarity-${(breed.rarity || '').toLowerCase()}">${escapeHtml(rarityLabel)}</span>`;
         document.getElementById('breed-category').textContent = breed.category || '—';
         document.getElementById('breed-alt-name').textContent = breed.alt_name || '—';
+
+        const opts = breed.parameters || {};
+        const soldByVendors = opts.sold_by_vendors !== 0;
+        document.getElementById('breed-sold-by-vendors').innerHTML = soldByVendors
+            ? '<span class="badge badge-success">Yes</span>'
+            : '<span class="badge badge-error">No</span>';
+
+        const bornFromRitual = opts.born_from_ritual !== 0;
+        document.getElementById('breed-born-from-ritual').innerHTML = bornFromRitual
+            ? '<span class="badge badge-success">Yes</span>'
+            : '<span class="badge badge-error">No</span>';
 
     } catch (error) {
         document.getElementById('loading').innerHTML = '<span class="text-error">Failed to load breed details</span>';

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -19,6 +19,8 @@ class Breed:
     rarity: str
     min_size: int
     max_size: int
+
+    parameters: dict = field(default_factory=dict)
 
 
 async def to_breed(breed: BreedORM) -> Breed:
@@ -45,4 +47,5 @@ async def to_breed(breed: BreedORM) -> Breed:
         rarity=breed.rarity,
         min_size=breed.min_size,
         max_size=breed.max_size,
+        parameters=breed.parameters or {},
     )

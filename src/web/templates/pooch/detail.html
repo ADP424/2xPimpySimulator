@@ -58,7 +58,10 @@
         <!-- Family Card -->
         <div class="card bg-base-200 shadow-md">
             <div class="card-body">
-                <h2 class="card-title">👨‍👩‍👧 Family</h2>
+                <div class="flex justify-between items-center">
+                    <h2 class="card-title">👨‍👩‍👧 Family</h2>
+                    <a href="/pooch/{{ pooch_id }}/family-tree" class="btn btn-ghost btn-xs">View Tree</a>
+                </div>
                 <div id="family-info"></div>
             </div>
         </div>
@@ -128,6 +131,20 @@ function renderPooch(pooch, family) {
         'dead': '💀 Dead'
     };
 
+    const moodEmoji = {
+        'happy': '😊 Happy',
+        'excited': '🤪 Excited',
+        'sleepy': '😴 Sleepy',
+        'grumpy': '😤 Grumpy',
+        'anxious': '😰 Anxious',
+        'mischievous': '😈 Mischievous',
+        'zoomies': '🏃 Zoomies',
+        'hungry': '🍖 Hungry',
+        'content': '😌 Content',
+        'clingy': '🥺 Clingy',
+        'dead': '💀 Dead'
+    };
+
     document.getElementById('basic-info').innerHTML = `
         <div class="grid grid-cols-2 gap-3">
             <div class="flex flex-col gap-0.5">
@@ -154,6 +171,12 @@ function renderPooch(pooch, family) {
                 <span class="text-xs text-base-content/50 uppercase tracking-wide">Virgin</span>
                 <span class="font-medium">${pooch.virgin ? 'Yes 💕' : 'No'}</span>
             </div>
+            ${pooch.mood ? `
+            <div class="flex flex-col gap-0.5">
+                <span class="text-xs text-base-content/50 uppercase tracking-wide">Mood</span>
+                <span class="font-medium">${moodEmoji[pooch.mood] || pooch.mood}</span>
+            </div>
+            ` : ''}
             ${pooch.birthday ? `
             <div class="flex flex-col gap-0.5">
                 <span class="text-xs text-base-content/50 uppercase tracking-wide">Birthday</span>

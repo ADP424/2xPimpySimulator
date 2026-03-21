@@ -33,7 +33,7 @@ class Event(Base):
     triggered_only: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     filter: Mapped[OwnerEventFilterSpec] = mapped_column(JSONB, nullable=False, default=dict)
-    advanced_options: Mapped[EventAdvancedOptions] = mapped_column(JSONB, nullable=False, default=dict)
+    parameters: Mapped[EventAdvancedOptions] = mapped_column(JSONB, nullable=False, default=dict)
 
     actions: Mapped[list[EventAction]] = relationship(
         "EventAction",

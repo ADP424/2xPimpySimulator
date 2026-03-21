@@ -17,7 +17,7 @@ Owner events live in `resources/owner_events/**/*.jsonc`. Each event is its own 
     "response_timeout": "int",
     "triggered_only": "bool",
     "filter": {},
-    "advanced_options": {},
+    "parameters": {},
     "actions": [
         {
             "action_type": "string",
@@ -32,7 +32,7 @@ Owner events live in `resources/owner_events/**/*.jsonc`. Each event is its own 
             "default": "bool",
             "visible": "bool",
             "filter": {},
-            "advanced_options": {},
+            "parameters": {},
             "actions": [
                 {
                     "action_type": "string",
@@ -200,7 +200,7 @@ Options are objects inside an event's `options` list.
     "default": false,
     "visible": true,
     "filter": {},
-    "advanced_options": {},
+    "parameters": {},
     "actions": [],
     "outcomes": []
 }

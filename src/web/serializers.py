@@ -18,6 +18,7 @@ def serialize_breed(breed: Any) -> dict:
         "category": breed.category,
         "description": breed.description,
         "rarity": breed.rarity,
+        "parameters": getattr(breed, "parameters", {}),
     }
 
 
@@ -34,6 +35,7 @@ def serialize_mutation(mutation: Any) -> dict:
         "rarity": mutation.rarity,
         "affects_females": mutation.affects_females,
         "affects_males": mutation.affects_males,
+        "parameters": getattr(mutation, "parameters", {}),
     }
 
 
@@ -83,6 +85,7 @@ def serialize_pooch(pooch: Any, include_relations: bool = True) -> dict:
         "birthday": serialize_datetime(pooch.birthday),
         "health": pooch.health,
         "status": pooch.status,
+        "mood": pooch.mood,
     }
 
     if include_relations:

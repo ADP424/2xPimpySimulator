@@ -30,7 +30,7 @@ class ServerEventOption(Base):
     min_bloodskulls: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     requires_pooch_selection: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
-    advanced_options: Mapped[ServerEventOptionAdvancedOptions] = mapped_column(JSONB, nullable=False, default=dict)
+    parameters: Mapped[ServerEventOptionAdvancedOptions] = mapped_column(JSONB, nullable=False, default=dict)
 
     server_event: Mapped[ServerEvent] = relationship("ServerEvent", back_populates="options")
     actions: Mapped[list[EventAction]] = relationship(

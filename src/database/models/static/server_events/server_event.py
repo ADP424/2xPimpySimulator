@@ -35,7 +35,7 @@ class ServerEvent(Base):
     # Serialised list of action specs fired server-side when no qualifying participants exist at resolution
     default_actions_data: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
 
-    advanced_options: Mapped[ServerEventAdvancedOptions] = mapped_column(JSONB, nullable=False, default=dict)
+    parameters: Mapped[ServerEventAdvancedOptions] = mapped_column(JSONB, nullable=False, default=dict)
 
     # Actions fired immediately at event trigger (target_type="server")
     actions: Mapped[list[EventAction]] = relationship(

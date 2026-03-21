@@ -26,6 +26,7 @@ from .get import (
     get_owner_event_by_name,
     get_owner_event_option_by_id,
     get_owner_server,
+    get_parentage_maps,
     get_pending_active_owner_event,
     get_pooch_aggressiveness,
     get_pooch_base_health,
@@ -86,6 +87,7 @@ from .list import (
     list_pooch_pregnancies,
     list_pooch_siblings,
     list_pooches_for_kennel,
+    list_pooches_with_health,
     list_server_event_history,
     list_server_event_participations,
     list_servers,
@@ -174,6 +176,7 @@ from .update import (
     update_active_event_context,
     update_active_event_result,
     update_owner_discord_name,
+    update_pooch_mood,
 )
 
 __all__ = [
@@ -206,6 +209,7 @@ __all__ = [
     "get_pending_active_owner_event",
     "get_pooch_aggressiveness",
     "get_pooch_base_health",
+    "get_parentage_maps",
     "get_pooch_by_id",
     "get_pooch_constitution",
     "get_pooch_cuteness",
@@ -262,6 +266,7 @@ __all__ = [
     "list_pooch_pregnancies",
     "list_pooch_siblings",
     "list_pooches_for_kennel",
+    "list_pooches_with_health",
     "list_servers",
     "list_servers_for_owner",
     "list_servers_for_pooch",
@@ -352,4 +357,5 @@ __all__ = [
     "update_active_event_context",
     "update_active_event_result",
     "update_owner_discord_name",
+    "update_pooch_mood",
 ]

@@ -41,7 +41,7 @@ class ServerEventOutcome(Base):
     max_rank: Mapped[int | None] = mapped_column(Integer, nullable=True)
     chance: Mapped[float | None] = mapped_column(Float, nullable=True)
 
-    advanced_options: Mapped[ServerEventOutcomeAdvancedOptions] = mapped_column(JSONB, nullable=False, default=dict)
+    parameters: Mapped[ServerEventOutcomeAdvancedOptions] = mapped_column(JSONB, nullable=False, default=dict)
 
     server_event: Mapped[ServerEvent] = relationship("ServerEvent", back_populates="outcomes")
     actions: Mapped[list[EventAction]] = relationship(

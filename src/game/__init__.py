@@ -51,6 +51,7 @@ from .manage_owners import (
 from .manage_pooches import (
     get_pooch_by_id,
     get_pooch_family,
+    get_pooch_family_tree,
     rename_pooch,
     run_hourly_breeding_cooldown_check,
 )
@@ -133,6 +134,7 @@ __all__ = [
     # Pooch commands
     "get_pooch_by_id",
     "get_pooch_family",
+    "get_pooch_family_tree",
     "rename_pooch",
     "run_hourly_breeding_cooldown_check",
     # Stray event commands

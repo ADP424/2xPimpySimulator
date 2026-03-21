@@ -29,7 +29,7 @@ _EVENT_ALLOWED_KEYS = {
     "response_timeout",
     "triggered_only",
     "filter",
-    "advanced_options",
+    "parameters",
     "actions",
     "options",
 }
@@ -40,7 +40,7 @@ _OPTION_ALLOWED_KEYS = {
     "default",
     "visible",
     "filter",
-    "advanced_options",
+    "parameters",
     "actions",
     "outcomes",
 }
@@ -51,7 +51,7 @@ _OUTCOME_ALLOWED_KEYS = {
     "message",
     "chance",
     "stat_weights",
-    "advanced_options",
+    "parameters",
     "actions",
 }
 
@@ -89,7 +89,7 @@ class _OwnerEventValidator(BaseEventValidator):
         self._validate_optional_string(path, attributes, "name", allow_blank=False)
         self._validate_optional_string(path, attributes, "description")
         self._validate_optional_string(path, attributes, "flavor_text")
-        self._validate_optional_json_object(path, attributes, "advanced_options")
+        self._validate_optional_json_object(path, attributes, "parameters")
         self._validate_enum_string(path, attributes, "severity", EVENT_SEVERITY_VALUES)
         self._validate_enum_string(path, attributes, "rarity", RARITY_VALUES)
         requires_response = self._validate_optional_bool(path, attributes, "requires_response")
@@ -122,7 +122,7 @@ class _OwnerEventValidator(BaseEventValidator):
             self._validate_unknown_keys(current_path, option, _OPTION_ALLOWED_KEYS)
             self._validate_optional_string(current_path, option, "label", allow_blank=False)
             self._validate_optional_string(current_path, option, "description")
-            self._validate_optional_json_object(current_path, option, "advanced_options")
+            self._validate_optional_json_object(current_path, option, "parameters")
             is_default = self._validate_optional_bool(current_path, option, "default")
             is_visible = self._validate_optional_bool(current_path, option, "visible")
 
@@ -171,7 +171,7 @@ class _OwnerEventValidator(BaseEventValidator):
             self._validate_optional_string(current_path, outcome, "label")
             self._validate_optional_string(current_path, outcome, "description")
             self._validate_optional_string(current_path, outcome, "message")
-            self._validate_optional_json_object(current_path, outcome, "advanced_options")
+            self._validate_optional_json_object(current_path, outcome, "parameters")
             chance = self._validate_optional_probability(current_path, outcome, "chance")
             stat_weights = outcome.get("stat_weights", [])
             self._validate_stat_weights(current_path, stat_weights)
@@ -239,7 +239,7 @@ async def load_owner_events():
                     response_timeout=attributes.get("response_timeout", 3600),
                     triggered_only=bool(attributes.get("triggered_only", False)),
                     filter=_resolve_owner_event_filter(attributes),
-                    advanced_options=attributes.get("advanced_options", {}),
+                    parameters=attributes.get("parameters", {}),
                 )
                 session.add(event)
                 await session.flush()
@@ -266,7 +266,7 @@ async def load_owner_events():
                         is_default=bool(option_data.get("default", False)),
                         is_visible=bool(option_data.get("visible", True)),
                         filter=_resolve_owner_event_option_filter(option_data),
-                        advanced_options=option_data.get("advanced_options", {}),
+                        parameters=option_data.get("parameters", {}),
                     )
                     session.add(option)
                     await session.flush()
@@ -293,7 +293,7 @@ async def load_owner_events():
                             message=str(outcome_data.get("message", "")),
                             chance=float(outcome_data["chance"]) if "chance" in outcome_data else None,
                             stat_weights=list(outcome_data.get("stat_weights", [])),
-                            advanced_options=outcome_data.get("advanced_options", {}),
+                            parameters=outcome_data.get("parameters", {}),
                         )
                         session.add(outcome)
                         await session.flush()

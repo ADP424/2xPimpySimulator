@@ -14,7 +14,7 @@ CREATE TABLE server_events (
     max_participants        INTEGER NOT NULL DEFAULT 0,
     resolution_strategy     TEXT NOT NULL DEFAULT 'random_winner',
 
-    advanced_options        JSONB NOT NULL DEFAULT '{}'::jsonb
+    parameters        JSONB NOT NULL DEFAULT '{}'::jsonb
 );
 
 CREATE TABLE server_event_options (
@@ -29,7 +29,7 @@ CREATE TABLE server_event_options (
     min_bloodskulls         INTEGER NOT NULL DEFAULT 0,
     requires_pooch_selection BOOLEAN NOT NULL DEFAULT FALSE,
 
-    advanced_options        JSONB NOT NULL DEFAULT '{}'::jsonb
+    parameters        JSONB NOT NULL DEFAULT '{}'::jsonb
 );
 
 CREATE TABLE server_event_outcomes (
@@ -44,7 +44,7 @@ CREATE TABLE server_event_outcomes (
     max_rank                INTEGER,
     chance                  DOUBLE PRECISION,
 
-    advanced_options        JSONB NOT NULL DEFAULT '{}'::jsonb,
+    parameters        JSONB NOT NULL DEFAULT '{}'::jsonb,
 
     CONSTRAINT server_event_outcomes_chance_range CHECK (chance IS NULL OR (chance >= 0 AND chance <= 1)),
     CONSTRAINT server_event_outcomes_rank_bounds CHECK (

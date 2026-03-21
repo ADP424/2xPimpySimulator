@@ -15,6 +15,7 @@ from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ... import Base
+from ...enums.mood import MOOD
 from ...enums.sex import SEX
 
 if TYPE_CHECKING:
@@ -76,6 +77,7 @@ class Pooch(Base):
     breeding_cooldown: Mapped[int] = mapped_column(Integer, default=2)
     alive: Mapped[bool] = mapped_column(Boolean, default=True)
     virgin: Mapped[bool] = mapped_column(Boolean, default=True)
+    mood: Mapped[str | None] = mapped_column(MOOD, nullable=True)
 
     owner_discord_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("owners.discord_id", ondelete="SET NULL"), nullable=True

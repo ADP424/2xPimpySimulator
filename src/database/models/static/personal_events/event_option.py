@@ -28,7 +28,7 @@ class EventOption(Base):
     min_money: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     min_bloodskulls: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
-    advanced_options: Mapped[EventOptionAdvancedOptions] = mapped_column(JSONB, nullable=False, default=dict)
+    parameters: Mapped[EventOptionAdvancedOptions] = mapped_column(JSONB, nullable=False, default=dict)
 
     event: Mapped[Event] = relationship("Event", back_populates="options")
     actions: Mapped[list[EventAction]] = relationship(

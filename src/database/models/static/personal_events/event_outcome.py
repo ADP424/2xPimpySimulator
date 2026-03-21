@@ -31,7 +31,7 @@ class EventOutcome(Base):
     message: Mapped[str] = mapped_column(Text, nullable=False, default="")
     chance: Mapped[float | None] = mapped_column(Float, nullable=True)
 
-    advanced_options: Mapped[EventOutcomeAdvancedOptions] = mapped_column(JSONB, nullable=False, default=dict)
+    parameters: Mapped[EventOutcomeAdvancedOptions] = mapped_column(JSONB, nullable=False, default=dict)
 
     option: Mapped[EventOption] = relationship("EventOption", back_populates="outcomes")
     actions: Mapped[list[EventAction]] = relationship(

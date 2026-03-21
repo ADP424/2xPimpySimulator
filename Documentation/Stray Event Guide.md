@@ -17,7 +17,7 @@ Stray events live in `resources/stray_events/**/*.jsonc`. Each **file** defines 
     "rarity": "string",
     "triggered_only": false,
     "filter": {},
-    "advanced_options": {},
+    "parameters": {},
     "actions": [
         {
             "action_type": "string",

@@ -32,7 +32,7 @@ class ServerEventMenuOption(Base):
     # ScoringSpec as JSONB
     scoring: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
 
-    advanced_options: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    parameters: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
 
     menu: Mapped[ServerEventMenu] = relationship("ServerEventMenu", back_populates="options")
     actions: Mapped[list[EventAction]] = relationship(

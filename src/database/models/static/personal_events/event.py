@@ -36,7 +36,7 @@ class Event(Base):
     min_bloodskulls: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     triggered_only: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
-    advanced_options: Mapped[EventAdvancedOptions] = mapped_column(JSONB, nullable=False, default=dict)
+    parameters: Mapped[EventAdvancedOptions] = mapped_column(JSONB, nullable=False, default=dict)
 
     actions: Mapped[list[EventAction]] = relationship(
         "EventAction",

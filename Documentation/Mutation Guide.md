@@ -13,7 +13,7 @@ Mutations are structured within resources/mutations/**/*.jsonc, like:
         "heritability": "float",
         "health_impact": "string",
         "rarity": "string",
-        "advanced_options": {
+        "parameters": {
             "[option]": "string/float/int/list"
         }
     },

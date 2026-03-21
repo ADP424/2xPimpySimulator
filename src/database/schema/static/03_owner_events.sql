@@ -16,7 +16,7 @@ CREATE TABLE owner_events (
     triggered_only      BOOLEAN NOT NULL DEFAULT FALSE,
 
     filter              JSONB NOT NULL DEFAULT '{}'::jsonb,
-    advanced_options    JSONB NOT NULL DEFAULT '{}'::jsonb
+    parameters    JSONB NOT NULL DEFAULT '{}'::jsonb
 );
 
 CREATE TABLE owner_event_options (
@@ -31,7 +31,7 @@ CREATE TABLE owner_event_options (
     is_visible          BOOLEAN NOT NULL DEFAULT TRUE,
 
     filter              JSONB NOT NULL DEFAULT '{}'::jsonb,
-    advanced_options    JSONB NOT NULL DEFAULT '{}'::jsonb
+    parameters    JSONB NOT NULL DEFAULT '{}'::jsonb
 );
 
 CREATE TABLE owner_event_outcomes (
@@ -44,7 +44,7 @@ CREATE TABLE owner_event_outcomes (
     message             TEXT NOT NULL DEFAULT '',
     chance              DOUBLE PRECISION,
 
-    advanced_options    JSONB NOT NULL DEFAULT '{}'::jsonb,
+    parameters    JSONB NOT NULL DEFAULT '{}'::jsonb,
     stat_weights        JSONB NOT NULL DEFAULT '[]'::jsonb,
 
     CONSTRAINT owner_event_outcomes_chance_range CHECK (chance IS NULL OR (chance >= 0 AND chance <= 1))

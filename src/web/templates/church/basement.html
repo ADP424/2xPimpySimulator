@@ -69,11 +69,25 @@
         <h2 class="card-title">👁️ Gaze into Hell</h2>
         <p class="text-sm text-base-content/60 mb-4">The damned pooches, sacrificed to the void.</p>
 
+        <div id="hell-filters" class="flex flex-wrap gap-3 mb-4" style="display: none;">
+            <input id="hell-search" type="text" placeholder="Search by name..." class="input input-sm w-48" oninput="debouncedFilterHell()">
+            <select id="hell-owner-filter" class="select select-sm w-48" onchange="filterHell()">
+                <option value="">All owners</option>
+            </select>
+        </div>
+
         <div id="hell-loading" class="flex items-center gap-3 text-base-content/50 py-4">
             <span class="loading loading-spinner loading-sm"></span>
             <span>Loading...</span>
         </div>
         <div id="hell-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" style="display: none;"></div>
+        <div id="hell-pagination" class="flex justify-center items-center gap-4 mt-4" style="display: none;">
+            <div class="join">
+                <button class="join-item btn btn-sm" id="hell-prev" onclick="hellPage(-1)">«</button>
+                <button class="join-item btn btn-sm no-animation" id="hell-page-info"></button>
+                <button class="join-item btn btn-sm" id="hell-next" onclick="hellPage(1)">»</button>
+            </div>
+        </div>
         <div id="hell-empty" class="text-center py-8 text-base-content/50" style="display: none;">
             <p class="text-3xl mb-3">🔥</p>
             <p>Hell is empty. For now.</p>
@@ -85,8 +99,12 @@
 {% block extra_scripts %}
 <script>
 let allPooches = [];
+let hellPooches = [];
 let selectedPoochId = null;
 let currentRolls = 1;
+const HELL_PAGE_SIZE = 20;
+let hellCurrentPage = 1;
+let hellFiltered = [];
 
 document.addEventListener('DOMContentLoaded', async function() {
     await Promise.all([
@@ -232,25 +250,97 @@ async function confirmSummon() {
 async function loadHell() {
     try {
         const resp = await fetch('/api/hell');
-        const pooches = await resp.json();
+        hellPooches = await resp.json();
 
         document.getElementById('hell-loading').style.display = 'none';
 
-        if (pooches.length === 0) {
+        if (hellPooches.length === 0) {
             document.getElementById('hell-empty').style.display = 'block';
             return;
         }
 
-        const grid = document.getElementById('hell-grid');
-        grid.innerHTML = pooches.map(createHellCard).join('');
-        grid.style.display = '';
+        // Populate owner filter
+        const owners = new Map();
+        hellPooches.forEach(p => {
+            if (p.owner) owners.set(p.owner.discord_id, p.owner.discord_name || 'Unknown');
+        });
+        const ownerSelect = document.getElementById('hell-owner-filter');
+        ownerSelect.innerHTML = '<option value="">All owners</option>' +
+            [...owners.entries()]
+                .sort((a, b) => a[1].localeCompare(b[1]))
+                .map(([id, name]) => `<option value="${id}">${escapeHtml(name)}</option>`)
+                .join('');
+
+        document.getElementById('hell-filters').style.display = '';
+        filterHell();
     } catch (e) {
         document.getElementById('hell-loading').innerHTML = '<span class="text-error">Failed to load.</span>';
         console.error('Error:', e);
     }
 }
 
+let hellDebounceTimer = null;
+function debouncedFilterHell() {
+    clearTimeout(hellDebounceTimer);
+    hellDebounceTimer = setTimeout(filterHell, 250);
+}
+
+function filterHell() {
+    const search = document.getElementById('hell-search').value.toLowerCase().trim();
+    const ownerFilter = document.getElementById('hell-owner-filter').value;
+
+    hellFiltered = hellPooches.filter(p => {
+        if (search && !p.name.toLowerCase().includes(search)) return false;
+        if (ownerFilter && (!p.owner || String(p.owner.discord_id) !== ownerFilter)) return false;
+        return true;
+    });
+
+    hellCurrentPage = 1;
+    renderHellPage();
+}
+
+function hellPage(delta) {
+    const totalPages = Math.ceil(hellFiltered.length / HELL_PAGE_SIZE);
+    hellCurrentPage = Math.max(1, Math.min(hellCurrentPage + delta, totalPages));
+    renderHellPage();
+}
+
+function renderHellPage() {
+    const grid = document.getElementById('hell-grid');
+    const empty = document.getElementById('hell-empty');
+    const pagination = document.getElementById('hell-pagination');
+
+    if (hellFiltered.length === 0) {
+        grid.style.display = 'none';
+        pagination.style.display = 'none';
+        empty.style.display = 'block';
+        return;
+    }
+
+    const totalPages = Math.ceil(hellFiltered.length / HELL_PAGE_SIZE);
+    const start = (hellCurrentPage - 1) * HELL_PAGE_SIZE;
+    const page = hellFiltered.slice(start, start + HELL_PAGE_SIZE);
+
+    grid.innerHTML = page.map(createHellCard).join('');
+    grid.style.display = '';
+    empty.style.display = 'none';
+
+    if (totalPages > 1) {
+        document.getElementById('hell-prev').disabled = hellCurrentPage <= 1;
+        document.getElementById('hell-next').disabled = hellCurrentPage >= totalPages;
+        document.getElementById('hell-page-info').textContent = `${hellCurrentPage} / ${totalPages}`;
+        pagination.style.display = '';
+    } else {
+        pagination.style.display = 'none';
+    }
+}
+
 function createHellCard(pooch) {
+    const moodEmoji = {
+        'happy': '😊', 'excited': '🤪', 'sleepy': '😴', 'grumpy': '😤',
+        'anxious': '😰', 'mischievous': '😈', 'zoomies': '🏃', 'hungry': '🍖',
+        'content': '😌', 'clingy': '🥺', 'dead': '💀'
+    };
     const sexEmoji = pooch.sex === 'female' ? '♀️' : '♂️';
     const breedsHtml = (pooch.breeds || []).length > 0
         ? (pooch.breeds || []).map((b, i) =>
@@ -267,7 +357,7 @@ function createHellCard(pooch) {
         : '';
 
     return `
-        <div class="card bg-base-300 shadow-sm border border-error/20">
+        <a href="/pooch/${pooch.id}" class="card bg-base-300 shadow-sm border border-error/20 hover:-translate-y-1 hover:shadow-md transition-all text-base-content no-underline">
             <div class="card-body py-4 px-4 gap-2">
                 <div class="flex justify-between items-center">
                     <span class="font-bold text-error/80">${escapeHtml(pooch.name)}</span>
@@ -277,6 +367,11 @@ function createHellCard(pooch) {
                     <div class="flex gap-2">
                         <span class="shrink-0">Age:</span><span>${pooch.age} days</span>
                     </div>
+                    ${pooch.mood ? `
+                    <div class="flex gap-2">
+                        <span class="shrink-0">Mood:</span><span>${moodEmoji[pooch.mood] || ''} ${pooch.mood}</span>
+                    </div>
+                    ` : ''}
                     <div class="flex gap-2">
                         <span class="shrink-0">Breeds:</span><span class="text-base-content/70">${breedsHtml}</span>
                     </div>
@@ -286,7 +381,7 @@ function createHellCard(pooch) {
                 </div>
                 ${mutationsHtml}
             </div>
-        </div>
+        </a>
     `;
 }
 </script>

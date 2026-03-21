@@ -31,7 +31,7 @@ class ServerEventMenu(Base):
     # JSON list of menu name slugs that must be used before this menu becomes available
     depends_on: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
 
-    advanced_options: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    parameters: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
 
     server_event: Mapped[ServerEvent] = relationship("ServerEvent", back_populates="menus")
     options: Mapped[list[ServerEventMenuOption]] = relationship(

@@ -121,4 +121,20 @@ CREATE TYPE event_action_type AS ENUM (
     'enter_vendor_stock',
     'start_stray_event',
     'select_pooch'
+)
+
+
+-- MOOD (for pooches)
+CREATE TYPE mood AS ENUM (
+    'happy',
+    'excited',
+    'sleepy',
+    'grumpy',
+    'anxious',
+    'mischievous',
+    'zoomies',
+    'hungry',
+    'content',
+    'clingy',
+    'dead'
 );

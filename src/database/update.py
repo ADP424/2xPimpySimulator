@@ -1050,6 +1050,36 @@ async def transfer_pooch_to_owner(pooch_id: int, owner_discord_id: int) -> Optio
     return pooch
 
 
+async def update_pooch_mood(pooch_id: int, mood: str | None) -> Optional[Pooch]:
+    """
+    Set the mood of a pooch.
+
+    Parameters
+    ----------
+    pooch_id: int
+        The ID of the pooch to update.
+
+    mood: str or None
+        The new mood value, or None to clear it.
+
+    Returns
+    -------
+    Pooch, optional
+        The updated Pooch ORM object, or None if the pooch wasn't found.
+    """
+
+    async with session_scope() as session:
+        query = select(Pooch).where(Pooch.id == pooch_id)
+        pooch = (await session.execute(query)).scalar_one_or_none()
+
+        if pooch is None:
+            return None
+
+        pooch.mood = mood
+
+    return pooch
+
+
 async def transfer_pooch_to_vendor(pooch_id: int, vendor_id: int) -> Optional[Pooch]:
     """
     Transfer a pooch to a new vendor, clearing any owner association.

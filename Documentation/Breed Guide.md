@@ -11,7 +11,7 @@ Breeds are structured within resources/breeds/**/*.jsonc, like:
         "alt_name": "string",
         "description": "string",
         "rarity": "string",
-        "advanced_options": {
+        "parameters": {
             "[option]": "string/float/int/list"
         }
     },
