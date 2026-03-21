@@ -20,11 +20,13 @@ from .owner_events import (
 )
 from .server_events import (
     ServerEventContext,
-    ServerEventOption,
+    ServerEventMenu,
+    ServerEventMenuOption,
     ServerEventParticipationSummary,
     ServerEventResolution,
     TriggeredServerEvent,
-    to_server_event_option,
+    to_server_event_menu,
+    to_server_event_menu_option,
     to_server_event_participation_summary,
     to_triggered_server_event,
 )
@@ -55,8 +57,10 @@ __all__ = [
     "to_triggered_owner_event",
     # Server event models
     "ServerEventContext",
-    "ServerEventOption",
-    "to_server_event_option",
+    "ServerEventMenu",
+    "ServerEventMenuOption",
+    "to_server_event_menu",
+    "to_server_event_menu_option",
     "ServerEventParticipationSummary",
     "to_server_event_participation_summary",
     "TriggeredServerEvent",

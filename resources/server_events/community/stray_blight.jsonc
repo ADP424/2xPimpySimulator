@@ -1,0 +1,22 @@
+{
+  "name": "Stray Blight",
+  "description": "A sickness sweeps through the town's stray population, sapping their strength.",
+  "flavor_text": "The strays whimper in the alleyways.",
+  "severity": "minor",
+  "rarity": "common",
+  "filter": {
+    "min_strays": 1
+  },
+  "actions": [
+    {
+      "action_type": "modify_base_health",
+      "target_type": "server",
+      "parameters": {
+        "pool": "stray",
+        "selector": "all",
+        "min_amount": -3,
+        "max_amount": -1
+      }
+    }
+  ]
+}

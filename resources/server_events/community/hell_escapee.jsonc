@@ -1,0 +1,33 @@
+{
+  "name": "Hell Escapee",
+  "description": "A condemned pooch breaks loose from the underworld and returns to the living as a stray.",
+  "flavor_text": "The scent of brimstone hangs in the morning air.",
+  "severity": "major",
+  "rarity": "rare",
+  "filter": {
+    "min_in_hell": 1
+  },
+  "actions": [
+    {
+      "action_type": "revive_pooch",
+      "target_type": "server",
+      "parameters": {
+        "pool": "in_hell",
+        "selector": "random",
+        "count": 1,
+        "destination": "stray",
+        "save_as": "escapee"
+      }
+    },
+    {
+      "action_type": "add_mutation",
+      "target_type": "server",
+      "parameters": {
+        "pool": "saved",
+        "save_slot": "escapee",
+        "selector": "all",
+        "mutations": ["Mild Possession"]
+      }
+    }
+  ]
+}

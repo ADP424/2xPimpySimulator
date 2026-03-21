@@ -1,26 +1,50 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
-from src.database.models import ServerEventOption as ServerEventOptionORM
+from src.database.models import ServerEventMenu as ServerEventMenuORM
+from src.database.models import ServerEventMenuOption as ServerEventMenuOptionORM
 
 
 @dataclass(frozen=True)
-class ServerEventOption:
+class ServerEventMenuOption:
     id: int
     label: str
     description: str
-    min_money: int
-    min_bloodskulls: int
-    requires_pooch_selection: bool
+    filter: dict
+    requires: dict
+    scoring: dict
 
 
-async def to_server_event_option(option: ServerEventOptionORM) -> ServerEventOption:
-    return ServerEventOption(
+@dataclass
+class ServerEventMenu:
+    id: int
+    name: str
+    label: str
+    description: str
+    max_uses_per_player: int  # -1 = unlimited
+    depends_on: list[str] = field(default_factory=list)
+    options: list[ServerEventMenuOption] = field(default_factory=list)
+
+
+async def to_server_event_menu_option(option: ServerEventMenuOptionORM) -> ServerEventMenuOption:
+    return ServerEventMenuOption(
         id=option.id,
         label=option.label,
         description=option.description,
-        min_money=option.min_money,
-        min_bloodskulls=option.min_bloodskulls,
-        requires_pooch_selection=option.requires_pooch_selection,
+        filter=option.filter or {},
+        requires=option.requires or {},
+        scoring=option.scoring or {},
+    )
+
+
+async def to_server_event_menu(menu: ServerEventMenuORM) -> ServerEventMenu:
+    return ServerEventMenu(
+        id=menu.id,
+        name=menu.name,
+        label=menu.label,
+        description=menu.description,
+        max_uses_per_player=menu.max_uses_per_player,
+        depends_on=list(menu.depends_on or []),
+        options=[await to_server_event_menu_option(opt) for opt in sorted(menu.options, key=lambda o: o.option_order)],
     )

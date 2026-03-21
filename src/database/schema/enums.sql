@@ -90,7 +90,8 @@ CREATE TYPE event_severity AS ENUM (
 CREATE TYPE event_target_type AS ENUM (
     'owner',
     'pooch',
-    'kennel'
+    'kennel',
+    'server'
 );
 
 

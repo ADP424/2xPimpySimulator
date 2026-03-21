@@ -5,7 +5,7 @@
 ### JSON
 
 Mutations are structured within resources/mutations/**/*.jsonc, like:
-```json
+```jsonc
 "[category]": {
     "[mutation name]": {
         "alt_name": "string",

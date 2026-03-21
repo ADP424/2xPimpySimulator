@@ -7,7 +7,7 @@ from src.database.models import ServerEventOccurrence as ServerEventOccurrenceOR
 
 from ..owner_events.owner_event_result import OwnerEventResult
 from .server_event_context import ServerEventContext
-from .server_event_option import ServerEventOption, to_server_event_option
+from .server_event_option import ServerEventMenu, to_server_event_menu
 from .server_event_participation import (
     ServerEventParticipationSummary,
     to_server_event_participation_summary,
@@ -26,9 +26,8 @@ class TriggeredServerEvent:
     severity: str
     expires_at: datetime
     context: ServerEventContext
-    options: list[ServerEventOption] = field(default_factory=list)
+    menus: list[ServerEventMenu] = field(default_factory=list)
     participation_count: int = 0
-    max_participants: int = 0
     message_discord_id: int | None = None
     viewer_participation: ServerEventParticipationSummary | None = None
     result_summary: OwnerEventResult | None = None
@@ -57,12 +56,8 @@ async def to_triggered_server_event(
         severity=event.severity,
         expires_at=occurrence.expires_at,
         context=ServerEventContext.from_dict(occurrence.context or {}),
-        options=[
-            await to_server_event_option(option)
-            for option in sorted(event.options, key=lambda value: value.option_order)
-        ],
+        menus=[await to_server_event_menu(menu) for menu in sorted(event.menus, key=lambda m: m.menu_order)],
         participation_count=len(occurrence.participations),
-        max_participants=event.max_participants,
         message_discord_id=occurrence.message_discord_id,
         viewer_participation=viewer_participation,
         result_summary=(

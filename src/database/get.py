@@ -23,8 +23,9 @@ from .models import (
     RarityWeight,
     Server,
     ServerEvent,
+    ServerEventMenu,
+    ServerEventMenuOption,
     ServerEventOccurrence,
-    ServerEventOption,
     ServerEventOutcome,
     ServerEventParticipation,
     StrayEvent,
@@ -822,28 +823,33 @@ async def get_vendor_server(vendor_id: int) -> Optional[Server]:
     return response.scalar_one_or_none()
 
 
+def _server_event_load_options():
+    return [
+        selectinload(ServerEvent.actions),
+        selectinload(ServerEvent.menus)
+        .selectinload(ServerEventMenu.options)
+        .selectinload(ServerEventMenuOption.actions),
+        selectinload(ServerEvent.outcomes).selectinload(ServerEventOutcome.actions),
+    ]
+
+
 async def get_server_event_by_id(server_event_id: int) -> Optional[ServerEvent]:
     async with session_scope() as session:
-        query = (
-            select(ServerEvent)
-            .where(ServerEvent.id == server_event_id)
-            .options(
-                selectinload(ServerEvent.actions),
-                selectinload(ServerEvent.options).selectinload(ServerEventOption.actions),
-                selectinload(ServerEvent.outcomes).selectinload(ServerEventOutcome.actions),
-            )
-        )
+        query = select(ServerEvent).where(ServerEvent.id == server_event_id).options(*_server_event_load_options())
         response = await session.execute(query)
 
     return response.scalar_one_or_none()
 
 
-async def get_server_event_option_by_id(option_id: int) -> Optional[ServerEventOption]:
+async def get_server_event_menu_option_by_id(option_id: int) -> Optional[ServerEventMenuOption]:
     async with session_scope() as session:
         query = (
-            select(ServerEventOption)
-            .where(ServerEventOption.id == option_id)
-            .options(selectinload(ServerEventOption.actions))
+            select(ServerEventMenuOption)
+            .where(ServerEventMenuOption.id == option_id)
+            .options(
+                selectinload(ServerEventMenuOption.actions),
+                selectinload(ServerEventMenuOption.menu),
+            )
         )
         response = await session.execute(query)
 
@@ -856,16 +862,8 @@ async def get_server_event_occurrence_by_id(occurrence_id: int) -> Optional[Serv
             select(ServerEventOccurrence)
             .where(ServerEventOccurrence.id == occurrence_id)
             .options(
-                selectinload(ServerEventOccurrence.server_event).selectinload(ServerEvent.actions),
-                selectinload(ServerEventOccurrence.server_event)
-                .selectinload(ServerEvent.options)
-                .selectinload(ServerEventOption.actions),
-                selectinload(ServerEventOccurrence.server_event)
-                .selectinload(ServerEvent.outcomes)
-                .selectinload(ServerEventOutcome.actions),
-                selectinload(ServerEventOccurrence.participations).selectinload(
-                    ServerEventParticipation.selected_option
-                ),
+                selectinload(ServerEventOccurrence.server_event).options(*_server_event_load_options()),
+                selectinload(ServerEventOccurrence.participations),
             )
         )
         response = await session.execute(query)
@@ -883,16 +881,8 @@ async def get_active_server_event_occurrence(server_discord_id: int) -> Optional
                 ServerEventOccurrence.resolved_at.is_(None),
             )
             .options(
-                selectinload(ServerEventOccurrence.server_event).selectinload(ServerEvent.actions),
-                selectinload(ServerEventOccurrence.server_event)
-                .selectinload(ServerEvent.options)
-                .selectinload(ServerEventOption.actions),
-                selectinload(ServerEventOccurrence.server_event)
-                .selectinload(ServerEvent.outcomes)
-                .selectinload(ServerEventOutcome.actions),
-                selectinload(ServerEventOccurrence.participations).selectinload(
-                    ServerEventParticipation.selected_option
-                ),
+                selectinload(ServerEventOccurrence.server_event).options(*_server_event_load_options()),
+                selectinload(ServerEventOccurrence.participations),
             )
         )
         response = await session.execute(query)
@@ -904,52 +894,25 @@ async def get_server_event_participation(
     occurrence_id: int, owner_discord_id: int
 ) -> Optional[ServerEventParticipation]:
     async with session_scope() as session:
-        query = (
-            select(ServerEventParticipation)
-            .where(
-                ServerEventParticipation.occurrence_id == occurrence_id,
-                ServerEventParticipation.owner_discord_id == owner_discord_id,
-            )
-            .options(selectinload(ServerEventParticipation.selected_option))
+        query = select(ServerEventParticipation).where(
+            ServerEventParticipation.occurrence_id == occurrence_id,
+            ServerEventParticipation.owner_discord_id == owner_discord_id,
         )
         response = await session.execute(query)
 
     return response.scalar_one_or_none()
 
 
-async def get_random_eligible_server_event_for_server(
-    server_discord_id: int,
-    rng: Optional[random.Random] = None,
-) -> Optional[ServerEvent]:
-    rng = rng if rng is not None else random.Random()
-
+async def list_all_server_events_with_weights() -> list[tuple[ServerEvent, int]]:
+    """Return all server events paired with their rarity weight, fully loaded."""
     async with session_scope() as session:
-        owner_count = (
-            await session.scalar(
-                select(func.count(OwnerServer.owner_discord_id)).where(
-                    OwnerServer.server_discord_id == server_discord_id
-                )
-            )
-            or 0
-        )
-
         event_query = (
             select(ServerEvent, RarityWeight.weight)
             .join(RarityWeight, RarityWeight.rarity == ServerEvent.rarity)
-            .where(ServerEvent.min_owners <= owner_count)
-            .options(
-                selectinload(ServerEvent.actions),
-                selectinload(ServerEvent.options).selectinload(ServerEventOption.actions),
-                selectinload(ServerEvent.outcomes).selectinload(ServerEventOutcome.actions),
-            )
+            .options(*_server_event_load_options())
         )
         response = await session.execute(event_query)
-        rows = [(event, weight) for event, weight in response.tuples().all()]
-
-        if not rows:
-            return None
-
-        return weighted_choice(rng, rows)
+        return [(event, weight) for event, weight in response.tuples().all()]
 
 
 def _stray_event_load_options():

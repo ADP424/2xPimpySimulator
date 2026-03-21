@@ -139,9 +139,13 @@ def _bootstrap() -> dict:
             "src.database.models.static.server_events.server_event",
             "src/database/models/static/server_events/server_event.py",
         )
-        server_event_option_mod = _load_module_direct(
-            "src.database.models.static.server_events.server_event_option",
-            "src/database/models/static/server_events/server_event_option.py",
+        server_event_menu_mod = _load_module_direct(
+            "src.database.models.static.server_events.server_event_menu",
+            "src/database/models/static/server_events/server_event_menu.py",
+        )
+        server_event_menu_option_mod = _load_module_direct(
+            "src.database.models.static.server_events.server_event_menu_option",
+            "src/database/models/static/server_events/server_event_menu_option.py",
         )
         server_event_outcome_mod = _load_module_direct(
             "src.database.models.static.server_events.server_event_outcome",
@@ -149,7 +153,8 @@ def _bootstrap() -> dict:
         )
         se_pkg = sys.modules["src.database.models.static.server_events"]
         se_pkg.ServerEvent = server_event_mod.ServerEvent
-        se_pkg.ServerEventOption = server_event_option_mod.ServerEventOption
+        se_pkg.ServerEventMenu = server_event_menu_mod.ServerEventMenu
+        se_pkg.ServerEventMenuOption = server_event_menu_option_mod.ServerEventMenuOption
         se_pkg.ServerEventOutcome = server_event_outcome_mod.ServerEventOutcome
 
         # personal_events (the models under test)
@@ -368,8 +373,8 @@ class TestEventAction:
         col = EventAction.__table__.c["server_event_id"]
         assert col.nullable
 
-    def test_server_event_option_id_column_nullable(self):
-        col = EventAction.__table__.c["server_event_option_id"]
+    def test_server_event_menu_option_id_column_nullable(self):
+        col = EventAction.__table__.c["server_event_menu_option_id"]
         assert col.nullable
 
     def test_server_event_outcome_id_column_nullable(self):
@@ -408,8 +413,8 @@ class TestEventAction:
     def test_server_event_relationship_exists(self):
         assert "server_event" in EventAction.__mapper__.relationships
 
-    def test_server_event_option_relationship_exists(self):
-        assert "server_event_option" in EventAction.__mapper__.relationships
+    def test_server_event_menu_option_relationship_exists(self):
+        assert "server_event_menu_option" in EventAction.__mapper__.relationships
 
     def test_server_event_outcome_relationship_exists(self):
         assert "server_event_outcome" in EventAction.__mapper__.relationships

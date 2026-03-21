@@ -18,9 +18,6 @@ from ... import Base
 from ...event_types import EventContextDict, EventResultDict
 
 if TYPE_CHECKING:
-    from ...static import (
-        ServerEventOption,
-    )
     from ..entities import Owner
     from .server_event_occurrence import ServerEventOccurrence
 
@@ -36,11 +33,19 @@ class ServerEventParticipation(Base):
     owner_discord_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("owners.discord_id", ondelete="CASCADE"), nullable=False
     )
-    selected_option_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("server_event_options.id", ondelete="CASCADE"), nullable=False
-    )
 
+    # Snapshot of the owner's event context at first participation
     context: Mapped[EventContextDict] = mapped_column(JSONB, nullable=False, default=dict)
+
+    # All individual option submissions across all menus, stored as a JSONB array.
+    # Each element: {
+    #   "menu_name": str, "menu_option_id": int, "option_label": str,
+    #   "selected_pooch_id": int|null, "context_snapshot": {...},
+    #   "score_contribution": float, "immediate_result": {...}, "submitted_at": str (ISO)
+    # }
+    submissions: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+
+    # Immediate result from the first option actions (kept for backwards display compat)
     immediate_result: Mapped[EventResultDict] = mapped_column(JSONB, nullable=False, default=dict)
     resolution_result: Mapped[EventResultDict] = mapped_column(JSONB, nullable=False, default=dict)
 
@@ -52,4 +57,3 @@ class ServerEventParticipation(Base):
 
     occurrence: Mapped[ServerEventOccurrence] = relationship("ServerEventOccurrence", back_populates="participations")
     owner: Mapped[Owner] = relationship("Owner")
-    selected_option: Mapped[ServerEventOption] = relationship("ServerEventOption")

@@ -11,14 +11,14 @@ from ..owner_events.owner_event_entity_reference import (
     resolve_owner_event_entity_references,
 )
 from ..owner_events.owner_event_result import OwnerEventResult
-from .server_event_option import ServerEventOption, to_server_event_option
 
 
 @dataclass
 class ServerEventParticipationSummary:
     owner_discord_id: int
-    selected_option: ServerEventOption
     context: OwnerEventContext
+    # All individual submissions across all menus for this player
+    submissions: list[dict] = field(default_factory=list)
     immediate_result: OwnerEventResult | None = None
     resolution_result: OwnerEventResult | None = None
     score: float | None = None
@@ -40,8 +40,8 @@ async def to_server_event_participation_summary(
     entity_references = await resolve_owner_event_entity_references(context, resolution_result or immediate_result)
     return ServerEventParticipationSummary(
         owner_discord_id=participation.owner_discord_id,
-        selected_option=await to_server_event_option(participation.selected_option),
         context=context,
+        submissions=list(participation.submissions or []),
         immediate_result=immediate_result,
         resolution_result=resolution_result,
         score=participation.score,

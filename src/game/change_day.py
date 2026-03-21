@@ -142,6 +142,7 @@ async def run_day_change(
         success = await add_pooch_to_kennel(kennel.id, baby.id)
         if not success:
             for server in servers:
+                await add_pooch_to_strays(baby.id, server.discord_id)
                 births_by_server.setdefault(server.discord_id, []).append(
                     BirthEvent(
                         server=(await to_server(server)),
@@ -149,7 +150,7 @@ async def run_day_change(
                         child=(await to_pooch(baby)),
                         message=(
                             f"There wasn't enough space in {mother.name}'s kennel. "
-                            f"Her baby, {baby.name}, was crushed."
+                            f"Her baby, {baby.name}, was released as a stray."
                         ),
                     )
                 )

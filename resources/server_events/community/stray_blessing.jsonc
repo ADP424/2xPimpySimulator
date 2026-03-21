@@ -1,0 +1,22 @@
+{
+  "name": "Stray Blessing",
+  "description": "A wave of good fortune passes over the town's strays, leaving them healthier than before.",
+  "flavor_text": "Even the alley dogs seem a little perkier today.",
+  "severity": "minor",
+  "rarity": "common",
+  "filter": {
+    "min_strays": 1
+  },
+  "actions": [
+    {
+      "action_type": "modify_base_health",
+      "target_type": "server",
+      "parameters": {
+        "pool": "stray",
+        "selector": "all",
+        "min_amount": 1,
+        "max_amount": 2
+      }
+    }
+  ]
+}

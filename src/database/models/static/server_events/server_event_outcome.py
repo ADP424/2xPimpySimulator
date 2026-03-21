@@ -35,6 +35,8 @@ class ServerEventOutcome(Base):
     label: Mapped[str] = mapped_column(Text, nullable=False, default="")
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
     message: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    # "ranked_players" | "all_participants" | "server" | "non_participants"
+    target: Mapped[str] = mapped_column(Text, nullable=False, default="ranked_players")
     min_rank: Mapped[int | None] = mapped_column(Integer, nullable=True)
     max_rank: Mapped[int | None] = mapped_column(Integer, nullable=True)
     chance: Mapped[float | None] = mapped_column(Float, nullable=True)

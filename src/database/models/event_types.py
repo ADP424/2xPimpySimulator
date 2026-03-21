@@ -8,7 +8,7 @@ JsonObject: TypeAlias = dict[str, JsonValue]
 
 EventSeverity: TypeAlias = Literal["trivial", "minor", "moderate", "major", "critical"]
 EventRarity: TypeAlias = Literal["common", "uncommon", "rare", "novel", "extraordinary"]
-EventTargetType: TypeAlias = Literal["owner", "pooch", "kennel"]
+EventTargetType: TypeAlias = Literal["owner", "pooch", "kennel", "server"]
 EventEntitySelector: TypeAlias = Literal["selected", "random", "all", "random_exclude", "all_exclude"]
 EventActionType: TypeAlias = Literal[
     "modify_money",
@@ -136,6 +136,8 @@ class OwnerEventFilterSpec(TypedDict, total=False):
     exclude_kennels: list[int]
     kennels: list[KennelFilterSpec]
     pooches: list[PoochFilterSpec]
+    graveyard_pooches: list[PoochFilterSpec]
+    hell_pooches: list[PoochFilterSpec]
 
 
 class StrayEventFilterSpec(TypedDict, total=False):
@@ -145,6 +147,80 @@ class StrayEventFilterSpec(TypedDict, total=False):
     max_count: int
     description: str
     pooches: list[PoochFilterSpec]
+
+
+class OwnerFilterSpec(TypedDict, total=False):
+    """Per-owner filter inside a ServerEventFilterSpec.owners list.
+
+    min_count / max_count specify how many owners in the server must satisfy these criteria.
+    All other fields mirror OwnerEventFilterSpec but add graveyard_pooches and hell_pooches.
+    """
+
+    min_count: int
+    max_count: int
+    # Money / bloodskulls
+    min_money: int
+    max_money: int
+    exclude_money: list[int]
+    min_bloodskulls: int
+    max_bloodskulls: int
+    exclude_bloodskulls: list[int]
+    # Pooch / kennel aggregate counts
+    min_pooches: int
+    max_pooches: int
+    exclude_pooches: list[int]
+    min_kennels: int
+    max_kennels: int
+    exclude_kennels: list[int]
+    # Sub-filters
+    kennels: list[KennelFilterSpec]
+    pooches: list[PoochFilterSpec]
+    graveyard_pooches: list[PoochFilterSpec]
+    hell_pooches: list[PoochFilterSpec]
+
+
+class ServerEventFilterSpec(TypedDict, total=False):
+    """Top-level filter for a server event — determines which servers are eligible for the event."""
+
+    # Owner count
+    min_owners: int
+    max_owners: int
+    # Server-wide pooch pool counts
+    min_strays: int
+    max_strays: int
+    min_dead: int
+    max_dead: int
+    min_in_hell: int
+    max_in_hell: int
+    # Pool-specific PoochFilterSpec requirements
+    stray_pooches: list[PoochFilterSpec]
+    dead_pooches: list[PoochFilterSpec]
+    hell_pooches: list[PoochFilterSpec]
+    # Per-owner sub-filter
+    owners: list[OwnerFilterSpec]
+
+
+class ScoringSource(TypedDict, total=False):
+    """A single contribution to a player's score for a server event menu option submission."""
+
+    type: str  # "random" | "pooch_stat" | "owner_stat" | "constant"
+    # For "random":
+    min: float
+    max: float
+    # For "pooch_stat" / "owner_stat":
+    stat: str  # e.g. "base_health", "strength", "money", "bloodskulls"
+    scale: float  # multiplier per stat point relative to pivot; default 1.0
+    pivot: float  # stat value where contribution = scale * 1.0; default 10.0
+    direction: float  # 1.0 = higher is better, -1.0 = lower is better; default 1.0
+    # For "constant":
+    value: float
+
+
+class ScoringSpec(TypedDict, total=False):
+    """Defines how a menu option submission contributes to a player's total score."""
+
+    aggregate: str  # "sum" | "average" | "max" — how to combine multiple submissions; default "sum"
+    sources: list[ScoringSource]
 
 
 class StrayEventContextDict(TypedDict):

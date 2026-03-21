@@ -11,7 +11,7 @@ from ...enums import EVENT_ACTION_TYPE, EVENT_TARGET_TYPE
 from ...event_types import EventActionParameters
 
 if TYPE_CHECKING:
-    from ..server_events import ServerEvent, ServerEventOption, ServerEventOutcome
+    from ..server_events import ServerEvent, ServerEventMenuOption, ServerEventOutcome
     from .event import Event
     from .event_option import EventOption
     from .event_outcome import EventOutcome
@@ -23,7 +23,7 @@ class EventAction(Base):
         CheckConstraint(
             (
                 "num_nonnulls(event_id, option_id, outcome_id, server_event_id, "
-                "server_event_option_id, server_event_outcome_id) = 1"
+                "server_event_menu_option_id, server_event_outcome_id) = 1"
             ),
             name="event_actions_exactly_one_parent",
         ),
@@ -40,8 +40,8 @@ class EventAction(Base):
     server_event_id: Mapped[int | None] = mapped_column(
         BigInteger, ForeignKey("server_events.id", ondelete="CASCADE"), nullable=True
     )
-    server_event_option_id: Mapped[int | None] = mapped_column(
-        BigInteger, ForeignKey("server_event_options.id", ondelete="CASCADE"), nullable=True
+    server_event_menu_option_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("server_event_menu_options.id", ondelete="CASCADE"), nullable=True
     )
     server_event_outcome_id: Mapped[int | None] = mapped_column(
         BigInteger, ForeignKey("server_event_outcomes.id", ondelete="CASCADE"), nullable=True
@@ -61,8 +61,8 @@ class EventAction(Base):
     server_event: Mapped[ServerEvent | None] = relationship(
         "ServerEvent", back_populates="actions", foreign_keys=[server_event_id]
     )
-    server_event_option: Mapped[ServerEventOption | None] = relationship(
-        "ServerEventOption", back_populates="actions", foreign_keys=[server_event_option_id]
+    server_event_menu_option: Mapped[ServerEventMenuOption | None] = relationship(
+        "ServerEventMenuOption", back_populates="actions", foreign_keys=[server_event_menu_option_id]
     )
     server_event_outcome: Mapped[ServerEventOutcome | None] = relationship(
         "ServerEventOutcome", back_populates="actions", foreign_keys=[server_event_outcome_id]

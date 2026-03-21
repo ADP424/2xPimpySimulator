@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import BigInteger, Integer, Text, text
+from sqlalchemy import BigInteger, Text, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -12,7 +12,7 @@ from ...event_types import ServerEventAdvancedOptions
 
 if TYPE_CHECKING:
     from ..owner_events import EventAction
-    from .server_event_option import ServerEventOption
+    from .server_event_menu import ServerEventMenu
     from .server_event_outcome import ServerEventOutcome
 
 
@@ -29,12 +29,15 @@ class ServerEvent(Base):
     severity: Mapped[str] = mapped_column(EVENT_SEVERITY, nullable=False, server_default=text("'moderate'"))
     rarity: Mapped[str] = mapped_column(RARITY, nullable=False, server_default=text("'common'"))
 
-    min_owners: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
-    max_participants: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    resolution_strategy: Mapped[str] = mapped_column(Text, nullable=False, default="random_winner")
+    # Replaces min_owners / resolution_strategy — full eligibility filter as JSONB
+    filter: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+
+    # Serialised list of action specs fired server-side when no qualifying participants exist at resolution
+    default_actions_data: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
 
     advanced_options: Mapped[ServerEventAdvancedOptions] = mapped_column(JSONB, nullable=False, default=dict)
 
+    # Actions fired immediately at event trigger (target_type="server")
     actions: Mapped[list[EventAction]] = relationship(
         "EventAction",
         back_populates="server_event",
@@ -42,11 +45,11 @@ class ServerEvent(Base):
         foreign_keys="EventAction.server_event_id",
         order_by="EventAction.action_order",
     )
-    options: Mapped[list[ServerEventOption]] = relationship(
-        "ServerEventOption",
+    menus: Mapped[list[ServerEventMenu]] = relationship(
+        "ServerEventMenu",
         back_populates="server_event",
         cascade="all, delete-orphan",
-        order_by="ServerEventOption.option_order",
+        order_by="ServerEventMenu.menu_order",
     )
     outcomes: Mapped[list[ServerEventOutcome]] = relationship(
         "ServerEventOutcome",

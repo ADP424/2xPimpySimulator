@@ -6,7 +6,7 @@
 
 Owner events live in `resources/owner_events/**/*.jsonc`. Each event is its own file, placed inside a category subfolder. The category is determined by the folder name, not by any key in the file.
 
-```json
+```jsonc
 {
     "name": "string",
     "description": "string",
@@ -193,7 +193,7 @@ For `requires_response: true` events, exactly one option must be marked `"defaul
 
 Options are objects inside an event's `options` list.
 
-```json
+```jsonc
 {
     "label": "string",
     "description": "string",
@@ -325,7 +325,7 @@ The actions that happen for this outcome.
 Owner events and owner-event options both use the same `filter` format.
 
 An empty filter means no restrictions. Example:
-```json
+```jsonc
 "filter": {
     "min_money": 100,
     "max_money": 500,
@@ -370,7 +370,7 @@ That example means the owner must:
 - The same object may satisfy multiple filter entries.
 - A count-only filter is valid. Example:
 
-```json
+```jsonc
 "kennels": [
     {
         "max_count": 3
@@ -400,6 +400,8 @@ These fields live directly inside the root `filter` object:
 - `exclude_kennels`
 - `kennels`
 - `pooches`
+- `graveyard_pooches`
+- `hell_pooches`
 
 ### Owner Counts
 
@@ -410,7 +412,7 @@ These fields live directly inside the root `filter` object:
 
 Any numeric range field has a corresponding `exclude_*` list that explicitly disqualifies owners whose value matches any entry in the list.
 
-```json
+```jsonc
 "filter": {
     "min_pooches": 4,
     "max_pooches": 7,
@@ -426,7 +428,7 @@ That matches owners with exactly 4 or 7 pooches, but not 5 or 6.
 
 Kennel filter objects live inside `filter.kennels`.
 
-```json
+```jsonc
 {
     "min_count": 1,
     "max_count": 3,
@@ -470,7 +472,7 @@ Pooch filter objects live either:
 - inside the top-level `filter.pooches`
 - or inside a kennel filter's `pooches`
 
-```json
+```jsonc
 {
     "min_count": 1,
     "max_count": 3,
@@ -532,8 +534,23 @@ Pooch filter objects live either:
   - `"town"`: the pooch is a stray in a server
   - `"all"` / `"any"`: no location restriction
 
-For top-level `filter.pooches`, matching is across all pooches the owner owns.  
+For top-level `filter.pooches`, matching is across all pooches the owner owns.
 For nested kennel `pooches`, matching is only against pooches inside that kennel.
+
+### `graveyard_pooches` and `hell_pooches`
+
+`graveyard_pooches` and `hell_pooches` are pooch filter spec lists on the **owner-level filter** (not inside `kennels`). They work identically to `pooches` but target the owner's dead or condemned pooches respectively.
+
+```jsonc
+"filter": {
+    "graveyard_pooches": [{ "min_count": 1 }],
+    "hell_pooches": [{ "min_count": 1, "has_any_mutation": ["Mild Possession"] }]
+}
+```
+
+- Each entry in the list is a pooch filter spec that must independently pass.
+- `location` is not meaningful inside these specs (it's implied by the pool).
+- Useful for events that require a dead or damned pooch to exist before triggering (e.g. revival events, infernal bargains).
 
 ---
 
@@ -555,7 +572,7 @@ Valid for `target_type: "pooch"` with any `selector` value.
 
 Example:
 
-```json
+```jsonc
 {
     "action_type": "set_breeding_cooldown",
     "target_type": "pooch",
@@ -580,7 +597,7 @@ Valid for `target_type: "kennel"` with any `selector` value.
 
 Example:
 
-```json
+```jsonc
 {
     "action_type": "modify_kennel_capacity",
     "target_type": "kennel",
@@ -666,7 +683,7 @@ The `count` parameter controls how many entities the selector picks. It is avail
 
 The following would live at `resources/owner_events/misfortune/escaped_pooch.jsonc`:
 
-```json
+```jsonc
 {
     "name": "Escaped Pooch",
     "description": "One of your pooches has escaped from the kennel!",
@@ -743,7 +760,7 @@ The following would live at `resources/owner_events/misfortune/escaped_pooch.jso
 
 Actions are structured as:
 
-```json
+```jsonc
 {
     "action_type": "string",
     "target_type": "string",
@@ -856,7 +873,7 @@ See the parameter tables for `clone_pooch` and `breed_pooches` for the valid `ta
 
 When `save_as` is present on a pooch action, also look up each resolved pooch's kennel and include it in the slot:
 
-```json
+```jsonc
 { "pooch_ids": [5], "kennel_ids": [2] }
 ```
 
@@ -907,7 +924,7 @@ Internal runtime keys (`candidate_pooch_ids`, `candidate_kennel_ids`, `suppresse
 
 #### `modify_money` / `modify_bloodskulls`
 
-```json
+```jsonc
 {
     "action_type": "modify_money",
     "target_type": "owner",
@@ -943,7 +960,7 @@ Internal runtime keys (`candidate_pooch_ids`, `candidate_kennel_ids`, `suppresse
 
 > `modify_pooch_health` is a supported alias for `modify_base_health`.
 
-```json
+```jsonc
 {
     "action_type": "modify_pooch_health",
     "target_type": "pooch",
@@ -1072,7 +1089,7 @@ Creates a pooch via the conjure ritual without charging bloodskulls. Use separat
 
 #### `kill_pooch`
 
-```json
+```jsonc
 {
     "action_type": "kill_pooch",
     "target_type": "pooch",
@@ -1097,7 +1114,7 @@ Creates a pooch via the conjure ritual without charging bloodskulls. Use separat
 
 #### `add_mutation` / `remove_mutation`
 
-```json
+```jsonc
 {
     "action_type": "add_mutation",
     "target_type": "pooch",
@@ -1170,7 +1187,7 @@ Removes a breed from a pooch. If no breed is specified, removes a random breed f
 
 Creates a new pooch and optionally delivers it to a destination.
 
-```json
+```jsonc
 {
     "action_type": "create_pooch",
     "target_type": "owner",
@@ -1216,7 +1233,7 @@ When `target_type` is `"kennel"`, the pooch is placed directly into the resolved
 
 Duplicates an existing pooch, inheriting its name, stats, breeds, and mutations. Any field can be overridden in parameters. Uses the same target/selector system as other pooch actions to select the source.
 
-```json
+```jsonc
 {
     "action_type": "clone_pooch",
     "target_type": "pooch",
@@ -1343,7 +1360,7 @@ Selects two of the owner's pooches and breeds them. Calls the same breeding logi
 
 **Supported target types:** `owner`, `kennel`
 
-```json
+```jsonc
 {
     "action_type": "breed_pooches",
     "target_type": "owner",
@@ -1359,7 +1376,7 @@ Selects two of the owner's pooches and breeds them. Calls the same breeding logi
 
 When `target_type` is `"kennel"`, both parent pools are restricted to pooches within the first resolved kennel. The `selector` / `filter` parameters select which kennel. Multi-kennel selectors (`all`, `all_exclude`, `random_exclude`) use the first kennel in the resolved list. This mirrors how manual breeding works — parents must be in the same kennel.
 
-```json
+```jsonc
 {
     "action_type": "breed_pooches",
     "target_type": "kennel",
@@ -1422,7 +1439,7 @@ Examples:
 
 Sells one or more of the owner's pooches, crediting the owner with the sale price. The pooch is removed from the owner's collection.
 
-```json
+```jsonc
 {
     "action_type": "sell_pooch",
     "target_type": "pooch",
@@ -1454,7 +1471,7 @@ Buys a pooch from a vendor and delivers it to the owner.
 
 **Supported target types:** `owner`, `kennel`
 
-```json
+```jsonc
 {
     "action_type": "buy_pooch",
     "target_type": "owner",
@@ -1489,7 +1506,7 @@ If no matching vendor or pooch is found, the action is a no-op.
 
 Removes a pooch from the owner's kennel and releases it into the stray pool for one of the owner's servers (chosen randomly). The pooch loses its owner and kennel assignment.
 
-```json
+```jsonc
 {
     "action_type": "release_stray",
     "target_type": "pooch",
@@ -1513,7 +1530,7 @@ By default a random stray is chosen. If `use_saved` is set, the action instead r
 
 **Supported target types:** `owner`, `kennel`
 
-```json
+```jsonc
 {
     "action_type": "receive_stray",
     "target_type": "owner",
@@ -1538,7 +1555,7 @@ If no strays are available (or none of the saved IDs are currently strays on the
 
 **Example — receive the same pooch that was released earlier:**
 
-```json
+```jsonc
 [
     {
         "action_type": "release_stray",
@@ -1571,7 +1588,7 @@ The `exclude_claimed` boolean parameter can be added to any pooch-targeting acti
 
 This ensures that when multiple options each claim a distinct stray (or any distinct pooch), each option genuinely resolves to a different animal, and options with no remaining candidate are automatically hidden.
 
-```json
+```jsonc
 {
     "action_type": "receive_stray",
     "target_type": "owner",

@@ -5,7 +5,7 @@
 ### JSON
 
 Breeds are structured within resources/breeds/**/*.jsonc, like:
-```json
+```jsonc
 "[category]": {
     "[breed name]": {
         "alt_name": "string",

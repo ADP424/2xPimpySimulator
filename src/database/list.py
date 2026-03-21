@@ -25,8 +25,9 @@ from .models import (
     PoochPregnancy,
     Server,
     ServerEvent,
+    ServerEventMenu,
+    ServerEventMenuOption,
     ServerEventOccurrence,
-    ServerEventOption,
     ServerEventOutcome,
     ServerEventParticipation,
     StrayEvent,
@@ -813,14 +814,13 @@ async def list_active_server_event_occurrences() -> list[ServerEventOccurrence]:
             .options(
                 selectinload(ServerEventOccurrence.server_event).selectinload(ServerEvent.actions),
                 selectinload(ServerEventOccurrence.server_event)
-                .selectinload(ServerEvent.options)
-                .selectinload(ServerEventOption.actions),
+                .selectinload(ServerEvent.menus)
+                .selectinload(ServerEventMenu.options)
+                .selectinload(ServerEventMenuOption.actions),
                 selectinload(ServerEventOccurrence.server_event)
                 .selectinload(ServerEvent.outcomes)
                 .selectinload(ServerEventOutcome.actions),
-                selectinload(ServerEventOccurrence.participations).selectinload(
-                    ServerEventParticipation.selected_option
-                ),
+                selectinload(ServerEventOccurrence.participations),
             )
             .order_by(ServerEventOccurrence.triggered_at.desc())
         )
@@ -834,7 +834,6 @@ async def list_server_event_participations(occurrence_id: int) -> list[ServerEve
         query = (
             select(ServerEventParticipation)
             .where(ServerEventParticipation.occurrence_id == occurrence_id)
-            .options(selectinload(ServerEventParticipation.selected_option))
             .order_by(ServerEventParticipation.participated_at.asc())
         )
         response = await session.execute(query)
@@ -852,14 +851,13 @@ async def list_server_event_history(server_discord_id: int, limit: int = 20) -> 
             .options(
                 selectinload(ServerEventOccurrence.server_event).selectinload(ServerEvent.actions),
                 selectinload(ServerEventOccurrence.server_event)
-                .selectinload(ServerEvent.options)
-                .selectinload(ServerEventOption.actions),
+                .selectinload(ServerEvent.menus)
+                .selectinload(ServerEventMenu.options)
+                .selectinload(ServerEventMenuOption.actions),
                 selectinload(ServerEventOccurrence.server_event)
                 .selectinload(ServerEvent.outcomes)
                 .selectinload(ServerEventOutcome.actions),
-                selectinload(ServerEventOccurrence.participations).selectinload(
-                    ServerEventParticipation.selected_option
-                ),
+                selectinload(ServerEventOccurrence.participations),
             )
             .order_by(ServerEventOccurrence.triggered_at.desc())
             .limit(limit)

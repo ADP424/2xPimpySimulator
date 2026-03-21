@@ -81,7 +81,7 @@ If `true`, this event is excluded from normal random daily rolls and can only be
 
 Eligibility requirements for the event. The event will only be triggered on a server if the filter passes. If omitted or empty, the event is always eligible.
 
-```json
+```jsonc
 "filter": {
     "min_count": 2,
     "max_count": 10,

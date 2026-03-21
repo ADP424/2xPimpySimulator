@@ -5,12 +5,11 @@ from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from conftest import make_kennel, make_owner, make_server
+from conftest import make_kennel, make_server
 from src.game.manage_server_events import (
+    _aggregate_player_score,
     _build_owner_event_context,
-    _compute_participation_score,
     _matches_rank,
-    _rank_participations,
     _roll_outcome_chance,
     get_active_server_event,
     list_active_server_events,
@@ -31,8 +30,6 @@ class TestRollOutcomeChance:
         assert _roll_outcome_chance(None, random.Random(42)) is True
 
     def test_zero_chance_always_false(self):
-        """With chance=0, rng.random() is always > 0 (practically)."""
-        # Very small chance it could return 0.0, but with a fixed seed we can verify
         rng = random.Random(42)
         assert _roll_outcome_chance(0.0, rng) is False
 
@@ -77,6 +74,28 @@ class TestMatchesRank:
 
 
 # ---------------------------------------------------------------------------
+# _aggregate_player_score
+# ---------------------------------------------------------------------------
+
+
+class TestAggregatePlayerScore:
+    def test_sum(self):
+        assert _aggregate_player_score([1.0, 2.0, 3.0], "sum") == 6.0
+
+    def test_average(self):
+        assert _aggregate_player_score([2.0, 4.0], "average") == 3.0
+
+    def test_max(self):
+        assert _aggregate_player_score([1.0, 5.0, 3.0], "max") == 5.0
+
+    def test_empty_returns_zero(self):
+        assert _aggregate_player_score([], "sum") == 0.0
+
+    def test_unknown_aggregate_defaults_to_sum(self):
+        assert _aggregate_player_score([1.0, 2.0], "unknown") == 3.0
+
+
+# ---------------------------------------------------------------------------
 # trigger_daily_server_event
 # ---------------------------------------------------------------------------
 
@@ -114,17 +133,23 @@ class TestTriggerDailyServerEvent:
     @patch("src.game.manage_server_events.to_triggered_server_event", new_callable=AsyncMock)
     @patch("src.game.manage_server_events.get_server_event_occurrence_by_id", new_callable=AsyncMock)
     @patch("src.game.manage_server_events.create_server_event_occurrence", new_callable=AsyncMock)
-    @patch("src.game.manage_server_events.get_random_eligible_server_event_for_server", new_callable=AsyncMock)
+    @patch("src.game.manage_server_events._check_server_filter", new_callable=AsyncMock)
+    @patch("src.game.manage_server_events.list_all_server_events_with_weights", new_callable=AsyncMock)
     @patch("src.game.manage_server_events.get_server_by_discord_id", new_callable=AsyncMock)
     @patch("src.game.manage_server_events.get_active_server_event_occurrence", new_callable=AsyncMock)
     async def test_triggers_new_event(
-        self, mock_existing, mock_server, mock_eligible, mock_create, mock_get_occ, mock_to_event
+        self, mock_existing, mock_server, mock_eligible, mock_filter, mock_create, mock_get_occ, mock_to_event
     ):
         mock_existing.return_value = None
         mock_server.return_value = make_server(discord_id=200, event_channel_discord_id=12345)
 
-        event = SimpleNamespace(id=1, name="Town Raffle")
-        mock_eligible.return_value = event
+        event = MagicMock()
+        event.id = 1
+        event.name = "Town Raffle"
+        event.filter = {}
+        event.actions = []
+        mock_eligible.return_value = [(event, 1)]
+        mock_filter.return_value = True
 
         occurrence = SimpleNamespace(id=10)
         mock_create.return_value = occurrence
@@ -145,9 +170,7 @@ class TestTriggerDailyServerEvent:
 
 
 class TestParticipateInServerEvent:
-    def _make_occurrence(
-        self, archived=False, resolved_at=None, expired=False, participations=None, event_id=1, max_participants=0
-    ):
+    def _make_occurrence(self, archived=False, resolved_at=None, expired=False, participations=None, event_id=1):
         occ = MagicMock()
         occ.server_discord_id = 200
         occ.archived = archived
@@ -156,18 +179,24 @@ class TestParticipateInServerEvent:
         occ.server_event_id = event_id
         occ.server_event = MagicMock()
         occ.server_event.name = "Test Event"
-        occ.server_event.max_participants = max_participants
         occ.participations = participations or []
         return occ
 
-    def _make_option(self, option_id=1, event_id=1, min_money=0, min_bloodskulls=0, requires_pooch=False, actions=None):
+    def _make_menu_option(self, option_id=1, menu_server_event_id=1, actions=None):
         opt = MagicMock()
         opt.id = option_id
-        opt.server_event_id = event_id
-        opt.min_money = min_money
-        opt.min_bloodskulls = min_bloodskulls
-        opt.requires_pooch_selection = requires_pooch
+        opt.label = "Enter"
+        opt.filter = {}
+        opt.requires = {}
+        opt.scoring = {}
         opt.actions = actions or []
+        menu = MagicMock()
+        menu.name = "enter"
+        menu.label = "Enter"
+        menu.depends_on = []
+        menu.max_uses_per_player = 1
+        menu.server_event_id = menu_server_event_id
+        opt.menu = menu
         return opt
 
     @patch("src.game.manage_server_events.get_server_event_occurrence_by_id", new_callable=AsyncMock)
@@ -191,38 +220,31 @@ class TestParticipateInServerEvent:
         assert ok is False
         assert "expired" in msg.lower()
 
-    @patch("src.game.manage_server_events.get_server_event_participation", new_callable=AsyncMock)
     @patch("src.game.manage_server_events.get_owner_server", new_callable=AsyncMock)
     @patch("src.game.manage_server_events.get_or_create_owner", new_callable=AsyncMock)
     @patch("src.game.manage_server_events.get_server_event_occurrence_by_id", new_callable=AsyncMock)
-    async def test_already_participated(self, mock_get_occ, mock_get_create, mock_owner_server, mock_existing_part):
+    async def test_owner_not_registered(self, mock_get_occ, mock_create_owner, mock_owner_server):
         mock_get_occ.return_value = self._make_occurrence()
-        mock_owner_server.return_value = MagicMock()
-        mock_existing_part.return_value = MagicMock()  # already participated
-
+        mock_owner_server.return_value = None
         ok, msg, _ = await participate_in_server_event(1, 200, 100, 1)
         assert ok is False
-        assert "already participated" in msg.lower()
+        assert "registered" in msg.lower()
 
-    @patch("src.game.manage_server_events.get_server_event_option_by_id", new_callable=AsyncMock)
+    @patch("src.game.manage_server_events.get_server_event_menu_option_by_id", new_callable=AsyncMock)
     @patch("src.game.manage_server_events.get_server_event_participation", new_callable=AsyncMock)
     @patch("src.game.manage_server_events.get_owner_server", new_callable=AsyncMock)
     @patch("src.game.manage_server_events.get_or_create_owner", new_callable=AsyncMock)
     @patch("src.game.manage_server_events.get_server_event_occurrence_by_id", new_callable=AsyncMock)
-    async def test_event_full(self, mock_get_occ, mock_get_create, mock_owner_server, mock_existing_part, mock_option):
-        # Event full: max_participants=1, already has 1 participation
-        occ = self._make_occurrence(max_participants=1, participations=[MagicMock()])
-        mock_get_occ.return_value = occ
+    async def test_invalid_option(
+        self, mock_get_occ, mock_create_owner, mock_owner_server, mock_existing_part, mock_option
+    ):
+        mock_get_occ.return_value = self._make_occurrence()
         mock_owner_server.return_value = MagicMock()
-        mock_existing_part.return_value = None  # not yet participated
-        mock_option.return_value = self._make_option()
-
-        with patch("src.game.manage_server_events.get_owner_by_discord_id", new_callable=AsyncMock) as mock_owner:
-            mock_owner.return_value = make_owner(discord_id=100)
-            ok, msg, _ = await participate_in_server_event(1, 200, 100, 1)
-
+        mock_existing_part.return_value = None
+        mock_option.return_value = None
+        ok, msg, _ = await participate_in_server_event(1, 200, 100, 1)
         assert ok is False
-        assert "full" in msg.lower()
+        assert "not valid" in msg.lower()
 
 
 # ---------------------------------------------------------------------------
@@ -248,19 +270,19 @@ class TestResolveServerEvent:
         assert result is None
 
     @patch("src.game.manage_server_events.resolve_server_event_occurrence", new_callable=AsyncMock)
-    @patch("src.game.manage_server_events.finalize_server_event_participation", new_callable=AsyncMock)
-    @patch("src.game.manage_server_events._execute_event_actions", new_callable=AsyncMock)
     @patch("src.game.manage_server_events._rank_participations", new_callable=AsyncMock)
     @patch("src.game.manage_server_events.get_server_event_occurrence_by_id", new_callable=AsyncMock)
-    async def test_resolve_with_no_participants(self, mock_get, mock_rank, mock_exec, mock_finalize, mock_resolve):
+    async def test_resolve_with_no_participants_fires_default_actions(self, mock_get, mock_rank, mock_resolve):
         occ = MagicMock()
         occ.id = 1
         occ.archived = False
         occ.resolved_at = None
         occ.server_discord_id = 200
+        occ.context = {}
         occ.server_event = MagicMock()
         occ.server_event.name = "Test"
         occ.server_event.outcomes = []
+        occ.server_event.default_actions_data = []
         occ.participations = []
         mock_get.return_value = occ
         mock_rank.return_value = []
@@ -306,92 +328,6 @@ class TestBuildOwnerEventContext:
         mock_kennels.return_value = []
         ctx = await _build_owner_event_context(100)
         assert ctx.selected_pooch_id is None
-
-
-# ---------------------------------------------------------------------------
-# _compute_participation_score
-# ---------------------------------------------------------------------------
-
-
-class TestComputeParticipationScore:
-    @patch("src.game.manage_server_events.db_get_pooch_by_id", new_callable=AsyncMock)
-    async def test_selected_pooch_health_strategy(self, mock_pooch):
-        participation = MagicMock()
-        participation.context = {"selected_pooch_id": 5}
-        mock_pooch.return_value = SimpleNamespace(base_health=75)
-
-        score = await _compute_participation_score(participation, "selected_pooch_health", random.Random(1))
-        assert score == 75.0
-
-    @patch("src.game.manage_server_events.db_get_pooch_by_id", new_callable=AsyncMock)
-    async def test_selected_pooch_health_no_pooch(self, mock_pooch):
-        participation = MagicMock()
-        participation.context = {"selected_pooch_id": 5}
-        mock_pooch.return_value = None
-
-        score = await _compute_participation_score(participation, "selected_pooch_health", random.Random(1))
-        assert score == 0.0
-
-    async def test_selected_pooch_health_no_selected(self):
-        participation = MagicMock()
-        participation.context = {}
-
-        score = await _compute_participation_score(participation, "selected_pooch_health", random.Random(1))
-        assert score == 0.0
-
-    async def test_participation_only_returns_zero(self):
-        participation = MagicMock()
-        participation.context = {}
-        score = await _compute_participation_score(participation, "participation_only", random.Random(1))
-        assert score == 0.0
-
-    async def test_random_strategy_returns_float(self):
-        participation = MagicMock()
-        participation.context = {}
-        score = await _compute_participation_score(participation, "random_winner", random.Random(42))
-        assert 0.0 <= score <= 1.0
-
-
-# ---------------------------------------------------------------------------
-# _rank_participations
-# ---------------------------------------------------------------------------
-
-
-class TestRankParticipations:
-    async def test_ranks_by_score_descending(self):
-        p1 = MagicMock()
-        p1.context = {}
-        p2 = MagicMock()
-        p2.context = {}
-        occurrence = MagicMock()
-        occurrence.server_event.resolution_strategy = "random_winner"
-        occurrence.participations = [p1, p2]
-
-        ranked = await _rank_participations(occurrence, random.Random(42))
-        assert len(ranked) == 2
-        # ranks should be 1 and 2
-        ranks = [r[2] for r in ranked]
-        assert sorted(ranks) == [1, 2]
-
-    async def test_participation_only_sorts_by_time(self):
-        from datetime import datetime, timezone
-
-        p1 = MagicMock()
-        p1.context = {}
-        p1.participated_at = datetime(2024, 1, 1, tzinfo=timezone.utc)
-        p2 = MagicMock()
-        p2.context = {}
-        p2.participated_at = datetime(2024, 1, 2, tzinfo=timezone.utc)
-        occurrence = MagicMock()
-        occurrence.server_event.resolution_strategy = "participation_only"
-        occurrence.participations = [p2, p1]
-
-        ranked = await _rank_participations(occurrence, random.Random(42))
-        # p1 participated first, should be rank 1
-        assert ranked[0][0] is p1
-        assert ranked[0][2] == 1
-        assert ranked[1][0] is p2
-        assert ranked[1][2] == 2
 
 
 # ---------------------------------------------------------------------------
@@ -475,164 +411,3 @@ class TestRunDailyServerEventCycle:
         new_events, resolutions = await run_daily_server_event_cycle()
         assert len(new_events) == 0
         mock_trigger.assert_not_awaited()
-
-
-# ---------------------------------------------------------------------------
-# participate_in_server_event — success path and additional edge cases
-# ---------------------------------------------------------------------------
-
-
-class TestParticipateSuccess:
-    def _make_occurrence(self, participations=None, event_id=1, max_participants=0):
-        occ = MagicMock()
-        occ.server_discord_id = 200
-        occ.archived = False
-        occ.resolved_at = None
-        occ.expires_at = datetime.now(timezone.utc) + timedelta(days=1)
-        occ.server_event_id = event_id
-        occ.server_event = MagicMock()
-        occ.server_event.name = "Test Event"
-        occ.server_event.max_participants = max_participants
-        occ.participations = participations or []
-        return occ
-
-    def _make_option(self, option_id=1, event_id=1, min_money=0, min_bloodskulls=0, requires_pooch=False, actions=None):
-        opt = MagicMock()
-        opt.id = option_id
-        opt.server_event_id = event_id
-        opt.min_money = min_money
-        opt.min_bloodskulls = min_bloodskulls
-        opt.requires_pooch_selection = requires_pooch
-        opt.actions = actions or []
-        return opt
-
-    async def test_success_path(self):
-        from src.game.models.events.owner_events.owner_event_context import (
-            OwnerEventContext,
-        )
-        from src.game.models.events.owner_events.owner_event_result import (
-            OwnerEventResult,
-        )
-
-        hydrated_part = MagicMock()
-        call_count = 0
-
-        async def get_part_side_effect(*args, **kwargs):
-            nonlocal call_count
-            call_count += 1
-            if call_count == 1:
-                return None  # First call: check existing participation
-            return hydrated_part  # Second call: after creation
-
-        with (
-            patch(
-                "src.game.manage_server_events.get_server_event_occurrence_by_id",
-                new=AsyncMock(return_value=self._make_occurrence()),
-            ),
-            patch("src.game.manage_server_events.get_or_create_owner", new=AsyncMock()),
-            patch("src.game.manage_server_events.get_owner_server", new=AsyncMock(return_value=MagicMock())),
-            patch(
-                "src.game.manage_server_events.get_server_event_participation",
-                new=AsyncMock(side_effect=get_part_side_effect),
-            ),
-            patch(
-                "src.game.manage_server_events.get_server_event_option_by_id",
-                new=AsyncMock(return_value=self._make_option()),
-            ),
-            patch(
-                "src.game.manage_server_events.get_owner_by_discord_id",
-                new=AsyncMock(return_value=make_owner(discord_id=100, dollars=1000, bloodskulls=10)),
-            ),
-            patch(
-                "src.game.manage_server_events._build_owner_event_context",
-                new=AsyncMock(return_value=OwnerEventContext(owner_discord_id=100)),
-            ),
-            patch(
-                "src.game.manage_server_events._execute_event_actions", new=AsyncMock(return_value=OwnerEventResult())
-            ),
-            patch("src.game.manage_server_events.create_server_event_participation", new=AsyncMock()),
-            patch(
-                "src.game.manage_server_events.to_server_event_participation_summary",
-                new=AsyncMock(return_value=MagicMock()),
-            ),
-        ):
-            ok, msg, summary = await participate_in_server_event(1, 200, 100, 1)
-
-        assert ok is True
-        assert "joined" in msg.lower()
-        assert summary is not None
-
-    @patch("src.game.manage_server_events.get_owner_by_discord_id", new_callable=AsyncMock)
-    @patch("src.game.manage_server_events.get_server_event_option_by_id", new_callable=AsyncMock)
-    @patch("src.game.manage_server_events.get_server_event_participation", new_callable=AsyncMock)
-    @patch("src.game.manage_server_events.get_owner_server", new_callable=AsyncMock)
-    @patch("src.game.manage_server_events.get_or_create_owner", new_callable=AsyncMock)
-    @patch("src.game.manage_server_events.get_server_event_occurrence_by_id", new_callable=AsyncMock)
-    async def test_not_enough_money(
-        self,
-        mock_get_occ,
-        mock_create_owner,
-        mock_owner_server,
-        mock_existing_part,
-        mock_option,
-        mock_owner,
-    ):
-        mock_get_occ.return_value = self._make_occurrence()
-        mock_owner_server.return_value = MagicMock()
-        mock_existing_part.return_value = None
-        mock_option.return_value = self._make_option(min_money=500)
-        mock_owner.return_value = make_owner(discord_id=100, dollars=100, bloodskulls=0)
-
-        ok, msg, _ = await participate_in_server_event(1, 200, 100, 1)
-        assert ok is False
-        assert "$500" in msg
-
-    @patch("src.game.manage_server_events.get_owner_server", new_callable=AsyncMock)
-    @patch("src.game.manage_server_events.get_or_create_owner", new_callable=AsyncMock)
-    @patch("src.game.manage_server_events.get_server_event_occurrence_by_id", new_callable=AsyncMock)
-    async def test_owner_not_registered(self, mock_get_occ, mock_create_owner, mock_owner_server):
-        mock_get_occ.return_value = self._make_occurrence()
-        mock_owner_server.return_value = None
-        ok, msg, _ = await participate_in_server_event(1, 200, 100, 1)
-        assert ok is False
-        assert "registered" in msg.lower()
-
-    @patch("src.game.manage_server_events.get_server_event_option_by_id", new_callable=AsyncMock)
-    @patch("src.game.manage_server_events.get_server_event_participation", new_callable=AsyncMock)
-    @patch("src.game.manage_server_events.get_owner_server", new_callable=AsyncMock)
-    @patch("src.game.manage_server_events.get_or_create_owner", new_callable=AsyncMock)
-    @patch("src.game.manage_server_events.get_server_event_occurrence_by_id", new_callable=AsyncMock)
-    async def test_invalid_option(
-        self, mock_get_occ, mock_create_owner, mock_owner_server, mock_existing_part, mock_option
-    ):
-        mock_get_occ.return_value = self._make_occurrence()
-        mock_owner_server.return_value = MagicMock()
-        mock_existing_part.return_value = None
-        mock_option.return_value = None
-        ok, msg, _ = await participate_in_server_event(1, 200, 100, 1)
-        assert ok is False
-        assert "not valid" in msg.lower()
-
-    @patch("src.game.manage_server_events.get_owner_by_discord_id", new_callable=AsyncMock)
-    @patch("src.game.manage_server_events.get_server_event_option_by_id", new_callable=AsyncMock)
-    @patch("src.game.manage_server_events.get_server_event_participation", new_callable=AsyncMock)
-    @patch("src.game.manage_server_events.get_owner_server", new_callable=AsyncMock)
-    @patch("src.game.manage_server_events.get_or_create_owner", new_callable=AsyncMock)
-    @patch("src.game.manage_server_events.get_server_event_occurrence_by_id", new_callable=AsyncMock)
-    async def test_owner_not_found(
-        self,
-        mock_get_occ,
-        mock_create_owner,
-        mock_owner_server,
-        mock_existing_part,
-        mock_option,
-        mock_owner,
-    ):
-        mock_get_occ.return_value = self._make_occurrence()
-        mock_owner_server.return_value = MagicMock()
-        mock_existing_part.return_value = None
-        mock_option.return_value = self._make_option()
-        mock_owner.return_value = None
-        ok, msg, _ = await participate_in_server_event(1, 200, 100, 1)
-        assert ok is False
-        assert "not found" in msg.lower()

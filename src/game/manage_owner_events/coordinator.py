@@ -848,6 +848,21 @@ async def _execute_single_action(
                     "A pooch has been sacrificed!" if count == 1 else f"{count} pooches have been sacrificed!"
                 )
 
+        elif target_type == "server":
+            # Delegate to server-scoped action executor
+            servers = await list_servers_for_owner(owner_discord_id)
+            if not servers:
+                logger.warning("server-scoped action: owner %s has no servers; skipping", owner_discord_id)
+            else:
+                server_discord_id = rng.choice(servers).discord_id
+                from ..manage_server_events import _execute_server_actions
+                from ..models.events import ServerEventContext
+
+                server_ctx = ServerEventContext(server_discord_id=server_discord_id)
+                action_dict = {"action_type": action_type, "parameters": parameters}
+                server_result = await _execute_server_actions(server_discord_id, [action_dict], server_ctx, rng)
+                result.merge(server_result)
+
         else:
             logger.warning(f"Unknown action type: {action_type}")
 

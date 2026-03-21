@@ -15,10 +15,10 @@ from src.game import (
 )
 from src.game.models import Pooch
 from src.game.models.events import (
-    ServerEventOption,
     ServerEventResolution,
     TriggeredServerEvent,
 )
+from src.game.models.events.server_events import ServerEventMenu, ServerEventMenuOption
 
 SEVERITY_COLORS: dict[str, discord.Color] = {
     "trivial": discord.Color.light_grey(),
@@ -48,20 +48,56 @@ def _discord_timestamp(value: datetime | None, style: str = "R") -> str:
     return f"<t:{int(value.timestamp())}:{style}>"
 
 
-def _format_server_option_line(option: ServerEventOption) -> str:
-    requirements: list[str] = []
-    if option.min_money > 0:
-        requirements.append(f"${option.min_money}")
-    if option.min_bloodskulls > 0:
-        requirements.append(f"{option.min_bloodskulls} bloodskulls")
-    if option.requires_pooch_selection:
-        requirements.append("a pooch")
+def _get_used_menu_names(event: TriggeredServerEvent) -> set[str]:
+    """Return menu names already submitted by the viewer."""
+    if event.viewer_participation is None:
+        return set()
+    return {str(sub.get("menu_name", "")) for sub in (event.viewer_participation.submissions or [])}
 
-    line = f"**{option.label}**"
-    if option.description:
-        line += f" — {option.description}"
-    if requirements:
-        line += f" _(requires {' + '.join(requirements)})_"
+
+def _get_use_count_per_menu(event: TriggeredServerEvent) -> dict[str, int]:
+    """Return a count of how many times each menu has been used by the viewer."""
+    counts: dict[str, int] = {}
+    if event.viewer_participation is not None:
+        for sub in event.viewer_participation.submissions or []:
+            name = str(sub.get("menu_name", ""))
+            counts[name] = counts.get(name, 0) + 1
+    return counts
+
+
+def _menu_is_available(menu: ServerEventMenu, used_names: set[str], use_counts: dict[str, int]) -> bool:
+    """Return True if the viewer can currently use this menu."""
+    # depends_on: all prerequisite menu names must have been used
+    for req in menu.depends_on:
+        if req not in used_names:
+            return False
+    # max_uses_per_player: -1 = unlimited
+    if menu.max_uses_per_player >= 0:
+        if use_counts.get(menu.name, 0) >= menu.max_uses_per_player:
+            return False
+    return True
+
+
+def _format_menu_line(menu: ServerEventMenu, available: bool, uses_left: int | None) -> str:
+    status = "✅" if available else "🔒"
+    line = f"{status} **{menu.label}**"
+    if menu.description:
+        line += f" — {menu.description}"
+    if menu.depends_on:
+        line += f" _(requires: {', '.join(menu.depends_on)})_"
+    if uses_left is not None and uses_left >= 0:
+        line += f" _(uses left: {uses_left})_"
+    if menu.options:
+        for opt in menu.options:
+            req_parts: list[str] = []
+            if opt.requires.get("pooch"):
+                req_parts.append("a pooch")
+            opt_line = f"  • **{opt.label}**"
+            if opt.description:
+                opt_line += f" — {opt.description}"
+            if req_parts:
+                opt_line += f" _(requires {' + '.join(req_parts)})_"
+            line += f"\n{opt_line}"
     return line
 
 
@@ -70,24 +106,33 @@ def _format_participation_status(event: TriggeredServerEvent) -> str:
         return "You have not participated yet."
 
     participation = event.viewer_participation
-    bits = [f"You chose **{participation.selected_option.label}**."]
-    if participation.context.selected_pooch_id is not None:
-        pooch_label = next(
-            (
-                reference.label
-                for reference in participation.entity_references.pooches
-                if reference.id == participation.context.selected_pooch_id
-            ),
-            f"Pooch #{participation.context.selected_pooch_id}",
-        )
-        bits.append(f"Selected pooch: **{pooch_label}**")
+    submissions = list(participation.submissions or [])
+    if not submissions:
+        return "You have participated."
+
+    lines: list[str] = []
+    for sub in submissions:
+        menu_name = sub.get("menu_name", "?")
+        option_label = sub.get("option_label", "?")
+        lines.append(f"**{menu_name}**: {option_label}")
+        pid = sub.get("selected_pooch_id")
+        if pid is not None:
+            pooch_label = next(
+                (ref.label for ref in participation.entity_references.pooches if ref.id == pid),
+                f"Pooch #{pid}",
+            )
+            lines.append(f"  Pooch: **{pooch_label}**")
+        sub_result = sub.get("immediate_result") or {}
+        msg = sub_result.get("message") if isinstance(sub_result, dict) else None
+        if msg:
+            lines.append(f"  {msg}")
+
     if participation.rank is not None:
-        bits.append(f"Rank: **#{participation.rank}**")
-    if participation.immediate_result and participation.immediate_result.message:
-        bits.append(participation.immediate_result.message)
+        lines.append(f"Rank: **#{participation.rank}**")
     if participation.resolution_result and participation.resolution_result.message:
-        bits.append(participation.resolution_result.message)
-    return "\n".join(bits)
+        lines.append(participation.resolution_result.message)
+
+    return "\n".join(lines)
 
 
 async def build_server_event_embed(event: TriggeredServerEvent, include_viewer_status: bool = True) -> discord.Embed:
@@ -98,16 +143,24 @@ async def build_server_event_embed(event: TriggeredServerEvent, include_viewer_s
     )
     embed.add_field(name="Category", value=event.category, inline=True)
     embed.add_field(name="Ends", value=_discord_timestamp(event.expires_at), inline=True)
-    cap = "∞" if event.max_participants <= 0 else str(event.max_participants)
-    embed.add_field(name="Participants", value=f"{event.participation_count}/{cap}", inline=True)
+    embed.add_field(name="Participants", value=str(event.participation_count), inline=True)
 
     if event.flavor_text:
         embed.add_field(name="Flavor", value=_truncate(event.flavor_text), inline=False)
 
-    if event.options:
+    if event.menus:
+        used_names = _get_used_menu_names(event)
+        use_counts = _get_use_count_per_menu(event)
+        menu_lines: list[str] = []
+        for menu in event.menus:
+            available = _menu_is_available(menu, used_names, use_counts)
+            uses_left: int | None = None
+            if menu.max_uses_per_player >= 0:
+                uses_left = menu.max_uses_per_player - use_counts.get(menu.name, 0)
+            menu_lines.append(_format_menu_line(menu, available, uses_left))
         embed.add_field(
             name="How to participate",
-            value=_truncate("\n".join(_format_server_option_line(option) for option in event.options)),
+            value=_truncate("\n".join(menu_lines)),
             inline=False,
         )
 
@@ -136,11 +189,22 @@ async def _list_owner_living_pooches(server_discord_id: int, owner_discord_id: i
     return pooches
 
 
+# ---------------------------------------------------------------------------
+# Per-menu pooch selection
+# ---------------------------------------------------------------------------
+
+
 class ServerEventPoochSelect(discord.ui.Select):
-    def __init__(self, occurrence_id: int, server_discord_id: int, option: ServerEventOption, pooches: list[Pooch]):
+    def __init__(
+        self,
+        occurrence_id: int,
+        server_discord_id: int,
+        menu_option: ServerEventMenuOption,
+        pooches: list[Pooch],
+    ):
         self.occurrence_id = occurrence_id
         self.server_discord_id = server_discord_id
-        self.option = option
+        self.menu_option = menu_option
         options = [
             discord.SelectOption(label=pooch.name[:100], description=f"ID {pooch.id}", value=str(pooch.id))
             for pooch in pooches[:25]
@@ -153,7 +217,7 @@ class ServerEventPoochSelect(discord.ui.Select):
             self.occurrence_id,
             self.server_discord_id,
             interaction.user.id,
-            self.option.id,
+            self.menu_option.id,
             selected_pooch_id=pooch_id,
         )
         if not success:
@@ -164,36 +228,61 @@ class ServerEventPoochSelect(discord.ui.Select):
 
 
 class ServerEventPoochSelectView(discord.ui.View):
-    def __init__(self, occurrence_id: int, server_discord_id: int, option: ServerEventOption, pooches: list[Pooch]):
+    def __init__(
+        self,
+        occurrence_id: int,
+        server_discord_id: int,
+        menu_option: ServerEventMenuOption,
+        pooches: list[Pooch],
+    ):
         super().__init__(timeout=120)
-        self.add_item(ServerEventPoochSelect(occurrence_id, server_discord_id, option, pooches))
+        self.add_item(ServerEventPoochSelect(occurrence_id, server_discord_id, menu_option, pooches))
 
 
-class ServerEventOptionSelect(discord.ui.Select):
-    def __init__(self, occurrence_id: int, server_discord_id: int, options: list[ServerEventOption]):
+# ---------------------------------------------------------------------------
+# Per-menu option selection
+# ---------------------------------------------------------------------------
+
+
+class ServerEventMenuOptionSelect(discord.ui.Select):
+    """Dropdown to pick which option to use within a given menu."""
+
+    def __init__(
+        self,
+        occurrence_id: int,
+        server_discord_id: int,
+        menu: ServerEventMenu,
+    ):
         self.occurrence_id = occurrence_id
         self.server_discord_id = server_discord_id
-        self.server_options = {option.id: option for option in options}
-        discord_options = []
-        for option in options[:25]:
-            description = option.description or "Participate in this server event"
-            discord_options.append(
-                discord.SelectOption(label=option.label[:100], description=description[:100], value=str(option.id))
+        self.menu = menu
+        self._option_map = {str(opt.id): opt for opt in menu.options}
+        discord_options = [
+            discord.SelectOption(
+                label=opt.label[:100],
+                description=(opt.description or "")[:100],
+                value=str(opt.id),
             )
+            for opt in menu.options[:25]
+        ]
         super().__init__(
-            placeholder="Choose how to participate...", min_values=1, max_values=1, options=discord_options
+            placeholder=f"Choose an option for '{menu.label}'...",
+            min_values=1,
+            max_values=1,
+            options=discord_options,
         )
 
     async def callback(self, interaction: discord.Interaction):
-        option = self.server_options[int(self.values[0])]
-        if option.requires_pooch_selection:
+        selected_opt = self._option_map[self.values[0]]
+
+        if selected_opt.requires.get("pooch"):
             pooches = await _list_owner_living_pooches(self.server_discord_id, interaction.user.id)
             if not pooches:
                 await interaction.response.send_message("You do not have any living pooches to enter.", ephemeral=True)
                 return
             await interaction.response.send_message(
                 "Choose a pooch for your entry.",
-                view=ServerEventPoochSelectView(self.occurrence_id, self.server_discord_id, option, pooches),
+                view=ServerEventPoochSelectView(self.occurrence_id, self.server_discord_id, selected_opt, pooches),
                 ephemeral=True,
             )
             return
@@ -202,17 +291,98 @@ class ServerEventOptionSelect(discord.ui.Select):
             self.occurrence_id,
             self.server_discord_id,
             interaction.user.id,
-            option.id,
+            selected_opt.id,
         )
         await interaction.response.send_message(message, ephemeral=True)
         if success:
             await refresh_public_server_event_message(interaction.client, self.server_discord_id, self.occurrence_id)
 
 
-class ServerEventOptionSelectView(discord.ui.View):
-    def __init__(self, occurrence_id: int, server_discord_id: int, options: list[ServerEventOption]):
+class ServerEventMenuOptionSelectView(discord.ui.View):
+    def __init__(self, occurrence_id: int, server_discord_id: int, menu: ServerEventMenu):
         super().__init__(timeout=120)
-        self.add_item(ServerEventOptionSelect(occurrence_id, server_discord_id, options))
+        self.add_item(ServerEventMenuOptionSelect(occurrence_id, server_discord_id, menu))
+
+
+# ---------------------------------------------------------------------------
+# Menu selection (if multiple menus are available)
+# ---------------------------------------------------------------------------
+
+
+class ServerEventMenuSelect(discord.ui.Select):
+    """Dropdown to pick which menu to use when multiple menus are available."""
+
+    def __init__(
+        self,
+        occurrence_id: int,
+        server_discord_id: int,
+        available_menus: list[ServerEventMenu],
+    ):
+        self.occurrence_id = occurrence_id
+        self.server_discord_id = server_discord_id
+        self._menu_map = {str(m.id): m for m in available_menus}
+        discord_options = [
+            discord.SelectOption(
+                label=m.label[:100],
+                description=(m.description or "")[:100],
+                value=str(m.id),
+            )
+            for m in available_menus[:25]
+        ]
+        super().__init__(
+            placeholder="Choose a menu to use...",
+            min_values=1,
+            max_values=1,
+            options=discord_options,
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        selected_menu = self._menu_map[self.values[0]]
+
+        if len(selected_menu.options) == 1:
+            single_opt = selected_menu.options[0]
+            if single_opt.requires.get("pooch"):
+                pooches = await _list_owner_living_pooches(self.server_discord_id, interaction.user.id)
+                if not pooches:
+                    await interaction.response.send_message(
+                        "You do not have any living pooches to enter.", ephemeral=True
+                    )
+                    return
+                await interaction.response.send_message(
+                    "Choose a pooch for your entry.",
+                    view=ServerEventPoochSelectView(self.occurrence_id, self.server_discord_id, single_opt, pooches),
+                    ephemeral=True,
+                )
+                return
+            success, message, _summary = await participate_in_server_event(
+                self.occurrence_id,
+                self.server_discord_id,
+                interaction.user.id,
+                single_opt.id,
+            )
+            await interaction.response.send_message(message, ephemeral=True)
+            if success:
+                await refresh_public_server_event_message(
+                    interaction.client, self.server_discord_id, self.occurrence_id
+                )
+            return
+
+        await interaction.response.send_message(
+            f"Choose an option for **{selected_menu.label}**.",
+            view=ServerEventMenuOptionSelectView(self.occurrence_id, self.server_discord_id, selected_menu),
+            ephemeral=True,
+        )
+
+
+class ServerEventMenuSelectView(discord.ui.View):
+    def __init__(self, occurrence_id: int, server_discord_id: int, available_menus: list[ServerEventMenu]):
+        super().__init__(timeout=120)
+        self.add_item(ServerEventMenuSelect(occurrence_id, server_discord_id, available_menus))
+
+
+# ---------------------------------------------------------------------------
+# Main participation view (persistent)
+# ---------------------------------------------------------------------------
 
 
 class ServerEventParticipationView(discord.ui.View):
@@ -228,49 +398,65 @@ class ServerEventParticipationView(discord.ui.View):
         if event is None or event.occurrence_id != self.occurrence_id:
             await interaction.response.send_message("This server event is no longer active.", ephemeral=True)
             return
-        if event.viewer_participation is not None:
-            await interaction.response.send_message(
-                "You have already participated in this server event.", ephemeral=True
-            )
-            return
-        if not event.options:
+
+        if not event.menus:
             await interaction.response.send_message(
                 "This server event is not accepting participations.", ephemeral=True
             )
             return
 
-        if len(event.options) == 1:
-            option = event.options[0]
-            if option.requires_pooch_selection:
-                pooches = await _list_owner_living_pooches(self.server_discord_id, interaction.user.id)
-                if not pooches:
+        # Determine which menus are currently available to this player
+        used_names = _get_used_menu_names(event)
+        use_counts = _get_use_count_per_menu(event)
+        available_menus = [m for m in event.menus if _menu_is_available(m, used_names, use_counts)]
+
+        if not available_menus:
+            await interaction.response.send_message("There are no menus available to you right now.", ephemeral=True)
+            return
+
+        if len(available_menus) == 1:
+            selected_menu = available_menus[0]
+
+            if len(selected_menu.options) == 1:
+                single_opt = selected_menu.options[0]
+                if single_opt.requires.get("pooch"):
+                    pooches = await _list_owner_living_pooches(self.server_discord_id, interaction.user.id)
+                    if not pooches:
+                        await interaction.response.send_message(
+                            "You do not have any living pooches to enter.", ephemeral=True
+                        )
+                        return
                     await interaction.response.send_message(
-                        "You do not have any living pooches to enter.", ephemeral=True
+                        "Choose a pooch for your entry.",
+                        view=ServerEventPoochSelectView(
+                            self.occurrence_id, self.server_discord_id, single_opt, pooches
+                        ),
+                        ephemeral=True,
                     )
                     return
-                await interaction.response.send_message(
-                    "Choose a pooch for your entry.",
-                    view=ServerEventPoochSelectView(self.occurrence_id, self.server_discord_id, option, pooches),
-                    ephemeral=True,
+                success, message, _summary = await participate_in_server_event(
+                    self.occurrence_id,
+                    self.server_discord_id,
+                    interaction.user.id,
+                    single_opt.id,
                 )
+                await interaction.response.send_message(message, ephemeral=True)
+                if success:
+                    await refresh_public_server_event_message(
+                        interaction.client, self.server_discord_id, self.occurrence_id
+                    )
                 return
 
-            success, message, _summary = await participate_in_server_event(
-                self.occurrence_id,
-                self.server_discord_id,
-                interaction.user.id,
-                option.id,
+            await interaction.response.send_message(
+                f"Choose an option for **{selected_menu.label}**.",
+                view=ServerEventMenuOptionSelectView(self.occurrence_id, self.server_discord_id, selected_menu),
+                ephemeral=True,
             )
-            await interaction.response.send_message(message, ephemeral=True)
-            if success:
-                await refresh_public_server_event_message(
-                    interaction.client, self.server_discord_id, self.occurrence_id
-                )
             return
 
         await interaction.response.send_message(
-            "Choose how to participate.",
-            view=ServerEventOptionSelectView(self.occurrence_id, self.server_discord_id, event.options),
+            "Choose a menu to use.",
+            view=ServerEventMenuSelectView(self.occurrence_id, self.server_discord_id, available_menus),
             ephemeral=True,
         )
 

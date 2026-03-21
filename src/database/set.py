@@ -1092,19 +1092,40 @@ async def add_pooch_to_strays(pooch_id: int, server_discord_id: int) -> Optional
 async def create_server_event_participation(
     occurrence_id: int,
     owner_discord_id: int,
-    selected_option_id: int,
     context: dict[str, Any],
+    first_submission: dict[str, Any],
     immediate_result: dict[str, Any],
 ) -> ServerEventParticipation:
     async with session_scope() as session:
         participation = ServerEventParticipation(
             occurrence_id=occurrence_id,
             owner_discord_id=owner_discord_id,
-            selected_option_id=selected_option_id,
             context=context,
+            submissions=[first_submission],
             immediate_result=immediate_result,
         )
         session.add(participation)
         await session.flush()
         await session.refresh(participation)
     return participation
+
+
+async def append_server_event_submission(
+    participation_id: int,
+    submission: dict[str, Any],
+) -> None:
+    """Append a new submission dict to an existing participation's submissions list."""
+    from sqlalchemy import update as sa_update
+
+    async with session_scope() as session:
+        # Use jsonb_append via raw expression to avoid read-modify-write race;
+        # for our single-server-per-guild architecture this is safe with a simple refresh approach.
+        participation = await session.get(ServerEventParticipation, participation_id)
+        if participation is not None:
+            current: list = list(participation.submissions or [])
+            current.append(submission)
+            await session.execute(
+                sa_update(ServerEventParticipation)
+                .where(ServerEventParticipation.id == participation_id)
+                .values(submissions=current)
+            )

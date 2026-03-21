@@ -461,7 +461,7 @@ class TestRunDayChangeBirthEdgeCases:
             summaries, _ = await run_day_change(rng_seed=42)
 
         assert len(summaries[200].births) == 1
-        assert "crushed" in summaries[200].births[0].message
+        assert "released as a stray" in summaries[200].births[0].message
 
 
 # ---------------------------------------------------------------------------

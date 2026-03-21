@@ -4,28 +4,46 @@
   "flavor_text": "The ticket drum is already clattering.",
   "severity": "minor",
   "rarity": "common",
-  "min_owners": 1,
-  "resolution_strategy": "random_winner",
-  "options": [
-    {
-      "label": "Buy a raffle ticket",
-      "description": "Pay $5 for a shot at the prize pool.",
-      "min_money": 5,
-      "actions": [
+  "filter": {
+    "min_owners": 1
+  },
+  "menus": {
+    "enter": {
+      "label": "Enter the Raffle",
+      "description": "Buy a ticket for a shot at the prize pool.",
+      "max_uses_per_player": 1,
+      "depends_on": [],
+      "options": [
         {
-          "action_type": "modify_money",
-          "target_type": "owner",
-          "parameters": {
-            "amount": -5
+          "label": "Buy a raffle ticket",
+          "description": "Pay $5 for a shot at the prize.",
+          "filter": {
+            "min_money": 5
+          },
+          "actions": [
+            {
+              "action_type": "modify_money",
+              "target_type": "owner",
+              "parameters": {
+                "amount": -5
+              }
+            }
+          ],
+          "scoring": {
+            "aggregate": "sum",
+            "sources": [
+              { "type": "random", "min": 0.0, "max": 1.0 }
+            ]
           }
         }
       ]
     }
-  ],
+  },
   "outcomes": [
     {
       "label": "Winner",
       "message": "You won the town raffle!",
+      "target": "ranked_players",
       "min_rank": 1,
       "max_rank": 1,
       "actions": [

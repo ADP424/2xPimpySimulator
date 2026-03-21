@@ -4,29 +4,53 @@
   "flavor_text": "Bows, ribbons, and an unreasonable amount of applause.",
   "severity": "minor",
   "rarity": "uncommon",
-  "min_owners": 1,
-  "resolution_strategy": "selected_pooch_health",
-  "options": [
-    {
-      "label": "Enter a pooch",
-      "description": "Pick one living pooch to compete.",
-      "min_money": 10,
-      "requires_pooch_selection": true,
-      "actions": [
+  "filter": {
+    "min_owners": 1
+  },
+  "menus": {
+    "enter": {
+      "label": "Enter the Pageant",
+      "description": "Submit one of your living pooches to compete.",
+      "max_uses_per_player": 1,
+      "depends_on": [],
+      "options": [
         {
-          "action_type": "modify_money",
-          "target_type": "owner",
-          "parameters": {
-            "amount": -10
+          "label": "Enter a pooch",
+          "description": "Pick one living pooch to compete ($10 entry fee).",
+          "filter": {
+            "min_money": 10
+          },
+          "requires": {
+            "pooch": {
+              "filter": {
+                "is_alive": true
+              }
+            }
+          },
+          "actions": [
+            {
+              "action_type": "modify_money",
+              "target_type": "owner",
+              "parameters": {
+                "amount": -10
+              }
+            }
+          ],
+          "scoring": {
+            "aggregate": "max",
+            "sources": [
+              { "type": "pooch_stat", "stat": "base_health", "scale": 1.0, "pivot": 0.0, "direction": 1.0 }
+            ]
           }
         }
       ]
     }
-  ],
+  },
   "outcomes": [
     {
       "label": "Champion",
       "message": "Your pooch won the pageant!",
+      "target": "ranked_players",
       "min_rank": 1,
       "max_rank": 1,
       "actions": [
@@ -42,6 +66,7 @@
     {
       "label": "Runner-up",
       "message": "Your pooch placed as a runner-up.",
+      "target": "ranked_players",
       "min_rank": 2,
       "max_rank": 3,
       "actions": [

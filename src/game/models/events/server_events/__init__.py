@@ -1,5 +1,10 @@
 from .server_event_context import ServerEventContext
-from .server_event_option import ServerEventOption, to_server_event_option
+from .server_event_option import (
+    ServerEventMenu,
+    ServerEventMenuOption,
+    to_server_event_menu,
+    to_server_event_menu_option,
+)
 from .server_event_participation import (
     ServerEventParticipationSummary,
     to_server_event_participation_summary,
@@ -9,8 +14,10 @@ from .triggered_server_event import TriggeredServerEvent, to_triggered_server_ev
 
 __all__ = [
     "ServerEventContext",
-    "ServerEventOption",
-    "to_server_event_option",
+    "ServerEventMenu",
+    "ServerEventMenuOption",
+    "to_server_event_menu",
+    "to_server_event_menu_option",
     "ServerEventParticipationSummary",
     "to_server_event_participation_summary",
     "ServerEventResolution",

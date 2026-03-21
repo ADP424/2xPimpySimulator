@@ -26,6 +26,7 @@ if TYPE_CHECKING:
         KennelFilterSpec,
         OwnerEventFilterSpec,
         PoochFilterSpec,
+        ServerEventFilterSpec,
         StrayEventFilterSpec,
     )
 
@@ -354,6 +355,36 @@ async def get_random_matching_kennel_id_for_owner(
     return rng.choice(kennel_ids)
 
 
+async def _count_graveyard_pooches_for_owner(
+    session: AsyncSession, owner_discord_id: int, filter_spec: "PoochFilterSpec | None"
+) -> int:
+    """Count dead pooches in this owner's graveyard that match the filter."""
+    base_filter = dict(filter_spec or {})
+    base_filter.pop("min_count", None)
+    base_filter.pop("max_count", None)
+    base_filter.pop("description", None)
+    query = await _build_pooch_query(session, base_filter, owner_discord_id=owner_discord_id)
+    graveyard_subquery = select(GraveyardPooch.pooch_id).distinct()
+    query = query.where(Pooch.id.in_(graveyard_subquery))
+    count_query = select(func.count()).select_from(query.subquery())
+    return (await session.scalar(count_query)) or 0
+
+
+async def _count_hell_pooches_for_owner(
+    session: AsyncSession, owner_discord_id: int, filter_spec: "PoochFilterSpec | None"
+) -> int:
+    """Count pooches in hell owned by this owner that match the filter."""
+    base_filter = dict(filter_spec or {})
+    base_filter.pop("min_count", None)
+    base_filter.pop("max_count", None)
+    base_filter.pop("description", None)
+    query = await _build_pooch_query(session, base_filter, owner_discord_id=owner_discord_id)
+    hell_subquery = select(HellPooch.pooch_id).distinct()
+    query = query.where(Pooch.id.in_(hell_subquery))
+    count_query = select(func.count()).select_from(query.subquery())
+    return (await session.scalar(count_query)) or 0
+
+
 async def _get_owner_counts(session: AsyncSession, owner_discord_id: int) -> tuple[Owner | None, int, int]:
     owner = await session.scalar(select(Owner).where(Owner.discord_id == owner_discord_id))
     if owner is None:
@@ -431,6 +462,24 @@ async def check_owner_event_filter(
         if max_count is not None and count > max_count:
             return False
 
+    for pooch_filter in list(filter_spec.get("graveyard_pooches", [])):
+        min_count = pooch_filter.get("min_count", 1)
+        max_count = pooch_filter.get("max_count")
+        count = await _count_graveyard_pooches_for_owner(session, owner_discord_id, pooch_filter)
+        if count < min_count:
+            return False
+        if max_count is not None and count > max_count:
+            return False
+
+    for pooch_filter in list(filter_spec.get("hell_pooches", [])):
+        min_count = pooch_filter.get("min_count", 1)
+        max_count = pooch_filter.get("max_count")
+        count = await _count_hell_pooches_for_owner(session, owner_discord_id, pooch_filter)
+        if count < min_count:
+            return False
+        if max_count is not None and count > max_count:
+            return False
+
     return True
 
 
@@ -483,6 +532,205 @@ async def check_stray_event_filter(
         if count < min_count:
             return False
         if max_count is not None and count > max_count:
+            return False
+
+    return True
+
+
+# ---------------------------------------------------------------------------
+# Server-event eligibility filter
+# ---------------------------------------------------------------------------
+
+
+async def _count_dead_pooches_for_server(session: AsyncSession, server_discord_id: int) -> int:
+    """Count pooches in the graveyard that belong to owners registered on this server."""
+    from ..models import OwnerServer as OwnerServerModel
+
+    count = await session.scalar(
+        select(func.count(GraveyardPooch.pooch_id))
+        .join(Pooch, Pooch.id == GraveyardPooch.pooch_id)
+        .join(OwnerServerModel, OwnerServerModel.owner_discord_id == Pooch.owner_discord_id)
+        .where(OwnerServerModel.server_discord_id == server_discord_id)
+    )
+    return count or 0
+
+
+async def _count_hell_pooches_for_server(session: AsyncSession, server_discord_id: int) -> int:
+    """Count pooches in hell that belong to owners registered on this server."""
+    from ..models import OwnerServer as OwnerServerModel
+
+    count = await session.scalar(
+        select(func.count(HellPooch.pooch_id))
+        .join(Pooch, Pooch.id == HellPooch.pooch_id)
+        .join(OwnerServerModel, OwnerServerModel.owner_discord_id == Pooch.owner_discord_id)
+        .where(OwnerServerModel.server_discord_id == server_discord_id)
+    )
+    return count or 0
+
+
+async def _get_matching_dead_pooch_ids_for_server(
+    session: AsyncSession, server_discord_id: int, filter_spec: "PoochFilterSpec | None"
+) -> list[int]:
+    from ..models import OwnerServer as OwnerServerModel
+
+    base_filter = dict(filter_spec or {})
+    base_filter.pop("min_count", None)
+    base_filter.pop("max_count", None)
+    base_filter.pop("description", None)
+
+    owner_subquery = select(OwnerServerModel.owner_discord_id).where(
+        OwnerServerModel.server_discord_id == server_discord_id
+    )
+    query = await _build_pooch_query(session, base_filter)
+    graveyard_subquery = (
+        select(GraveyardPooch.pooch_id)
+        .join(Pooch, Pooch.id == GraveyardPooch.pooch_id)
+        .where(Pooch.owner_discord_id.in_(owner_subquery))
+    )
+    query = query.where(Pooch.id.in_(graveyard_subquery))
+    result = await session.execute(query.with_only_columns(Pooch.id))
+    return list(result.scalars().all())
+
+
+async def _get_matching_hell_pooch_ids_for_server(
+    session: AsyncSession, server_discord_id: int, filter_spec: "PoochFilterSpec | None"
+) -> list[int]:
+    from ..models import OwnerServer as OwnerServerModel
+
+    base_filter = dict(filter_spec or {})
+    base_filter.pop("min_count", None)
+    base_filter.pop("max_count", None)
+    base_filter.pop("description", None)
+
+    owner_subquery = select(OwnerServerModel.owner_discord_id).where(
+        OwnerServerModel.server_discord_id == server_discord_id
+    )
+    query = await _build_pooch_query(session, base_filter)
+    hell_subquery = (
+        select(HellPooch.pooch_id)
+        .join(Pooch, Pooch.id == HellPooch.pooch_id)
+        .where(Pooch.owner_discord_id.in_(owner_subquery))
+    )
+    query = query.where(Pooch.id.in_(hell_subquery))
+    result = await session.execute(query.with_only_columns(Pooch.id))
+    return list(result.scalars().all())
+
+
+async def get_matching_stray_pooch_ids_for_server_filtered(
+    session: AsyncSession, server_discord_id: int, filter_spec: "PoochFilterSpec | None"
+) -> list[int]:
+    """Like get_matching_stray_pooch_ids_for_server but strips count metadata first."""
+    base_filter = dict(filter_spec or {})
+    base_filter.pop("min_count", None)
+    base_filter.pop("max_count", None)
+    base_filter.pop("description", None)
+    return await get_matching_stray_pooch_ids_for_server(session, server_discord_id, base_filter)
+
+
+async def check_server_event_filter(
+    session: AsyncSession,
+    server_discord_id: int,
+    filter_spec: "ServerEventFilterSpec | None",
+) -> bool:
+    """Return True if the given server satisfies the server event eligibility filter."""
+    from ..models import OwnerServer as OwnerServerModel
+
+    if not filter_spec:
+        return True
+
+    # Owner count
+    owner_count = (
+        await session.scalar(
+            select(func.count(OwnerServerModel.owner_discord_id)).where(
+                OwnerServerModel.server_discord_id == server_discord_id
+            )
+        )
+        or 0
+    )
+    if filter_spec.get("min_owners") is not None and owner_count < filter_spec["min_owners"]:
+        return False
+    if filter_spec.get("max_owners") is not None and owner_count > filter_spec["max_owners"]:
+        return False
+
+    # Stray count
+    if filter_spec.get("min_strays") is not None or filter_spec.get("max_strays") is not None:
+        stray_count = (
+            await session.scalar(
+                select(func.count(StrayPooch.pooch_id))
+                .join(Pooch, Pooch.id == StrayPooch.pooch_id)
+                .where(StrayPooch.server_discord_id == server_discord_id, Pooch.alive.is_(True))
+            )
+            or 0
+        )
+        if filter_spec.get("min_strays") is not None and stray_count < filter_spec["min_strays"]:
+            return False
+        if filter_spec.get("max_strays") is not None and stray_count > filter_spec["max_strays"]:
+            return False
+
+    # Dead count
+    if filter_spec.get("min_dead") is not None or filter_spec.get("max_dead") is not None:
+        dead_count = await _count_dead_pooches_for_server(session, server_discord_id)
+        if filter_spec.get("min_dead") is not None and dead_count < filter_spec["min_dead"]:
+            return False
+        if filter_spec.get("max_dead") is not None and dead_count > filter_spec["max_dead"]:
+            return False
+
+    # Hell count
+    if filter_spec.get("min_in_hell") is not None or filter_spec.get("max_in_hell") is not None:
+        hell_count = await _count_hell_pooches_for_server(session, server_discord_id)
+        if filter_spec.get("min_in_hell") is not None and hell_count < filter_spec["min_in_hell"]:
+            return False
+        if filter_spec.get("max_in_hell") is not None and hell_count > filter_spec["max_in_hell"]:
+            return False
+
+    # Stray pooch sub-filters
+    for pooch_filter in list(filter_spec.get("stray_pooches", [])):
+        min_count = pooch_filter.get("min_count", 1)
+        max_count = pooch_filter.get("max_count")
+        count = len(await get_matching_stray_pooch_ids_for_server_filtered(session, server_discord_id, pooch_filter))
+        if count < min_count:
+            return False
+        if max_count is not None and count > max_count:
+            return False
+
+    # Dead pooch sub-filters
+    for pooch_filter in list(filter_spec.get("dead_pooches", [])):
+        min_count = pooch_filter.get("min_count", 1)
+        max_count = pooch_filter.get("max_count")
+        count = len(await _get_matching_dead_pooch_ids_for_server(session, server_discord_id, pooch_filter))
+        if count < min_count:
+            return False
+        if max_count is not None and count > max_count:
+            return False
+
+    # Hell pooch sub-filters
+    for pooch_filter in list(filter_spec.get("hell_pooches", [])):
+        min_count = pooch_filter.get("min_count", 1)
+        max_count = pooch_filter.get("max_count")
+        count = len(await _get_matching_hell_pooch_ids_for_server(session, server_discord_id, pooch_filter))
+        if count < min_count:
+            return False
+        if max_count is not None and count > max_count:
+            return False
+
+    # Per-owner sub-filters
+    for owner_filter in list(filter_spec.get("owners", [])):
+        min_count = owner_filter.get("min_count", 1)
+        max_count = owner_filter.get("max_count")
+        # Get all owner IDs registered in this server
+        owner_ids_result = await session.execute(
+            select(OwnerServerModel.owner_discord_id).where(OwnerServerModel.server_discord_id == server_discord_id)
+        )
+        all_owner_ids = list(owner_ids_result.scalars().all())
+        # Count how many of them satisfy the owner filter (minus count metadata)
+        stripped_filter = {k: v for k, v in owner_filter.items() if k not in {"min_count", "max_count"}}
+        matching = 0
+        for oid in all_owner_ids:
+            if await check_owner_event_filter(session, oid, stripped_filter):
+                matching += 1
+        if matching < min_count:
+            return False
+        if max_count is not None and matching > max_count:
             return False
 
     return True
