@@ -79,6 +79,7 @@ from .update import (
     transfer_pooch_to_owner,
     transfer_pooch_to_vendor,
     update_owner_discord_name,
+    update_pooch_mood,
 )
 
 __all__ = [
@@ -160,4 +161,5 @@ __all__ = [
     "transfer_pooch_to_owner",
     "transfer_pooch_to_vendor",
     "update_owner_discord_name",
+    "update_pooch_mood",
 ]
