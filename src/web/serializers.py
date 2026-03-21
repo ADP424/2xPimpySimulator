@@ -18,6 +18,7 @@ def serialize_breed(breed: Any) -> dict:
         "category": breed.category,
         "description": breed.description,
         "rarity": breed.rarity,
+        "advanced_options": getattr(breed, "advanced_options", {}),
     }
 
 
@@ -34,6 +35,7 @@ def serialize_mutation(mutation: Any) -> dict:
         "rarity": mutation.rarity,
         "affects_females": mutation.affects_females,
         "affects_males": mutation.affects_males,
+        "advanced_options": getattr(mutation, "advanced_options", {}),
     }
 
 
