@@ -8,6 +8,7 @@
     "parameters": {
         "bloodskull_value_mult": 0.25,
         "sold_by_vendors": false,
-        "born_from_ritual": false
+        "born_from_ritual": false,
+        "cuteness_mult": 0.9
     }
 }

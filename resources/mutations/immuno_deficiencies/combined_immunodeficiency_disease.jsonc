@@ -1,8 +1,11 @@
 {
     "name": "Combined Immunodeficiency Disease",
-    "alt_name": "LAD",
+    "alt_name": "CID",
     "description": "This pooch is hopeless against disease.",
     "heritability": 0.2,
     "health_impact": "BRUTAL",
-    "rarity": "RARE"
+    "rarity": "RARE",
+    "parameters": {
+        "constitution_mult": 0.2
+    }
 }

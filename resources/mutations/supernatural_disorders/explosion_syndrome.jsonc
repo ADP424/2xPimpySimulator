@@ -9,6 +9,7 @@
         "on_death": "kill",
         "on_death_targets": "all",
         "death_message": "[pooch] exploded all over the walls.",
-        "impact_message": "[victim] was killed in [pooch]'s explosion."
+        "impact_message": "[victim] was killed in [pooch]'s explosion.",
+        "strength_add": 5
     }
 }

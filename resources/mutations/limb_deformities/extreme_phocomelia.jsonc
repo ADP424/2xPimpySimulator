@@ -10,6 +10,9 @@
         "incompatible_mutations": [
             "Clubfoot",
             "Phocomelia"
-        ]
+        ],
+        "dexterity_mult": 0.0,
+        "strength_mult": 0.1,
+        "fertility_mult": 0.8
     }
 }

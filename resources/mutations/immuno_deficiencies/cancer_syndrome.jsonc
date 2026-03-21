@@ -4,5 +4,8 @@
     "description": "This pooch is visited by crabs.",
     "heritability": 0.4,
     "health_impact": "UNHEALTHY",
-    "rarity": "COMMON"
+    "rarity": "COMMON",
+    "parameters": {
+        "constitution_mult": 0.7
+    }
 }

@@ -4,5 +4,9 @@
     "description": "This pooch should be extra careful around sharp objects.",
     "heritability": 0.2,
     "health_impact": "SEVERE",
-    "rarity": "NOVEL"
+    "rarity": "NOVEL",
+    "parameters": {
+        "aggressiveness_add": -1,
+        "constitution_mult": 0.8
+    }
 }

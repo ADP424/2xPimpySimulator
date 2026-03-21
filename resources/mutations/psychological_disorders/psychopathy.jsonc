@@ -4,5 +4,10 @@
     "description": "This pooch is good with the stock market.",
     "heritability": 0.3,
     "health_impact": "NEUTRAL",
-    "rarity": "UNCOMMON"
+    "rarity": "UNCOMMON",
+    "parameters": {
+        "strength_add": 1,
+        "aggressiveness_add": 2,
+        "fertility_mult": 0.9
+    }
 }

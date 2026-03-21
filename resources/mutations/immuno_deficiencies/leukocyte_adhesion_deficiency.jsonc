@@ -4,5 +4,8 @@
     "description": "This pooch's white blood cells are sleeping.",
     "heritability": 0.2,
     "health_impact": "SEVERE",
-    "rarity": "RARE"
+    "rarity": "RARE",
+    "parameters": {
+        "constitution_mult": 0.5
+    }
 }
