@@ -18,6 +18,7 @@ def serialize_breed(breed: Any) -> dict:
         "category": breed.category,
         "description": breed.description,
         "rarity": breed.rarity,
+        "advanced_options": getattr(breed, "advanced_options", {}),
     }
 
 

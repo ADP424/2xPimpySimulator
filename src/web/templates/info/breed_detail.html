@@ -41,6 +41,10 @@
                             <span class="info-label">Also Known As</span>
                             <span class="info-value" id="breed-alt-name"></span>
                         </div>
+                        <div class="info-item">
+                            <span class="info-label">Sold by Vendors</span>
+                            <span class="info-value" id="breed-sold-by-vendors"></span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -74,6 +78,12 @@ document.addEventListener('DOMContentLoaded', async function() {
         document.getElementById('breed-rarity').innerHTML = `<span class="rarity-badge rarity-${(breed.rarity || '').toLowerCase()}">${escapeHtml(rarityLabel)}</span>`;
         document.getElementById('breed-category').textContent = breed.category || '—';
         document.getElementById('breed-alt-name').textContent = breed.alt_name || '—';
+
+        const opts = breed.advanced_options || {};
+        const soldByVendors = opts.sold_by_vendors !== 0;
+        document.getElementById('breed-sold-by-vendors').innerHTML = soldByVendors
+            ? '<span class="badge badge-success">Yes</span>'
+            : '<span class="badge badge-error">No</span>';
 
     } catch (error) {
         document.getElementById('loading').innerHTML = '<span class="text-error">Failed to load breed details</span>';
