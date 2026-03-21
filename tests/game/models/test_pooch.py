@@ -35,6 +35,7 @@ def _make_pooch(**overrides) -> Pooch:
         created_at=None,
         size=10,
         health=10,
+        mood=None,
         owner=None,
         vendor=None,
         breeds=[],

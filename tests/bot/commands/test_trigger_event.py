@@ -17,7 +17,7 @@ class TestTriggerEventCommand:
         interaction.guild_id = None
 
         with patch("src.bot.commands.trigger_event.trigger_event_by_name", new_callable=AsyncMock):
-            await callback(interaction, name="test_event")
+            await callback(interaction, event_type="owner", name="test_event")
 
         interaction.response.send_message.assert_called_once()
         msg = interaction.response.send_message.call_args[0][0]
@@ -30,11 +30,11 @@ class TestTriggerEventCommand:
         interaction = make_interaction()
 
         with patch("src.bot.commands.trigger_event.trigger_event_by_name", new_callable=AsyncMock, return_value=None):
-            await callback(interaction, name="nonexistent")
+            await callback(interaction, event_type="owner", name="nonexistent")
 
-        interaction.response.send_message.assert_called_once()
-        msg = interaction.response.send_message.call_args[0][0]
-        assert "no event" in msg.lower()
+        interaction.followup.send.assert_called_once()
+        msg = interaction.followup.send.call_args[0][0]
+        assert "no" in msg.lower()
 
     async def test_triggers_and_posts(self):
         from src.bot.commands.trigger_event import register_trigger_event_command
@@ -53,7 +53,7 @@ class TestTriggerEventCommand:
                 "src.bot.commands.trigger_event.post_hourly_event_notifications", new_callable=AsyncMock
             ) as mock_post,
         ):
-            await callback(interaction, name="heat_wave")
+            await callback(interaction, event_type="owner", name="heat_wave")
             mock_post.assert_called_once_with(interaction.client, {100: [mock_event]})
 
-        interaction.response.send_message.assert_called_once()
+        interaction.followup.send.assert_called_once()

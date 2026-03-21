@@ -35,5 +35,7 @@ markers = [
 ]
 filterwarnings = [
     "ignore::DeprecationWarning:discord",
+    "ignore::DeprecationWarning:discord\\..*",
+    "ignore:.*iscoroutinefunction.*:DeprecationWarning",
     "ignore::RuntimeWarning:asyncio",
 ]

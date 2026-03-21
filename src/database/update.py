@@ -1187,6 +1187,25 @@ async def set_server_event_occurrence_message_discord_id(
         return occurrence
 
 
+async def update_server_event_occurrence_context(
+    occurrence_id: int, context: dict[str, Any]
+) -> Optional[ServerEventOccurrence]:
+    """Replace the shared context blob on an active occurrence (for mid-event state updates)."""
+
+    async with session_scope() as session:
+        query = select(ServerEventOccurrence).where(ServerEventOccurrence.id == occurrence_id)
+        occurrence = (await session.execute(query)).scalar_one_or_none()
+        if occurrence is None:
+            return None
+        # Use flag_modified so SQLAlchemy detects the mutation
+        from sqlalchemy.orm.attributes import flag_modified
+
+        occurrence.context = dict(context)
+        flag_modified(occurrence, "context")
+        await session.flush()
+        return occurrence
+
+
 async def resolve_server_event_occurrence(
     occurrence_id: int, result_summary: dict[str, Any] | None = None
 ) -> Optional[ServerEventOccurrence]:

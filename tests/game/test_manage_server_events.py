@@ -134,7 +134,7 @@ class TestTriggerDailyServerEvent:
     @patch("src.game.manage_server_events.get_server_event_occurrence_by_id", new_callable=AsyncMock)
     @patch("src.game.manage_server_events.create_server_event_occurrence", new_callable=AsyncMock)
     @patch("src.game.manage_server_events._check_server_filter", new_callable=AsyncMock)
-    @patch("src.game.manage_server_events.list_all_server_events_with_weights", new_callable=AsyncMock)
+    @patch("src.game.manage_server_events.list_server_events_with_weights_by_tier", new_callable=AsyncMock)
     @patch("src.game.manage_server_events.get_server_by_discord_id", new_callable=AsyncMock)
     @patch("src.game.manage_server_events.get_active_server_event_occurrence", new_callable=AsyncMock)
     async def test_triggers_new_event(
@@ -379,7 +379,13 @@ class TestRunDailyServerEventCycle:
     @patch("src.game.manage_server_events.list_servers", new_callable=AsyncMock)
     @patch("src.game.manage_server_events.resolve_server_event", new_callable=AsyncMock)
     @patch("src.game.manage_server_events.list_active_server_event_occurrences", new_callable=AsyncMock)
-    async def test_resolves_then_triggers(self, mock_active, mock_resolve, mock_servers, mock_trigger):
+    @patch("src.game.manage_server_events.datetime")
+    async def test_resolves_then_triggers(self, mock_dt, mock_active, mock_resolve, mock_servers, mock_trigger):
+        # Simulate a Monday so a major event is guaranteed to trigger
+        monday = MagicMock()
+        monday.weekday.return_value = 0
+        mock_dt.now.return_value = monday
+
         occ = MagicMock()
         occ.id = 1
         mock_active.return_value = [occ]

@@ -144,7 +144,7 @@ async def to_pooch(pooch: PoochORM) -> Pooch:
         fertility=_apply_stat_params(pooch.fertility, "fertility", mutation_orms, breed_pairs),
         aggressiveness=_apply_stat_params(pooch.aggressiveness, "aggressiveness", mutation_orms, breed_pairs),
         constitution=_apply_stat_params(pooch.constitution, "constitution", mutation_orms, breed_pairs),
-        size=pooch.size,
+        size=_apply_stat_params(pooch.size, "size", mutation_orms, breed_pairs),
         breeding_cooldown=pooch.breeding_cooldown,
         alive=pooch.alive,
         virgin=pooch.virgin,

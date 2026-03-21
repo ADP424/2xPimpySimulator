@@ -1,15 +1,42 @@
 # Server Event Guide
 
-Server events are daily community-wide occurrences on a Discord server. They come in two flavours:
+Server events are community-wide occurrences on a Discord server. They come in two flavours:
 
 - **Passive events** — fire automatically and apply server-scoped actions to pooches across the server (strays, dead, hell). No player participation required.
 - **Interactive events** — present players with menus of options. Players participate over a window of time, then the event resolves and outcomes are distributed.
 
 ---
 
+## Tiers: Minor and Major
+
+Server events are divided into two tiers, determined by the top-level folder under `resources/server_events/`:
+
+| Tier | Folder | Duration | Trigger schedule |
+|------|--------|----------|-----------------|
+| `minor` | `resources/server_events/minor/` | 1 day | 50% chance each day (never on the Monday a major event starts) |
+| `major` | `resources/server_events/major/` | 7 days (whole week) | Guaranteed every Monday |
+
+A major event occupies the entire week. No minor event fires on the same Monday that a major event begins. Both tiers use the same schema, action system, menus, scoring, and outcomes — the tier is purely a scheduling and flavour distinction.
+
+### Example folder structure
+
+```
+resources/server_events/
+  minor/
+    community/
+      stray_blessing.jsonc
+    contest/
+      sunday_pageant.jsonc
+  major/
+    arena/
+      dog_fighting_arena.jsonc
+```
+
+---
+
 ## File Layout
 
-Server events live in `resources/server_events/**/*.jsonc`. Each **file** defines one event. Events are grouped into category subfolders. The category comes from the folder name (titleized automatically).
+Each file defines one event. The tier comes from the first-level folder name (`minor` or `major`). The category comes from the second-level folder name (titleized automatically).
 
 ```jsonc
 {
@@ -19,6 +46,7 @@ Server events live in `resources/server_events/**/*.jsonc`. Each **file** define
     "severity": "string",
     "rarity": "string",
     "filter": {},                   // see Filter block
+    "parameters": {},               // advanced options; consumed by game logic at resolution
     "actions": [],                  // server-scoped; run at trigger time
     "default_actions": [],          // server-scoped; run if nobody participated
     "menus": {},                    // named option menus for interactive events
@@ -52,6 +80,10 @@ How impactful the event appears in the UI.
 - `major`
 - `critical`
 - `catastrophic`
+
+### `parameters`
+
+An optional free-form JSON object consumed by game-layer resolution logic. Standard event logic ignores unknown keys, so this is safe to extend. The arena system uses this block extensively — see [Arena Events](#arena-events) below.
 
 ### `rarity`
 
@@ -974,3 +1006,180 @@ Server events resolve after their active window ends.
     ]
 }
 ```
+
+---
+
+## `fight_pooches` Action
+
+The `fight_pooches` action simulates a physical fight between two pooches. It applies health loss to both combatants, may kill them, and returns a structured result. The **event winner** is not determined by this action — that is up to the caller (arena resolution logic, outcome actions, etc.).
+
+**Supported target types:** `pooch`, `server` (pool-based), `stray`
+
+### Fight mechanics
+
+| Factor | Effect |
+|--------|--------|
+| `aggressiveness` | Increases raw damage dealt per round |
+| `strength` | Reduces damage taken (primary mitigation) |
+| `size` | Reduces damage taken (0.4× the mitigation of an equal amount of strength) |
+| Random noise | Each round adds a uniform random value [0, 10] to the attacker's raw damage roll, providing a significant random element |
+| Defender bonus | The defending pooch receives +2 effective strength for mitigation only (configurable via `defender_strength_bonus`) |
+
+The fight runs for `rounds` (default 5) simultaneous-damage rounds. Both pooches deal and take damage in the same round. A pooch dies if its `base_health` reaches 0 or below after a round; the fight ends early in that case.
+
+**Winner determination:**
+- If one pooch dies and the other survives → survivor wins
+- If both die in the same round → draw
+- If both survive → the pooch that took less total damage wins
+- If total damage is equal and both survive → draw
+
+### Parameters
+
+| Parameter | Type | Default | Notes |
+|-----------|------|---------|-------|
+| `rounds` | int | `5` | Number of fight rounds |
+| `defender_strength_bonus` | int | `2` | Flat strength bonus added to the defender's mitigation (not their attack) |
+| `attacker_slot` | string | — | Named saved-slot holding the attacker pooch ID |
+| `defender_slot` | string | — | Named saved-slot holding the defender pooch ID |
+| `defender_filter` | object | `{}` | Pooch filter used to find the defender when `defender_slot` is not set |
+| `save_as` | string | — | Saves the winner's pooch ID into this named slot |
+
+### Returned data
+
+The fight result is stored in `result.extra_data["fight_result"]` (for owner/stray events) or the server context after arena resolution:
+
+```json
+{
+    "attacker_id": 123,
+    "defender_id": 456,
+    "attacker_damage": 18,
+    "defender_damage": 22,
+    "attacker_died": false,
+    "defender_died": false,
+    "winner_id": 123,
+    "draw": false,
+    "rounds_fought": 5
+}
+```
+
+### Owner-event example
+
+```jsonc
+{
+    "action_type": "fight_pooches",
+    "target_type": "pooch",
+    "parameters": {
+        "selector": "random",
+        "filter": { "is_alive": true },
+        "defender_filter": { "is_alive": true },
+        "rounds": 3,
+        "defender_strength_bonus": 2,
+        "save_as": "fight_winner"
+    }
+}
+```
+
+### Server-event example (using saved slots)
+
+```jsonc
+// First, save the two combatants into slots
+{ "action_type": "select_pooch", "target_type": "server",
+  "parameters": { "pool": "stray", "selector": "random", "count": 1, "save_as": "fighter_a" } },
+{ "action_type": "select_pooch", "target_type": "server",
+  "parameters": { "pool": "stray", "selector": "random", "count": 1, "save_as": "fighter_b" } },
+
+// Then fight them
+{
+    "action_type": "fight_pooches",
+    "target_type": "server",
+    "parameters": {
+        "pool": "stray",
+        "selector": "all",
+        "attacker_slot": "fighter_a",
+        "defender_slot": "fighter_b",
+        "save_as": "arena_winner"
+    }
+}
+```
+
+---
+
+## Arena Events
+
+Arena events are a class of major server events where players compete against each other by fighting their pooches. The arena state (listed pooches, active matchups, bets, fight results) is stored in the occurrence's shared `context.extra_data.arena` blob and mutated in real time as players interact.
+
+### Option `parameters.arena_action`
+
+Setting `arena_action` on a menu option triggers special server-side logic in addition to any normal option `actions`:
+
+| `arena_action` | Effect | Required extra_params |
+|----------------|--------|-----------------------|
+| `"list_pooch"` | Adds the selected pooch to the arena's listed defenders | — |
+| `"challenge"` | Creates a matchup between the player's pooch and a listed pooch; opens the betting window | `target_listed_pooch_id: int` |
+| `"bet"` | Records a bet on an existing matchup | `matchup_id: int`, `side: "attacker"\|"defender"`, `money: int`, `bloodskulls: int` |
+
+### Challenge flow
+
+1. Player A calls `list_pooch` → their pooch appears in `arena.listed`
+2. Player B calls `challenge` with `target_listed_pooch_id` = Player A's pooch → a matchup entry is created; Player A's pooch is removed from `listed`; a betting window opens (default: 5 minutes)
+3. Other players call `bet` on `matchup_id`, choosing `attacker` or `defender` side, within the bet window
+4. At event resolution, all unresolved matchups are fought automatically via `fight_pooches`
+
+### Bet payout mechanics
+
+All bets on a matchup are pooled. When the fight resolves:
+
+- **Winners** receive their own stake back, plus a proportional share of the losing side's total pot
+  *(e.g. if you bet $20 and your side staked $100 total, you get $20 + 20% of the losing pot)*
+- **Losers** lose their stake
+- **Draw** — all bets are returned in full
+
+The **fighters' owner** additionally receives a bonus equal to `fighter_bonus_fraction` × total bets on the fight (default 25%). This is additive — it does not reduce what gamblers receive.
+
+On a draw, each fighter's owner receives `draw_fighter_bonus_fraction` × total bets (default 12.5%).
+
+### Kill reward
+
+Every time a pooch kills its opponent, the killer's owner receives `kill_reward_bloodskulls` bloodskulls and `kill_reward_bones` bones (defaults: 1 each). This applies even in a mutual kill (both owners receive the reward).
+
+### Grand prize
+
+At the end of the week, the owner whose pooches won the most fights receives a money prize equal to:
+
+```
+prize_per_participant × number_of_server_owners
+```
+
+The default `prize_per_participant` is `50` (so 10 server owners → $500 grand prize). In the event of a tie, the prize is split equally among tied owners.
+
+### Event `parameters` reference for arena events
+
+| Key | Type | Default | Notes |
+|-----|------|---------|-------|
+| `fight_params` | object | `{}` | Passed to `fight_pooches` — supports `rounds`, `defender_strength_bonus` |
+| `prize_per_participant` | int | `50` | Money per server owner for the grand prize |
+| `fighter_bonus_fraction` | float | `0.25` | Fraction of total bets paid to the winning fighter |
+| `draw_fighter_bonus_fraction` | float | `0.125` | Fraction paid to each fighter on a draw |
+| `kill_reward_bloodskulls` | int | `1` | Bloodskulls awarded to the killer's owner per kill |
+| `kill_reward_bones` | int | `1` | Bones awarded to the killer's owner per kill |
+
+### Menu option `parameters` reference for arena options
+
+| Key | Type | Default | Notes |
+|-----|------|---------|-------|
+| `arena_action` | string | — | `"list_pooch"`, `"challenge"`, or `"bet"` |
+| `bet_window_minutes` | int | `5` | Minutes the betting window stays open after a challenge (challenge options only) |
+| `bet_money_max` | int | `100` | Maximum money a single player can bet per fight (bet options only) |
+| `bet_bloodskulls_max` | int | `25` | Maximum bloodskulls a single player can bet per fight (bet options only) |
+
+### `extra_params` reference
+
+When calling `participate_in_server_event` for an arena option, pass these in `extra_params`:
+
+| Key | Used by | Type | Notes |
+|-----|---------|------|-------|
+| `target_listed_pooch_id` | `challenge` | int | Pooch ID to challenge from the arena's listed pool |
+| `matchup_id` | `bet` | int | ID of the matchup to bet on (from `arena.matchups[].id`) |
+| `side` | `bet` | string | `"attacker"` or `"defender"` |
+| `money` | `bet` | int | Amount to bet (capped at `bet_money_max`) |
+| `bloodskulls` | `bet` | int | Amount to bet (capped at `bet_bloodskulls_max`) |

@@ -1,0 +1,163 @@
+{
+  "name": "Dog Fighting Arena",
+  "description": "A shady arena has appeared in town. Players can enter their pooches into bouts, challenge rivals, and wager on the outcome. At the end of the week, the owner whose pooches won the most fights takes home the grand prize.",
+  "flavor_text": "The crowd roars. The smell of sawdust and bloodskulls hangs in the air. Welcome to the Arena.",
+  "severity": "major",
+  "rarity": "rare",
+
+  // Eligibility: at least 2 owners in the server with at least 1 living pooch each
+  "filter": {
+    "min_owners": 2,
+    "owners": [
+      { "min_count": 2, "min_pooches": 1 }
+    ]
+  },
+
+  // Event-level parameters consumed by _resolve_arena_matchups at resolution time
+  "parameters": {
+    // Fight mechanics — passed through to handle_fight_pooches
+    "fight_params": {
+      "rounds": 3,
+      "defender_strength_bonus": 2
+    },
+
+    // Prize: $prize_per_participant × number of server owners goes to the owner with the most wins
+    "prize_per_participant": 50,
+
+    // Fraction of total bets paid to the winning fighter (additive, not taken from gamblers)
+    "fighter_bonus_fraction": 0.25,
+
+    // Same fraction, but split equally between both fighters on a draw
+    "draw_fighter_bonus_fraction": 0.125,
+
+    // Rewards for killing an opponent's pooch (go to the killer's owner)
+    "kill_reward_bloodskulls": 1,
+    "kill_reward_bones": 1
+  },
+
+  "menus": {
+    // -----------------------------------------------------------------------
+    // Menu 1: List your pooch as a defender (open from day 1)
+    // -----------------------------------------------------------------------
+    "list": {
+      "label": "List a Pooch",
+      "description": "Put one of your pooches in the arena to be challenged. Defenders have a slight strength advantage in fights.",
+      "max_uses_per_player": "unlimited",
+      "depends_on": [],
+      "options": [
+        {
+          "label": "List a pooch",
+          "description": "Choose a living pooch to list as a potential defender.",
+          "requires": {
+            "pooch": {
+              "filter": { "is_alive": true, "location": "kennel" }
+            }
+          },
+          // arena_action drives the special participation logic in _handle_arena_action
+          "parameters": {
+            "arena_action": "list_pooch"
+          },
+          // No scoring — this is a qualifying action, not a competitive one
+          "actions": []
+        }
+      ]
+    },
+
+    // -----------------------------------------------------------------------
+    // Menu 2: Challenge a listed pooch (requires having already listed one)
+    // -----------------------------------------------------------------------
+    "challenge": {
+      "label": "Challenge",
+      "description": "Challenge a listed pooch to a fight. Once accepted, a 5-minute betting window opens for other players.",
+      "max_uses_per_player": "unlimited",
+      "depends_on": [],
+      "options": [
+        {
+          "label": "Issue a challenge",
+          "description": "Select your pooch and specify which listed pooch you want to fight. The target pooch ID must be provided via extra_params.target_listed_pooch_id.",
+          "requires": {
+            "pooch": {
+              "filter": { "is_alive": true, "location": "kennel" }
+            }
+          },
+          "parameters": {
+            "arena_action": "challenge",
+            // How long the betting window stays open after a challenge is accepted (minutes)
+            "bet_window_minutes": 5
+          },
+          "actions": []
+        }
+      ]
+    },
+
+    // -----------------------------------------------------------------------
+    // Menu 3: Bet on an active matchup (requires neither pooch to be yours)
+    // -----------------------------------------------------------------------
+    "bet": {
+      "label": "Place a Bet",
+      "description": "Wager money or bloodskulls on the outcome of an active fight. Winners receive their stake back plus a proportional share of the losing pool.",
+      "max_uses_per_player": "unlimited",
+      "depends_on": [],
+      "options": [
+        {
+          "label": "Bet on a fight",
+          "description": "Specify matchup_id, side ('attacker' or 'defender'), and your wager amounts via extra_params.",
+          "parameters": {
+            "arena_action": "bet",
+            // Maximum amounts a single player can bet per fight
+            "bet_money_max": 100,
+            "bet_bloodskulls_max": 25
+          },
+          // The money/bloodskulls are taken up-front via these actions;
+          // payouts are handled by _resolve_arena_matchups at resolution
+          "actions": [
+            // Amounts will not be deducted by these actions — the arena handler
+            // reads bet amounts from extra_params and deducts them in _handle_arena_action.
+            // Leave actions empty; deduction should be done via the bet amounts in extra_params
+            // if the event designer wants to deduct immediately (omit for now — payout handles it).
+          ],
+          // Scoring: the more bets you place, the higher your participation score (for ranking)
+          "scoring": {
+            "aggregate": "sum",
+            "sources": [
+              { "type": "constant", "value": 1.0 }
+            ]
+          }
+        }
+      ]
+    }
+  },
+
+  // -----------------------------------------------------------------------
+  // Outcomes distributed at resolution (after arena fights have been resolved)
+  // -----------------------------------------------------------------------
+  "outcomes": [
+    {
+      "label": "Arena Victor",
+      "description": "The owner whose pooches won the most fights this week.",
+      "message": "Your pooches dominated the arena this week! The grand prize is yours.",
+      // The grand prize money is handled by _resolve_arena_matchups (fight_wins + prize_per_participant).
+      // This outcome adds a bloodskull bonus on top.
+      "target": "ranked_players",
+      "min_rank": 1,
+      "max_rank": 1,
+      "actions": [
+        {
+          "action_type": "modify_bloodskulls",
+          "target_type": "owner",
+          "parameters": { "amount": 5 }
+        }
+      ]
+    },
+    {
+      "label": "Arena Participant",
+      "description": "All players who participated in the arena.",
+      "message": "Thanks for participating in the Arena!",
+      "target": "all_participants",
+      "actions": []
+    }
+  ],
+
+  // Fired if nobody participates at all
+  "default_actions": []
+}

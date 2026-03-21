@@ -50,6 +50,7 @@ from .get import (
     get_random_matching_pooch_id,
     get_server_by_discord_id,
     get_server_event_by_id,
+    get_server_event_by_name,
     get_server_event_menu_option_by_id,
     get_server_event_occurrence_by_id,
     get_server_event_participation,
@@ -58,6 +59,7 @@ from .get import (
     get_vendor_by_id,
     get_vendor_server,
     list_all_server_events_with_weights,
+    list_server_events_with_weights_by_tier,
 )
 from .list import (
     count_owners_for_server,
@@ -177,6 +179,7 @@ from .update import (
     update_active_event_result,
     update_owner_discord_name,
     update_pooch_mood,
+    update_server_event_occurrence_context,
 )
 
 __all__ = [
@@ -229,12 +232,14 @@ __all__ = [
     "get_random_matching_pooch_id",
     "get_server_by_discord_id",
     "get_server_event_by_id",
+    "get_server_event_by_name",
     "get_server_event_menu_option_by_id",
     "get_server_event_occurrence_by_id",
     "get_server_event_participation",
     "get_random_eligible_stray_event_for_server",
     "get_active_server_event_occurrence",
     "list_all_server_events_with_weights",
+    "list_server_events_with_weights_by_tier",
     "get_stray_event_by_id",
     "get_stray_event_by_name",
     "get_vendor_by_id",
@@ -331,6 +336,7 @@ __all__ = [
     "resolve_server_event_occurrence",
     "finalize_server_event_participation",
     "set_server_event_occurrence_message_discord_id",
+    "update_server_event_occurrence_context",
     "set_event_channel_discord_id",
     "set_kennel_pooch_limit",
     "set_owner_begged_today",

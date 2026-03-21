@@ -915,6 +915,28 @@ async def list_all_server_events_with_weights() -> list[tuple[ServerEvent, int]]
         return [(event, weight) for event, weight in response.tuples().all()]
 
 
+async def get_server_event_by_name(name: str) -> Optional[ServerEvent]:
+    """Return a fully-loaded ServerEvent by its unique name, or None."""
+    async with session_scope() as session:
+        result = await session.execute(
+            select(ServerEvent).where(ServerEvent.name == name).options(*_server_event_load_options())
+        )
+        return result.scalars().first()
+
+
+async def list_server_events_with_weights_by_tier(tier: str) -> list[tuple[ServerEvent, int]]:
+    """Return server events for a specific tier ('minor' or 'major') with rarity weights."""
+    async with session_scope() as session:
+        event_query = (
+            select(ServerEvent, RarityWeight.weight)
+            .join(RarityWeight, RarityWeight.rarity == ServerEvent.rarity)
+            .where(ServerEvent.tier == tier.lower())
+            .options(*_server_event_load_options())
+        )
+        response = await session.execute(event_query)
+        return [(event, weight) for event, weight in response.tuples().all()]
+
+
 def _stray_event_load_options():
     return [
         selectinload(StrayEvent.actions),

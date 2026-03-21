@@ -28,6 +28,7 @@ class ServerEvent(Base):
 
     severity: Mapped[str] = mapped_column(EVENT_SEVERITY, nullable=False, server_default=text("'moderate'"))
     rarity: Mapped[str] = mapped_column(RARITY, nullable=False, server_default=text("'common'"))
+    tier: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'minor'"))
 
     # Replaces min_owners / resolution_strategy — full eligibility filter as JSONB
     filter: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)

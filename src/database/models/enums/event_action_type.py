@@ -38,5 +38,6 @@ EVENT_ACTION_TYPE = SimpleNamespace(
         "damn_pooch",
         "conjure_pooch",
         "sacrifice_pooch",
+        "fight_pooches",
     ]
 )

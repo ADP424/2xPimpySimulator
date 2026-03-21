@@ -827,6 +827,65 @@ async def _execute_single_action(
                 if isinstance(save_as, str) and save_as:
                     context.extra_data[save_as] = {"pooch_ids": [conjured.id]}
 
+        elif action_type == "fight_pooches":
+            from ..action_helpers.pooch_actions import handle_fight_pooches
+
+            attacker_slot = parameters.get("attacker_slot")
+            defender_slot = parameters.get("defender_slot")
+            attacker_id: int | None = None
+            defender_id: int | None = None
+
+            if isinstance(attacker_slot, str) and attacker_slot:
+                slot_data = context.extra_data.get(attacker_slot, {})
+                ids = slot_data.get("pooch_ids", []) if isinstance(slot_data, dict) else []
+                attacker_id = ids[0] if ids else None
+            elif target_type == "pooch":
+                pooch_ids = await get_target_pooch_ids(
+                    owner_discord_id, context, rng, target_type, selector, parameters
+                )
+                attacker_id = pooch_ids[0] if pooch_ids else None
+
+            if isinstance(defender_slot, str) and defender_slot:
+                slot_data = context.extra_data.get(defender_slot, {})
+                ids = slot_data.get("pooch_ids", []) if isinstance(slot_data, dict) else []
+                defender_id = ids[0] if ids else None
+            else:
+                defender_filter = parameters.get("defender_filter", {})
+                second_params = {**parameters, "selector": "random", "filter": defender_filter}
+                candidates = await get_target_pooch_ids(
+                    owner_discord_id, context, rng, target_type, "random", second_params
+                )
+                defender_id = next((pid for pid in candidates if pid != attacker_id), None)
+
+            if attacker_id is not None and defender_id is not None:
+                from src.game.constants import (
+                    FIGHT_DEFENDER_STRENGTH_BONUS,
+                    FIGHT_ROUNDS,
+                )
+
+                fight_result = await handle_fight_pooches(
+                    attacker_id,
+                    defender_id,
+                    rounds=int(parameters.get("rounds", FIGHT_ROUNDS)),
+                    defender_strength_bonus=int(
+                        parameters.get("defender_strength_bonus", FIGHT_DEFENDER_STRENGTH_BONUS)
+                    ),
+                    rng=rng,
+                )
+                result.extra_data["fight_result"] = fight_result
+                result.pooches_affected.extend(
+                    pid for pid in [attacker_id, defender_id] if pid not in result.pooches_affected
+                )
+                if fight_result.get("attacker_died"):
+                    result.pooches_killed.append(attacker_id)
+                if fight_result.get("defender_died"):
+                    result.pooches_killed.append(defender_id)
+                save_as = parameters.get("save_as")
+                if isinstance(save_as, str) and save_as and fight_result.get("winner_id"):
+                    context.extra_data[save_as] = {"pooch_ids": [fight_result["winner_id"]]}
+            else:
+                logger.warning("fight_pooches: could not resolve both pooches; skipping")
+
         elif action_type == "sacrifice_pooch":
             pooch_ids = await get_target_pooch_ids(owner_discord_id, context, rng, target_type, selector, parameters)
             value_multiplier = parameters.get("value_multiplier")

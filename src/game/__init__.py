@@ -62,6 +62,7 @@ from .manage_server_events import (
     run_daily_server_event_cycle,
     set_server_event_message_id,
     trigger_daily_server_event,
+    trigger_server_event_by_name,
 )
 from .manage_servers import (
     get_event_channel,
@@ -76,6 +77,7 @@ from .manage_static import (
 )
 from .manage_stray_events import (
     run_daily_stray_event_check,
+    trigger_stray_event_by_name,
 )
 from .manage_vendors import (
     buy_pooch,
@@ -139,6 +141,7 @@ __all__ = [
     "run_hourly_breeding_cooldown_check",
     # Stray event commands
     "run_daily_stray_event_check",
+    "trigger_stray_event_by_name",
     # Server commands
     "get_event_channel",
     "get_or_create_server",
@@ -149,6 +152,7 @@ __all__ = [
     "run_daily_server_event_cycle",
     "set_server_event_message_id",
     "trigger_daily_server_event",
+    "trigger_server_event_by_name",
     # Static listing commands
     "get_breed_by_id",
     "get_mutation_by_id",

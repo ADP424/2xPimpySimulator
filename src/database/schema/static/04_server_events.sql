@@ -9,6 +9,7 @@ CREATE TABLE server_events (
 
     severity                event_severity NOT NULL DEFAULT 'moderate',
     rarity                  rarity NOT NULL DEFAULT 'common',
+    tier                    TEXT NOT NULL DEFAULT 'minor',
 
     -- Eligibility filter (replaces min_owners / resolution_strategy)
     filter                  JSONB NOT NULL DEFAULT '{}'::jsonb,

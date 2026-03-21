@@ -34,6 +34,7 @@ def _make_pooch(id: int, name: str = "Dog") -> Pooch:
         created_at=None,
         size=10,
         health=10,
+        mood=None,
         owner=None,
         vendor=None,
         breeds=[],

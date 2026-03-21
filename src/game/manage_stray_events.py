@@ -483,6 +483,63 @@ async def _execute_single_stray_action(
             # Resolves and saves pooches into a named slot; no other side effects
             await _resolve_stray_target_ids(context, selector, parameters, rng)
 
+        elif action_type == "fight_pooches":
+            from .action_helpers.pooch_actions import handle_fight_pooches
+
+            attacker_slot = parameters.get("attacker_slot")
+            defender_slot = parameters.get("defender_slot")
+
+            def _ids_from_slot(slot_name: str) -> list[int]:
+                slot_data = context.extra_data.get(slot_name, {})
+                return slot_data.get("pooch_ids", []) if isinstance(slot_data, dict) else []
+
+            attacker_id = None
+            defender_id = None
+
+            if isinstance(attacker_slot, str) and attacker_slot:
+                ids = _ids_from_slot(attacker_slot)
+                attacker_id = ids[0] if ids else None
+
+            if isinstance(defender_slot, str) and defender_slot:
+                ids = _ids_from_slot(defender_slot)
+                defender_id = ids[0] if ids else None
+
+            if attacker_id is None or defender_id is None:
+                # Fall back: pick two random strays
+                stray_ids = list(context.candidate_stray_ids)
+                if len(stray_ids) >= 2:
+                    rng.shuffle(stray_ids)
+                    attacker_id, defender_id = stray_ids[0], stray_ids[1]
+
+            if attacker_id is not None and defender_id is not None:
+                from src.game.constants import (
+                    FIGHT_DEFENDER_STRENGTH_BONUS,
+                    FIGHT_ROUNDS,
+                )
+
+                fight_result = await handle_fight_pooches(
+                    attacker_id,
+                    defender_id,
+                    rounds=int(parameters.get("rounds", FIGHT_ROUNDS)),
+                    defender_strength_bonus=int(
+                        parameters.get("defender_strength_bonus", FIGHT_DEFENDER_STRENGTH_BONUS)
+                    ),
+                    rng=rng,
+                )
+                result.extra_data["fight_result"] = fight_result
+                result.pooches_affected.extend(
+                    pid for pid in [attacker_id, defender_id] if pid not in result.pooches_affected
+                )
+                if fight_result.get("attacker_died"):
+                    result.pooches_killed.append(attacker_id)
+                if fight_result.get("defender_died"):
+                    result.pooches_killed.append(defender_id)
+                save_as = parameters.get("save_as")
+                if isinstance(save_as, str) and save_as and fight_result.get("winner_id"):
+                    context.extra_data[save_as] = {"pooch_ids": [fight_result["winner_id"]]}
+            else:
+                logger.warning("fight_pooches: could not resolve both pooches for stray event; skipping")
+
         else:
             logger.warning(f"Unknown stray action type: {action_type}")
 
@@ -734,3 +791,16 @@ async def run_daily_stray_event_check(
     total = sum(len(v) for v in results.values())
     logger.info("Daily stray event check complete. %d event(s) triggered across %d server(s).", total, len(results))
     return results
+
+
+async def trigger_stray_event_by_name(
+    server_discord_id: int,
+    name: str,
+    rng: Optional[random.Random] = None,
+) -> Optional[StrayEventResult]:
+    """Trigger a specific stray event by name on a server. Returns None if the event doesn't exist."""
+    rng = rng if rng is not None else random.Random()
+    event = await get_stray_event_by_name(name)
+    if event is None:
+        return None
+    return await _trigger_stray_event_for_server(server_discord_id, event, rng)

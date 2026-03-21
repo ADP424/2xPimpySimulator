@@ -1,5 +1,8 @@
+from collections import defaultdict
+from pathlib import Path
 from typing import Any
 
+import json5
 from sqlalchemy import delete, select
 
 from src.logger import get_logger
@@ -20,13 +23,67 @@ from .utils import (
     RARITY_VALUES,
     RESOURCE_ROOT,
     BaseEventValidator,
-    load_categorized_resource_objects,
+    _iter_files,
     resolve_event_action_parameters,
 )
 
 logger = get_logger("database/load/load_resources/server_events")
 
 SERVER_EVENTS_ROOT = RESOURCE_ROOT / "server_events"
+_VALID_TIERS = {"minor", "major"}
+_JSONC_SUFFIXES = {".jsonc", ".json"}
+
+
+def _load_server_event_objects(root: Path) -> dict[str, dict[str, dict[str, Any]]]:
+    """Load server events from a 3-level structure: <tier>/<category>/<file>.jsonc.
+
+    Returns a dict keyed by tier, then event name, with each value being the attributes dict
+    plus injected ``_tier`` and ``_category`` keys for later use.
+    """
+
+    def _titleize_slug(value: str) -> str:
+        normalized = value.replace("-", "_").strip("_")
+        parts = [part for part in normalized.split("_") if part]
+        return " ".join(part.capitalize() for part in parts) or value
+
+    # Keyed by tier -> category -> name -> attributes
+    resources: dict[str, dict[str, dict[str, Any]]] = defaultdict(lambda: defaultdict(dict))
+    seen_names: dict[str, Path] = {}
+
+    for path in _iter_files(root, _JSONC_SUFFIXES):
+        relative = path.relative_to(root)
+        if len(relative.parts) < 3:
+            raise ValueError(
+                f"server_event file must live inside a tier/category folder "
+                f"(e.g. minor/community/event.jsonc): {path}"
+            )
+
+        tier_raw = relative.parts[0].strip().lower()
+        if tier_raw not in _VALID_TIERS:
+            raise ValueError(f"server_event tier folder must be 'minor' or 'major', got '{tier_raw}': {path}")
+        tier = tier_raw
+        category = _titleize_slug(relative.parts[1])
+
+        payload = json5.loads(path.read_text(encoding="utf8"))
+        if not isinstance(payload, dict):
+            raise ValueError(f"Expected an object in {path}")
+
+        name = str(payload.get("name") or _titleize_slug(path.stem)).strip()
+        if not name:
+            raise ValueError(f"server_event file has a blank name: {path}")
+        if name in seen_names:
+            raise ValueError(f"Duplicate server_event name '{name}' in {seen_names[name]} and {path}")
+        seen_names[name] = path
+
+        attrs = dict(payload)
+        attrs.pop("name", None)
+        attrs["_tier"] = tier
+        attrs["_category"] = category
+        resources[tier][name] = attrs
+
+    # Flatten to a single tier -> {name: attrs} dict (validator iterates over tiers as top-level)
+    return {tier: dict(by_name) for tier, by_name in resources.items()}
+
 
 _SERVER_EVENT_ALLOWED_KEYS = {
     "name",
@@ -101,44 +158,47 @@ _OUTCOME_TARGET_VALUES = {"ranked_players", "all_participants", "server", "non_p
 
 class _ServerEventValidator(BaseEventValidator):
     def validate_server_events_json(self, server_events_json: dict[str, Any]) -> None:
+        """Validate the flat {tier: {name: attrs}} structure from _load_server_event_objects."""
         if not isinstance(server_events_json, dict):
-            self.error("server_events", "root value must be an object keyed by category")
+            self.error("server_events", "root value must be an object keyed by tier")
             return
 
-        for category_name, events in server_events_json.items():
-            category_path = f"server_events.{category_name}"
+        for tier_name, events in server_events_json.items():
+            tier_path = f"server_events.{tier_name}"
             if not isinstance(events, dict):
-                self.error(category_path, "category value must be an object keyed by event name")
+                self.error(tier_path, "tier value must be an object keyed by event name")
                 continue
             for event_name, attributes in events.items():
-                self._validate_server_event(category_name, event_name, attributes)
+                self._validate_server_event(tier_name, event_name, attributes)
 
-    def _validate_server_event(self, category_name: str, event_name: str, attributes: Any) -> None:
-        path = f"server_events.{category_name}.{event_name}"
+    def _validate_server_event(self, tier_name: str, event_name: str, attributes: Any) -> None:
+        path = f"server_events.{tier_name}.{event_name}"
         if not isinstance(attributes, dict):
             self.error(path, "server event definition must be an object")
             return
 
-        self._validate_unknown_keys(path, attributes, _SERVER_EVENT_ALLOWED_KEYS)
+        # Strip internal loader keys before validating public-facing keys
+        public_attrs = {k: v for k, v in attributes.items() if not k.startswith("_")}
+        self._validate_unknown_keys(path, public_attrs, _SERVER_EVENT_ALLOWED_KEYS)
 
         self._validate_optional_string(path, attributes, "name", allow_blank=False)
-        self._validate_optional_string(path, attributes, "description")
-        self._validate_optional_string(path, attributes, "flavor_text")
-        self._validate_optional_json_object(path, attributes, "parameters")
-        self._validate_enum_string(path, attributes, "severity", EVENT_SEVERITY_VALUES)
-        self._validate_enum_string(path, attributes, "rarity", RARITY_VALUES)
+        self._validate_optional_string(path, public_attrs, "description")
+        self._validate_optional_string(path, public_attrs, "flavor_text")
+        self._validate_optional_json_object(path, public_attrs, "parameters")
+        self._validate_enum_string(path, public_attrs, "severity", EVENT_SEVERITY_VALUES)
+        self._validate_enum_string(path, public_attrs, "rarity", RARITY_VALUES)
 
-        if "filter" in attributes:
-            self._validate_server_event_filter(f"{path}.filter", attributes["filter"])
+        if "filter" in public_attrs:
+            self._validate_server_event_filter(f"{path}.filter", public_attrs["filter"])
 
-        self._validate_actions_list(path, attributes.get("actions", []), "actions")
-        self._validate_actions_list(path, attributes.get("default_actions", []), "default_actions")
+        self._validate_actions_list(path, public_attrs.get("actions", []), "actions")
+        self._validate_actions_list(path, public_attrs.get("default_actions", []), "default_actions")
 
-        menus = self._validate_server_menus(path, attributes.get("menus", {}))
-        outcomes = self._validate_server_outcomes_list(path, attributes.get("outcomes", []))
+        menus = self._validate_server_menus(path, public_attrs.get("menus", {}))
+        outcomes = self._validate_server_outcomes_list(path, public_attrs.get("outcomes", []))
 
-        has_actions = bool(attributes.get("actions"))
-        has_default_actions = bool(attributes.get("default_actions"))
+        has_actions = bool(public_attrs.get("actions"))
+        has_default_actions = bool(public_attrs.get("default_actions"))
         if not menus and not outcomes and not has_actions and not has_default_actions:
             self.error(path, "server events must define actions, menus, or outcomes")
 
@@ -378,7 +438,7 @@ class _ServerEventValidator(BaseEventValidator):
 async def load_server_events():
     logger.info("Loading server events from 'resources/server_events/**/*.jsonc' into the database...")
 
-    server_events_json = load_categorized_resource_objects(SERVER_EVENTS_ROOT, "server_event")
+    server_events_json = _load_server_event_objects(SERVER_EVENTS_ROOT)
 
     async with session_scope() as session:
         breed_names = {name.strip().lower() for name in (await session.execute(select(Breed.name))).scalars().all()}
@@ -411,14 +471,15 @@ async def load_server_events():
         await session.execute(delete(ServerEventMenu))
         await session.execute(delete(ServerEvent))
 
-        for event_category, events in server_events_json.items():
+        for tier_name, events in server_events_json.items():
             for event_name, attributes in events.items():
                 raw_filter = attributes.get("filter", {})
                 default_actions_raw = attributes.get("default_actions", [])
 
                 event = ServerEvent(
                     name=str(event_name),
-                    category=str(event_category),
+                    tier=str(tier_name).lower(),
+                    category=str(attributes.get("_category", tier_name)),
                     description=str(attributes.get("description", f"{event_name} is a server event.")),
                     flavor_text=str(attributes.get("flavor_text", "")),
                     severity=str(attributes.get("severity", "minor")).lower(),

@@ -11,7 +11,6 @@
 ## UI
 | Feature                                                                                                                       | Points |
 | ----------------------------------------------------------------------------------------------------------------------------- | ------ |
-| Show where breeds can be obtained from (altar, vendor, etc.) on the breed page                                                | 2      |
 | Remove showing markup on vendors                                                                                              | 1      |
 | In the rarity filter menu (for mutations and breeds) sort by decreasing weight                                                | 3      |
 | Always display your dollars and bloodskulls in the web header                                                                 | 3      |
@@ -26,8 +25,6 @@
 | Add a dog fighting ring in each server with gambling (winner gets skulls of dead pooches as bloodskulls)                      | 8      |
 | Dog show where you want to match closest to breed, mutations, and stats                                                       | 13     |
 | Major weekly server events guaranteed each week, minor events change per day (except major weekly start day)                  | 21     |
-| Add event action to take a pooch from hell and move it somewhere else                                                         | 3      |
-| Add summon pooch, sacrifice pooch, then more general send pooch to Hell (damn_pooch) event action types                       | 5      |
 
 ## Seasons
 | Feature                                                                                                                       | Points |
