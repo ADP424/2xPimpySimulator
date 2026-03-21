@@ -3,6 +3,7 @@ import asyncio
 
 from bot import run as run_bot
 from database import load_resources, reset_db
+from game.change_day import refresh_moods
 from web import run as run_web_app
 
 if __name__ == "__main__":
@@ -31,9 +32,19 @@ if __name__ == "__main__":
         help="Skip the day change that normally runs on bot startup.",
         dest="skip_startup_day_change",
     )
+    parser.add_argument(
+        "-m",
+        "--refresh-moods",
+        action="store_true",
+        help="Refresh all pooch moods and exit.",
+        dest="refresh_moods",
+    )
     args = parser.parse_args()
 
-    if args.web_app:
+    if args.refresh_moods:
+        count = asyncio.run(refresh_moods())
+        print(f"Refreshed moods for {count} pooches.")
+    elif args.web_app:
         run_web_app()
     elif args.reset_db:
         reset_db()

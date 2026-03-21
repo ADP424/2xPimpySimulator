@@ -336,6 +336,11 @@ function renderHellPage() {
 }
 
 function createHellCard(pooch) {
+    const moodEmoji = {
+        'happy': '😊', 'excited': '🤪', 'sleepy': '😴', 'grumpy': '😤',
+        'anxious': '😰', 'mischievous': '😈', 'zoomies': '🏃', 'hungry': '🍖',
+        'content': '😌', 'clingy': '🥺', 'dead': '💀'
+    };
     const sexEmoji = pooch.sex === 'female' ? '♀️' : '♂️';
     const breedsHtml = (pooch.breeds || []).length > 0
         ? (pooch.breeds || []).map((b, i) =>
@@ -362,6 +367,11 @@ function createHellCard(pooch) {
                     <div class="flex gap-2">
                         <span class="shrink-0">Age:</span><span>${pooch.age} days</span>
                     </div>
+                    ${pooch.mood ? `
+                    <div class="flex gap-2">
+                        <span class="shrink-0">Mood:</span><span>${moodEmoji[pooch.mood] || ''} ${pooch.mood}</span>
+                    </div>
+                    ` : ''}
                     <div class="flex gap-2">
                         <span class="shrink-0">Breeds:</span><span class="text-base-content/70">${breedsHtml}</span>
                     </div>

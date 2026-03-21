@@ -57,6 +57,7 @@ CREATE TABLE pooches (
     breeding_cooldown   INTEGER NOT NULL DEFAULT 2,
     alive               BOOLEAN NOT NULL DEFAULT TRUE,
     virgin              BOOLEAN NOT NULL DEFAULT TRUE,
+    mood                mood NULL,
 
     owner_discord_id    BIGINT NULL REFERENCES owners(discord_id) ON DELETE SET NULL,
     vendor_id           BIGINT NULL REFERENCES vendors(id) ON DELETE SET NULL,

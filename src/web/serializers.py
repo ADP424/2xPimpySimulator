@@ -85,6 +85,7 @@ def serialize_pooch(pooch: Any, include_relations: bool = True) -> dict:
         "birthday": serialize_datetime(pooch.birthday),
         "health": pooch.health,
         "status": pooch.status,
+        "mood": pooch.mood,
     }
 
     if include_relations:

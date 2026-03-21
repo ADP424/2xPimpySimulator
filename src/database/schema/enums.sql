@@ -73,3 +73,19 @@ INSERT INTO health_impact_weights VALUES
     ('brilliant', 5),
     ('immortality', 1000)
 ;
+
+
+-- MOOD (for pooches)
+CREATE TYPE mood AS ENUM (
+    'happy',
+    'excited',
+    'sleepy',
+    'grumpy',
+    'anxious',
+    'mischievous',
+    'zoomies',
+    'hungry',
+    'content',
+    'clingy',
+    'dead'
+);
