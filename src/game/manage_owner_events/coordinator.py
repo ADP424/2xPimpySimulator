@@ -379,6 +379,9 @@ async def _execute_single_action(
                             "kennel_name": kennel_name,
                         }
                     )
+                    save_as = parameters.get("save_as")
+                    if isinstance(save_as, str) and save_as:
+                        context.extra_data[save_as] = {"pooch_ids": [chosen.id]}
 
         elif action_type == "add_mutation":
             pooch_ids = await get_target_pooch_ids(owner_discord_id, context, rng, target_type, selector, parameters)

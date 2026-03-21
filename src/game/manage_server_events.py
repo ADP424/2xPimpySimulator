@@ -273,6 +273,50 @@ async def _resolve_server_pool(
     return []
 
 
+async def _resolve_server_owner_pool(
+    server_discord_id: int,
+    pool: str,
+    rng: random.Random,
+    server_context: ServerEventContext | None = None,
+    save_slot: str | None = None,
+    selector: str = "all",
+    count: int = 1,
+) -> list[int]:
+    """Resolve a named owner pool into a list of owner discord IDs.
+
+    pool values: "owner" | "saved_owner"
+    When pool is "saved_owner", save_slot names the server_context.saved_owner_slots key to use.
+    """
+    from sqlalchemy import select
+
+    from src.database.models import OwnerServer as OwnerServerModel
+
+    pool_key = str(pool).strip().lower()
+
+    if pool_key == "saved_owner":
+        if server_context is not None and save_slot:
+            return list(server_context.saved_owner_slots.get(save_slot, []))
+        return []
+
+    if pool_key == "owner":
+        async with session_scope() as session:
+            result = await session.execute(
+                select(OwnerServerModel.owner_discord_id).where(OwnerServerModel.server_discord_id == server_discord_id)
+            )
+            all_owner_ids = list(result.scalars().all())
+
+        if selector == "all":
+            return all_owner_ids
+        elif selector in ("random", "random_exclude"):
+            return rng.sample(all_owner_ids, min(count, len(all_owner_ids))) if all_owner_ids else []
+        elif selector == "first":
+            return all_owner_ids[:count]
+        return all_owner_ids
+
+    logger.warning("_resolve_server_owner_pool: unknown pool '%s'; returning empty", pool)
+    return []
+
+
 async def _deliver_server_pooch(
     pooch_id: int,
     server_discord_id: int,
@@ -322,6 +366,7 @@ async def _execute_server_actions(
         rename_pooch,
         revive_pooch,
     )
+    from src.game.action_helpers.amount import get_amount_from_parameters as _get_amount
     from src.game.action_helpers.pooch_actions import (
         handle_add_breed,
         handle_add_mutation_by_name,
@@ -339,6 +384,8 @@ async def _execute_server_actions(
 
     combined = OwnerEventResult()
 
+    _owner_pool_keys = {"owner", "saved_owner"}
+
     for action_spec in actions:
         action_type = str(action_spec.get("action_type", "")).strip().lower()
         parameters = action_spec.get("parameters", {}) or {}
@@ -351,6 +398,54 @@ async def _execute_server_actions(
         destination = str(parameters.get("destination", "stray")).strip().lower()
 
         try:
+            # ----------------------------------------------------------------
+            # Owner-pool actions: modify_money / modify_bloodskulls targeting
+            # a set of owner discord IDs rather than pooches
+            # ----------------------------------------------------------------
+            if pool in _owner_pool_keys:
+                owner_ids = await _resolve_server_owner_pool(
+                    server_discord_id, pool, rng, server_context, save_slot, selector, count
+                )
+                if save_as and isinstance(save_as, str):
+                    server_context.saved_owner_slots[save_as] = list(owner_ids)
+
+                if action_type == "modify_money":
+                    from src.database import give_money_to_owner
+
+                    roll_once = bool(parameters.get("roll_once", False))
+                    if roll_once:
+                        amount = _get_amount(parameters, rng)
+                        for oid in owner_ids:
+                            await give_money_to_owner(oid, amount)
+                        combined.money_changed += amount * len(owner_ids)
+                    else:
+                        for oid in owner_ids:
+                            amount = _get_amount(parameters, rng)
+                            await give_money_to_owner(oid, amount)
+                            combined.money_changed += amount
+
+                elif action_type == "modify_bloodskulls":
+                    from src.database import give_bloodskulls_to_owner
+
+                    roll_once = bool(parameters.get("roll_once", False))
+                    if roll_once:
+                        amount = _get_amount(parameters, rng)
+                        for oid in owner_ids:
+                            await give_bloodskulls_to_owner(oid, amount)
+                        combined.bloodskulls_changed += amount * len(owner_ids)
+                    else:
+                        for oid in owner_ids:
+                            amount = _get_amount(parameters, rng)
+                            await give_bloodskulls_to_owner(oid, amount)
+                            combined.bloodskulls_changed += amount
+
+                else:
+                    logger.warning(
+                        "_execute_server_actions: action_type '%s' is not supported for owner pools; skipping",
+                        action_type,
+                    )
+                continue
+
             candidate_ids = await _resolve_server_pool(
                 server_discord_id, pool, filter_spec, rng, server_context, save_slot
             )
@@ -366,6 +461,15 @@ async def _execute_server_actions(
 
             if save_as and isinstance(save_as, str):
                 server_context.saved_slots[save_as] = list(target_ids)
+
+            # save_owner: store the owner discord IDs of the targeted pooches
+            if parameters.get("save_owner") and save_as and isinstance(save_as, str):
+                owner_ids_for_slot: list[int] = []
+                for pid in target_ids:
+                    pooch = await get_pooch_by_id(pid)
+                    if pooch is not None and pooch.owner_discord_id not in owner_ids_for_slot:
+                        owner_ids_for_slot.append(pooch.owner_discord_id)
+                server_context.saved_owner_slots[save_as] = owner_ids_for_slot
 
             # ----------------------------------------------------------------
             # Health, age, stats — delegate to shared pooch_actions helpers

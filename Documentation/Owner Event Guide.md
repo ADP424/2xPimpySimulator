@@ -303,7 +303,7 @@ Resolves a pooch and saves the ID into a named slot with no other side effects. 
 
 | Parameter | Type | Notes |
 |-----------|------|-------|
-| `target_type` | string | `"pooch"`, `"owner"`, or `"kennel"` |
+| `target_type` | string | `"pooch"`, `"owner"`, `"kennel"`, or `"server"` |
 | `selector` | string | `"selected"`, `"random"`, `"all"`, `"random_exclude"`, `"all_exclude"` |
 | `count` | int | For `"random"`: number to pick |
 | `filter` | object | Pooch filter to narrow the pool |
@@ -878,6 +878,16 @@ When `save_as` is present on a pooch action, also look up each resolved pooch's 
 ```
 
 If a pooch has no kennel, `kennel_ids` will be `[]` — any follow-up action targeting that slot is a no-op. Use `filter: { "location": "kennel" }` on the pooch action if you need to guarantee a kennel exists.
+
+#### `save_owner` (bool, pooch actions only)
+
+When `save_as` is present on a pooch action, also look up each resolved pooch's owner and include their discord ID in the slot:
+
+```jsonc
+{ "pooch_ids": [5], "owner_ids": [123456789] }
+```
+
+In owner events the owner is always the same person, so `owner_ids` will always contain the current owner's discord ID. This parameter is more useful in stray events and server events, where targeted pooches may belong to different owners.
 
 #### `use_saved` (string)
 

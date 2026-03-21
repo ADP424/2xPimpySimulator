@@ -1,8 +1,6 @@
 from .base import Base
 from .enums import (
-    EVENT_ACTION_TYPE,
     EVENT_SEVERITY,
-    EVENT_TARGET_TYPE,
     HEALTH_IMPACT,
     RARITY,
     SEX,
@@ -50,9 +48,7 @@ from .static import (
 
 __all__ = [
     "Base",
-    "EVENT_ACTION_TYPE",
     "EVENT_SEVERITY",
-    "EVENT_TARGET_TYPE",
     "HEALTH_IMPACT",
     "RARITY",
     "SEX",

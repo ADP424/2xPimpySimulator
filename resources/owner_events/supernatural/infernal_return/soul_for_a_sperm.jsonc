@@ -33,7 +33,7 @@
                     "target_type": "pooch",
                     "parameters": {
                         "use_saved": "damned_pooch",
-                        "mutation": "Infertile"
+                        "mutation": "Infertility"
                     }
                 }
             ]

@@ -275,7 +275,7 @@ async def _get_candidate_kennel_ids_for_owner(
         )
     if max_pooches is not None:
         if max_pooches[:8] == "capacity":
-            number = max_pooches[max_pooches.index("-") + 1 :].strip() if "-" in max_pooches else 0
+            number = int(max_pooches[max_pooches.index("-") + 1 :].strip()) if "-" in max_pooches else 0
             query = query.where(
                 Kennel.id.not_in(
                     select(pooch_count_subquery.c.kennel_id)

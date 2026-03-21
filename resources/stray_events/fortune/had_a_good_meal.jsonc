@@ -1,7 +1,5 @@
 {
     "name": "Had a Good Meal",
-    "description": "A wandering stray eats a good meal.",
-    "flavor_text": "Every dog deserves to eat.",
     "severity": "MINOR",
     "rarity": "UNCOMMON",
     "filter": {

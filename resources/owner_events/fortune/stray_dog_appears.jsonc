@@ -51,14 +51,14 @@
                             "parameters": {
                                 "destination": "hell",
                                 "count": 1,
-                                "save_as": "damned_pooch" // TODO: Save as wasn't listed in receive stray so I don't know if this works.
+                                "save_as": "damned_pooch"
                             }
                         },
                         {
                             "action_type": "rename_pooch",
                             "target_type": "pooch",
                             "parameters": {
-                                "use_saved": "damned_pooch", // TODO: Use saved wasn't listed in rename pooch so I don't know if this works.
+                                "use_saved": "damned_pooch",
                                 "name": "Forsaken Soul"
                             }
                         }

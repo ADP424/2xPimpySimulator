@@ -386,11 +386,14 @@ class ServerEventMenuSelectView(discord.ui.View):
 
 
 class ServerEventParticipationView(discord.ui.View):
-    def __init__(self, occurrence_id: int, server_discord_id: int):
+    def __init__(self, occurrence_id: int, server_discord_id: int, has_menus: bool = True):
         super().__init__(timeout=None)
         self.occurrence_id = occurrence_id
         self.server_discord_id = server_discord_id
-        self.participate_button.custom_id = f"server-event-participate:{server_discord_id}:{occurrence_id}"
+        if has_menus:
+            self.participate_button.custom_id = f"server-event-participate:{server_discord_id}:{occurrence_id}"
+        else:
+            self.remove_item(self.participate_button)
 
     @discord.ui.button(label="Participate", style=discord.ButtonStyle.primary, custom_id="server-event-participate")
     async def participate_button(self, interaction: discord.Interaction, _button: discord.ui.Button):
@@ -484,7 +487,7 @@ async def refresh_public_server_event_message(bot: discord.Client, server_discor
 
     await message.edit(
         embed=await build_server_event_embed(event, include_viewer_status=False),
-        view=ServerEventParticipationView(event.occurrence_id, event.server_discord_id),
+        view=ServerEventParticipationView(event.occurrence_id, event.server_discord_id, has_menus=bool(event.menus)),
     )
 
 
@@ -493,6 +496,6 @@ async def register_active_server_event_views(bot: discord.Client) -> None:
         if event.message_discord_id is None:
             continue
         bot.add_view(
-            ServerEventParticipationView(event.occurrence_id, event.server_discord_id),
+            ServerEventParticipationView(event.occurrence_id, event.server_discord_id, has_menus=bool(event.menus)),
             message_id=event.message_discord_id,
         )

@@ -7,9 +7,10 @@
     "rarity": "RARE",
     "affects_males": false,
     "parameters": {
-        "breeding_cooldown": 98,
-        "dollar_value_mult": 0.1,
+        "breeding_cooldown": 50,
+        "dollar_value_mult": 0.2,
         "incompatible_mutations": [
+            "Infertility",
             "Polycystic Ovary Syndrome"
         ]
     }

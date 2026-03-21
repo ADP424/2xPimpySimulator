@@ -2,12 +2,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import BigInteger, CheckConstraint, ForeignKey, Integer, text
+from sqlalchemy import BigInteger, CheckConstraint, ForeignKey, Integer, Text, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ... import Base
-from ...enums import EVENT_ACTION_TYPE
 
 if TYPE_CHECKING:
     from .stray_event import StrayEvent
@@ -32,7 +31,7 @@ class StrayEventAction(Base):
     )
 
     action_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    action_type: Mapped[str] = mapped_column(EVENT_ACTION_TYPE, nullable=False)
+    action_type: Mapped[str] = mapped_column(Text, nullable=False)
     repeat: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))
 
     parameters: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)

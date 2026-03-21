@@ -19,6 +19,8 @@ def register_server_event_command(tree: app_commands.CommandTree):
 
         await interaction.response.send_message(
             embed=await build_server_event_embed(event),
-            view=ServerEventParticipationView(event.occurrence_id, event.server_discord_id),
+            view=ServerEventParticipationView(
+                event.occurrence_id, event.server_discord_id, has_menus=bool(event.menus)
+            ),
             ephemeral=True,
         )

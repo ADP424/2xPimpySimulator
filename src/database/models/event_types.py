@@ -257,6 +257,7 @@ class ServerEventContextDict(TypedDict):
     featured_breed_ids: list[int]
     featured_mutation_ids: list[int]
     extra_data: JsonObject
+    saved_owner_slots: dict[str, list[int]]
 
 
 class ServerEventAdvancedOptions(TypedDict, total=False):
@@ -303,6 +304,7 @@ class EventActionBaseParameters(TypedDict, total=False):
     filter: JsonObject
     save_as: str
     save_kennel: bool
+    save_owner: bool
     use_saved: str
 
 

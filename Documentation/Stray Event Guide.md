@@ -176,6 +176,16 @@ Actions execute sequentially. To carry a resolved pooch ID forward to a later ac
 
 Named slots persist for the lifetime of the event execution (including any chained `start_stray_event` sub-events, which inherit the same context).
 
+### `save_owner` (bool, pooch actions only)
+
+When `save_as` is present on a pooch action, also look up each resolved pooch's owner and store their discord ID in the slot alongside the pooch IDs:
+
+```jsonc
+{ "pooch_ids": [5], "owner_ids": [123456789] }
+```
+
+Since strays have no owner, `owner_ids` will always be `[]` for stray targets. This parameter is primarily useful in server events where targeted pooches may belong to different owners.
+
 ---
 
 ## Supported Action Types

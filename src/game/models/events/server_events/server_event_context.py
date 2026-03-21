@@ -13,6 +13,8 @@ class ServerEventContext:
     featured_mutation_ids: list[int] = field(default_factory=list)
     # Named save slots for server-scoped actions (e.g. save_as="revenant" stores pooch IDs here)
     saved_slots: dict[str, list[int]] = field(default_factory=dict)
+    # Named save slots for owner discord IDs (e.g. save_as="winner" with save_owner stores owner IDs here)
+    saved_owner_slots: dict[str, list[int]] = field(default_factory=dict)
     extra_data: JsonObject = field(default_factory=dict)
 
     @classmethod
@@ -23,6 +25,7 @@ class ServerEventContext:
             featured_breed_ids=[value for value in data.get("featured_breed_ids", [])],
             featured_mutation_ids=[value for value in data.get("featured_mutation_ids", [])],
             saved_slots=dict(data.get("saved_slots", {})),
+            saved_owner_slots=dict(data.get("saved_owner_slots", {})),
             extra_data=dict(data.get("extra_data", {})),
         )
 
@@ -33,5 +36,6 @@ class ServerEventContext:
             "featured_breed_ids": list(self.featured_breed_ids),
             "featured_mutation_ids": list(self.featured_mutation_ids),
             "saved_slots": dict(self.saved_slots),
+            "saved_owner_slots": dict(self.saved_owner_slots),
             "extra_data": dict(self.extra_data),
         }

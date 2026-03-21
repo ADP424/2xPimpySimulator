@@ -30,7 +30,7 @@ CREATE TABLE stray_event_actions (
     stray_event_outcome_id  BIGINT REFERENCES stray_event_outcomes(id) ON DELETE CASCADE,
 
     action_order    INTEGER NOT NULL DEFAULT 0,
-    action_type     event_action_type NOT NULL,
+    action_type     TEXT NOT NULL,
     repeat          INTEGER NOT NULL DEFAULT 1,
 
     parameters      JSONB NOT NULL DEFAULT '{}'::jsonb,

@@ -143,12 +143,16 @@ async def post_server_event_notifications(bot: discord.Client, owner_events: dic
             except Exception:
                 continue
 
+        has_menus = bool(event.menus)
         message = await channel.send(
             embed=await build_server_event_embed(event, include_viewer_status=False),
-            view=ServerEventParticipationView(event.occurrence_id, event.server_discord_id),
+            view=ServerEventParticipationView(event.occurrence_id, event.server_discord_id, has_menus=has_menus),
         )
         await set_server_event_message_id(event.occurrence_id, message.id)
-        bot.add_view(ServerEventParticipationView(event.occurrence_id, event.server_discord_id), message_id=message.id)
+        bot.add_view(
+            ServerEventParticipationView(event.occurrence_id, event.server_discord_id, has_menus=has_menus),
+            message_id=message.id,
+        )
 
 
 async def post_server_event_resolutions(bot: discord.Client, resolutions: list[object]):

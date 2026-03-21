@@ -125,7 +125,17 @@ async def _resolve_stray_target_ids(
     # save_as
     save_as = parameters.get("save_as")
     if isinstance(save_as, str) and save_as:
-        context.extra_data[save_as] = {"pooch_ids": ids}
+        slot: dict = {"pooch_ids": ids}
+        if parameters.get("save_owner"):
+            from src.database import get_pooch_by_id as _get_pooch_by_id
+
+            owner_ids_for_slot: list[int] = []
+            for pid in ids:
+                pooch = await _get_pooch_by_id(pid)
+                if pooch is not None and pooch.owner_discord_id not in owner_ids_for_slot:
+                    owner_ids_for_slot.append(pooch.owner_discord_id)
+            slot["owner_ids"] = owner_ids_for_slot
+        context.extra_data[save_as] = slot
 
     return ids
 

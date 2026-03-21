@@ -86,42 +86,8 @@ CREATE TYPE event_severity AS ENUM (
 );
 
 
--- EVENT TARGET TYPE (what an event affects)
-CREATE TYPE event_target_type AS ENUM (
-    'owner',
-    'pooch',
-    'kennel',
-    'server'
-);
-
-
--- EVENT ACTION TYPE (what happens to an event's target)
-CREATE TYPE event_action_type AS ENUM (
-    'modify_money',
-    'modify_bloodskulls',
-    'modify_pooch_health',
-    'modify_pooch_age',
-    'kill_pooch',
-    'add_mutation',
-    'remove_mutation',
-    'add_breed',
-    'transfer_pooch',
-    'create_pooch',
-    'clone_pooch',
-    'modify_kennel_capacity',
-    'rename_pooch',
-    'set_breeding_cooldown',
-    'start_event',
-    'breed_pooches',
-    'sell_pooch',
-    'buy_pooch',
-    'release_stray',
-    'receive_stray',
-    'enter_kennel',
-    'enter_vendor_stock',
-    'start_stray_event',
-    'select_pooch'
-)
+-- event_action_type and event_target_type are plain TEXT columns.
+-- Validation is enforced at resource-load time by the Python validator, not by the database.
 
 
 -- MOOD (for pooches)

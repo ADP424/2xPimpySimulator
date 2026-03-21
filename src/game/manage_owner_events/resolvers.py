@@ -2,6 +2,7 @@ import random
 from typing import TYPE_CHECKING, Any
 
 from src.database import (
+    get_pooch_by_id,
     get_pooch_kennel,
     get_random_matching_kennel_id,
     list_matching_kennel_ids,
@@ -163,7 +164,7 @@ async def get_target_pooch_ids(
             else:
                 pooch_ids.extend(kennel_pooches)
 
-    # save_as: store resolved IDs (and optionally kennel IDs) into a named slot
+    # save_as: store resolved IDs (and optionally kennel/owner IDs) into a named slot
     save_as = parameters.get("save_as")
     if isinstance(save_as, str) and save_as:
         slot: dict[str, Any] = {"pooch_ids": pooch_ids}
@@ -174,6 +175,13 @@ async def get_target_pooch_ids(
                 if kennel is not None and kennel.id not in kennel_ids_for_slot:
                     kennel_ids_for_slot.append(kennel.id)
             slot["kennel_ids"] = kennel_ids_for_slot
+        if parameters.get("save_owner"):
+            owner_ids_for_slot: list[int] = []
+            for pid in pooch_ids:
+                pooch = await get_pooch_by_id(pid)
+                if pooch is not None and pooch.owner_discord_id not in owner_ids_for_slot:
+                    owner_ids_for_slot.append(pooch.owner_discord_id)
+            slot["owner_ids"] = owner_ids_for_slot
         context.extra_data[save_as] = slot
 
     return pooch_ids

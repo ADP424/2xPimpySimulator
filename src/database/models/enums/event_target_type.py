@@ -1,10 +1,13 @@
-from sqlalchemy.dialects.postgresql import ENUM
+from types import SimpleNamespace
 
-EVENT_TARGET_TYPE = ENUM(
-    "owner",
-    "pooch",
-    "kennel",
-    "server",
-    name="event_target_type",
-    create_type=False,
+# Plain list of valid target type strings.
+# Validation is enforced at resource-load time by the Python validator.
+# The database stores target_type as TEXT.
+EVENT_TARGET_TYPE = SimpleNamespace(
+    enums=[
+        "owner",
+        "pooch",
+        "kennel",
+        "server",
+    ]
 )

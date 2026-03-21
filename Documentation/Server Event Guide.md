@@ -163,7 +163,9 @@ Server-scoped actions always use `"target_type": "server"`.
 
 ### `pool`
 
-Specifies which group of pooches to draw from.
+Specifies which group of pooches to draw from, or (for owner-targeting actions) which set of owners.
+
+#### Pooch pools
 
 | Value | Pooches included |
 |-------|-----------------|
@@ -174,17 +176,26 @@ Specifies which group of pooches to draw from.
 | `"all"` | All pooches on the server |
 | `"saved"` | Pooches previously stored in a named slot (requires `save_slot`) |
 
+#### Owner pools
+
+Owner pools are used with owner-targeting actions (`modify_money`, `modify_bloodskulls`). They resolve to a list of owner discord IDs rather than pooch IDs.
+
+| Value | Owners included |
+|-------|----------------|
+| `"owner"` | All registered owners in the server |
+| `"saved_owner"` | Owners previously stored in a named owner slot (requires `save_slot`) |
+
 ### `selector`
 
 | Value | Behaviour |
 |-------|-----------|
-| `"all"` | Target every pooch in the resolved pool |
-| `"random"` | Pick `count` random pooches (default `count: 1`) |
-| `"first"` | Take the first `count` pooches from the pool |
+| `"all"` | Target every entity in the resolved pool |
+| `"random"` | Pick `count` random entities (default `count: 1`) |
+| `"first"` | Take the first `count` entities from the pool |
 
 ### `count`
 
-With `"random"`: picks exactly `count` pooches. If fewer exist, all are used.
+With `"random"`: picks exactly `count` entities. If fewer exist, all are used.
 
 ### `filter`
 
@@ -194,8 +205,9 @@ A pooch filter spec to narrow the resolved pool before applying `selector`. Uses
 
 Named-slot chaining across actions:
 
-- **`save_as`**: after resolving targets, write their IDs into `server_context.saved_slots["slot_name"]`
-- **`save_slot`**: when `pool` is `"saved"`, read IDs from this named slot
+- **`save_as`** (pooch pools): after resolving targets, write their IDs into `server_context.saved_slots["slot_name"]`
+- **`save_as`** (owner pools): after resolving targets, write their owner discord IDs into `server_context.saved_owner_slots["slot_name"]`
+- **`save_slot`**: when `pool` is `"saved"` or `"saved_owner"`, read IDs from this named slot
 
 ```jsonc
 // Revive a random hell pooch and save it as "escapee"
@@ -205,6 +217,20 @@ Named-slot chaining across actions:
 { "action_type": "add_mutation", "target_type": "server",
   "parameters": { "pool": "saved", "save_slot": "escapee", "selector": "all",
                   "mutations": ["Mild Possession"] } }
+```
+
+### `save_owner` (bool, pooch pool actions only)
+
+When `save_as` is present on a pooch-pool action, also look up each targeted pooch's owner and store their discord ID in `server_context.saved_owner_slots["slot_name"]`. Useful for following up a pooch action with an owner action on the same owners.
+
+```jsonc
+// Kill a random stray and save its owner's discord ID
+{ "action_type": "kill_pooch", "target_type": "server",
+  "parameters": { "pool": "stray", "selector": "random", "save_as": "victim", "save_owner": true } },
+// Give money to the owner of the killed pooch
+{ "action_type": "modify_money", "target_type": "server",
+  "parameters": { "pool": "saved_owner", "save_slot": "victim", "selector": "all",
+                  "min_amount": 50, "max_amount": 100 } }
 ```
 
 ### `destination`
@@ -418,6 +444,10 @@ When `target` is `"server"`, outcome actions use `target_type: "server"` and the
 
 All actions with `"target_type": "server"` use the pool/selector/filter/save_as/save_slot parameters documented above.
 
+### Pooch-pool actions
+
+These actions target pooches via a pooch pool (`"stray"`, `"dead"`, `"in_hell"`, `"all_alive"`, `"all"`, `"saved"`).
+
 | Action | Notes |
 |--------|-------|
 | `modify_base_health` | Modify base health of targeted pooches (alias: `modify_pooch_health`) |
@@ -450,11 +480,40 @@ All actions with `"target_type": "server"` use the pool/selector/filter/save_as/
 | `start_stray_event` | Trigger a stray event's actions in the server context |
 | `start_server_event` | Chain into another server event's root-level actions |
 
-Owner-only actions (`modify_money`, `modify_bloodskulls`, `modify_kennel_capacity`, `sell_pooch`, `buy_pooch`, `receive_stray`, `transfer_pooch`, `conjure_pooch`, `sacrifice_pooch`, `start_event`) are not supported with `target_type: "server"`.
+### Owner-pool actions
+
+These actions target owners via an owner pool (`"owner"` or `"saved_owner"`). They apply directly to each resolved owner's account.
+
+| Action | Notes |
+|--------|-------|
+| `modify_money` | Give or take money from targeted owners |
+| `modify_bloodskulls` | Give or take bloodskulls from targeted owners |
+
+Other owner-only actions (`modify_kennel_capacity`, `sell_pooch`, `buy_pooch`, `receive_stray`, `transfer_pooch`, `conjure_pooch`, `sacrifice_pooch`, `start_event`) are not supported with `target_type: "server"`.
 
 ---
 
 ## Action Parameter Reference (Server-Scoped)
+
+### `modify_money` / `modify_bloodskulls`
+
+Target an owner pool to modify money or bloodskulls for each resolved owner.
+
+| Parameter | Type | Notes |
+|-----------|------|-------|
+| `pool` | string | **Required.** Must be `"owner"` or `"saved_owner"` |
+| `selector` | string | `"all"`, `"random"`, `"first"` |
+| `count` | int | Number to pick with `"random"` |
+| `save_as` / `save_slot` | string | Named owner slot operations |
+| `amount` | int | Fixed delta |
+| `min_amount` / `max_amount` | int | Random delta in range |
+| `roll_once` | bool | Roll once and apply the same amount to all owners |
+
+```jsonc
+// Deduct 50 money from every owner on the server
+{ "action_type": "modify_money", "target_type": "server",
+  "parameters": { "pool": "owner", "selector": "all", "amount": -50 } }
+```
 
 ### `modify_base_health` / `modify_pooch_age` / stat modifiers
 
@@ -465,6 +524,7 @@ Owner-only actions (`modify_money`, `modify_bloodskulls`, `modify_kennel_capacit
 | `count` | int | Number to pick with `"random"` |
 | `filter` | object | Pooch filter to narrow pool |
 | `save_as` / `save_slot` | string | Named slot operations |
+| `save_owner` | bool | Also save the owners of targeted pooches into `saved_owner_slots` |
 | `amount` | int | Fixed delta; or absolute when `mode` is `"set"` |
 | `min_amount` / `max_amount` | int | Random delta in range |
 | `exclude_amount` | list[int] | Values to exclude from random range |
