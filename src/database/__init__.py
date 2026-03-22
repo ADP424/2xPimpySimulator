@@ -15,6 +15,7 @@ from .get import (
     check_owner_event_filter_for_owner,
     get_active_owner_event_by_id,
     get_active_server_event_occurrence,
+    get_active_server_event_occurrence_by_tier,
     get_breed_by_id,
     get_breed_by_name,
     get_kennel_by_id,
@@ -126,6 +127,7 @@ from .set import (
     set_pooch_parentage,
 )
 from .update import (
+    advance_server_season,
     age_pooch,
     decrement_pooch_breeding_cooldown,
     finalize_server_event_participation,
@@ -238,6 +240,7 @@ __all__ = [
     "get_server_event_participation",
     "get_random_eligible_stray_event_for_server",
     "get_active_server_event_occurrence",
+    "get_active_server_event_occurrence_by_tier",
     "list_all_server_events_with_weights",
     "list_server_events_with_weights_by_tier",
     "get_stray_event_by_id",
@@ -332,6 +335,7 @@ __all__ = [
     "rename_pooch",
     "reset_begged_today",
     "reset_visited_park_today",
+    "advance_server_season",
     "respond_to_active_owner_event",
     "resolve_server_event_occurrence",
     "finalize_server_event_participation",

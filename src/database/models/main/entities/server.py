@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import BigInteger, DateTime, text
+from sqlalchemy import BigInteger, DateTime, Text, text
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -18,6 +18,7 @@ class Server(Base):
 
     discord_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     event_channel_discord_id: Mapped[int] = mapped_column(BigInteger, nullable=True)
+    current_season: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'spring'"))
     joined_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=text("now()"))
 
     vendors: Mapped[list[Vendor]] = relationship("Vendor", back_populates="server", cascade="all, delete-orphan")

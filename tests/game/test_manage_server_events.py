@@ -102,7 +102,7 @@ class TestAggregatePlayerScore:
 
 class TestTriggerDailyServerEvent:
     @patch("src.game.manage_server_events.to_triggered_server_event", new_callable=AsyncMock)
-    @patch("src.game.manage_server_events.get_active_server_event_occurrence", new_callable=AsyncMock)
+    @patch("src.game.manage_server_events.get_active_server_event_occurrence_by_tier", new_callable=AsyncMock)
     async def test_returns_existing_event_if_active(self, mock_existing, mock_to_event):
         occurrence = MagicMock()
         mock_existing.return_value = occurrence
@@ -113,7 +113,7 @@ class TestTriggerDailyServerEvent:
         assert result.name == "Existing"
 
     @patch("src.game.manage_server_events.get_server_by_discord_id", new_callable=AsyncMock)
-    @patch("src.game.manage_server_events.get_active_server_event_occurrence", new_callable=AsyncMock)
+    @patch("src.game.manage_server_events.get_active_server_event_occurrence_by_tier", new_callable=AsyncMock)
     async def test_returns_none_if_no_event_channel(self, mock_existing, mock_server):
         mock_existing.return_value = None
         mock_server.return_value = make_server(discord_id=200, event_channel_discord_id=None)
@@ -122,7 +122,7 @@ class TestTriggerDailyServerEvent:
         assert result is None
 
     @patch("src.game.manage_server_events.get_server_by_discord_id", new_callable=AsyncMock)
-    @patch("src.game.manage_server_events.get_active_server_event_occurrence", new_callable=AsyncMock)
+    @patch("src.game.manage_server_events.get_active_server_event_occurrence_by_tier", new_callable=AsyncMock)
     async def test_returns_none_if_server_not_found(self, mock_existing, mock_server):
         mock_existing.return_value = None
         mock_server.return_value = None
@@ -136,7 +136,7 @@ class TestTriggerDailyServerEvent:
     @patch("src.game.manage_server_events._check_server_filter", new_callable=AsyncMock)
     @patch("src.game.manage_server_events.list_server_events_with_weights_by_tier", new_callable=AsyncMock)
     @patch("src.game.manage_server_events.get_server_by_discord_id", new_callable=AsyncMock)
-    @patch("src.game.manage_server_events.get_active_server_event_occurrence", new_callable=AsyncMock)
+    @patch("src.game.manage_server_events.get_active_server_event_occurrence_by_tier", new_callable=AsyncMock)
     async def test_triggers_new_event(
         self, mock_existing, mock_server, mock_eligible, mock_filter, mock_create, mock_get_occ, mock_to_event
     ):
@@ -375,12 +375,15 @@ class TestSetServerEventMessageId:
 
 
 class TestRunDailyServerEventCycle:
+    @patch("src.game.manage_server_events.advance_season", new_callable=AsyncMock, return_value="summer")
     @patch("src.game.manage_server_events.trigger_daily_server_event", new_callable=AsyncMock)
     @patch("src.game.manage_server_events.list_servers", new_callable=AsyncMock)
     @patch("src.game.manage_server_events.resolve_server_event", new_callable=AsyncMock)
     @patch("src.game.manage_server_events.list_active_server_event_occurrences", new_callable=AsyncMock)
     @patch("src.game.manage_server_events.datetime")
-    async def test_resolves_then_triggers(self, mock_dt, mock_active, mock_resolve, mock_servers, mock_trigger):
+    async def test_resolves_then_triggers(
+        self, mock_dt, mock_active, mock_resolve, mock_servers, mock_trigger, mock_advance
+    ):
         # Simulate a Monday so a major event is guaranteed to trigger
         monday = MagicMock()
         monday.weekday.return_value = 0
@@ -398,10 +401,11 @@ class TestRunDailyServerEventCycle:
         new_event = SimpleNamespace(name="New")
         mock_trigger.return_value = new_event
 
-        new_events, resolutions = await run_daily_server_event_cycle()
+        new_events, resolutions, season_advances = await run_daily_server_event_cycle()
 
         assert len(resolutions) == 1
         assert 200 in new_events
+        assert season_advances == {200: "summer"}
 
     @patch("src.game.manage_server_events.trigger_daily_server_event", new_callable=AsyncMock)
     @patch("src.game.manage_server_events.list_servers", new_callable=AsyncMock)
@@ -414,6 +418,7 @@ class TestRunDailyServerEventCycle:
         server_no_channel = SimpleNamespace(discord_id=300, event_channel_discord_id=None)
         mock_servers.return_value = [server_no_channel]
 
-        new_events, resolutions = await run_daily_server_event_cycle()
+        new_events, resolutions, season_advances = await run_daily_server_event_cycle()
         assert len(new_events) == 0
+        assert len(season_advances) == 0
         mock_trigger.assert_not_awaited()

@@ -10,6 +10,7 @@ from src.database import (
     create_server_event_participation,
     finalize_server_event_participation,
     get_active_server_event_occurrence,
+    get_active_server_event_occurrence_by_tier,
     get_owner_by_discord_id,
     get_owner_server,
 )
@@ -37,6 +38,7 @@ from src.logger import get_logger
 
 from .manage_owner_events import _execute_event_actions
 from .manage_owners import get_or_create_owner
+from .manage_servers import advance_season
 from .models.events import (
     OwnerEventContext,
     OwnerEventResult,
@@ -873,7 +875,8 @@ async def trigger_daily_server_event(
 ) -> TriggeredServerEvent | None:
     rng = rng if rng is not None else random.Random()
 
-    existing = await get_active_server_event_occurrence(server_discord_id)
+    tier = tier.strip().lower()
+    existing = await get_active_server_event_occurrence_by_tier(server_discord_id, tier)
     if existing is not None:
         return await to_triggered_server_event(existing)
 
@@ -881,7 +884,6 @@ async def trigger_daily_server_event(
     if server is None or server.event_channel_discord_id is None:
         return None
 
-    tier = tier.strip().lower()
     events_with_weights = await list_server_events_with_weights_by_tier(tier)
     eligible: list[tuple] = []
     for event_obj, weight in events_with_weights:
@@ -927,20 +929,21 @@ async def trigger_server_event_by_name(
     """Trigger a specific server event by name, bypassing random selection and filter checks.
 
     Returns None if the event name is not found or the server has no event channel.
-    Returns the existing active event (unchanged) if one is already running.
+    Returns the existing active event of the same tier (unchanged) if one is already running.
     """
     rng = rng if rng is not None else random.Random()
 
-    existing = await get_active_server_event_occurrence(server_discord_id)
+    server_event = await get_server_event_by_name(name)
+    if server_event is None:
+        return None
+
+    tier = getattr(server_event, "tier", "minor").strip().lower()
+    existing = await get_active_server_event_occurrence_by_tier(server_discord_id, tier)
     if existing is not None:
         return await to_triggered_server_event(existing)
 
     server = await get_server_by_discord_id(server_discord_id)
     if server is None or server.event_channel_discord_id is None:
-        return None
-
-    server_event = await get_server_event_by_name(name)
-    if server_event is None:
         return None
 
     server_context = ServerEventContext(server_discord_id=server_discord_id)
@@ -950,7 +953,6 @@ async def trigger_server_event_by_name(
             action_dicts = [{"action_type": a.action_type, "parameters": a.parameters or {}} for a in server_actions]
             await _execute_server_actions(server_discord_id, action_dicts, server_context, rng)
 
-    tier = getattr(server_event, "tier", "minor")
     duration = MAJOR_SERVER_EVENT_DURATION if tier == "major" else SERVER_EVENT_DURATION
     occurrence = await create_server_event_occurrence(
         server_discord_id=server_discord_id,
@@ -1593,12 +1595,17 @@ async def resolve_server_event(
 
 async def run_daily_server_event_cycle(
     rng: Optional[random.Random] = None,
-) -> tuple[dict[int, TriggeredServerEvent], list[ServerEventResolution]]:
-    """Resolve expired events and trigger new ones.
+) -> tuple[dict[int, TriggeredServerEvent], list[ServerEventResolution], dict[int, str]]:
+    """Resolve expired events, advance seasons (Monday only), and trigger new events.
 
     Schedule:
-    - Monday: guaranteed major event; no minor event that day.
-    - Other days: 50% chance of a minor event; no major event.
+    - Monday: advance season, then trigger a guaranteed major event lasting the full week.
+              No minor event fires on Monday.
+    - Other days: 50% chance of a minor event (lasts 1 day), independently of any active major event.
+
+    Returns:
+        (new_events, resolutions, season_advances)
+        season_advances: mapping of server_discord_id → new season name, only populated on Monday.
     """
     rng = rng if rng is not None else random.Random()
 
@@ -1612,16 +1619,17 @@ async def run_daily_server_event_cycle(
     is_monday = datetime.now(timezone.utc).weekday() == 0  # Monday = 0
 
     new_events: dict[int, TriggeredServerEvent] = {}
+    season_advances: dict[int, str] = {}
     servers = await list_servers()
     for server in servers:
         if server.event_channel_discord_id is None:
             continue
 
         if is_monday:
-            # Trigger a major event on Mondays (skip if one is already active)
+            new_season = await advance_season(server.discord_id)
+            season_advances[server.discord_id] = new_season
             event = await trigger_daily_server_event(server.discord_id, tier="major", rng=rng)
         else:
-            # 50% chance of a minor event on other days
             if rng.random() < MINOR_EVENT_DAILY_CHANCE:
                 event = await trigger_daily_server_event(server.discord_id, tier="minor", rng=rng)
             else:
@@ -1630,7 +1638,7 @@ async def run_daily_server_event_cycle(
         if event is not None:
             new_events[server.discord_id] = event
 
-    return new_events, resolutions
+    return new_events, resolutions, season_advances
 
 
 async def set_server_event_message_id(occurrence_id: int, message_discord_id: int | None) -> None:

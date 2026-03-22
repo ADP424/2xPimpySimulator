@@ -2,6 +2,7 @@
 CREATE TABLE servers (
     discord_id                  BIGINT PRIMARY KEY,
     event_channel_discord_id    BIGINT NULL,
+    current_season              TEXT NOT NULL DEFAULT 'spring',
     joined_at                   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

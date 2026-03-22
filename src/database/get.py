@@ -890,6 +890,30 @@ async def get_active_server_event_occurrence(server_discord_id: int) -> Optional
     return response.scalar_one_or_none()
 
 
+async def get_active_server_event_occurrence_by_tier(
+    server_discord_id: int, tier: str
+) -> Optional[ServerEventOccurrence]:
+    """Return the active (unresolved, unarchived) server event occurrence for the given tier, or None."""
+    async with session_scope() as session:
+        query = (
+            select(ServerEventOccurrence)
+            .join(ServerEvent, ServerEventOccurrence.server_event_id == ServerEvent.id)
+            .where(
+                ServerEventOccurrence.server_discord_id == server_discord_id,
+                ServerEventOccurrence.archived.is_(False),
+                ServerEventOccurrence.resolved_at.is_(None),
+                ServerEvent.tier == tier.strip().lower(),
+            )
+            .options(
+                selectinload(ServerEventOccurrence.server_event).options(*_server_event_load_options()),
+                selectinload(ServerEventOccurrence.participations),
+            )
+        )
+        response = await session.execute(query)
+
+    return response.scalar_one_or_none()
+
+
 async def get_server_event_participation(
     occurrence_id: int, owner_discord_id: int
 ) -> Optional[ServerEventParticipation]:

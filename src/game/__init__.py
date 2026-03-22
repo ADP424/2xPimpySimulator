@@ -65,6 +65,7 @@ from .manage_server_events import (
     trigger_server_event_by_name,
 )
 from .manage_servers import (
+    advance_season,
     get_event_channel,
     get_or_create_server,
     set_event_channel,
@@ -143,6 +144,7 @@ __all__ = [
     "run_daily_stray_event_check",
     "trigger_stray_event_by_name",
     # Server commands
+    "advance_season",
     "get_event_channel",
     "get_or_create_server",
     "set_event_channel",
