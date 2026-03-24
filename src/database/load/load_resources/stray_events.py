@@ -51,6 +51,14 @@ _STRAY_ACTION_TYPES = {
     "enter_vendor_stock",
     "start_stray_event",
     "select_pooch",
+    "modify_strength",
+    "modify_cuteness",
+    "modify_fluffiness",
+    "modify_intelligence",
+    "modify_dexterity",
+    "modify_fertility",
+    "modify_aggressiveness",
+    "modify_constitution",
 }
 
 _STRAY_SELECTORS = {"random", "random_exclude", "all", "all_exclude"}

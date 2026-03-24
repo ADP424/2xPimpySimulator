@@ -6,7 +6,7 @@
 
 Mutations are structured within resources/mutations/**/*.jsonc, like:
 ```jsonc
-"[category]": {
+{
     "[mutation name]": {
         "alt_name": "string",
         "description": "string",
@@ -16,13 +16,9 @@ Mutations are structured within resources/mutations/**/*.jsonc, like:
         "parameters": {
             "[option]": "string/float/int/list"
         }
-    },
-    ...
+    }
 }
 ```
-
-#### Category
-This is the name of the category the mutation belongs to (for example, "autism" and "schizophrenia" are both neurodevelopmental conditions). There can be any number of mutations in a category.
 
 #### Mutation Name
 The common name of the mutation, i.e. the main one that it should be referred to as.

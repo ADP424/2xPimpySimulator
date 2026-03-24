@@ -10,7 +10,8 @@
             "Dwarfism"
         ],
         "cuteness_add": -1,
-        "strength_mult": 1.5, // TODO: SIZE MULT
+        "strength_mult": 1.5,
+        "size_mult": 1.5,
         "dexterity_add": 2
     }
 }

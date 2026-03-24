@@ -6,21 +6,19 @@
 
 Breeds are structured within resources/breeds/**/*.jsonc, like:
 ```jsonc
-"[category]": {
+{
     "[breed name]": {
         "alt_name": "string",
         "description": "string",
         "rarity": "string",
+        "min_size": "int",
+        "max_size": "int",
         "parameters": {
             "[option]": "string/float/int/list"
         }
-    },
-    ...
+    }
 }
 ```
-
-#### Category
-This is the name of the category the breed belongs to (for example, "miniature poodle" and "toy poodle" are both types of poodles). There can be any number of breeds in a category.
 
 #### Breed Name
 The common name of the breed, i.e. the main one that it should be referred to as.
@@ -41,6 +39,10 @@ How relatively likely/unlikely it is for a pooch to get this breed when generate
 - REMARKABLE (10)
 - EXTRAORDINARY (5)
 - UNIQUE (1)
+
+#### `min_size` / `max_size` : `int`
+
+Define the upper and lower bounds for a pooch's size with this breed. `min_size` and `max_size` are averaged across all of a pooch's breeds and rounded to the nearest integer. At the moment of a pooch's creation, it's assigned a size within the averaged (`min_size`, `max_size`) range. After that, it acts like any other pooch stat. The baseline for `min_size` is 8 and the baseline for `max_size` is 12.
 
 #### Parameters
 An object representing more complex options for the breed (more information in "Parameters Guide").
@@ -78,18 +80,3 @@ The following `_add` (int) and `_mult` (float) parameters are available for each
 | Aggressiveness | `aggressiveness_add` | `aggressiveness_mult` |
 | Constitution | `constitution_add` | `constitution_mult` |
 | Size | `size_add` | `size_mult` |
-
-## Size
-
-### `min_size` / `max_size` : `string`
-
-Restrict the sizes a pooch can be when this breed is present during generation. Both are optional and independent.
-
-Size values (in ascending order):
-- `tiny`
-- `small`
-- `average`
-- `large`
-- `massive`
-
-For example, `"min_size": "large"` means a pooch with this breed will never be smaller than large. Setting both `min_size` and `max_size` to the same value pins the pooch to exactly that size.
