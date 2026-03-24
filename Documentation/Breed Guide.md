@@ -44,6 +44,8 @@ How relatively likely/unlikely it is for a pooch to get this breed when generate
 
 Define the upper and lower bounds for a pooch's size with this breed. `min_size` and `max_size` are averaged across all of a pooch's breeds and rounded to the nearest integer. At the moment of a pooch's creation, it's assigned a size within the averaged (`min_size`, `max_size`) range. After that, it acts like any other pooch stat. The baseline for `min_size` is 8 and the baseline for `max_size` is 12.
 
+Mirum here. I'm trying to have the size go off of a 10 being ~40 pounds. Every point being around 4 pounds.
+
 #### Parameters
 An object representing more complex options for the breed (more information in "Parameters Guide").
 

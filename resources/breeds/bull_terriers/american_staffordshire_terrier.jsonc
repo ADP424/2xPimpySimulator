@@ -2,5 +2,13 @@
     "name": "American Staffordshire Terrier",
     "alt_name": "AmStaff",
     "description": "The American Staffordshire Terrier stands 18–19 in (46–48 cm) tall and weighs between 40–70 lb (18–32 kg).[2] The American Kennel Club (AKC) describes the breed as confident, smart and good-natured.",
-    "rarity": "UNCOMMON"
+    "rarity": "UNCOMMON",
+    "parameters": {
+        "min_size": 13, // 50-80 lbs
+        "max_size": 20,
+        "strength_add": 2,
+        "dexerity_add": 2,
+        "aggressiveness_add": 3,
+        "fluffiness_mult": 0.5
+    }
 }

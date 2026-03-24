@@ -2,5 +2,12 @@
     "name": "Warhound",
     "alt_name": "Mech Pilot",
     "description": "Wait... that's a... that's a human being... wearing a muzzle...",
-    "rarity": "UNIQUE"
+    "rarity": "UNIQUE",
+    "parameters": {
+        "min_size": 25, 
+        "max_size": 50,
+        "dexerity_add": -3,
+        "intelligence_add": 8,
+        "cuteness_mult": 0.33
+    }
 }

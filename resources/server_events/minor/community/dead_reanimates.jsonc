@@ -36,7 +36,7 @@
         "pool": "saved",
         "save_slot": "revenant",
         "selector": "all",
-        "mutations": ["Sent by Death"]
+        "mutations": ["Sent by Death"] // TODO I'd like sent by Death to be only the pooche in black event. We can make another mutation for these events
       }
     }
   ]
