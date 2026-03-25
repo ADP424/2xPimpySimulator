@@ -36,6 +36,7 @@ from .constants import (
     POOCH_STATS,
 )
 from .exceptions import OwnerNotFound
+from .manage_auctions import cancel_listing_for_pooch
 from .manage_servers import get_or_create_server
 from .models import to_kennel, to_owner
 
@@ -271,6 +272,7 @@ async def _attempt_catch_stray(
 
     chosen = rng.choice(strays)
     await remove_pooch_from_strays(chosen.id)
+    await cancel_listing_for_pooch(chosen.id)
     await transfer_pooch_to_owner(chosen.id, owner_discord_id)
 
     kennels = await list_kennels_for_owner(owner_discord_id)
@@ -357,4 +359,5 @@ async def spend_bone_at_park(
 
 
 async def cast_out_pooch(pooch_id: int, server_discord_id: int) -> None:
+    await cancel_listing_for_pooch(pooch_id)
     await add_pooch_to_strays(pooch_id, server_discord_id)

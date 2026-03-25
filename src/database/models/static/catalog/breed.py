@@ -21,5 +21,5 @@ class Breed(Base):
     max_size: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("12"))
 
     parameters: Mapped[dict[str, str | int | float | list[str]]] = mapped_column(
-        JSONB, nullable=False, server_default="{}"
+        JSONB, nullable=False, server_default=text("'{}'::jsonb")
     )

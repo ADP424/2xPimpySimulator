@@ -5,6 +5,22 @@ from .breeding import (
 from .change_day import (
     run_day_change,
 )
+from .manage_auctions import (
+    cancel_bounty_listing,
+    cancel_listing_for_pooch,
+    close_sale_listing,
+    create_bounty_listing,
+    create_sale_listing,
+    evaluate_bounty_match,
+    fulfill_bounty,
+    get_sale_listing,
+    list_owner_bounty_listings,
+    list_owner_sale_listings,
+    list_server_bounty_listings,
+    list_server_sale_listings,
+    place_bid,
+    process_expired_sale_listings,
+)
 from .manage_graveyard import (
     list_graveyard_pooches,
 )
@@ -160,6 +176,21 @@ __all__ = [
     "get_mutation_by_id",
     "list_all_breeds",
     "list_all_mutations",
+    # Auction house commands
+    "cancel_bounty_listing",
+    "cancel_listing_for_pooch",
+    "close_sale_listing",
+    "create_bounty_listing",
+    "create_sale_listing",
+    "evaluate_bounty_match",
+    "fulfill_bounty",
+    "get_sale_listing",
+    "list_owner_bounty_listings",
+    "list_owner_sale_listings",
+    "list_server_bounty_listings",
+    "list_server_sale_listings",
+    "place_bid",
+    "process_expired_sale_listings",
     # Vendor commands
     "buy_pooch",
     "get_pooch_buy_price",

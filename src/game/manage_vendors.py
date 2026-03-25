@@ -37,6 +37,7 @@ from .constants import (
     VENDOR_DESIRED_MUTATION_MULT,
 )
 from .exceptions import PoochNotFound, VendorNotFound
+from .manage_auctions import cancel_listing_for_pooch
 from .models import to_pooch, to_vendor
 
 if TYPE_CHECKING:
@@ -98,6 +99,7 @@ async def buy_pooch(owner_discord_id: int, vendor_id: int, pooch_id: int) -> tup
         return (False, "That pooch is no longer available from this vendor.")
 
     await give_money_to_owner(owner_discord_id, -price)
+    await cancel_listing_for_pooch(pooch_id)
     await transfer_pooch_to_owner(pooch_id, owner_discord_id)
     await add_pooch_to_kennel(target_kennel.id, pooch_id)
 
@@ -310,6 +312,7 @@ async def sell_pooch(owner_discord_id: int, vendor_id: int, pooch_id: int) -> tu
         return (False, "That pooch is dead.")
 
     await give_money_to_owner(owner_discord_id, price)
+    await cancel_listing_for_pooch(pooch.id)
     await transfer_pooch_to_vendor(pooch.id, vendor_id)
     await remove_pooch_from_kennel(pooch.id)
 

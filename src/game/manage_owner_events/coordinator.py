@@ -75,6 +75,7 @@ from ..constants import (
     POOCH_STAT_RANGE,
     POOCH_STATS,
 )
+from ..manage_auctions import cancel_listing_for_pooch
 from ..manage_hell import get_pooch_bloodskull_value
 from ..manage_vendors import get_pooch_buy_price, get_pooch_sell_price
 from ..models import (
@@ -348,6 +349,7 @@ async def _execute_single_action(
                 else:
                     chosen = rng.choice(pool_objs)
                     await remove_pooch_from_strays(chosen.id)
+                    await cancel_listing_for_pooch(chosen.id)
                     await transfer_pooch_to_owner(chosen.id, owner_discord_id)
 
                     if target_type == "kennel":
@@ -405,8 +407,10 @@ async def _execute_single_action(
             vendor_id = parameters.get("vendor_id")
             for pooch_id in pooch_ids:
                 if new_owner_id:
+                    await cancel_listing_for_pooch(pooch_id)
                     await transfer_pooch_to_owner(pooch_id, new_owner_id)
                 elif vendor_id:
+                    await cancel_listing_for_pooch(pooch_id)
                     await transfer_pooch_to_vendor(pooch_id, vendor_id)
                 result.pooches_affected.append(pooch_id)
 
@@ -548,6 +552,7 @@ async def _execute_single_action(
                 if resolved_vendor_id is not None:
                     price = round((await get_pooch_sell_price(pooch_id, resolved_vendor_id)) * multiplier)
                     await give_money_to_owner(owner_discord_id, price)
+                    await cancel_listing_for_pooch(pooch_id)
                     await transfer_pooch_to_vendor(pooch_id, resolved_vendor_id)
                     await remove_pooch_from_kennel(pooch_id)
                     await add_pooch_to_vendor_stock(resolved_vendor_id, pooch_id)
@@ -605,6 +610,7 @@ async def _execute_single_action(
                     else:
                         await remove_pooch_from_vendor_stock(resolved_vendor_id, pooch_db.id)
                         await give_money_to_owner(owner_discord_id, -price)
+                        await cancel_listing_for_pooch(pooch_db.id)
                         await transfer_pooch_to_owner(pooch_db.id, owner_discord_id)
 
                         if buy_kennel_id is not None:

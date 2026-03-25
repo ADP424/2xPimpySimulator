@@ -9,5 +9,5 @@ EVENT_SEVERITY = ENUM(
     "remarkable",
     "catastrophic",
     name="event_severity",
-    create_type=False,
+    create_type=True,
 )

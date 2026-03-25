@@ -5,6 +5,9 @@ from sqlalchemy import and_, func, literal, not_, or_, select, true, union
 from sqlalchemy.orm import selectinload
 
 from .models import (
+    AuctionBid,
+    AuctionBountyListing,
+    AuctionSaleListing,
     Breed,
     Event,
     EventOccurrence,
@@ -1152,3 +1155,34 @@ async def get_parentage_maps(
         kids.sort()
 
     return parents_of, children_of
+
+
+async def get_auction_sale_listing_by_id(listing_id: int) -> Optional[AuctionSaleListing]:
+    """Fetch a sale listing by primary key, regardless of active status."""
+    async with session_scope() as session:
+        return await session.get(AuctionSaleListing, listing_id)
+
+
+async def get_active_auction_sale_listing_for_pooch(pooch_id: int) -> Optional[AuctionSaleListing]:
+    """Return the active listing for a pooch, or None if not listed."""
+    async with session_scope() as session:
+        query = select(AuctionSaleListing).where(
+            AuctionSaleListing.pooch_id == pooch_id,
+            AuctionSaleListing.is_active.is_(True),
+        )
+        return (await session.execute(query)).scalar_one_or_none()
+
+
+async def get_auction_bounty_listing_by_id(listing_id: int) -> Optional[AuctionBountyListing]:
+    """Fetch a bounty listing by primary key, regardless of active status."""
+    async with session_scope() as session:
+        return await session.get(AuctionBountyListing, listing_id)
+
+
+async def get_highest_bid_for_listing(listing_id: int) -> Optional[AuctionBid]:
+    """Return the bid with the highest amount for the listing, or None if no bids."""
+    async with session_scope() as session:
+        query = (
+            select(AuctionBid).where(AuctionBid.listing_id == listing_id).order_by(AuctionBid.amount.desc()).limit(1)
+        )
+        return (await session.execute(query)).scalar_one_or_none()

@@ -15,5 +15,5 @@ HEALTH_IMPACT = ENUM(
     "brilliant",
     "immortality",
     name="health_impact",
-    create_type=False,
+    create_type=True,
 )

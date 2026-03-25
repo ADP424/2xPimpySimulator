@@ -59,6 +59,7 @@ from .action_helpers.pooch_actions import (
 )
 from .breeding import breed_pooches as _breed_pooches
 from .constants import STRAY_EVENT_TRIGGER_CHANCE
+from .manage_auctions import cancel_listing_for_pooch
 from .models import StrayEventContext, StrayEventResult
 
 if TYPE_CHECKING:
@@ -154,6 +155,7 @@ async def _deliver_stray_to_kennel(pooch_id: int, server_discord_id: int, rng: r
             pooches_in = await list_pooches_for_kennel(kennel.id)
             if len(pooches_in) < kennel.pooch_limit:
                 await remove_pooch_from_strays(pooch_id)
+                await cancel_listing_for_pooch(pooch_id)
                 await transfer_pooch_to_owner(pooch_id, owner.discord_id)
                 await add_pooch_to_kennel(kennel.id, pooch_id)
                 return True
@@ -170,6 +172,7 @@ async def _deliver_stray_to_vendor(pooch_id: int, server_discord_id: int, rng: r
         return False
     vendor = rng.choice(vendors)
     await remove_pooch_from_strays(pooch_id)
+    await cancel_listing_for_pooch(pooch_id)
     await transfer_pooch_to_vendor(pooch_id, vendor.id)
     await add_pooch_to_vendor_stock(vendor.id, pooch_id)
     return True

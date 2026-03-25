@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import BigInteger, CheckConstraint, Float, ForeignKey, Integer
+from sqlalchemy import BigInteger, CheckConstraint, Float, ForeignKey, Integer, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -29,7 +29,7 @@ class StrayEventOutcome(Base):
 
     outcome_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     chance: Mapped[float | None] = mapped_column(Float, nullable=True)
-    stat_weights: Mapped[list] = mapped_column(JSONB, nullable=False, server_default="'[]'::jsonb")
+    stat_weights: Mapped[list] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
 
     stray_event: Mapped[StrayEvent] = relationship("StrayEvent", back_populates="outcomes")
     actions: Mapped[list[StrayEventAction]] = relationship(

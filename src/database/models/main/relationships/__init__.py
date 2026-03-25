@@ -1,3 +1,4 @@
+from .auction import AuctionBid, AuctionBountyListing, AuctionSaleListing
 from .event_occurrence import EventOccurrence
 from .graveyard_pooch import GraveyardPooch
 from .hell_pooch import HellPooch
@@ -13,6 +14,9 @@ from .stray_pooch import StrayPooch
 from .vendor_pooch_for_sale import VendorPoochForSale
 
 __all__ = [
+    "AuctionBid",
+    "AuctionBountyListing",
+    "AuctionSaleListing",
     "EventOccurrence",
     "GraveyardPooch",
     "HellPooch",

@@ -17,6 +17,9 @@ from .constants import (
 )
 from .get import get_owner_by_discord_id, get_pooch_by_id, get_vendor_by_id
 from .models import (
+    AuctionBid,
+    AuctionBountyListing,
+    AuctionSaleListing,
     Breed,
     DogName,
     EventOccurrence,
@@ -1129,3 +1132,62 @@ async def append_server_event_submission(
                 .where(ServerEventParticipation.id == participation_id)
                 .values(submissions=current)
             )
+
+
+async def create_auction_sale_listing(
+    pooch_id: int,
+    seller_discord_id: int,
+    server_discord_id: int,
+    minimum_bid: int,
+    expires_at: Optional[datetime] = None,
+) -> AuctionSaleListing:
+    """Create a new active auction sale listing for the given pooch."""
+    async with session_scope() as session:
+        listing = AuctionSaleListing(
+            pooch_id=pooch_id,
+            seller_discord_id=seller_discord_id,
+            server_discord_id=server_discord_id,
+            minimum_bid=minimum_bid,
+            expires_at=expires_at,
+        )
+        session.add(listing)
+        await session.flush()
+    return listing
+
+
+async def create_auction_bid(
+    listing_id: int,
+    bidder_discord_id: int,
+    amount: int,
+) -> AuctionBid:
+    """Insert a new bid row for the given listing."""
+    async with session_scope() as session:
+        bid = AuctionBid(
+            listing_id=listing_id,
+            bidder_discord_id=bidder_discord_id,
+            amount=amount,
+        )
+        session.add(bid)
+        await session.flush()
+    return bid
+
+
+async def create_auction_bounty_listing(
+    buyer_discord_id: int,
+    server_discord_id: int,
+    title: str,
+    escrow_amount: int,
+    criteria: list,
+) -> AuctionBountyListing:
+    """Create a new active bounty listing. Does NOT deduct escrow — caller handles that."""
+    async with session_scope() as session:
+        listing = AuctionBountyListing(
+            buyer_discord_id=buyer_discord_id,
+            server_discord_id=server_discord_id,
+            title=title,
+            escrow_amount=escrow_amount,
+            criteria=criteria,
+        )
+        session.add(listing)
+        await session.flush()
+    return listing

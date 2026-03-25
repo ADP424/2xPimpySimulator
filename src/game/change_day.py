@@ -12,15 +12,19 @@ from src.database import (
     age_pooch,
     bury_pooch,
     clear_vendor_pooch_stock,
+    close_auction_sale_listing,
     create_pooch,
     create_vendor,
     decrement_pooch_breeding_cooldown,
     delete_pregnancy,
     delete_random_vendor,
+    get_active_auction_sale_listing_for_pooch,
     get_mutation_health_impact,
     get_pooch_health,
     get_pooch_kennel,
     get_random_breed_ids,
+    give_money_to_owner,
+    list_bids_for_listing,
     list_living_pooches,
     list_pooch_mutations,
     list_pooch_pregnancies,
@@ -52,6 +56,7 @@ from .constants import (
     VENDOR_POOCH_AGE_RANGE,
     VENDOR_POOCH_STOCK_COUNT_RANGE,
 )
+from .manage_auctions import process_expired_sale_listings
 from .manage_kennels import add_pooch_to_kennel
 from .manage_pooches import get_pooch_by_id
 from .manage_stray_events import run_daily_stray_event_check
@@ -239,6 +244,16 @@ async def run_day_change(
         await remove_pooch_from_kennel(pooch.id)
         if pooch.owner_discord_id is not None:
             await bury_pooch(pooch.owner_discord_id, pooch.id)
+        # Cancel any active auction listing and refund all bidders
+        listing = await get_active_auction_sale_listing_for_pooch(pooch.id)
+        if listing is not None:
+            bids = await list_bids_for_listing(listing.id)
+            refunded: set[int] = set()
+            for bid in bids:  # ordered by amount DESC; first per bidder = their highest
+                if bid.bidder_discord_id not in refunded:
+                    await give_money_to_owner(bid.bidder_discord_id, bid.amount)
+                    refunded.add(bid.bidder_discord_id)
+            await close_auction_sale_listing(listing.id, None, None)
         return pooch
 
     pooches = await list_living_pooches()
@@ -442,6 +457,11 @@ async def run_day_change(
                     await add_mutation_to_pooch(vendor_pooch.id, from_vendor=True)
                 await add_pooch_to_vendor_stock(vendor.id, vendor_pooch.id)
     logger.info("Completed daily vendor restock.")
+
+    # auction expiry resolution
+    logger.info("Resolving expired auction listings...")
+    await process_expired_sale_listings()
+    logger.info("Completed auction expiry resolution.")
 
     # stray events (fire once per server after the stray population is guaranteed)
     logger.info("Running daily stray events...")

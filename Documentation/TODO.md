@@ -86,10 +86,7 @@
 ## Stat Management
 | Feature                                                                                                                       | Points |
 | ----------------------------------------------------------------------------------------------------------------------------- | ------ |
-| Add strength stat that affects how good a do is at fighting (> change to deal injury, < chance to take injury)                | 5      |
-| Add a cuteness stat, which could reduce the chance to be killed in combat slightly (mostly for pageants and stuff)            | 5      |
-| Add a fluffiness stat, which affects temperature regulation (important for seasons)                                           | 3      |
-| Add intelligence and dexterity as placeholder stats (don't affect anything yet)                                               | 2      |
+| Maybe make female pooches 1 size smaller (or some percentage smaller or something)                                            | 1      |
 | Add "pooch snapshots" you can get from the vet clinic that show a pooch's stats at that point in time                         | 13     |
 | Special procedure to get exact numbers on the buffs/debuffs pooches have on their stats                                       | 13     |
 | Pooch snapshots should display on pooch info pages (and it makes it easier to tell the value of auction pooches)              | 5      |

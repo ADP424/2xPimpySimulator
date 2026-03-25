@@ -8,6 +8,9 @@ from .enums import (
     RarityWeight,
 )
 from .main import (
+    AuctionBid,
+    AuctionBountyListing,
+    AuctionSaleListing,
     EventOccurrence,
     GraveyardPooch,
     HellPooch,
@@ -47,6 +50,9 @@ from .static import (
 )
 
 __all__ = [
+    "AuctionBid",
+    "AuctionBountyListing",
+    "AuctionSaleListing",
     "Base",
     "EVENT_SEVERITY",
     "HEALTH_IMPACT",

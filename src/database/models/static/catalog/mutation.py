@@ -28,5 +28,5 @@ class Mutation(Base):
     affects_males: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
 
     parameters: Mapped[dict[str, str | int | float | list[str]]] = mapped_column(
-        JSONB, nullable=False, server_default="{}"
+        JSONB, nullable=False, server_default=text("'{}'::jsonb")
     )
