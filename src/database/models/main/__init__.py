@@ -15,6 +15,8 @@ from .relationships import (
     ServerEventOccurrence,
     ServerEventParticipation,
     StrayPooch,
+    VendorDesiredBreed,
+    VendorDesiredMutation,
     VendorPoochForSale,
 )
 
@@ -39,5 +41,7 @@ __all__ = [
     "ServerEventOccurrence",
     "ServerEventParticipation",
     "StrayPooch",
+    "VendorDesiredBreed",
+    "VendorDesiredMutation",
     "VendorPoochForSale",
 ]

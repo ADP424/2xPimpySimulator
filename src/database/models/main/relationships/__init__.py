@@ -11,6 +11,8 @@ from .pooch_pregnancy import PoochPregnancy
 from .server_event_occurrence import ServerEventOccurrence
 from .server_event_participation import ServerEventParticipation
 from .stray_pooch import StrayPooch
+from .vendor_desired_breed import VendorDesiredBreed
+from .vendor_desired_mutation import VendorDesiredMutation
 from .vendor_pooch_for_sale import VendorPoochForSale
 
 __all__ = [
@@ -29,5 +31,7 @@ __all__ = [
     "ServerEventOccurrence",
     "ServerEventParticipation",
     "StrayPooch",
+    "VendorDesiredBreed",
+    "VendorDesiredMutation",
     "VendorPoochForSale",
 ]

@@ -21,10 +21,12 @@ from src.database import (
 )
 
 from .constants import (
+    BREED_NOISE_RANGE,
     NUM_INCEST_MUTATION_ROLLS,
     POOCH_BREEDING_COOLDOWN,
     POOCH_FETAL_AGE,
     POOCH_STATS,
+    SHARED_BREED_WEIGHT_BONUS,
     TRIPLETS_CHANCE,
     TWINS_CHANCE,
 )
@@ -154,6 +156,16 @@ async def breed_pooches(
             for breed_id, weight in mother_breeds.items():
                 merged[breed_id] = merged.get(breed_id, 0.0) + (0.5 * (weight / mother_total) * budget)
 
+        # Boost breeds shared by both parents
+        shared_breeds = set(father_breeds) & set(mother_breeds)
+        for breed_id in shared_breeds:
+            if breed_id in merged:
+                merged[breed_id] *= SHARED_BREED_WEIGHT_BONUS
+
+        # Apply random noise to each breed weight
+        for breed_id in merged:
+            merged[breed_id] *= rng.uniform(*BREED_NOISE_RANGE)
+
         scalar = 1 / min(merged.values())
 
         int_weights: dict[int, int] = {}
@@ -163,6 +175,10 @@ async def breed_pooches(
                 int_weight = 1
             if int_weight > 0:
                 int_weights[breed_id] = int_weight
+
+        # Drop breeds whose weight is less than 1% of the total
+        total_weight = sum(int_weights.values())
+        int_weights = {bid: w for bid, w in int_weights.items() if w / total_weight >= 0.01}
 
         await add_pooch_breeds(puppy.id, int_weights)
 

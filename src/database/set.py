@@ -13,6 +13,7 @@ from .constants import (
     POOCH_HEALTH_LOSS_AGE,
     POOCH_STAT_DEFAULT,
     RANDOM_SEED_SIZE_LIMIT,
+    VENDOR_DESIRED_MUTATION_COUNT_RANGE,
     VENDOR_PRICE_MARKUP,
 )
 from .get import get_owner_by_discord_id, get_pooch_by_id, get_vendor_by_id
@@ -41,6 +42,8 @@ from .models import (
     ServerEventParticipation,
     StrayPooch,
     Vendor,
+    VendorDesiredBreed,
+    VendorDesiredMutation,
     VendorFirstName,
     VendorLastName,
     VendorPoochForSale,
@@ -883,6 +886,9 @@ async def create_vendor(
 
     rng = rng if rng is not None else random.Random()
 
+    # All distinct rarity tiers in the game
+    _ALL_RARITIES = ["common", "uncommon", "novel", "rare", "unprecedented", "remarkable", "extraordinary", "unique"]
+
     async def _get_random_vendor_name() -> str:
         statement = (
             select(VendorFirstName).order_by(func.hashtextextended(VendorFirstName.name, bindparam("seed"))).limit(1)
@@ -901,22 +907,43 @@ async def create_vendor(
             f"{last_name.name if last_name is not None else ''}"
         )
 
-    async def _get_random_mutation_id() -> Optional[int]:
-        statement = select(Mutation.id).order_by(func.hashtextextended(Mutation.name, bindparam("seed"))).limit(1)
+    async def _get_unique_random_mutation_ids(count: int) -> list[int]:
+        """Pick `count` distinct mutation IDs by shuffling all IDs with a seed."""
+        statement = select(Mutation.id).order_by(func.hashtextextended(Mutation.name, bindparam("seed"))).limit(count)
         response = await session.execute(statement, {"seed": rng.randint(0, RANDOM_SEED_SIZE_LIMIT)})
-        mutation = response.scalar_one_or_none()
-        return mutation
+        return list(response.scalars().all())
+
+    async def _get_random_breed_id_for_rarity(rarity: str) -> Optional[int]:
+        statement = (
+            select(Breed.id)
+            .where(Breed.rarity == rarity)
+            .order_by(func.hashtextextended(Breed.name, bindparam("seed")))
+            .limit(1)
+        )
+        response = await session.execute(statement, {"seed": rng.randint(0, RANDOM_SEED_SIZE_LIMIT)})
+        return response.scalar_one_or_none()
 
     async with session_scope() as session:
         vendor = Vendor(
             server_discord_id=server_discord_id,
             name=name or await _get_random_vendor_name(),
             price_markup=price_markup,
-            desired_mutation_1=(await _get_random_mutation_id()),
-            desired_mutation_2=(await _get_random_mutation_id()),
-            desired_mutation_3=(await _get_random_mutation_id()),
         )
         session.add(vendor)
+        await session.flush()
+
+        # Assign 2–5 unique desired mutations
+        mutation_count = rng.randint(*VENDOR_DESIRED_MUTATION_COUNT_RANGE)
+        mutation_ids = await _get_unique_random_mutation_ids(mutation_count)
+        for mutation_id in mutation_ids:
+            session.add(VendorDesiredMutation(vendor_id=vendor.id, mutation_id=mutation_id))
+
+        # Assign exactly one desired breed per rarity tier
+        for rarity in _ALL_RARITIES:
+            breed_id = await _get_random_breed_id_for_rarity(rarity)
+            if breed_id is not None:
+                session.add(VendorDesiredBreed(vendor_id=vendor.id, breed_id=breed_id))
+
         await session.flush()
 
     return vendor

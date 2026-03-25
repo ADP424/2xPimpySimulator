@@ -28,6 +28,8 @@ from .main import (
     ServerEventParticipation,
     StrayPooch,
     Vendor,
+    VendorDesiredBreed,
+    VendorDesiredMutation,
     VendorPoochForSale,
 )
 from .static import (
@@ -76,8 +78,10 @@ __all__ = [
     "ServerEventOccurrence",
     "ServerEventParticipation",
     "StrayPooch",
-    "VendorPoochForSale",
     "Vendor",
+    "VendorDesiredBreed",
+    "VendorDesiredMutation",
+    "VendorPoochForSale",
     "Breed",
     "DogName",
     "Event",

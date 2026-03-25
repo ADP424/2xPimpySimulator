@@ -109,6 +109,8 @@ from .list import (
     list_servers_for_owner,
     list_servers_for_pooch,
     list_strays_for_server,
+    list_vendor_desired_breeds,
+    list_vendor_desired_mutations,
     list_vendor_pooch_stock,
     list_vendors,
 )
@@ -312,6 +314,8 @@ __all__ = [
     "list_active_server_event_occurrences",
     "list_server_event_history",
     "list_server_event_participations",
+    "list_vendor_desired_breeds",
+    "list_vendor_desired_mutations",
     "list_vendor_pooch_stock",
     "list_vendors",
     # Load

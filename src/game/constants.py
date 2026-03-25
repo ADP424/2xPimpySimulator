@@ -7,6 +7,7 @@ POOCH_BREEDING_COOLDOWN = 10
 BREEDING_COOLDOWN_HOURLY_FERTILITY_DIVISOR = 50
 
 # All heritable pooch stats (all use POOCH_STAT_RANGE)
+# The size range is determined by breeds, so that's why it's not included here
 POOCH_STATS = [
     "strength",
     "cuteness",
@@ -17,6 +18,10 @@ POOCH_STATS = [
     "aggressiveness",
     "constitution",
 ]
+
+# Breed Inheritance
+SHARED_BREED_WEIGHT_BONUS = 1.5  # multiplier applied to a breed weight when both parents share that breed
+BREED_NOISE_RANGE = (0.75, 1.5)  # random noise multiplier applied to each breed weight during inheritance
 
 # Baby
 POOCH_FETAL_AGE = -1
@@ -51,6 +56,12 @@ BASE_POOCH_DOLLAR_VALUE = 75
 POOCH_DOLLAR_VALUE_LOSS_BY_AGE = 5
 POOCH_DOLLAR_VALUE_LOSS_BY_HEALTH_BELOW_AVERAGE = 5
 VENDOR_DESIRED_MUTATION_MULT = 2
+
+# Vendor Pure-Breed Pricing
+# A pooch whose dominant breed makes up <= this fraction of its total weight gets no bonus (1x).
+# At 100% it gets VENDOR_PURE_BREED_MAX_MULT. The range scales linearly between the two.
+VENDOR_PURE_BREED_THRESHOLD = 0.5
+VENDOR_PURE_BREED_MAX_MULT = 2.0
 
 # Sacrifice Value
 BASE_POOCH_BLOODSKULL_VALUE = 8
