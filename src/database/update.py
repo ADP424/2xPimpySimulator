@@ -10,6 +10,7 @@ from .models import (
     AuctionSaleListing,
     Breed,
     EventOccurrence,
+    GlobalState,
     Kennel,
     Mutation,
     Owner,
@@ -594,20 +595,32 @@ async def set_event_channel_discord_id(server_discord_id: int, channel_discord_i
 
 _SEASON_CYCLE = ["spring", "summer", "autumn", "winter"]
 
+_GLOBAL_STATE_ID = 1
 
-async def advance_server_season(server_discord_id: int) -> str:
-    """Advance the server's current season to the next one in the cycle and return the new season name."""
+
+async def get_current_season() -> str:
+    """Return the current global season, defaulting to 'spring' if the row doesn't exist yet."""
     async with session_scope() as session:
-        server = await session.get(Server, {"discord_id": server_discord_id})
-        if server is None:
+        row = await session.get(GlobalState, _GLOBAL_STATE_ID)
+        if row is None:
             return "spring"
-        current = (server.current_season or "spring").strip().lower()
+        return (row.current_season or "spring").strip().lower()
+
+
+async def advance_global_season() -> str:
+    """Advance the global season to the next one in the cycle and return the new season name."""
+    async with session_scope() as session:
+        row = await session.get(GlobalState, _GLOBAL_STATE_ID)
+        if row is None:
+            row = GlobalState(id=_GLOBAL_STATE_ID, current_season="spring")
+            session.add(row)
+        current = (row.current_season or "spring").strip().lower()
         try:
             idx = _SEASON_CYCLE.index(current)
         except ValueError:
             idx = 0
         new_season = _SEASON_CYCLE[(idx + 1) % len(_SEASON_CYCLE)]
-        server.current_season = new_season
+        row.current_season = new_season
     return new_season
 
 

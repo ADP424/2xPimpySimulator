@@ -116,12 +116,29 @@ async def get_breed_by_name(name: str) -> Optional[Breed]:
     return response.scalar_one_or_none()
 
 
+def _breed_allowed_in_season(breed: "Breed", season: str) -> bool:
+    """Return True if the breed is available in the given season (already lowercased)."""
+    seasons = breed.parameters.get("seasons") if breed.parameters else None
+    if seasons is None:
+        return True
+    return season in [s.lower() for s in seasons]
+
+
+def _mutation_allowed_in_season(mutation: "Mutation", season: str) -> bool:
+    """Return True if the mutation is available in the given season (already lowercased)."""
+    seasons = mutation.parameters.get("seasons") if mutation.parameters else None
+    if seasons is None:
+        return True
+    return season in [s.lower() for s in seasons]
+
+
 async def get_random_breed_ids(
     n: int,
     rng: Optional[random.Random] = None,
     from_vendor: bool = False,
     from_ritual: bool = False,
     exclude_ids: Optional[list[int]] = None,
+    season: Optional[str] = None,
 ) -> list[int]:
     """
     Return a list of `n` randomly-selected breed IDs, weighted by rarity.
@@ -140,6 +157,10 @@ async def get_random_breed_ids(
 
     from_ritual: bool, default : False
         When True, exclude breeds whose parameters contain ``{"born_from_ritual": False}``.
+
+    season: str, optional
+        When provided, exclude breeds whose ``parameters.seasons`` list does not include
+        this season (case-insensitive). Breeds with no ``seasons`` key are always eligible.
 
     Returns
     -------
@@ -162,7 +183,13 @@ async def get_random_breed_ids(
         if exclude_ids:
             query = query.where(Breed.id.not_in(exclude_ids))
         response = await session.execute(query)
-        rows = [(breed, weight) for breed, weight in response.tuples().all()]
+        raw_rows = [(breed, weight) for breed, weight in response.tuples().all()]
+
+    if season is not None:
+        season_lower = season.lower()
+        rows = [(breed, weight) for breed, weight in raw_rows if _breed_allowed_in_season(breed, season_lower)]
+    else:
+        rows = raw_rows
 
     if not rows:
         return result
@@ -679,6 +706,7 @@ async def get_random_eligible_owner_event_for_owner(
     owner_discord_id: int,
     rng: Optional[random.Random] = None,
     include_triggered_only: bool = False,
+    season: Optional[str] = None,
 ) -> Optional[Event]:
     """
     Get a random eligible event for an owner, weighted by rarity.
@@ -727,7 +755,7 @@ async def get_random_eligible_owner_event_for_owner(
 
         eligible_rows: list[tuple[Event, float]] = []
         for event, weight in rows:
-            if await check_owner_event_filter(session, owner_discord_id, event.filter):
+            if await check_owner_event_filter(session, owner_discord_id, event.filter, season=season):
                 eligible_rows.append((event, weight))
 
         if not eligible_rows:
@@ -992,6 +1020,7 @@ async def get_random_eligible_stray_event_for_server(
     server_discord_id: int,
     rng: Optional[random.Random] = None,
     include_triggered_only: bool = False,
+    season: Optional[str] = None,
 ) -> Optional[StrayEvent]:
     """
     Pick a random stray event weighted by rarity, from those whose top-level filter is satisfied
@@ -1018,7 +1047,7 @@ async def get_random_eligible_stray_event_for_server(
 
         eligible_rows: list[tuple[StrayEvent, float]] = []
         for event, weight in rows:
-            if await check_stray_event_filter(session, server_discord_id, event.filter):
+            if await check_stray_event_filter(session, server_discord_id, event.filter, season=season):
                 eligible_rows.append((event, weight))
 
         if not eligible_rows:

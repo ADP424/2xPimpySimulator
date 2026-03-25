@@ -19,6 +19,7 @@ from src.database import (
     delete_pregnancy,
     delete_random_vendor,
     get_active_auction_sale_listing_for_pooch,
+    get_current_season,
     get_mutation_health_impact,
     get_pooch_health,
     get_pooch_kennel,
@@ -407,13 +408,14 @@ async def run_day_change(
     logger.info("Completed daily deaths.")
 
     servers = await list_servers()
+    _season = await get_current_season()
 
     # minimum stray guarantee: every server must have at least one alive stray
     logger.info("Checking minimum stray population per server...")
     for server in servers:
         strays = await list_strays_for_server(server.discord_id)
         if not strays:
-            stray_breed_ids = await get_random_breed_ids(1, rng=rng)
+            stray_breed_ids = await get_random_breed_ids(1, rng=rng, season=_season)
             stray_pooch = await create_pooch(
                 base_health=rng.randint(POOCH_STAT_RANGE[0], POOCH_STAT_RANGE[1]),
                 **{stat: rng.randint(POOCH_STAT_RANGE[0], POOCH_STAT_RANGE[1]) for stat in POOCH_STATS},
@@ -452,7 +454,11 @@ async def run_day_change(
             for _ in range(stock_count):
                 num_breeds = rng.randint(NUM_BREEDS_PER_VENDOR_POOCH_RANGE[0], NUM_BREEDS_PER_VENDOR_POOCH_RANGE[1])
                 vendor_breed_ids = await get_random_breed_ids(
-                    num_breeds, rng=rng, from_vendor=True, exclude_ids=desired_breed_ids
+                    num_breeds,
+                    rng=rng,
+                    from_vendor=True,
+                    exclude_ids=desired_breed_ids,
+                    season=_season,
                 )
                 vendor_pooch = await create_pooch(
                     vendor_id=vendor.id,
@@ -469,7 +475,10 @@ async def run_day_change(
                     rng.randint(NUM_MUTATIONS_PER_VENDOR_POOCH_RANGE[0], NUM_MUTATIONS_PER_VENDOR_POOCH_RANGE[1])
                 ):
                     await add_mutation_to_pooch(
-                        vendor_pooch.id, from_vendor=True, exclude_mutation_ids=desired_mutation_ids
+                        vendor_pooch.id,
+                        from_vendor=True,
+                        exclude_mutation_ids=desired_mutation_ids,
+                        season=_season,
                     )
                 await add_pooch_to_vendor_stock(vendor.id, vendor_pooch.id)
     logger.info("Completed daily vendor restock.")

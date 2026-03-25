@@ -100,6 +100,7 @@ _SERVER_EVENT_ALLOWED_KEYS = {
 }
 
 _SERVER_EVENT_FILTER_ALLOWED_KEYS = {
+    "seasons",
     "min_owners",
     "max_owners",
     "min_strays",
@@ -209,6 +210,7 @@ class _ServerEventValidator(BaseEventValidator):
 
         self._validate_unknown_keys(path, filter_data, _SERVER_EVENT_FILTER_ALLOWED_KEYS)
 
+        self._validate_seasons_list(path, filter_data)
         self._validate_optional_int(path, filter_data, "min_owners", minimum=1)
         self._validate_optional_int(path, filter_data, "max_owners", minimum=1)
         self._validate_optional_int(path, filter_data, "min_strays", minimum=0)

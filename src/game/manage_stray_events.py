@@ -11,6 +11,7 @@ from src.database import (
     add_pooch_to_strays,
     add_pooch_to_vendor_stock,
     create_pooch,
+    get_current_season,
     get_pooch_aggressiveness,
     get_pooch_base_health,
     get_pooch_by_id,
@@ -183,6 +184,7 @@ async def _execute_single_stray_action(
     action: StrayEventAction,
     context: StrayEventContext,
     rng: random.Random,
+    season: Optional[str] = None,
 ) -> StrayEventResult:
     result = StrayEventResult()
     action_type: str = action.action_type
@@ -293,7 +295,7 @@ async def _execute_single_stray_action(
             if isinstance(breeds_param, list):
                 kwargs["breeds"] = breeds_param
             elif isinstance(breeds_param, int) and breeds_param > 0:
-                kwargs["breeds"] = await get_random_breed_ids(breeds_param, rng=rng)
+                kwargs["breeds"] = await get_random_breed_ids(breeds_param, rng=rng, season=season)
 
             mutations_param = parameters.get("mutations")
             if isinstance(mutations_param, list):
@@ -303,7 +305,7 @@ async def _execute_single_stray_action(
 
             if pooch and isinstance(mutations_param, int) and mutations_param > 0:
                 for _ in range(mutations_param):
-                    await add_mutation_to_pooch(pooch.id, rng=rng)
+                    await add_mutation_to_pooch(pooch.id, rng=rng, season=season)
 
             if pooch:
                 # New pooch goes into the stray pool of this server
@@ -558,12 +560,13 @@ async def _execute_stray_event_actions(
     actions: list[StrayEventAction],
     context: StrayEventContext,
     rng: random.Random,
+    season: Optional[str] = None,
 ) -> StrayEventResult:
     result = StrayEventResult()
     for action in sorted(actions, key=lambda a: a.action_order):
         repeat = max(int(action.repeat), 1) if isinstance(action.repeat, int) else 1
         for _ in range(repeat):
-            action_result = await _execute_single_stray_action(server_discord_id, action, context, rng)
+            action_result = await _execute_single_stray_action(server_discord_id, action, context, rng, season=season)
             result.merge(action_result)
     return result
 
@@ -707,6 +710,7 @@ async def _trigger_stray_event_for_server(
     server_discord_id: int,
     event: StrayEvent,
     rng: random.Random,
+    season: Optional[str] = None,
 ) -> Optional[StrayEventResult]:
     """
     Execute a stray event against the server's stray population.
@@ -734,11 +738,13 @@ async def _trigger_stray_event_for_server(
         candidate_stray_ids=list(candidate_ids),
     )
 
-    result = await _execute_stray_event_actions(server_discord_id, event.actions, context, rng)
+    result = await _execute_stray_event_actions(server_discord_id, event.actions, context, rng, season=season)
 
     selected_outcome = await _choose_stray_event_outcome(event, context, rng)
     if selected_outcome is not None:
-        outcome_result = await _execute_stray_event_actions(server_discord_id, selected_outcome.actions, context, rng)
+        outcome_result = await _execute_stray_event_actions(
+            server_discord_id, selected_outcome.actions, context, rng, season=season
+        )
         result.merge(outcome_result)
 
     logger.info(
@@ -776,18 +782,19 @@ async def run_daily_stray_event_check(
     servers = await list_servers()
     results: dict[int, list[tuple[str, StrayEventResult]]] = {}
 
+    _season = await get_current_season()
     for server in servers:
         strays = await list_strays_for_server(server.discord_id)
         for _ in strays:
             if rng.random() > STRAY_EVENT_TRIGGER_CHANCE:
                 continue
 
-            event = await get_random_eligible_stray_event_for_server(server.discord_id, rng=rng)
+            event = await get_random_eligible_stray_event_for_server(server.discord_id, rng=rng, season=_season)
             if event is None:
                 logger.debug(f"No eligible stray events for server {server.discord_id}.")
                 continue
 
-            result = await _trigger_stray_event_for_server(server.discord_id, event, rng)
+            result = await _trigger_stray_event_for_server(server.discord_id, event, rng, season=_season)
             if result is not None:
                 results.setdefault(server.discord_id, []).append((event.name, result))
 

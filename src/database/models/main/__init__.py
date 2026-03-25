@@ -1,4 +1,4 @@
-from .entities import Kennel, Owner, Pooch, Server, Vendor
+from .entities import GlobalState, Kennel, Owner, Pooch, Server, Vendor
 from .relationships import (
     AuctionBid,
     AuctionBountyListing,
@@ -24,6 +24,7 @@ __all__ = [
     "AuctionBid",
     "AuctionBountyListing",
     "AuctionSaleListing",
+    "GlobalState",
     "Kennel",
     "Owner",
     "Pooch",

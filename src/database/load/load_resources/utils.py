@@ -25,6 +25,7 @@ _JSONC_SUFFIXES = {".jsonc", ".json"}
 _ACTION_ALLOWED_KEYS = {"action_type", "target_type", "parameters", "repeat"}
 
 _OWNER_FILTER_ALLOWED_KEYS = {
+    "seasons",
     "min_money",
     "max_money",
     "exclude_money",
@@ -921,6 +922,7 @@ class BaseEventValidator:
         if allow_count:
             self._validate_min_max_pair(path, filter_data, "min_count", "max_count", minimum=1)
 
+        self._validate_seasons_list(path, filter_data)
         self._validate_min_max_pair(path, filter_data, "min_money", "max_money")
         self._validate_int_list(path, filter_data, "exclude_money")
         self._validate_min_max_pair(path, filter_data, "min_bloodskulls", "max_bloodskulls")
@@ -1046,6 +1048,23 @@ class BaseEventValidator:
         if normalized_value not in valid_names:
             self.error(f"{path}.{field_name}", "references a name that does not exist")
         return normalized_value
+
+    _VALID_SEASONS = {"spring", "summer", "autumn", "winter"}
+
+    def _validate_seasons_list(self, path: str, value: dict[str, Any]) -> None:
+        """Validate an optional ``seasons`` key — must be a non-empty list of valid season strings."""
+        if "seasons" not in value:
+            return
+        raw = value["seasons"]
+        if not isinstance(raw, list) or not raw:
+            self.error(f"{path}.seasons", "must be a non-empty list of season strings")
+            return
+        for s in raw:
+            if not isinstance(s, str) or s.strip().lower() not in self._VALID_SEASONS:
+                self.error(
+                    f"{path}.seasons",
+                    f"'{s}' is not a valid season (must be one of: {', '.join(sorted(self._VALID_SEASONS))})",
+                )
 
     def _validate_int_list(self, path: str, value: dict[str, Any], field_name: str) -> list[int] | None:
         if field_name not in value:

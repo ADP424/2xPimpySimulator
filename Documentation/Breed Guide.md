@@ -64,6 +64,11 @@ Whether the breed can show up on pooches generated to be sold by vendors or not.
 - `true`: The breed can show up in vendor pooches. This is the default.
 - `false`: The breed will not show up in vendor pooches.
 
+### `seasons` : `list[string]`
+Which seasons this breed can appear in when randomly generated (e.g. for vendor pooches, strays, event-created pooches). Case-insensitive. Valid values: `spring`, `summer`, `autumn`, `winter`.
+- If omitted, the breed can appear in all seasons. This is the default.
+- Example: `["autumn", "winter"]` — this breed only appears in autumn and winter.
+
 ## Stats
 
 Stat modifiers adjust the effective value of a pooch's stats based on its breed composition. Each breed's contribution is weighted by its relative proportion in the pooch (e.g. a 50% husky with `strength_add: 4` contributes +2 strength). The add modifier is applied before the mult modifier.

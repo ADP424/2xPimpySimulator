@@ -77,6 +77,11 @@ Whether the mutation can show up on pooches generated to be sold by vendors or n
 - `true`: The mutation can show up in vendor pooches. This is the default.
 - `false`: The mutation will not show up in vendor pooches.
 
+### `seasons` : `list[string]`
+Which seasons this mutation can appear in when randomly assigned (e.g. for vendor pooches, strays, event-created pooches). Case-insensitive. Valid values: `spring`, `summer`, `autumn`, `winter`.
+- If omitted, the mutation can appear in all seasons. This is the default.
+- Example: `["spring"]` — this mutation only appears in spring.
+
 ## Breeding
 
 ### `breeding_cooldown` : `int`

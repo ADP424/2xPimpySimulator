@@ -11,6 +11,7 @@ from src.database import (
     finalize_server_event_participation,
     get_active_server_event_occurrence,
     get_active_server_event_occurrence_by_tier,
+    get_current_season,
     get_owner_by_discord_id,
     get_owner_server,
 )
@@ -36,9 +37,9 @@ from src.database.utils import check_server_event_filter, weighted_choice
 from src.game.constants import FIGHT_DEFENDER_STRENGTH_BONUS, FIGHT_ROUNDS
 from src.logger import get_logger
 
+from .manage_global import advance_season
 from .manage_owner_events import _execute_event_actions
 from .manage_owners import get_or_create_owner
-from .manage_servers import advance_season
 from .models.events import (
     OwnerEventContext,
     OwnerEventResult,
@@ -356,6 +357,7 @@ async def _execute_server_actions(
     actions: list,
     server_context: ServerEventContext,
     rng: random.Random,
+    season: Optional[str] = None,
 ) -> OwnerEventResult:
     """Execute a list of server-scoped action specs (plain dicts, not ORM EventAction objects)."""
     from src.database import (
@@ -599,7 +601,7 @@ async def _execute_server_actions(
                 if isinstance(breeds_param, list):
                     kwargs["breeds"] = breeds_param
                 elif isinstance(breeds_param, int) and breeds_param > 0:
-                    kwargs["breeds"] = await get_random_breed_ids(breeds_param, rng=rng)
+                    kwargs["breeds"] = await get_random_breed_ids(breeds_param, rng=rng, season=season)
                 mutations_param = parameters.get("mutations")
                 if isinstance(mutations_param, list):
                     kwargs["mutations"] = mutations_param
@@ -608,7 +610,7 @@ async def _execute_server_actions(
                 if pooch:
                     if isinstance(mutations_param, int) and mutations_param > 0:
                         for _ in range(mutations_param):
-                            await add_mutation_to_pooch(pooch.id, rng=rng)
+                            await add_mutation_to_pooch(pooch.id, rng=rng, season=season)
                     await _deliver_server_pooch(pooch.id, server_discord_id, destination, rng)
                     combined.pooches_created.append(pooch.id)
                     combined.pooches_affected.append(pooch.id)
@@ -787,7 +789,7 @@ async def _execute_server_actions(
                             for a in server_event.actions
                         ]
                         chained_result = await _execute_server_actions(
-                            server_discord_id, chained_actions, server_context, rng
+                            server_discord_id, chained_actions, server_context, rng, season=season
                         )
                         combined.merge(chained_result)
 
@@ -855,12 +857,12 @@ async def _execute_server_actions(
 # ---------------------------------------------------------------------------
 
 
-async def _check_server_filter(server_discord_id: int, filter_spec: dict | None) -> bool:
+async def _check_server_filter(server_discord_id: int, filter_spec: dict | None, season: Optional[str] = None) -> bool:
     """Evaluate a ServerEventFilterSpec against a server (Python-side, not DB-side)."""
     if not filter_spec:
         return True
     async with session_scope() as session:
-        return await check_server_event_filter(session, server_discord_id, filter_spec)
+        return await check_server_event_filter(session, server_discord_id, filter_spec, season=season)
 
 
 # ---------------------------------------------------------------------------
@@ -888,7 +890,7 @@ async def trigger_daily_server_event(
     eligible: list[tuple] = []
     for event_obj, weight in events_with_weights:
         filter_spec = event_obj.filter or {}
-        if await _check_server_filter(server_discord_id, filter_spec):
+        if await _check_server_filter(server_discord_id, filter_spec, season=await get_current_season()):
             eligible.append((event_obj, weight))
 
     if not eligible:
@@ -905,7 +907,9 @@ async def trigger_daily_server_event(
         server_actions = [a for a in server_event.actions if a.target_type == "server"]
         if server_actions:
             action_dicts = [{"action_type": a.action_type, "parameters": a.parameters or {}} for a in server_actions]
-            await _execute_server_actions(server_discord_id, action_dicts, server_context, rng)
+            await _execute_server_actions(
+                server_discord_id, action_dicts, server_context, rng, season=await get_current_season()
+            )
 
     duration = MAJOR_SERVER_EVENT_DURATION if tier == "major" else SERVER_EVENT_DURATION
     occurrence = await create_server_event_occurrence(
@@ -951,7 +955,9 @@ async def trigger_server_event_by_name(
         server_actions = [a for a in server_event.actions if a.target_type == "server"]
         if server_actions:
             action_dicts = [{"action_type": a.action_type, "parameters": a.parameters or {}} for a in server_actions]
-            await _execute_server_actions(server_discord_id, action_dicts, server_context, rng)
+            await _execute_server_actions(
+                server_discord_id, action_dicts, server_context, rng, season=await get_current_season()
+            )
 
     duration = MAJOR_SERVER_EVENT_DURATION if tier == "major" else SERVER_EVENT_DURATION
     occurrence = await create_server_event_occurrence(
@@ -1473,6 +1479,8 @@ async def resolve_server_event(
     server_context = ServerEventContext.from_dict(occurrence.context or {})
     server_event = occurrence.server_event
 
+    _season = await get_current_season()
+
     # Resolve all pending arena matchups before scoring/ranking
     await _resolve_arena_matchups(occurrence.id, server_context, server_event.parameters or {}, rng)
 
@@ -1484,7 +1492,7 @@ async def resolve_server_event(
     if not ranked_participations:
         default_actions = list(server_event.default_actions_data or [])
         if default_actions:
-            await _execute_server_actions(server_discord_id, default_actions, server_context, rng)
+            await _execute_server_actions(server_discord_id, default_actions, server_context, rng, season=_season)
     else:
         for participation, score, rank in ranked_participations:
             context = OwnerEventContext.from_dict(participation.context or {})
@@ -1550,7 +1558,7 @@ async def resolve_server_event(
                 action_dicts = [
                     {"action_type": a.action_type, "parameters": a.parameters or {}} for a in outcome.actions
                 ]
-                await _execute_server_actions(server_discord_id, action_dicts, server_context, rng)
+                await _execute_server_actions(server_discord_id, action_dicts, server_context, rng, season=_season)
 
             elif outcome_target == "non_participants":
                 from sqlalchemy import select as _sa_select
@@ -1616,18 +1624,23 @@ async def run_daily_server_event_cycle(
         if resolution is not None:
             resolutions.append(resolution)
 
-    is_monday = datetime.now(timezone.utc).weekday() == 0  # Monday = 0
+    is_monday = datetime.now(timezone.utc).weekday() == 2  # Monday = 0
 
     new_events: dict[int, TriggeredServerEvent] = {}
     season_advances: dict[int, str] = {}
     servers = await list_servers()
+
+    if is_monday:
+        new_season = await advance_season()
+        season_advances = {
+            server.discord_id: new_season for server in servers if server.event_channel_discord_id is not None
+        }
+
     for server in servers:
         if server.event_channel_discord_id is None:
             continue
 
         if is_monday:
-            new_season = await advance_season(server.discord_id)
-            season_advances[server.discord_id] = new_season
             event = await trigger_daily_server_event(server.discord_id, tier="major", rng=rng)
         else:
             if rng.random() < MINOR_EVENT_DAILY_CHANCE:

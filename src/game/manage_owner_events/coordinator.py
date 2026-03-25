@@ -14,6 +14,7 @@ from src.database import (
     create_pooch,
     damn_pooch,
     delete_pooch,
+    get_current_season,
     get_kennel_by_id,
     get_mutation_by_name,
     get_owner_by_discord_id,
@@ -97,7 +98,11 @@ logger = logging.getLogger(__name__)
 
 
 async def _execute_single_action(
-    owner_discord_id: int, action: "EventAction", context: OwnerEventContext, rng: random.Random
+    owner_discord_id: int,
+    action: "EventAction",
+    context: OwnerEventContext,
+    rng: random.Random,
+    season: Optional[str] = None,
 ) -> OwnerEventResult:
     """
     Execute a single event action.
@@ -157,7 +162,7 @@ async def _execute_single_action(
             if isinstance(breeds_param, list):
                 create_pooch_kwargs["breeds"] = breeds_param
             elif isinstance(breeds_param, int) and breeds_param > 0:
-                create_pooch_kwargs["breeds"] = await get_random_breed_ids(breeds_param, rng=rng)
+                create_pooch_kwargs["breeds"] = await get_random_breed_ids(breeds_param, rng=rng, season=season)
 
             mutations_param = parameters.get("mutations")
             if isinstance(mutations_param, list):
@@ -167,7 +172,7 @@ async def _execute_single_action(
 
             if pooch and isinstance(mutations_param, int) and mutations_param > 0:
                 for _ in range(mutations_param):
-                    await add_mutation_to_pooch(pooch.id, rng=rng)
+                    await add_mutation_to_pooch(pooch.id, rng=rng, season=season)
             if pooch:
                 context.selected_pooch_id = pooch.id
                 candidate_pooch_ids = context.extra_data.setdefault("candidate_pooch_ids", [])
@@ -674,19 +679,19 @@ async def _execute_single_action(
                 else:
                     # Instant events run inline, sharing the current context so save_as/use_saved slots carry over
                     followup_result = await execute_event_actions(
-                        owner_discord_id, followup_event.actions, context, rng
+                        owner_discord_id, followup_event.actions, context, rng, season=season
                     )
                     result.merge(followup_result)
                     default_option = next((opt for opt in followup_event.options if opt.is_default), None)
                     if default_option is not None:
                         option_result = await execute_event_actions(
-                            owner_discord_id, default_option.actions, context, rng
+                            owner_discord_id, default_option.actions, context, rng, season=season
                         )
                         result.merge(option_result)
                         selected_outcome = await choose_option_outcome(default_option, context, rng)
                         if selected_outcome is not None:
                             outcome_result = await execute_event_actions(
-                                owner_discord_id, selected_outcome.actions, context, rng
+                                owner_discord_id, selected_outcome.actions, context, rng, season=season
                             )
                             result.merge(outcome_result)
 
@@ -792,7 +797,7 @@ async def _execute_single_action(
             conjured: Any = None
             for _ in range(num_rolls):
                 num_breeds = rng.randint(NUM_BREEDS_PER_SUMMON_POOCH_RANGE[0], NUM_BREEDS_PER_SUMMON_POOCH_RANGE[1])
-                ritual_breed_ids = await get_random_breed_ids(num_breeds, rng=rng, from_ritual=True)
+                ritual_breed_ids = await get_random_breed_ids(num_breeds, rng=rng, from_ritual=True, season=season)
                 pooch = await create_pooch(
                     owner_discord_id=owner_discord_id,
                     age=0,
@@ -922,13 +927,20 @@ async def _execute_single_action(
             if not servers:
                 logger.warning("server-scoped action: owner %s has no servers; skipping", owner_discord_id)
             else:
-                server_discord_id = rng.choice(servers).discord_id
+                chosen_server = rng.choice(servers)
+                server_discord_id = chosen_server.discord_id
                 from ..manage_server_events import _execute_server_actions
                 from ..models.events import ServerEventContext
 
                 server_ctx = ServerEventContext(server_discord_id=server_discord_id)
                 action_dict = {"action_type": action_type, "parameters": parameters}
-                server_result = await _execute_server_actions(server_discord_id, [action_dict], server_ctx, rng)
+                server_result = await _execute_server_actions(
+                    server_discord_id,
+                    [action_dict],
+                    server_ctx,
+                    rng,
+                    season=await get_current_season(),
+                )
                 result.merge(server_result)
 
         else:
@@ -943,18 +955,25 @@ async def _execute_single_action(
 
 
 async def execute_event_actions(
-    owner_discord_id: int, actions: list["EventAction"], context: OwnerEventContext, rng: random.Random
+    owner_discord_id: int,
+    actions: list["EventAction"],
+    context: OwnerEventContext,
+    rng: random.Random,
+    season: Optional[str] = None,
 ) -> OwnerEventResult:
     """
     Execute a list of event actions.
     """
+
+    if season is None:
+        season = await get_current_season()
 
     result = OwnerEventResult()
 
     for action in sorted(actions, key=lambda a: a.action_order):
         repeat = max(int(action.repeat), 1) if isinstance(action.repeat, int) else 1
         for _ in range(repeat):
-            action_result = await _execute_single_action(owner_discord_id, action, context, rng)
+            action_result = await _execute_single_action(owner_discord_id, action, context, rng, season=season)
             result.merge(action_result)
 
     return result
@@ -1008,7 +1027,8 @@ async def create_and_execute_event(
     logger.info(f"Triggered event '{event.name}' for owner {owner_discord_id}")
 
     # OwnerEvent-level actions always fire immediately at trigger time (before the user picks)
-    result = await execute_event_actions(owner_discord_id, event.actions, context, rng)
+    _season = await get_current_season()
+    result = await execute_event_actions(owner_discord_id, event.actions, context, rng, season=_season)
     await update_active_event_result(active_event.id, result.to_dict())
 
     # Preflight: pre-resolve exclude_claimed targets for visible options so that each option

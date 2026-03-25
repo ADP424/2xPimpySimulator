@@ -401,10 +401,16 @@ async def check_owner_event_filter(
     session: AsyncSession,
     owner_discord_id: int,
     filter_spec: OwnerEventFilterSpec | None,
+    season: Optional[str] = None,
 ) -> bool:
     if not filter_spec:
         owner_exists = await session.scalar(select(Owner.discord_id).where(Owner.discord_id == owner_discord_id))
         return owner_exists is not None
+
+    seasons = filter_spec.get("seasons")
+    if seasons and season is not None:
+        if season.lower() not in [s.lower() for s in seasons]:
+            return False
 
     owner, pooch_count, kennel_count = await _get_owner_counts(session, owner_discord_id)
     if owner is None:
@@ -509,6 +515,7 @@ async def check_stray_event_filter(
     session: AsyncSession,
     server_discord_id: int,
     filter_spec: StrayEventFilterSpec | None,
+    season: Optional[str] = None,
 ) -> bool:
     """Return True if the stray population on the server satisfies filter_spec."""
 
@@ -520,6 +527,11 @@ async def check_stray_event_filter(
             .where(StrayPooch.server_discord_id == server_discord_id, Pooch.alive.is_(True))
         )
         return (stray_count or 0) > 0
+
+    seasons = filter_spec.get("seasons")
+    if seasons and season is not None:
+        if season.lower() not in [s.lower() for s in seasons]:
+            return False
 
     for pooch_filter in list(filter_spec.get("pooches", [])):
         min_count = pooch_filter.get("min_count", 1)
@@ -631,12 +643,18 @@ async def check_server_event_filter(
     session: AsyncSession,
     server_discord_id: int,
     filter_spec: "ServerEventFilterSpec | None",
+    season: Optional[str] = None,
 ) -> bool:
     """Return True if the given server satisfies the server event eligibility filter."""
     from ..models import OwnerServer as OwnerServerModel
 
     if not filter_spec:
         return True
+
+    seasons = filter_spec.get("seasons")
+    if seasons and season is not None:
+        if season.lower() not in [s.lower() for s in seasons]:
+            return False
 
     # Owner count
     owner_count = (

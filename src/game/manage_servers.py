@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Optional
 
 from src.database import (
-    advance_server_season,
     create_server,
     get_server_by_discord_id,
     set_event_channel_discord_id,
@@ -59,11 +58,6 @@ async def get_or_create_server(server_discord_id: int) -> Server:
     if server is None:
         server = await create_server(server_discord_id)
     return await to_server(server)
-
-
-async def advance_season(server_discord_id: int) -> str:
-    """Advance the server to the next season and return the new season name."""
-    return await advance_server_season(server_discord_id)
 
 
 async def set_event_channel(server_discord_id: int, event_channel_discord_id: int):

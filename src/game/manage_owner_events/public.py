@@ -6,6 +6,7 @@ from src.database import (
     archive_active_event,
     check_owner_event_filter_for_owner,
     get_active_owner_event_by_id,
+    get_current_season,
     get_owner_by_discord_id,
 )
 from src.database import get_owner_event_by_id as db_get_owner_event_by_id
@@ -380,7 +381,9 @@ async def trigger_random_event(
         logger.debug(f"Owner {owner_discord_id} has max active events, skipping trigger...")
         return None
 
-    selected_event = await get_random_eligible_owner_event_for_owner(owner_discord_id, rng=rng)
+    selected_event = await get_random_eligible_owner_event_for_owner(
+        owner_discord_id, rng=rng, season=await get_current_season()
+    )
 
     if selected_event is None:
         logger.debug(f"No eligible events for owner {owner_discord_id}.")

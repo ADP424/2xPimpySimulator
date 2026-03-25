@@ -136,6 +136,7 @@ The `filter` object defines eligibility requirements. The event only fires on a 
 
 | Field | Type | Notes |
 |-------|------|-------|
+| `seasons` | list[string] | Seasons in which this event can be triggered. Valid values: `spring`, `summer`, `autumn`, `winter` (case-insensitive). Omit to allow all seasons. |
 | `min_owners` / `max_owners` | int | Number of registered owners on the server |
 | `min_strays` / `max_strays` | int | Number of alive strays |
 | `min_dead` / `max_dead` | int | Number of pooches in the graveyard |

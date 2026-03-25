@@ -21,6 +21,10 @@ from .manage_auctions import (
     place_bid,
     process_expired_sale_listings,
 )
+from .manage_global import (
+    advance_season,
+    get_season,
+)
 from .manage_graveyard import (
     list_graveyard_pooches,
 )
@@ -81,7 +85,6 @@ from .manage_server_events import (
     trigger_server_event_by_name,
 )
 from .manage_servers import (
-    advance_season,
     get_event_channel,
     get_or_create_server,
     set_event_channel,
@@ -123,6 +126,9 @@ __all__ = [
     "process_expired_events",
     "run_hourly_event_check",
     "get_event_history",
+    # Global commands
+    "advance_season",
+    "get_season",
     # Graveyard commands
     "list_graveyard_pooches",
     # Hell / ritual commands
@@ -160,7 +166,6 @@ __all__ = [
     "run_daily_stray_event_check",
     "trigger_stray_event_by_name",
     # Server commands
-    "advance_season",
     "get_event_channel",
     "get_or_create_server",
     "set_event_channel",

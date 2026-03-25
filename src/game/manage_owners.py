@@ -11,6 +11,7 @@ from src.database import (
     create_kennel,
     create_owner,
     create_pooch,
+    get_current_season,
     get_owner_by_discord_id,
     get_owner_server,
     get_random_breed_ids,
@@ -152,8 +153,9 @@ async def get_or_create_owner(
 
         await add_owner_to_server(server_discord_id, owner_discord_id)
         kennel = await create_kennel(owner_discord_id)
-        female_breed_ids = await get_random_breed_ids(1, rng=rng, from_vendor=True)
-        male_breed_ids = await get_random_breed_ids(1, rng=rng, from_vendor=True)
+        _season = await get_current_season()
+        female_breed_ids = await get_random_breed_ids(1, rng=rng, from_vendor=True, season=_season)
+        male_breed_ids = await get_random_breed_ids(1, rng=rng, from_vendor=True, season=_season)
         female_pooch = await create_pooch(
             owner_discord_id=owner_discord_id,
             sex="female",

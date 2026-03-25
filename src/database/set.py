@@ -197,10 +197,14 @@ async def add_mutation_to_pooch(
     min_health_impact: Optional[str] = None,
     max_health_impact: Optional[str] = None,
     exclude_mutation_ids: Optional[list[int]] = None,
+    season: Optional[str] = None,
 ) -> Optional[PoochMutation]:
     """
     Add the mutation with the given ID to the pooch with the given ID.
     If a mutation ID isn't given, choose a random one, with chance based on its rarity.
+    When ``season`` is provided (e.g. ``"spring"``), mutations whose ``parameters.seasons``
+    list does not include that season are excluded from random selection (case-insensitive).
+    Mutations with no ``seasons`` key are always eligible.
 
     Parameters
     ----------
@@ -282,6 +286,17 @@ async def add_mutation_to_pooch(
 
             mutation_response = await session.execute(mutation_query)
             rows = [(mutation, weight) for mutation, weight in mutation_response.tuples().all()]
+            if season is not None:
+                season_lower = season.lower()
+                rows = [
+                    (m, w)
+                    for m, w in rows
+                    if (
+                        not m.parameters
+                        or "seasons" not in m.parameters
+                        or season_lower in [s.lower() for s in m.parameters["seasons"]]
+                    )
+                ]
             mutation = weighted_choice(rng, rows)
             mutation_id = mutation.id if mutation is not None else None
 
