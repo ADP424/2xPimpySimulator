@@ -126,11 +126,11 @@ async def refresh_moods(rng_seed: Optional[int] = None) -> int:
         await update_pooch_mood(pooch.id, new_mood)
     count += len(pooches)
 
-    # Set "dead" mood on hell pooches that don't have one
+    # Set "dead" mood on all hell pooches
     hell_pooches = await list_hell_pooches()
     hell_updated = 0
     for pooch in hell_pooches:
-        if pooch.mood is None:
+        if pooch.mood != "dead":
             await update_pooch_mood(pooch.id, "dead")
             hell_updated += 1
     count += hell_updated
