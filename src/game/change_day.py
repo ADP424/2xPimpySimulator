@@ -191,6 +191,8 @@ async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeS
 
         kennel = await get_pooch_kennel(mother_id)
         if kennel is None:
+            baby_health = await get_pooch_health(baby.id)
+            await update_pooch_mood(baby.id, _pick_mood(baby_health, baby.age, rng))
             for server in servers:
                 births_by_server.setdefault(server.discord_id, []).append(
                     BirthEvent(
@@ -204,6 +206,7 @@ async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeS
 
         success = await add_pooch_to_kennel(kennel.id, baby.id)
         if not success:
+            await update_pooch_mood(baby.id, "dead")
             for server in servers:
                 births_by_server.setdefault(server.discord_id, []).append(
                     BirthEvent(
@@ -217,6 +220,9 @@ async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeS
                     )
                 )
             continue
+
+        baby_health = await get_pooch_health(baby.id)
+        await update_pooch_mood(baby.id, _pick_mood(baby_health, baby.age, rng))
 
         for server in servers:
             births_by_server.setdefault(server.discord_id, []).append(
