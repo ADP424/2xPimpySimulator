@@ -32,6 +32,8 @@ from src.database import (
     list_servers,
     list_servers_for_pooch,
     list_strays_for_server,
+    list_vendor_desired_breeds,
+    list_vendor_desired_mutations,
     list_vendors,
     remove_pooch_from_kennel,
     reset_begged_today,
@@ -434,12 +436,24 @@ async def run_day_change(
                 server.discord_id, price_markup=rng.uniform(VENDOR_MARKUP_RANGE[0], VENDOR_MARKUP_RANGE[1]), rng=rng
             )
             vendors.append(vendor)
+        # Collect all desired breed/mutation IDs across this server's vendors so
+        # stock pooches are never created with breeds or mutations that any vendor desires.
+        desired_breed_ids: list[int] = []
+        desired_mutation_ids: list[int] = []
+        for v in vendors:
+            desired_breed_ids.extend(b.id for b in (await list_vendor_desired_breeds(v.id)))
+            desired_mutation_ids.extend(m.id for m in (await list_vendor_desired_mutations(v.id)))
+        desired_breed_ids = list(set(desired_breed_ids))
+        desired_mutation_ids = list(set(desired_mutation_ids))
+
         for vendor in vendors:
             await clear_vendor_pooch_stock(vendor.id, delete_pooches=True)
             stock_count = rng.randint(VENDOR_POOCH_STOCK_COUNT_RANGE[0], VENDOR_POOCH_STOCK_COUNT_RANGE[1])
             for _ in range(stock_count):
                 num_breeds = rng.randint(NUM_BREEDS_PER_VENDOR_POOCH_RANGE[0], NUM_BREEDS_PER_VENDOR_POOCH_RANGE[1])
-                vendor_breed_ids = await get_random_breed_ids(num_breeds, rng=rng, from_vendor=True)
+                vendor_breed_ids = await get_random_breed_ids(
+                    num_breeds, rng=rng, from_vendor=True, exclude_ids=desired_breed_ids
+                )
                 vendor_pooch = await create_pooch(
                     vendor_id=vendor.id,
                     age=rng.randint(VENDOR_POOCH_AGE_RANGE[0], VENDOR_POOCH_AGE_RANGE[1]),
@@ -454,7 +468,9 @@ async def run_day_change(
                 for _ in range(
                     rng.randint(NUM_MUTATIONS_PER_VENDOR_POOCH_RANGE[0], NUM_MUTATIONS_PER_VENDOR_POOCH_RANGE[1])
                 ):
-                    await add_mutation_to_pooch(vendor_pooch.id, from_vendor=True)
+                    await add_mutation_to_pooch(
+                        vendor_pooch.id, from_vendor=True, exclude_mutation_ids=desired_mutation_ids
+                    )
                 await add_pooch_to_vendor_stock(vendor.id, vendor_pooch.id)
     logger.info("Completed daily vendor restock.")
 

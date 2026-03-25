@@ -196,6 +196,7 @@ async def add_mutation_to_pooch(
     max_rarity: Optional[str] = None,
     min_health_impact: Optional[str] = None,
     max_health_impact: Optional[str] = None,
+    exclude_mutation_ids: Optional[list[int]] = None,
 ) -> Optional[PoochMutation]:
     """
     Add the mutation with the given ID to the pooch with the given ID.
@@ -276,6 +277,8 @@ async def add_mutation_to_pooch(
             if max_health_impact is not None and max_health_impact.lower() in _HEALTH_IMPACT_ORDER:
                 max_idx = _HEALTH_IMPACT_ORDER.index(max_health_impact.lower())
                 mutation_query = mutation_query.where(Mutation.health_impact.in_(_HEALTH_IMPACT_ORDER[: max_idx + 1]))
+            if exclude_mutation_ids:
+                mutation_query = mutation_query.where(Mutation.id.not_in(exclude_mutation_ids))
 
             mutation_response = await session.execute(mutation_query)
             rows = [(mutation, weight) for mutation, weight in mutation_response.tuples().all()]

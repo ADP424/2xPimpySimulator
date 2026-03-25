@@ -121,6 +121,7 @@ async def get_random_breed_ids(
     rng: Optional[random.Random] = None,
     from_vendor: bool = False,
     from_ritual: bool = False,
+    exclude_ids: Optional[list[int]] = None,
 ) -> list[int]:
     """
     Return a list of `n` randomly-selected breed IDs, weighted by rarity.
@@ -158,6 +159,8 @@ async def get_random_breed_ids(
             query = query.where(not_(Breed.parameters.contains({"sold_by_vendors": False})))
         if from_ritual:
             query = query.where(not_(Breed.parameters.contains({"born_from_ritual": False})))
+        if exclude_ids:
+            query = query.where(Breed.id.not_in(exclude_ids))
         response = await session.execute(query)
         rows = [(breed, weight) for breed, weight in response.tuples().all()]
 
