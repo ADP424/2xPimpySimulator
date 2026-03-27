@@ -42,8 +42,10 @@ from src.database import (
 )
 from src.game.constants import (
     FIGHT_ATTACK_AGGRESSIVENESS_WEIGHT,
+    FIGHT_ATTACK_DEXTERITY_WEIGHT,
     FIGHT_ATTACK_STRENGTH_WEIGHT,
     FIGHT_DEFENDER_STRENGTH_BONUS,
+    FIGHT_DEFENSE_DEXTERITY_WEIGHT,
     FIGHT_DEFENSE_SIZE_WEIGHT,
     FIGHT_DEFENSE_STRENGTH_WEIGHT,
     FIGHT_RANDOM_MULTIPLIER_RANGE,
@@ -445,19 +447,28 @@ async def handle_select_pooch(
 
 def _compute_damage(
     attacker_strength: int,
+    attacker_dexterity: int,
     attacker_aggressiveness: int,
     defender_strength: int,
+    defender_dexterity: int,
     defender_size: int,
     rng: random.Random,
 ) -> int:
-    """Return integer damage dealt in one round."""
+    """
+    Return integer damage dealt in one round.
+    """
+
     attack_mult = rng.uniform(*FIGHT_RANDOM_MULTIPLIER_RANGE)
     defense_mult = rng.uniform(*FIGHT_RANDOM_MULTIPLIER_RANGE)
     raw_attack = (
-        FIGHT_ATTACK_STRENGTH_WEIGHT * attacker_strength + FIGHT_ATTACK_AGGRESSIVENESS_WEIGHT * attacker_aggressiveness
+        FIGHT_ATTACK_STRENGTH_WEIGHT * attacker_strength
+        + FIGHT_ATTACK_DEXTERITY_WEIGHT * attacker_dexterity
+        + FIGHT_ATTACK_AGGRESSIVENESS_WEIGHT * attacker_aggressiveness
     ) * attack_mult
     prevention = (
-        FIGHT_DEFENSE_STRENGTH_WEIGHT * defender_strength + FIGHT_DEFENSE_SIZE_WEIGHT * defender_size
+        FIGHT_DEFENSE_STRENGTH_WEIGHT * defender_strength
+        + FIGHT_DEFENSE_DEXTERITY_WEIGHT * defender_dexterity
+        + FIGHT_DEFENSE_SIZE_WEIGHT * defender_size
     ) * defense_mult
     return max(1, int(raw_attack - prevention))
 
@@ -469,7 +480,8 @@ async def handle_fight_pooches(
     defender_strength_bonus: int = FIGHT_DEFENDER_STRENGTH_BONUS,
     rng: random.Random | None = None,
 ) -> dict[str, Any]:
-    """Simulate a fight between two pooches and apply the resulting health loss.
+    """
+    Simulate a fight between two pooches and apply the resulting health loss.
 
     Args:
         rounds:                  number of fight rounds
@@ -488,6 +500,7 @@ async def handle_fight_pooches(
             "rounds_fought":       int,
         }
     """
+
     rng = rng if rng is not None else random.Random()
 
     attacker = await get_pooch_by_id(attacker_id)
@@ -508,10 +521,12 @@ async def handle_fight_pooches(
         }
 
     att_str = max(1, attacker.strength)
+    att_dex = max(1, attacker.dexterity)
     att_agg = max(1, attacker.aggressiveness)
     att_siz = max(1, attacker.size)
     def_str_raw = max(1, defender.strength)
     def_str_boosted = def_str_raw + defender_strength_bonus  # only for defender's mitigation
+    def_dex = max(1, defender.dexterity)
     def_agg = max(1, defender.aggressiveness)
     def_siz = max(1, defender.size)
 
@@ -523,8 +538,8 @@ async def handle_fight_pooches(
         rounds_fought += 1
 
         # Simultaneous damage — each pooch attacks and defends in the same round
-        dmg_to_defender = _compute_damage(att_str, att_agg, def_str_boosted, def_siz, rng)
-        dmg_to_attacker = _compute_damage(def_str_raw, def_agg, att_str, att_siz, rng)
+        dmg_to_defender = _compute_damage(att_str, att_dex, att_agg, def_str_boosted, def_dex, def_siz, rng)
+        dmg_to_attacker = _compute_damage(def_str_raw, def_dex, def_agg, att_str, att_dex, att_siz, rng)
 
         attacker_total_damage += dmg_to_attacker
         defender_total_damage += dmg_to_defender

@@ -21,14 +21,9 @@
 | ----------------------------------------------------------------------------------------------------------------------------- | ------ |
 | Dog show where you want to match closest to breed, mutations, and stats                                                       | 13     |
 
-## Seasons
-| Feature                                                                                                                       | Points |
-| ----------------------------------------------------------------------------------------------------------------------------- | ------ |
-| Certain diseases, mutations (and maybe breeds) that can only show up in certain seasons                                       | 13     |
-
 ## Blood Magic
 | Feature                                                                                                                       | Points |
-| ----------------------------------------------------------------------------------------------------------------------------- | ------ |
+| ------------------------------------a----------------------------------------------------------------------------------------- | ------ |
 | Clone your pooches by spending bloodskulls (better breeds = more expensive)                                                   | 5      |
 | Spend bloodskulls to reset pooch age (but at some EVIL cost)                                                                  | 5      |
 | Spend a LOT of bloodskulls to make your pooch IMMORTAL (but infertile, like a vampire, also can't go out at night)            | 5      |
@@ -52,6 +47,7 @@
 | Kennel cleanliness stat, which affects disease chance                                                                         | 3      |
 | Buy cleaning products to clean kennels                                                                                        | 5      |
 | Dogs have a randomized mess stat (affected by mutations and breeds via advanced options) - produces mess each day in kennel   | 8      |
+| Add season-based filtering for diseases (so some diseases only show up in certain seasons)                                    | 2      |
 
 ## Canine Violence
 | Feature                                                                                                                       | Points |
