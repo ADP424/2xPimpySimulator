@@ -26,6 +26,7 @@ from src.database import (
     list_pooches_for_kennel,
     remove_pooch_from_kennel,
     set_pooch_dead,
+    update_pooch_mood,
 )
 
 from .constants import (
@@ -167,6 +168,7 @@ async def sacrifice_pooch(owner_discord_id: int, pooch_id: int) -> tuple[bool, s
     await give_bloodskulls_to_owner(owner_discord_id, value)
     await give_bones_to_owner(owner_discord_id, 1)
     await set_pooch_dead(pooch.id)
+    await update_pooch_mood(pooch.id, "dead")
     await remove_pooch_from_kennel(pooch.id)
     await damn_pooch(pooch_id)
 

@@ -26,6 +26,7 @@ from src.database import (
     get_random_breed_ids,
     give_money_to_owner,
     list_bids_for_listing,
+    list_hell_pooches,
     list_living_pooches,
     list_pooch_mutations,
     list_pooch_pregnancies,
@@ -132,13 +133,26 @@ async def refresh_moods(rng_seed: Optional[int] = None) -> int:
         The number of pooches whose mood was updated.
     """
     rng = random.Random(rng_seed)
+    count = 0
+
     pooches = await list_living_pooches()
     for pooch in pooches:
         total_health: int = await get_pooch_health(pooch.id)
         new_mood = _pick_mood(total_health, pooch.age, rng)
         await update_pooch_mood(pooch.id, new_mood)
-    logger.info("Refreshed moods for %d pooches.", len(pooches))
-    return len(pooches)
+    count += len(pooches)
+
+    # Set "dead" mood on all hell pooches
+    hell_pooches = await list_hell_pooches()
+    hell_updated = 0
+    for pooch in hell_pooches:
+        if pooch.mood != "dead":
+            await update_pooch_mood(pooch.id, "dead")
+            hell_updated += 1
+    count += hell_updated
+
+    logger.info("Refreshed moods for %d pooches (%d hell pooches).", count, hell_updated)
+    return count
 
 
 def _death_roll(total_health: int, rng: random.Random) -> bool:
@@ -200,6 +214,8 @@ async def run_day_change(
 
         kennel = await get_pooch_kennel(mother_id)
         if kennel is None:
+            baby_health = await get_pooch_health(baby.id)
+            await update_pooch_mood(baby.id, _pick_mood(baby_health, baby.age, rng))
             for server in servers:
                 births_by_server.setdefault(server.discord_id, []).append(
                     BirthEvent(
@@ -213,6 +229,7 @@ async def run_day_change(
 
         success = await add_pooch_to_kennel(kennel.id, baby.id)
         if not success:
+            await update_pooch_mood(baby.id, "dead")
             for server in servers:
                 await add_pooch_to_strays(baby.id, server.discord_id)
                 births_by_server.setdefault(server.discord_id, []).append(
@@ -227,6 +244,9 @@ async def run_day_change(
                     )
                 )
             continue
+
+        baby_health = await get_pooch_health(baby.id)
+        await update_pooch_mood(baby.id, _pick_mood(baby_health, baby.age, rng))
 
         for server in servers:
             births_by_server.setdefault(server.discord_id, []).append(

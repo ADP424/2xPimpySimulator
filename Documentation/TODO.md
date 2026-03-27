@@ -21,14 +21,9 @@
 | ----------------------------------------------------------------------------------------------------------------------------- | ------ |
 | Dog show where you want to match closest to breed, mutations, and stats                                                       | 13     |
 
-## Seasons
-| Feature                                                                                                                       | Points |
-| ----------------------------------------------------------------------------------------------------------------------------- | ------ |
-| Certain diseases, mutations (and maybe breeds) that can only show up in certain seasons                                       | 13     |
-
 ## Blood Magic
 | Feature                                                                                                                       | Points |
-| ----------------------------------------------------------------------------------------------------------------------------- | ------ |
+| ------------------------------------a----------------------------------------------------------------------------------------- | ------ |
 | Clone your pooches by spending bloodskulls (better breeds = more expensive)                                                   | 5      |
 | Spend bloodskulls to reset pooch age (but at some EVIL cost)                                                                  | 5      |
 | Spend a LOT of bloodskulls to make your pooch IMMORTAL (but infertile, like a vampire, also can't go out at night)            | 5      |
@@ -52,6 +47,7 @@
 | Kennel cleanliness stat, which affects disease chance                                                                         | 3      |
 | Buy cleaning products to clean kennels                                                                                        | 5      |
 | Dogs have a randomized mess stat (affected by mutations and breeds via advanced options) - produces mess each day in kennel   | 8      |
+| Add season-based filtering for diseases (so some diseases only show up in certain seasons)                                    | 2      |
 
 ## Canine Violence
 | Feature                                                                                                                       | Points |
@@ -61,6 +57,7 @@
 | Add aggressiveness stat that makes dogs have a chance each day to fight another dog (causing injury or DEATH)                 | 8      |
 | Add a strength stat which dictates how well a dog fights (and how likely they are to be injured/injure another in a fight)    | 3      |
 | Add a pooch fight event action type with its own internal logic for determining winners and damage and such                   | 5      |
+| Make constitution involved in dog fights, so later rounds are debuffed depending constitution, like endurance                 | 2      |
 
 ## Breeding
 | Feature                                                                                                                       | Points |
