@@ -57,6 +57,7 @@
 | Add aggressiveness stat that makes dogs have a chance each day to fight another dog (causing injury or DEATH)                 | 8      |
 | Add a strength stat which dictates how well a dog fights (and how likely they are to be injured/injure another in a fight)    | 3      |
 | Add a pooch fight event action type with its own internal logic for determining winners and damage and such                   | 5      |
+| Make constitution involved in dog fights, so later rounds are debuffed depending constitution, like endurance                 | 2      |
 
 ## Breeding
 | Feature                                                                                                                       | Points |

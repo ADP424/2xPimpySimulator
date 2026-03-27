@@ -43,10 +43,11 @@ from src.database import (
 from src.game.constants import (
     FIGHT_ATTACK_AGGRESSIVENESS_WEIGHT,
     FIGHT_ATTACK_DEXTERITY_WEIGHT,
+    FIGHT_ATTACK_SIZE_STENGTH_WEIGHT,
     FIGHT_ATTACK_STRENGTH_WEIGHT,
     FIGHT_DEFENDER_STRENGTH_BONUS,
+    FIGHT_DEFENSE_CONSTITUTION_WEIGHT,
     FIGHT_DEFENSE_DEXTERITY_WEIGHT,
-    FIGHT_DEFENSE_SIZE_WEIGHT,
     FIGHT_DEFENSE_STRENGTH_WEIGHT,
     FIGHT_RANDOM_MULTIPLIER_RANGE,
     FIGHT_ROUNDS,
@@ -447,10 +448,12 @@ async def handle_select_pooch(
 
 def _compute_damage(
     attacker_strength: int,
+    attacker_size: int,
     attacker_dexterity: int,
     attacker_aggressiveness: int,
     defender_strength: int,
     defender_dexterity: int,
+    defender_constitution: int,
     defender_size: int,
     rng: random.Random,
 ) -> int:
@@ -461,14 +464,14 @@ def _compute_damage(
     attack_mult = rng.uniform(*FIGHT_RANDOM_MULTIPLIER_RANGE)
     defense_mult = rng.uniform(*FIGHT_RANDOM_MULTIPLIER_RANGE)
     raw_attack = (
-        FIGHT_ATTACK_STRENGTH_WEIGHT * attacker_strength
+        FIGHT_ATTACK_STRENGTH_WEIGHT * attacker_strength * FIGHT_ATTACK_SIZE_STENGTH_WEIGHT * attacker_size
         + FIGHT_ATTACK_DEXTERITY_WEIGHT * attacker_dexterity
         + FIGHT_ATTACK_AGGRESSIVENESS_WEIGHT * attacker_aggressiveness
     ) * attack_mult
     prevention = (
-        FIGHT_DEFENSE_STRENGTH_WEIGHT * defender_strength
+        FIGHT_DEFENSE_STRENGTH_WEIGHT * defender_strength * FIGHT_ATTACK_SIZE_STENGTH_WEIGHT * defender_size
         + FIGHT_DEFENSE_DEXTERITY_WEIGHT * defender_dexterity
-        + FIGHT_DEFENSE_SIZE_WEIGHT * defender_size
+        + FIGHT_DEFENSE_CONSTITUTION_WEIGHT * defender_constitution
     ) * defense_mult
     return max(1, int(raw_attack - prevention))
 
@@ -522,11 +525,13 @@ async def handle_fight_pooches(
 
     att_str = max(1, attacker.strength)
     att_dex = max(1, attacker.dexterity)
+    att_con = max(1, attacker.constitution)
     att_agg = max(1, attacker.aggressiveness)
     att_siz = max(1, attacker.size)
     def_str_raw = max(1, defender.strength)
     def_str_boosted = def_str_raw + defender_strength_bonus  # only for defender's mitigation
     def_dex = max(1, defender.dexterity)
+    def_con = max(1, defender.constitution)
     def_agg = max(1, defender.aggressiveness)
     def_siz = max(1, defender.size)
 
@@ -538,8 +543,8 @@ async def handle_fight_pooches(
         rounds_fought += 1
 
         # Simultaneous damage — each pooch attacks and defends in the same round
-        dmg_to_defender = _compute_damage(att_str, att_dex, att_agg, def_str_boosted, def_dex, def_siz, rng)
-        dmg_to_attacker = _compute_damage(def_str_raw, def_dex, def_agg, att_str, att_dex, att_siz, rng)
+        dmg_to_defender = _compute_damage(att_str, att_dex, att_agg, def_str_boosted, def_dex, def_con, def_siz, rng)
+        dmg_to_attacker = _compute_damage(def_str_raw, def_dex, def_agg, att_str, att_dex, att_con, att_siz, rng)
 
         attacker_total_damage += dmg_to_attacker
         defender_total_damage += dmg_to_defender
