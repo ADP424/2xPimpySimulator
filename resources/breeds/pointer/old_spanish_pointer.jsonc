@@ -4,6 +4,8 @@
     "description": "The Old Spanish Pointer is an extinct breed of Spanish pointing dogs known from the Early Modern Period; it is considered the first of its type from which all modern pointing dog breeds descend.",
     "rarity": "EXTRAORDINARY",
     "parameters": {
+        "min_size": 13,
+        "max_size": 21,
         "sold_by_vendors": false
     }
 }

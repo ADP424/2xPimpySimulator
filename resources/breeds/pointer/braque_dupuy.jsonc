@@ -4,6 +4,8 @@
     "description": "The Braque Dupuy, also known as the Dupuy Pointer, was a breed of pointer from the Poitou region of France. It is believed to be extinct.",
     "rarity": "REMARKABLE",
     "parameters": {
+        "min_size": 12,
+        "max_size": 16,
         "sold_by_vendors": false
     }
 }
