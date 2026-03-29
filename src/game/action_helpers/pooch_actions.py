@@ -9,6 +9,7 @@ from src.database import (
     add_mutation_to_pooch,
     damn_pooch,
     get_mutation_by_name,
+    get_pooch_by_id,
     modify_pooch_age,
     modify_pooch_aggressiveness,
     modify_pooch_base_health,
@@ -38,6 +39,18 @@ from src.database import (
     set_pooch_fluffiness,
     set_pooch_intelligence,
     set_pooch_strength,
+)
+from src.game.constants import (
+    FIGHT_ATTACK_AGGRESSIVENESS_WEIGHT,
+    FIGHT_ATTACK_DEXTERITY_WEIGHT,
+    FIGHT_ATTACK_SIZE_STENGTH_WEIGHT,
+    FIGHT_ATTACK_STRENGTH_WEIGHT,
+    FIGHT_DEFENDER_STRENGTH_BONUS,
+    FIGHT_DEFENSE_CONSTITUTION_WEIGHT,
+    FIGHT_DEFENSE_DEXTERITY_WEIGHT,
+    FIGHT_DEFENSE_STRENGTH_WEIGHT,
+    FIGHT_RANDOM_MULTIPLIER_RANGE,
+    FIGHT_ROUNDS,
 )
 
 from .amount import get_amount_from_parameters, get_mode, resolve_amount
@@ -403,3 +416,190 @@ async def handle_select_pooch(
     """Handle select_pooch — resolves and saves into a named slot; no other side effects."""
     # Resolution and save_as are handled by the resolver before this is called.
     pass
+
+
+# ---------------------------------------------------------------------------
+# Fight mechanics
+# ---------------------------------------------------------------------------
+
+# Damage formula per round:
+#   raw_attack   = (ATTACK_STRENGTH_WEIGHT * strength + ATTACK_AGGRESSIVENESS_WEIGHT * aggressiveness)
+#                  * uniform(RANDOM_MULTIPLIER_RANGE)
+#   prevention   = (DEFENSE_STRENGTH_WEIGHT * strength + DEFENSE_SIZE_WEIGHT * size)
+#                  * uniform(RANDOM_MULTIPLIER_RANGE)
+#   damage_dealt = max(1, int(raw_attack - prevention))
+#
+# Defender advantage: the defending pooch's effective strength for mitigation
+# is increased by defender_strength_bonus (default: FIGHT_DEFENDER_STRENGTH_BONUS).
+#
+# The fight runs for a fixed number of rounds.  Each round, both pooches
+# simultaneously deal damage to one another.  The fight ends early if either
+# pooch's health reaches 0 or below.
+#
+# Outcome:
+#   - If both alive: winner is the one with less total damage taken.
+#   - If one dies: the survivor wins.
+#   - If both die in the same round: draw.
+#   - If total_damage_taken is equal and both survive: draw.
+#
+# The action applies the damage directly to base_health via modify_pooch_base_health.
+# It does NOT determine the event winner — that is up to the caller.
+
+
+def _compute_damage(
+    attacker_strength: int,
+    attacker_size: int,
+    attacker_dexterity: int,
+    attacker_aggressiveness: int,
+    defender_strength: int,
+    defender_dexterity: int,
+    defender_constitution: int,
+    defender_size: int,
+    rng: random.Random,
+) -> int:
+    """
+    Return integer damage dealt in one round.
+    """
+
+    attack_mult = rng.uniform(*FIGHT_RANDOM_MULTIPLIER_RANGE)
+    defense_mult = rng.uniform(*FIGHT_RANDOM_MULTIPLIER_RANGE)
+    raw_attack = (
+        FIGHT_ATTACK_STRENGTH_WEIGHT * attacker_strength * FIGHT_ATTACK_SIZE_STENGTH_WEIGHT * attacker_size
+        + FIGHT_ATTACK_DEXTERITY_WEIGHT * attacker_dexterity
+        + FIGHT_ATTACK_AGGRESSIVENESS_WEIGHT * attacker_aggressiveness
+    ) * attack_mult
+    prevention = (
+        FIGHT_DEFENSE_STRENGTH_WEIGHT * defender_strength * FIGHT_ATTACK_SIZE_STENGTH_WEIGHT * defender_size
+        + FIGHT_DEFENSE_DEXTERITY_WEIGHT * defender_dexterity
+        + FIGHT_DEFENSE_CONSTITUTION_WEIGHT * defender_constitution
+    ) * defense_mult
+    return max(1, int(raw_attack - prevention))
+
+
+async def handle_fight_pooches(
+    attacker_id: int,
+    defender_id: int,
+    rounds: int = FIGHT_ROUNDS,
+    defender_strength_bonus: int = FIGHT_DEFENDER_STRENGTH_BONUS,
+    rng: random.Random | None = None,
+) -> dict[str, Any]:
+    """
+    Simulate a fight between two pooches and apply the resulting health loss.
+
+    Args:
+        rounds:                  number of fight rounds
+        defender_strength_bonus: extra effective strength added to defender's mitigation only
+
+    Returns a dict:
+        {
+            "attacker_id":         int,
+            "defender_id":         int,
+            "attacker_damage":     int,   # total damage taken by attacker
+            "defender_damage":     int,   # total damage taken by defender
+            "attacker_died":       bool,
+            "defender_died":       bool,
+            "winner_id":           int | None,  # None on draw
+            "draw":                bool,
+            "rounds_fought":       int,
+        }
+    """
+
+    rng = rng if rng is not None else random.Random()
+
+    attacker = await get_pooch_by_id(attacker_id)
+    defender = await get_pooch_by_id(defender_id)
+
+    if attacker is None or defender is None or not attacker.alive or not defender.alive:
+        return {
+            "attacker_id": attacker_id,
+            "defender_id": defender_id,
+            "attacker_damage": 0,
+            "defender_damage": 0,
+            "attacker_died": False,
+            "defender_died": False,
+            "winner_id": None,
+            "draw": True,
+            "rounds_fought": 0,
+            "error": "one or both pooches unavailable",
+        }
+
+    att_str = max(1, attacker.strength)
+    att_dex = max(1, attacker.dexterity)
+    att_con = max(1, attacker.constitution)
+    att_agg = max(1, attacker.aggressiveness)
+    att_siz = max(1, attacker.size)
+    def_str_raw = max(1, defender.strength)
+    def_str_boosted = def_str_raw + defender_strength_bonus  # only for defender's mitigation
+    def_dex = max(1, defender.dexterity)
+    def_con = max(1, defender.constitution)
+    def_agg = max(1, defender.aggressiveness)
+    def_siz = max(1, defender.size)
+
+    attacker_total_damage = 0
+    defender_total_damage = 0
+    rounds_fought = 0
+
+    for _ in range(rounds):
+        rounds_fought += 1
+
+        # Simultaneous damage — each pooch attacks and defends in the same round
+        dmg_to_defender = _compute_damage(att_str, att_dex, att_agg, def_str_boosted, def_dex, def_con, def_siz, rng)
+        dmg_to_attacker = _compute_damage(def_str_raw, def_dex, def_agg, att_str, att_dex, att_con, att_siz, rng)
+
+        attacker_total_damage += dmg_to_attacker
+        defender_total_damage += dmg_to_defender
+
+        # Check for early death after this round
+        att_health_remaining = attacker.base_health - attacker_total_damage
+        def_health_remaining = defender.base_health - defender_total_damage
+        if att_health_remaining <= 0 or def_health_remaining <= 0:
+            break
+
+    # Apply health changes
+    if attacker_total_damage > 0:
+        await modify_pooch_base_health(attacker_id, -attacker_total_damage)
+    if defender_total_damage > 0:
+        await modify_pooch_base_health(defender_id, -defender_total_damage)
+
+    # Determine deaths (based on starting health, not post-modification DB state)
+    att_died = (attacker.base_health - attacker_total_damage) <= 0
+    def_died = (defender.base_health - defender_total_damage) <= 0
+
+    if att_died:
+        await set_pooch_dead(attacker_id)
+    if def_died:
+        await set_pooch_dead(defender_id)
+
+    # Determine winner
+    if att_died and def_died:
+        winner_id = None
+        draw = True
+    elif att_died:
+        winner_id = defender_id
+        draw = False
+    elif def_died:
+        winner_id = attacker_id
+        draw = False
+    elif attacker_total_damage == defender_total_damage:
+        winner_id = None
+        draw = True
+    elif defender_total_damage > attacker_total_damage:
+        # Attacker took less damage → attacker wins (defender dealt more damage, attacker dealt more)
+        # Defender took more damage → defender is worse off
+        winner_id = attacker_id
+        draw = False
+    else:
+        winner_id = defender_id
+        draw = False
+
+    return {
+        "attacker_id": attacker_id,
+        "defender_id": defender_id,
+        "attacker_damage": attacker_total_damage,
+        "defender_damage": defender_total_damage,
+        "attacker_died": att_died,
+        "defender_died": def_died,
+        "winner_id": winner_id,
+        "draw": draw,
+        "rounds_fought": rounds_fought,
+    }

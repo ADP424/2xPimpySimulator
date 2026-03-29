@@ -122,6 +122,7 @@ class KennelFilterSpec(TypedDict, total=False):
 
 
 class OwnerEventFilterSpec(TypedDict, total=False):
+    seasons: list[str]
     min_money: int
     max_money: int
     exclude_money: list[int]
@@ -143,6 +144,7 @@ class OwnerEventFilterSpec(TypedDict, total=False):
 class StrayEventFilterSpec(TypedDict, total=False):
     """Top-level filter for a stray event — determines which strays on a server are eligible targets."""
 
+    seasons: list[str]
     min_count: int
     max_count: int
     description: str
@@ -182,6 +184,7 @@ class OwnerFilterSpec(TypedDict, total=False):
 class ServerEventFilterSpec(TypedDict, total=False):
     """Top-level filter for a server event — determines which servers are eligible for the event."""
 
+    seasons: list[str]
     # Owner count
     min_owners: int
     max_owners: int

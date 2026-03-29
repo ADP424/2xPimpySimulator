@@ -4,5 +4,8 @@
     "description": "This pooch's antibodies are off duty.",
     "heritability": 0.25,
     "health_impact": "UNHEALTHY",
-    "rarity": "RARE"
+    "rarity": "RARE",
+    "parameters": {
+        "constitution_mult": 0.7
+    }
 }

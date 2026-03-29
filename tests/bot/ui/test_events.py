@@ -542,6 +542,7 @@ class TestBuildPoochInfoEmbed:
             health=95,
             owner=None,
             vendor=None,
+            mood=None,
             breeds=[],
             mutations=[],
         )

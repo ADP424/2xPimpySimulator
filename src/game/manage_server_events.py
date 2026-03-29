@@ -10,28 +10,34 @@ from src.database import (
     create_server_event_participation,
     finalize_server_event_participation,
     get_active_server_event_occurrence,
+    get_active_server_event_occurrence_by_tier,
+    get_current_season,
     get_owner_by_discord_id,
     get_owner_server,
 )
 from src.database import get_pooch_by_id as db_get_pooch_by_id
 from src.database import (
     get_server_by_discord_id,
+    get_server_event_by_name,
     get_server_event_menu_option_by_id,
     get_server_event_occurrence_by_id,
     get_server_event_participation,
     list_active_server_event_occurrences,
-    list_all_server_events_with_weights,
     list_kennels_for_owner,
     list_pooches_for_kennel,
+    list_server_events_with_weights_by_tier,
     list_servers,
     list_strays_for_server,
     resolve_server_event_occurrence,
     session_scope,
     set_server_event_occurrence_message_discord_id,
+    update_server_event_occurrence_context,
 )
 from src.database.utils import check_server_event_filter, weighted_choice
+from src.game.constants import FIGHT_DEFENDER_STRENGTH_BONUS, FIGHT_ROUNDS
 from src.logger import get_logger
 
+from .manage_global import advance_season
 from .manage_owner_events import _execute_event_actions
 from .manage_owners import get_or_create_owner
 from .models.events import (
@@ -51,6 +57,8 @@ if TYPE_CHECKING:
 logger = get_logger("game/manage_server_events")
 
 SERVER_EVENT_DURATION = timedelta(days=1)
+MAJOR_SERVER_EVENT_DURATION = timedelta(days=7)
+MINOR_EVENT_DAILY_CHANCE = 0.5
 
 
 def _roll_outcome_chance(chance: float | None, rng: random.Random) -> bool:
@@ -349,6 +357,7 @@ async def _execute_server_actions(
     actions: list,
     server_context: ServerEventContext,
     rng: random.Random,
+    season: Optional[str] = None,
 ) -> OwnerEventResult:
     """Execute a list of server-scoped action specs (plain dicts, not ORM EventAction objects)."""
     from src.database import (
@@ -592,7 +601,7 @@ async def _execute_server_actions(
                 if isinstance(breeds_param, list):
                     kwargs["breeds"] = breeds_param
                 elif isinstance(breeds_param, int) and breeds_param > 0:
-                    kwargs["breeds"] = await get_random_breed_ids(breeds_param, rng=rng)
+                    kwargs["breeds"] = await get_random_breed_ids(breeds_param, rng=rng, season=season)
                 mutations_param = parameters.get("mutations")
                 if isinstance(mutations_param, list):
                     kwargs["mutations"] = mutations_param
@@ -601,7 +610,7 @@ async def _execute_server_actions(
                 if pooch:
                     if isinstance(mutations_param, int) and mutations_param > 0:
                         for _ in range(mutations_param):
-                            await add_mutation_to_pooch(pooch.id, rng=rng)
+                            await add_mutation_to_pooch(pooch.id, rng=rng, season=season)
                     await _deliver_server_pooch(pooch.id, server_discord_id, destination, rng)
                     combined.pooches_created.append(pooch.id)
                     combined.pooches_affected.append(pooch.id)
@@ -780,9 +789,59 @@ async def _execute_server_actions(
                             for a in server_event.actions
                         ]
                         chained_result = await _execute_server_actions(
-                            server_discord_id, chained_actions, server_context, rng
+                            server_discord_id, chained_actions, server_context, rng, season=season
                         )
                         combined.merge(chained_result)
+
+            elif action_type == "fight_pooches":
+                from .action_helpers.pooch_actions import handle_fight_pooches
+
+                attacker_slot = parameters.get("attacker_slot")
+                defender_slot = parameters.get("defender_slot")
+
+                def _ids_from_saved(slot_name: str) -> list[int]:
+                    return list(server_context.saved_slots.get(slot_name, []))
+
+                attacker_id = None
+                defender_id = None
+
+                if isinstance(attacker_slot, str) and attacker_slot:
+                    ids = _ids_from_saved(attacker_slot)
+                    attacker_id = ids[0] if ids else None
+
+                if isinstance(defender_slot, str) and defender_slot:
+                    ids = _ids_from_saved(defender_slot)
+                    defender_id = ids[0] if ids else None
+
+                if attacker_id is None or defender_id is None:
+                    # Fall back: pick two random pooches from target pool
+                    if len(target_ids) >= 2:
+                        chosen = rng.sample(list(target_ids), 2)
+                        attacker_id, defender_id = chosen[0], chosen[1]
+
+                if attacker_id is not None and defender_id is not None:
+                    fight_result = await handle_fight_pooches(
+                        attacker_id,
+                        defender_id,
+                        rounds=int(parameters.get("rounds", FIGHT_ROUNDS)),
+                        defender_strength_bonus=int(
+                            parameters.get("defender_strength_bonus", FIGHT_DEFENDER_STRENGTH_BONUS)
+                        ),
+                        rng=rng,
+                    )
+                    combined.extra_data["fight_result"] = fight_result
+                    combined.pooches_affected.extend(
+                        pid for pid in [attacker_id, defender_id] if pid not in combined.pooches_affected
+                    )
+                    if fight_result.get("attacker_died"):
+                        combined.pooches_killed.append(attacker_id)
+                    if fight_result.get("defender_died"):
+                        combined.pooches_killed.append(defender_id)
+                    fight_save_as = parameters.get("save_as")
+                    if isinstance(fight_save_as, str) and fight_save_as and fight_result.get("winner_id"):
+                        server_context.saved_slots[fight_save_as] = [fight_result["winner_id"]]
+                else:
+                    logger.warning("_execute_server_actions: fight_pooches — could not resolve both pooches; skipping")
 
             else:
                 logger.warning("_execute_server_actions: unknown action_type '%s'; skipping", action_type)
@@ -798,12 +857,12 @@ async def _execute_server_actions(
 # ---------------------------------------------------------------------------
 
 
-async def _check_server_filter(server_discord_id: int, filter_spec: dict | None) -> bool:
+async def _check_server_filter(server_discord_id: int, filter_spec: dict | None, season: Optional[str] = None) -> bool:
     """Evaluate a ServerEventFilterSpec against a server (Python-side, not DB-side)."""
     if not filter_spec:
         return True
     async with session_scope() as session:
-        return await check_server_event_filter(session, server_discord_id, filter_spec)
+        return await check_server_event_filter(session, server_discord_id, filter_spec, season=season)
 
 
 # ---------------------------------------------------------------------------
@@ -812,11 +871,14 @@ async def _check_server_filter(server_discord_id: int, filter_spec: dict | None)
 
 
 async def trigger_daily_server_event(
-    server_discord_id: int, rng: Optional[random.Random] = None
+    server_discord_id: int,
+    tier: str = "minor",
+    rng: Optional[random.Random] = None,
 ) -> TriggeredServerEvent | None:
     rng = rng if rng is not None else random.Random()
 
-    existing = await get_active_server_event_occurrence(server_discord_id)
+    tier = tier.strip().lower()
+    existing = await get_active_server_event_occurrence_by_tier(server_discord_id, tier)
     if existing is not None:
         return await to_triggered_server_event(existing)
 
@@ -824,11 +886,11 @@ async def trigger_daily_server_event(
     if server is None or server.event_channel_discord_id is None:
         return None
 
-    all_events_with_weights = await list_all_server_events_with_weights()
+    events_with_weights = await list_server_events_with_weights_by_tier(tier)
     eligible: list[tuple] = []
-    for event_obj, weight in all_events_with_weights:
+    for event_obj, weight in events_with_weights:
         filter_spec = event_obj.filter or {}
-        if await _check_server_filter(server_discord_id, filter_spec):
+        if await _check_server_filter(server_discord_id, filter_spec, season=await get_current_season()):
             eligible.append((event_obj, weight))
 
     if not eligible:
@@ -845,18 +907,69 @@ async def trigger_daily_server_event(
         server_actions = [a for a in server_event.actions if a.target_type == "server"]
         if server_actions:
             action_dicts = [{"action_type": a.action_type, "parameters": a.parameters or {}} for a in server_actions]
-            await _execute_server_actions(server_discord_id, action_dicts, server_context, rng)
+            await _execute_server_actions(
+                server_discord_id, action_dicts, server_context, rng, season=await get_current_season()
+            )
 
+    duration = MAJOR_SERVER_EVENT_DURATION if tier == "major" else SERVER_EVENT_DURATION
     occurrence = await create_server_event_occurrence(
         server_discord_id=server_discord_id,
         server_event_id=server_event.id,
         context=server_context.to_dict(),
-        expires_at=datetime.now(timezone.utc) + SERVER_EVENT_DURATION,
+        expires_at=datetime.now(timezone.utc) + duration,
     )
     hydrated = await get_server_event_occurrence_by_id(occurrence.id)
     if hydrated is None:
         return None
-    logger.info("Triggered server event '%s' for server %s", server_event.name, server_discord_id)
+    logger.info("Triggered %s server event '%s' for server %s", tier, server_event.name, server_discord_id)
+    return await to_triggered_server_event(hydrated)
+
+
+async def trigger_server_event_by_name(
+    server_discord_id: int,
+    name: str,
+    rng: Optional[random.Random] = None,
+) -> TriggeredServerEvent | None:
+    """Trigger a specific server event by name, bypassing random selection and filter checks.
+
+    Returns None if the event name is not found or the server has no event channel.
+    Returns the existing active event of the same tier (unchanged) if one is already running.
+    """
+    rng = rng if rng is not None else random.Random()
+
+    server_event = await get_server_event_by_name(name)
+    if server_event is None:
+        return None
+
+    tier = getattr(server_event, "tier", "minor").strip().lower()
+    existing = await get_active_server_event_occurrence_by_tier(server_discord_id, tier)
+    if existing is not None:
+        return await to_triggered_server_event(existing)
+
+    server = await get_server_by_discord_id(server_discord_id)
+    if server is None or server.event_channel_discord_id is None:
+        return None
+
+    server_context = ServerEventContext(server_discord_id=server_discord_id)
+    if server_event.actions:
+        server_actions = [a for a in server_event.actions if a.target_type == "server"]
+        if server_actions:
+            action_dicts = [{"action_type": a.action_type, "parameters": a.parameters or {}} for a in server_actions]
+            await _execute_server_actions(
+                server_discord_id, action_dicts, server_context, rng, season=await get_current_season()
+            )
+
+    duration = MAJOR_SERVER_EVENT_DURATION if tier == "major" else SERVER_EVENT_DURATION
+    occurrence = await create_server_event_occurrence(
+        server_discord_id=server_discord_id,
+        server_event_id=server_event.id,
+        context=server_context.to_dict(),
+        expires_at=datetime.now(timezone.utc) + duration,
+    )
+    hydrated = await get_server_event_occurrence_by_id(occurrence.id)
+    if hydrated is None:
+        return None
+    logger.info("Dev-triggered server event '%s' for server %s", name, server_discord_id)
     return await to_triggered_server_event(hydrated)
 
 
@@ -875,6 +988,177 @@ async def list_active_server_events() -> list[TriggeredServerEvent]:
 
 
 # ---------------------------------------------------------------------------
+# Arena helpers
+# ---------------------------------------------------------------------------
+
+_ARENA_KEY = "arena"
+_BET_WINDOW_DEFAULT_MINUTES = 5
+_BET_MONEY_DEFAULT_MAX = 100
+_BET_BLOODSKULLS_DEFAULT_MAX = 25
+
+
+def _get_arena(server_context: ServerEventContext) -> dict:
+    """Return the arena dict from server_context.extra_data, creating it if missing."""
+    arena = server_context.extra_data.setdefault(_ARENA_KEY, {})
+    arena.setdefault("listed", [])
+    arena.setdefault("matchups", [])
+    arena.setdefault("fight_wins", {})
+    return arena
+
+
+async def _handle_arena_action(
+    occurrence: "ServerEventOccurrence",
+    owner_discord_id: int,
+    selected_pooch_id: int | None,
+    arena_action: str,
+    option_parameters: dict,
+    extra_params: dict,
+    rng: random.Random,
+) -> tuple[bool, str, dict]:
+    """Mutate the occurrence's shared arena state for arena-specific actions.
+
+    Returns (success, message, arena_result_dict).
+    The caller is responsible for persisting the updated occurrence context.
+    """
+    server_context = ServerEventContext.from_dict(occurrence.context or {})
+    arena = _get_arena(server_context)
+
+    if arena_action == "list_pooch":
+        # Player lists their pooch as a potential defender
+        if selected_pooch_id is None:
+            return False, "You must select a pooch to list.", {}
+        pooch = await db_get_pooch_by_id(selected_pooch_id)
+        if pooch is None or not pooch.alive or pooch.owner_discord_id != owner_discord_id:
+            return False, "That pooch is not available.", {}
+        # Check not already listed
+        if any(entry["pooch_id"] == selected_pooch_id for entry in arena["listed"]):
+            return False, "That pooch is already listed.", {}
+        arena["listed"].append({"pooch_id": selected_pooch_id, "owner_id": owner_discord_id})
+        await update_server_event_occurrence_context(occurrence.id, server_context.to_dict())
+        return True, f"{pooch.name} has been listed in the arena!", {"listed_pooch_id": selected_pooch_id}
+
+    elif arena_action == "challenge":
+        # Player challenges a listed pooch with their own pooch
+        if selected_pooch_id is None:
+            return False, "You must select a pooch to fight with.", {}
+        target_pooch_id = extra_params.get("target_listed_pooch_id")
+        if not isinstance(target_pooch_id, int):
+            return False, "You must specify the pooch you want to challenge.", {}
+        # Find in listed
+        listed_entry = next((e for e in arena["listed"] if e["pooch_id"] == target_pooch_id), None)
+        if listed_entry is None:
+            return False, "That pooch is no longer available to challenge.", {}
+        if listed_entry["owner_id"] == owner_discord_id:
+            return False, "You cannot challenge your own pooch.", {}
+        if selected_pooch_id == target_pooch_id:
+            return False, "A pooch cannot fight itself.", {}
+        # Check attacker not already in an active matchup
+        in_matchup = any(
+            not m.get("resolved")
+            and (m["attacker_pooch_id"] == selected_pooch_id or m["defender_pooch_id"] == selected_pooch_id)
+            for m in arena["matchups"]
+        )
+        if in_matchup:
+            return False, "That pooch is already in an active fight.", {}
+        # Remove from listed
+        arena["listed"] = [e for e in arena["listed"] if e["pooch_id"] != target_pooch_id]
+
+        bet_window = int(option_parameters.get("bet_window_minutes", _BET_WINDOW_DEFAULT_MINUTES))
+        bet_deadline = (datetime.now(timezone.utc) + timedelta(minutes=bet_window)).isoformat()
+        matchup_id = len(arena["matchups"])
+
+        attacker_pooch = await db_get_pooch_by_id(selected_pooch_id)
+        defender_pooch = await db_get_pooch_by_id(target_pooch_id)
+
+        arena["matchups"].append(
+            {
+                "id": matchup_id,
+                "attacker_pooch_id": selected_pooch_id,
+                "attacker_owner_id": owner_discord_id,
+                "attacker_name": attacker_pooch.name if attacker_pooch else "Unknown",
+                "defender_pooch_id": target_pooch_id,
+                "defender_owner_id": listed_entry["owner_id"],
+                "defender_name": defender_pooch.name if defender_pooch else "Unknown",
+                "bet_deadline": bet_deadline,
+                "bets": [],
+                "fight_result": None,
+                "resolved": False,
+            }
+        )
+        await update_server_event_occurrence_context(occurrence.id, server_context.to_dict())
+        attacker_name = attacker_pooch.name if attacker_pooch else f"pooch #{selected_pooch_id}"
+        defender_name = defender_pooch.name if defender_pooch else f"pooch #{target_pooch_id}"
+        return (
+            True,
+            f"{attacker_name} challenges {defender_name}! Betting window open for {bet_window} minutes.",
+            {"matchup_id": matchup_id},
+        )
+
+    elif arena_action == "bet":
+        # Player bets on an existing matchup
+        matchup_id = extra_params.get("matchup_id")
+        side = str(extra_params.get("side", "")).strip().lower()
+        if not isinstance(matchup_id, int) or side not in ("attacker", "defender"):
+            return False, "Invalid bet parameters.", {}
+
+        matchup = next((m for m in arena["matchups"] if m["id"] == matchup_id), None)
+        if matchup is None:
+            return False, "That matchup does not exist.", {}
+        if matchup.get("resolved"):
+            return False, "That fight has already been resolved.", {}
+
+        # Owners of the fighting pooches cannot bet
+        if owner_discord_id in (matchup["attacker_owner_id"], matchup["defender_owner_id"]):
+            return False, "You cannot bet on a fight your own pooch is in.", {}
+
+        # Check bet deadline
+        deadline = datetime.fromisoformat(matchup["bet_deadline"])
+        if datetime.now(timezone.utc) > deadline:
+            return False, "The betting window for that fight has closed.", {}
+
+        # Check if this owner already bet on this matchup
+        if any(b["owner_id"] == owner_discord_id for b in matchup["bets"]):
+            return False, "You have already placed a bet on that fight.", {}
+
+        bet_money = max(
+            0,
+            min(int(extra_params.get("money", 0)), int(option_parameters.get("bet_money_max", _BET_MONEY_DEFAULT_MAX))),
+        )
+        bet_bloodskulls = max(
+            0,
+            min(
+                int(extra_params.get("bloodskulls", 0)),
+                int(option_parameters.get("bet_bloodskulls_max", _BET_BLOODSKULLS_DEFAULT_MAX)),
+            ),
+        )
+
+        if bet_money == 0 and bet_bloodskulls == 0:
+            return False, "You must bet at least something.", {}
+
+        matchup["bets"].append(
+            {
+                "owner_id": owner_discord_id,
+                "side": side,
+                "money": bet_money,
+                "bloodskulls": bet_bloodskulls,
+            }
+        )
+        await update_server_event_occurrence_context(occurrence.id, server_context.to_dict())
+        parts = []
+        if bet_money:
+            parts.append(f"${bet_money}")
+        if bet_bloodskulls:
+            parts.append(f"{bet_bloodskulls} bloodskulls")
+        return (
+            True,
+            f"You bet {' and '.join(parts)} on the {side}!",
+            {"matchup_id": matchup_id, "side": side, "money": bet_money, "bloodskulls": bet_bloodskulls},
+        )
+
+    return True, "", {}
+
+
+# ---------------------------------------------------------------------------
 # Participation
 # ---------------------------------------------------------------------------
 
@@ -885,6 +1169,7 @@ async def participate_in_server_event(
     owner_discord_id: int,
     menu_option_id: int,
     selected_pooch_id: int | None = None,
+    extra_params: dict | None = None,
     rng: Optional[random.Random] = None,
 ) -> tuple[bool, str, ServerEventParticipationSummary | None]:
     rng = rng if rng is not None else random.Random()
@@ -961,6 +1246,23 @@ async def participate_in_server_event(
     # Execute option actions immediately
     immediate_result = await _execute_event_actions(owner_discord_id, option.actions, context, rng)
 
+    # Handle arena-specific actions that mutate the shared occurrence context
+    arena_result: dict = {}
+    arena_action = str((option.parameters or {}).get("arena_action", "")).strip().lower()
+    if arena_action:
+        success, arena_msg, arena_result = await _handle_arena_action(
+            occurrence=occurrence,
+            owner_discord_id=owner_discord_id,
+            selected_pooch_id=selected_pooch_id,
+            arena_action=arena_action,
+            option_parameters=option.parameters or {},
+            extra_params=extra_params or {},
+            rng=rng,
+        )
+        if not success:
+            return False, arena_msg, None
+        immediate_result.message = arena_msg or immediate_result.message
+
     # Build the submission record
     submission: dict = {
         "menu_name": menu.name,
@@ -973,6 +1275,8 @@ async def participate_in_server_event(
         "immediate_result": immediate_result.to_dict(),
         "submitted_at": datetime.now(timezone.utc).isoformat(),
     }
+    if arena_result:
+        submission["arena_result"] = arena_result
 
     if existing_participation is None:
         await create_server_event_participation(
@@ -994,6 +1298,170 @@ async def participate_in_server_event(
 
 
 # ---------------------------------------------------------------------------
+# Arena resolution
+# ---------------------------------------------------------------------------
+
+
+async def _resolve_arena_matchups(
+    occurrence_id: int,
+    server_context: ServerEventContext,
+    event_parameters: dict,
+    rng: random.Random,
+) -> None:
+    """Resolve all unresolved arena matchups: fight the pooches, pay out bets and fighter bonuses."""
+    from src.database import (
+        give_bloodskulls_to_owner,
+        give_bones_to_owner,
+        give_money_to_owner,
+    )
+
+    from .action_helpers.pooch_actions import handle_fight_pooches
+
+    arena = server_context.extra_data.get(_ARENA_KEY)
+    if not arena:
+        return
+
+    matchups: list[dict] = arena.get("matchups", [])
+    fight_wins: dict[str, int] = arena.get("fight_wins", {})
+
+    fight_params = dict(event_parameters.get("fight_params", {}))
+    prize_per_participant = int(event_parameters.get("prize_per_participant", 50))
+    fighter_bonus_fraction = float(event_parameters.get("fighter_bonus_fraction", 0.25))
+    draw_fighter_bonus_fraction = float(event_parameters.get("draw_fighter_bonus_fraction", 0.125))
+    kill_reward_bloodskulls = int(event_parameters.get("kill_reward_bloodskulls", 1))
+    kill_reward_bones = int(event_parameters.get("kill_reward_bones", 1))
+
+    any_resolved = False
+    for matchup in matchups:
+        if matchup.get("resolved"):
+            continue
+        any_resolved = True
+
+        attacker_id = matchup["attacker_pooch_id"]
+        defender_id = matchup["defender_pooch_id"]
+        attacker_owner_id = matchup["attacker_owner_id"]
+        defender_owner_id = matchup["defender_owner_id"]
+
+        fight_result = await handle_fight_pooches(
+            attacker_id,
+            defender_id,
+            rounds=int(fight_params.get("rounds", FIGHT_ROUNDS)),
+            defender_strength_bonus=int(fight_params.get("defender_strength_bonus", FIGHT_DEFENDER_STRENGTH_BONUS)),
+            rng=rng,
+        )
+        matchup["fight_result"] = fight_result
+        matchup["resolved"] = True
+
+        winner_id: int | None = fight_result["winner_id"]
+        draw: bool = fight_result["draw"]
+        att_died: bool = fight_result["attacker_died"]
+        def_died: bool = fight_result["defender_died"]
+
+        # Collect total bets
+        total_bets_money = sum(b["money"] for b in matchup["bets"])
+        total_bets_bloodskulls = sum(b["bloodskulls"] for b in matchup["bets"])
+
+        # Fighter bonus = 25% of total bets (regardless of bet currency)
+        fighter_bonus_money = int(total_bets_money * fighter_bonus_fraction)
+        fighter_bonus_bloodskulls = int(total_bets_bloodskulls * fighter_bonus_fraction)
+        draw_bonus_money = int(total_bets_money * draw_fighter_bonus_fraction)
+        draw_bonus_bloodskulls = int(total_bets_bloodskulls * draw_fighter_bonus_fraction)
+
+        # Pay fighter bonuses
+        if draw:
+            if fighter_bonus_money > 0 or fighter_bonus_bloodskulls > 0:
+                if draw_bonus_money:
+                    await give_money_to_owner(attacker_owner_id, draw_bonus_money)
+                    await give_money_to_owner(defender_owner_id, draw_bonus_money)
+                if draw_bonus_bloodskulls:
+                    await give_bloodskulls_to_owner(attacker_owner_id, draw_bonus_bloodskulls)
+                    await give_bloodskulls_to_owner(defender_owner_id, draw_bonus_bloodskulls)
+        else:
+            winner_owner_id = attacker_owner_id if winner_id == attacker_id else defender_owner_id
+            if fighter_bonus_money:
+                await give_money_to_owner(winner_owner_id, fighter_bonus_money)
+            if fighter_bonus_bloodskulls:
+                await give_bloodskulls_to_owner(winner_owner_id, fighter_bonus_bloodskulls)
+            # Track fight wins for grand prize
+            fight_wins[str(winner_owner_id)] = fight_wins.get(str(winner_owner_id), 0) + 1
+
+        # Kill rewards (owner of the killer pooch gets 1 bloodskull + 1 bone per kill)
+        if att_died and kill_reward_bloodskulls:
+            await give_bloodskulls_to_owner(defender_owner_id, kill_reward_bloodskulls)
+            if kill_reward_bones:
+                await give_bones_to_owner(defender_owner_id, kill_reward_bones)
+        if def_died and kill_reward_bloodskulls:
+            await give_bloodskulls_to_owner(attacker_owner_id, kill_reward_bloodskulls)
+            if kill_reward_bones:
+                await give_bones_to_owner(attacker_owner_id, kill_reward_bones)
+
+        # Pay out gamblers
+        if not matchup["bets"]:
+            continue
+
+        attacker_bets = [b for b in matchup["bets"] if b["side"] == "attacker"]
+        defender_bets = [b for b in matchup["bets"] if b["side"] == "defender"]
+
+        if draw:
+            # Return all bets
+            for bet in matchup["bets"]:
+                if bet["money"]:
+                    await give_money_to_owner(bet["owner_id"], bet["money"])
+                if bet["bloodskulls"]:
+                    await give_bloodskulls_to_owner(bet["owner_id"], bet["bloodskulls"])
+        else:
+            winning_side = "attacker" if winner_id == attacker_id else "defender"
+            winning_bets = attacker_bets if winning_side == "attacker" else defender_bets
+            losing_bets = defender_bets if winning_side == "attacker" else attacker_bets
+
+            total_winning_money = sum(b["money"] for b in winning_bets)
+            total_winning_bloodskulls = sum(b["bloodskulls"] for b in winning_bets)
+            total_losing_money = sum(b["money"] for b in losing_bets)
+            total_losing_bloodskulls = sum(b["bloodskulls"] for b in losing_bets)
+
+            # Payout: winners receive their stake back + proportional share of losers' pot
+            for bet in winning_bets:
+                payout_money = bet["money"]
+                payout_bloodskulls = bet["bloodskulls"]
+                if total_winning_money > 0 and total_losing_money > 0:
+                    payout_money += int(total_losing_money * (bet["money"] / total_winning_money))
+                if total_winning_bloodskulls > 0 and total_losing_bloodskulls > 0:
+                    payout_bloodskulls += int(
+                        total_losing_bloodskulls * (bet["bloodskulls"] / total_winning_bloodskulls)
+                    )
+                if payout_money:
+                    await give_money_to_owner(bet["owner_id"], payout_money)
+                if payout_bloodskulls:
+                    await give_bloodskulls_to_owner(bet["owner_id"], payout_bloodskulls)
+
+    # Grand prize: owner with the most fight wins gets $50 per participating owner
+    arena["fight_wins"] = fight_wins
+    if any_resolved and fight_wins:
+        from sqlalchemy import select as _sa_select
+
+        from src.database.models import OwnerServer as OwnerServerModel
+
+        async with session_scope() as session:
+            result = await session.execute(
+                _sa_select(OwnerServerModel.owner_discord_id).where(
+                    OwnerServerModel.server_discord_id == server_context.server_discord_id
+                )
+            )
+            participant_count = len(list(result.scalars().all()))
+
+        grand_prize = prize_per_participant * participant_count
+        max_wins = max(fight_wins.values())
+        grand_prize_winners = [int(oid) for oid, wins in fight_wins.items() if wins == max_wins]
+        per_winner = grand_prize // max(1, len(grand_prize_winners))
+        for oid in grand_prize_winners:
+            if per_winner:
+                await give_money_to_owner(oid, per_winner)
+
+    if any_resolved:
+        await update_server_event_occurrence_context(occurrence_id, server_context.to_dict())
+
+
+# ---------------------------------------------------------------------------
 # Resolution
 # ---------------------------------------------------------------------------
 
@@ -1011,6 +1479,11 @@ async def resolve_server_event(
     server_context = ServerEventContext.from_dict(occurrence.context or {})
     server_event = occurrence.server_event
 
+    _season = await get_current_season()
+
+    # Resolve all pending arena matchups before scoring/ranking
+    await _resolve_arena_matchups(occurrence.id, server_context, server_event.parameters or {}, rng)
+
     ranked_participations = await _rank_participations(occurrence, rng)
     winner_owner_ids: list[int] = []
     winner_pooch_ids: list[int] = []
@@ -1019,7 +1492,7 @@ async def resolve_server_event(
     if not ranked_participations:
         default_actions = list(server_event.default_actions_data or [])
         if default_actions:
-            await _execute_server_actions(server_discord_id, default_actions, server_context, rng)
+            await _execute_server_actions(server_discord_id, default_actions, server_context, rng, season=_season)
     else:
         for participation, score, rank in ranked_participations:
             context = OwnerEventContext.from_dict(participation.context or {})
@@ -1085,7 +1558,7 @@ async def resolve_server_event(
                 action_dicts = [
                     {"action_type": a.action_type, "parameters": a.parameters or {}} for a in outcome.actions
                 ]
-                await _execute_server_actions(server_discord_id, action_dicts, server_context, rng)
+                await _execute_server_actions(server_discord_id, action_dicts, server_context, rng, season=_season)
 
             elif outcome_target == "non_participants":
                 from sqlalchemy import select as _sa_select
@@ -1130,7 +1603,18 @@ async def resolve_server_event(
 
 async def run_daily_server_event_cycle(
     rng: Optional[random.Random] = None,
-) -> tuple[dict[int, TriggeredServerEvent], list[ServerEventResolution]]:
+) -> tuple[dict[int, TriggeredServerEvent], list[ServerEventResolution], dict[int, str]]:
+    """Resolve expired events, advance seasons (Monday only), and trigger new events.
+
+    Schedule:
+    - Monday: advance season, then trigger a guaranteed major event lasting the full week.
+              No minor event fires on Monday.
+    - Other days: 50% chance of a minor event (lasts 1 day), independently of any active major event.
+
+    Returns:
+        (new_events, resolutions, season_advances)
+        season_advances: mapping of server_discord_id → new season name, only populated on Monday.
+    """
     rng = rng if rng is not None else random.Random()
 
     resolutions: list[ServerEventResolution] = []
@@ -1140,16 +1624,34 @@ async def run_daily_server_event_cycle(
         if resolution is not None:
             resolutions.append(resolution)
 
+    is_monday = datetime.now(timezone.utc).weekday() == 2  # Monday = 0
+
     new_events: dict[int, TriggeredServerEvent] = {}
+    season_advances: dict[int, str] = {}
     servers = await list_servers()
+
+    if is_monday:
+        new_season = await advance_season()
+        season_advances = {
+            server.discord_id: new_season for server in servers if server.event_channel_discord_id is not None
+        }
+
     for server in servers:
         if server.event_channel_discord_id is None:
             continue
-        event = await trigger_daily_server_event(server.discord_id, rng)
+
+        if is_monday:
+            event = await trigger_daily_server_event(server.discord_id, tier="major", rng=rng)
+        else:
+            if rng.random() < MINOR_EVENT_DAILY_CHANCE:
+                event = await trigger_daily_server_event(server.discord_id, tier="minor", rng=rng)
+            else:
+                event = None
+
         if event is not None:
             new_events[server.discord_id] = event
 
-    return new_events, resolutions
+    return new_events, resolutions, season_advances
 
 
 async def set_server_event_message_id(occurrence_id: int, message_discord_id: int | None) -> None:

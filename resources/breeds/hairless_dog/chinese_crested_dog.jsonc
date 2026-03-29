@@ -2,5 +2,10 @@
     "name": "Chinese Crested Dog",
     "alt_name": "Puff",
     "description": "The Chinese Crested Dog is a hairless breed of dog. Like most hairless dog breeds, the Chinese Crested Dog comes in two varieties, without hair and with hair, which can be born in the same litter: the hairless and the powderpuff.",
-    "rarity": "UNCOMMON"
+    "rarity": "UNCOMMON",
+    "parameters": {
+        "min_size": 2, // 10-13 lbs
+        "max_size": 3,
+        "fluffiness_mult": 0.2 // TODO: these are weird and either mostly hairless or really fluffy. Is there a way we could do 50% to be one stat and 50% to be another
+    }
 }

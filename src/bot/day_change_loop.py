@@ -171,6 +171,37 @@ async def post_server_event_resolutions(bot: discord.Client, resolutions: list[o
         await channel.send(embed=await build_server_event_resolution_embed(resolution))
 
 
+_SEASON_EMOJI = {
+    "spring": "🌸",
+    "summer": "☀️",
+    "autumn": "🍂",
+    "winter": "❄️",
+}
+
+
+async def post_season_change_notifications(bot: discord.Client, season_advances: dict[int, str]) -> None:
+    """Post a season-change announcement to each server's event channel."""
+    for server_discord_id, new_season in season_advances.items():
+        channel_id = await get_event_channel(server_discord_id)
+        if not channel_id:
+            continue
+
+        channel = bot.get_channel(channel_id)
+        if channel is None:
+            try:
+                channel = await bot.fetch_channel(channel_id)
+            except Exception:
+                continue
+
+        emoji = _SEASON_EMOJI.get(new_season, "")
+        embed = discord.Embed(
+            title=f"{emoji} The season has changed!",
+            description=f"It is now **{new_season.capitalize()}**.",
+            color=discord.Color.green(),
+        )
+        await channel.send(embed=embed)
+
+
 async def post_stray_event_summaries(
     bot: discord.Client,
     stray_results: dict[int, list[tuple[str, StrayEventResult]]],
@@ -221,10 +252,12 @@ async def day_change_runner(
         except Exception:
             logger.exception("Failed to update owner display names")
 
-        server_events, resolutions = await run_daily_server_event_cycle(
+        server_events, resolutions, season_advances = await run_daily_server_event_cycle(
             rng=random.Random(int.from_bytes(os.urandom(8)))
         )
         await post_server_event_resolutions(bot, resolutions)
+        if season_advances:
+            await post_season_change_notifications(bot, season_advances)
         await post_server_event_notifications(bot, server_events)
 
     bot._day_change_run_once = run_once

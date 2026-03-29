@@ -4,5 +4,8 @@
     "description": "This pooch is buy one get one free.",
     "heritability": 0.0,
     "health_impact": "NEUTRAL",
-    "rarity": "UNCOMMON"
+    "rarity": "UNCOMMON",
+    "parameters": {
+        // TODO: Maybe a way to randomize the stats each day
+    }
 }

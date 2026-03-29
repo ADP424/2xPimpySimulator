@@ -387,6 +387,7 @@ _RUN_DAY_PATCHES = [
     "src.game.change_day.list_pooch_mutations",
     "src.game.change_day.get_mutation_health_impact",
     "src.game.change_day.list_pooches_for_kennel",
+    "src.game.change_day.update_pooch_mood",
 ]
 
 

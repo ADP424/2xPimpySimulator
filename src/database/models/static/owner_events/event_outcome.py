@@ -2,7 +2,15 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import BigInteger, CheckConstraint, Float, ForeignKey, Integer, Text
+from sqlalchemy import (
+    BigInteger,
+    CheckConstraint,
+    Float,
+    ForeignKey,
+    Integer,
+    Text,
+    text,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -32,7 +40,7 @@ class EventOutcome(Base):
     chance: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     parameters: Mapped[EventOutcomeAdvancedOptions] = mapped_column(JSONB, nullable=False, default=dict)
-    stat_weights: Mapped[list] = mapped_column(JSONB, nullable=False, server_default="'[]'::jsonb")
+    stat_weights: Mapped[list] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
 
     option: Mapped[EventOption] = relationship("EventOption", back_populates="outcomes")
     actions: Mapped[list[EventAction]] = relationship(

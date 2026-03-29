@@ -4,5 +4,10 @@
     "description": "This pooch is on a very strict diet.",
     "heritability": 0.1,
     "health_impact": "HEALTHY",
-    "rarity": "REMARKABLE"
+    "rarity": "REMARKABLE",
+    "parameters": {
+        "strength_add": 1,
+        "aggressiveness_mult": 1.5,
+        "constitution_mult": 0.9 
+    }
 }

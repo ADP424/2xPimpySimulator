@@ -12,15 +12,21 @@ from src.database import (
     age_pooch,
     bury_pooch,
     clear_vendor_pooch_stock,
+    close_auction_sale_listing,
     create_pooch,
     create_vendor,
     decrement_pooch_breeding_cooldown,
     delete_pregnancy,
     delete_random_vendor,
+    get_active_auction_sale_listing_for_pooch,
+    get_current_season,
     get_mutation_health_impact,
     get_pooch_health,
     get_pooch_kennel,
     get_random_breed_ids,
+    give_money_to_owner,
+    list_bids_for_listing,
+    list_hell_pooches,
     list_living_pooches,
     list_pooch_mutations,
     list_pooch_pregnancies,
@@ -28,6 +34,8 @@ from src.database import (
     list_servers,
     list_servers_for_pooch,
     list_strays_for_server,
+    list_vendor_desired_breeds,
+    list_vendor_desired_mutations,
     list_vendors,
     remove_pooch_from_kennel,
     reset_begged_today,
@@ -52,6 +60,7 @@ from .constants import (
     VENDOR_POOCH_AGE_RANGE,
     VENDOR_POOCH_STOCK_COUNT_RANGE,
 )
+from .manage_auctions import process_expired_sale_listings
 from .manage_kennels import add_pooch_to_kennel
 from .manage_pooches import get_pooch_by_id
 from .manage_stray_events import run_daily_stray_event_check
@@ -124,13 +133,26 @@ async def refresh_moods(rng_seed: Optional[int] = None) -> int:
         The number of pooches whose mood was updated.
     """
     rng = random.Random(rng_seed)
+    count = 0
+
     pooches = await list_living_pooches()
     for pooch in pooches:
         total_health: int = await get_pooch_health(pooch.id)
         new_mood = _pick_mood(total_health, pooch.age, rng)
         await update_pooch_mood(pooch.id, new_mood)
-    logger.info("Refreshed moods for %d pooches.", len(pooches))
-    return len(pooches)
+    count += len(pooches)
+
+    # Set "dead" mood on all hell pooches
+    hell_pooches = await list_hell_pooches()
+    hell_updated = 0
+    for pooch in hell_pooches:
+        if pooch.mood != "dead":
+            await update_pooch_mood(pooch.id, "dead")
+            hell_updated += 1
+    count += hell_updated
+
+    logger.info("Refreshed moods for %d pooches (%d hell pooches).", count, hell_updated)
+    return count
 
 
 def _death_roll(total_health: int, rng: random.Random) -> bool:
@@ -192,6 +214,8 @@ async def run_day_change(
 
         kennel = await get_pooch_kennel(mother_id)
         if kennel is None:
+            baby_health = await get_pooch_health(baby.id)
+            await update_pooch_mood(baby.id, _pick_mood(baby_health, baby.age, rng))
             for server in servers:
                 births_by_server.setdefault(server.discord_id, []).append(
                     BirthEvent(
@@ -205,6 +229,7 @@ async def run_day_change(
 
         success = await add_pooch_to_kennel(kennel.id, baby.id)
         if not success:
+            await update_pooch_mood(baby.id, "dead")
             for server in servers:
                 await add_pooch_to_strays(baby.id, server.discord_id)
                 births_by_server.setdefault(server.discord_id, []).append(
@@ -219,6 +244,9 @@ async def run_day_change(
                     )
                 )
             continue
+
+        baby_health = await get_pooch_health(baby.id)
+        await update_pooch_mood(baby.id, _pick_mood(baby_health, baby.age, rng))
 
         for server in servers:
             births_by_server.setdefault(server.discord_id, []).append(
@@ -239,6 +267,16 @@ async def run_day_change(
         await remove_pooch_from_kennel(pooch.id)
         if pooch.owner_discord_id is not None:
             await bury_pooch(pooch.owner_discord_id, pooch.id)
+        # Cancel any active auction listing and refund all bidders
+        listing = await get_active_auction_sale_listing_for_pooch(pooch.id)
+        if listing is not None:
+            bids = await list_bids_for_listing(listing.id)
+            refunded: set[int] = set()
+            for bid in bids:  # ordered by amount DESC; first per bidder = their highest
+                if bid.bidder_discord_id not in refunded:
+                    await give_money_to_owner(bid.bidder_discord_id, bid.amount)
+                    refunded.add(bid.bidder_discord_id)
+            await close_auction_sale_listing(listing.id, None, None)
         return pooch
 
     pooches = await list_living_pooches()
@@ -390,13 +428,14 @@ async def run_day_change(
     logger.info("Completed daily deaths.")
 
     servers = await list_servers()
+    _season = await get_current_season()
 
     # minimum stray guarantee: every server must have at least one alive stray
     logger.info("Checking minimum stray population per server...")
     for server in servers:
         strays = await list_strays_for_server(server.discord_id)
         if not strays:
-            stray_breed_ids = await get_random_breed_ids(1, rng=rng)
+            stray_breed_ids = await get_random_breed_ids(1, rng=rng, season=_season)
             stray_pooch = await create_pooch(
                 base_health=rng.randint(POOCH_STAT_RANGE[0], POOCH_STAT_RANGE[1]),
                 **{stat: rng.randint(POOCH_STAT_RANGE[0], POOCH_STAT_RANGE[1]) for stat in POOCH_STATS},
@@ -419,12 +458,28 @@ async def run_day_change(
                 server.discord_id, price_markup=rng.uniform(VENDOR_MARKUP_RANGE[0], VENDOR_MARKUP_RANGE[1]), rng=rng
             )
             vendors.append(vendor)
+        # Collect all desired breed/mutation IDs across this server's vendors so
+        # stock pooches are never created with breeds or mutations that any vendor desires.
+        desired_breed_ids: list[int] = []
+        desired_mutation_ids: list[int] = []
+        for v in vendors:
+            desired_breed_ids.extend(b.id for b in (await list_vendor_desired_breeds(v.id)))
+            desired_mutation_ids.extend(m.id for m in (await list_vendor_desired_mutations(v.id)))
+        desired_breed_ids = list(set(desired_breed_ids))
+        desired_mutation_ids = list(set(desired_mutation_ids))
+
         for vendor in vendors:
             await clear_vendor_pooch_stock(vendor.id, delete_pooches=True)
             stock_count = rng.randint(VENDOR_POOCH_STOCK_COUNT_RANGE[0], VENDOR_POOCH_STOCK_COUNT_RANGE[1])
             for _ in range(stock_count):
                 num_breeds = rng.randint(NUM_BREEDS_PER_VENDOR_POOCH_RANGE[0], NUM_BREEDS_PER_VENDOR_POOCH_RANGE[1])
-                vendor_breed_ids = await get_random_breed_ids(num_breeds, rng=rng, from_vendor=True)
+                vendor_breed_ids = await get_random_breed_ids(
+                    num_breeds,
+                    rng=rng,
+                    from_vendor=True,
+                    exclude_ids=desired_breed_ids,
+                    season=_season,
+                )
                 vendor_pooch = await create_pooch(
                     vendor_id=vendor.id,
                     age=rng.randint(VENDOR_POOCH_AGE_RANGE[0], VENDOR_POOCH_AGE_RANGE[1]),
@@ -439,9 +494,19 @@ async def run_day_change(
                 for _ in range(
                     rng.randint(NUM_MUTATIONS_PER_VENDOR_POOCH_RANGE[0], NUM_MUTATIONS_PER_VENDOR_POOCH_RANGE[1])
                 ):
-                    await add_mutation_to_pooch(vendor_pooch.id, from_vendor=True)
+                    await add_mutation_to_pooch(
+                        vendor_pooch.id,
+                        from_vendor=True,
+                        exclude_mutation_ids=desired_mutation_ids,
+                        season=_season,
+                    )
                 await add_pooch_to_vendor_stock(vendor.id, vendor_pooch.id)
     logger.info("Completed daily vendor restock.")
+
+    # auction expiry resolution
+    logger.info("Resolving expired auction listings...")
+    await process_expired_sale_listings()
+    logger.info("Completed auction expiry resolution.")
 
     # stray events (fire once per server after the stray population is guaranteed)
     logger.info("Running daily stray events...")

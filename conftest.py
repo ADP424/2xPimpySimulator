@@ -51,6 +51,7 @@ def make_pooch(
     size=10,
     health=10,
     created_at=None,
+    mood=None,
     **overrides,
 ):
     attrs = dict(
@@ -76,6 +77,7 @@ def make_pooch(
         size=size,
         health=health,
         created_at=created_at,
+        mood=mood,
         breeds=[],
         mutations=[],
         parameters={},

@@ -239,9 +239,17 @@ class PoochInfoView(View):
 
         if is_dev:
             p = self.pooch
+            if p.breeds:
+                total_weight = sum(pb.relative_weight for pb in p.breeds)
+                avg_min = round(sum(pb.breed.min_size * pb.relative_weight for pb in p.breeds) / total_weight)
+                avg_max = round(sum(pb.breed.max_size * pb.relative_weight for pb in p.breeds) / total_weight)
+                size_bounds = f"{avg_min}–{avg_max}"
+            else:
+                size_bounds = "N/A"
             dev_lines = [
                 f"Health: {p.health} (base {p.base_health}, age loss {p.health_loss_age})",
                 f"Breeding Cooldown: {p.breeding_cooldown}",
+                f"Size Bounds: {size_bounds}",
                 f"Strength: {p.strength}",
                 f"Cuteness: {p.cuteness}",
                 f"Fluffiness: {p.fluffiness}",

@@ -6,8 +6,11 @@ from sqlalchemy import select, update
 
 from .constants import POOCH_BREEDING_COOLDOWN, POOCH_HEALTH_LOSS_STARTING_AGE
 from .models import (
+    AuctionBountyListing,
+    AuctionSaleListing,
     Breed,
     EventOccurrence,
+    GlobalState,
     Kennel,
     Mutation,
     Owner,
@@ -588,6 +591,37 @@ async def set_event_channel_discord_id(server_discord_id: int, channel_discord_i
             server.event_channel_discord_id = channel_discord_id
 
     return server
+
+
+_SEASON_CYCLE = ["spring", "summer", "autumn", "winter"]
+
+_GLOBAL_STATE_ID = 1
+
+
+async def get_current_season() -> str:
+    """Return the current global season, defaulting to 'spring' if the row doesn't exist yet."""
+    async with session_scope() as session:
+        row = await session.get(GlobalState, _GLOBAL_STATE_ID)
+        if row is None:
+            return "spring"
+        return (row.current_season or "spring").strip().lower()
+
+
+async def advance_global_season() -> str:
+    """Advance the global season to the next one in the cycle and return the new season name."""
+    async with session_scope() as session:
+        row = await session.get(GlobalState, _GLOBAL_STATE_ID)
+        if row is None:
+            row = GlobalState(id=_GLOBAL_STATE_ID, current_season="spring")
+            session.add(row)
+        current = (row.current_season or "spring").strip().lower()
+        try:
+            idx = _SEASON_CYCLE.index(current)
+        except ValueError:
+            idx = 0
+        new_season = _SEASON_CYCLE[(idx + 1) % len(_SEASON_CYCLE)]
+        row.current_season = new_season
+    return new_season
 
 
 async def set_kennel_pooch_limit(kennel_id: int, limit: int) -> Optional[Kennel]:
@@ -1187,6 +1221,25 @@ async def set_server_event_occurrence_message_discord_id(
         return occurrence
 
 
+async def update_server_event_occurrence_context(
+    occurrence_id: int, context: dict[str, Any]
+) -> Optional[ServerEventOccurrence]:
+    """Replace the shared context blob on an active occurrence (for mid-event state updates)."""
+
+    async with session_scope() as session:
+        query = select(ServerEventOccurrence).where(ServerEventOccurrence.id == occurrence_id)
+        occurrence = (await session.execute(query)).scalar_one_or_none()
+        if occurrence is None:
+            return None
+        # Use flag_modified so SQLAlchemy detects the mutation
+        from sqlalchemy.orm.attributes import flag_modified
+
+        occurrence.context = dict(context)
+        flag_modified(occurrence, "context")
+        await session.flush()
+        return occurrence
+
+
 async def resolve_server_event_occurrence(
     occurrence_id: int, result_summary: dict[str, Any] | None = None
 ) -> Optional[ServerEventOccurrence]:
@@ -1218,3 +1271,51 @@ async def finalize_server_event_participation(
         participation.rank = rank
         await session.flush()
         return participation
+
+
+async def close_auction_sale_listing(
+    listing_id: int,
+    winning_bidder_discord_id: Optional[int],
+    winning_bid_amount: Optional[int],
+) -> Optional[AuctionSaleListing]:
+    """Mark a sale listing as closed, recording the winner (if any)."""
+    async with session_scope() as session:
+        listing = await session.get(AuctionSaleListing, listing_id)
+        if listing is None:
+            return None
+        listing.is_active = False
+        listing.closed_at = datetime.now(timezone.utc)
+        listing.winning_bidder_discord_id = winning_bidder_discord_id
+        listing.winning_bid_amount = winning_bid_amount
+        await session.flush()
+        return listing
+
+
+async def cancel_auction_bounty_listing(listing_id: int) -> Optional[AuctionBountyListing]:
+    """Mark a bounty listing as cancelled. Does NOT refund escrow — caller handles that."""
+    async with session_scope() as session:
+        listing = await session.get(AuctionBountyListing, listing_id)
+        if listing is None:
+            return None
+        listing.is_active = False
+        listing.cancelled_at = datetime.now(timezone.utc)
+        await session.flush()
+        return listing
+
+
+async def fulfill_auction_bounty_listing(
+    listing_id: int,
+    fulfilled_by_discord_id: int,
+    fulfilled_pooch_id: int,
+) -> Optional[AuctionBountyListing]:
+    """Mark a bounty listing as fulfilled."""
+    async with session_scope() as session:
+        listing = await session.get(AuctionBountyListing, listing_id)
+        if listing is None:
+            return None
+        listing.is_active = False
+        listing.fulfilled_at = datetime.now(timezone.utc)
+        listing.fulfilled_by_discord_id = fulfilled_by_discord_id
+        listing.fulfilled_pooch_id = fulfilled_pooch_id
+        await session.flush()
+        return listing

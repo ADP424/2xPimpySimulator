@@ -8,6 +8,9 @@
     "parameters": {
         "incompatible_mutations": [
             "Extreme Phocomelia"
-        ]
+        ],
+        "cuteness_add": -1,
+        "dexterity_add": -2,
+        "strength_add": -1
     }
 }

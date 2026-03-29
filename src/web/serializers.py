@@ -108,9 +108,8 @@ def serialize_vendor(vendor: Any) -> dict:
         "desired_mutations": [],
     }
 
-    for mutation in [vendor.desired_mutation_1, vendor.desired_mutation_2, vendor.desired_mutation_3]:
-        if mutation:
-            data["desired_mutations"].append(serialize_mutation(mutation))
+    for mutation in vendor.desired_mutations:
+        data["desired_mutations"].append(serialize_mutation(mutation))
 
     return data
 

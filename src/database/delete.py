@@ -23,6 +23,7 @@ _HEALTH_IMPACT_ORDER = [
 ]
 
 from .models import (
+    AuctionBid,
     Breed,
     KennelPooch,
     Mutation,
@@ -460,5 +461,14 @@ async def remove_random_mutation_from_pooch(
 
         selected = rng.choice(mutations)
         await session.delete(selected)
-
         return selected
+
+
+async def remove_auction_bid(bid_id: int) -> bool:
+    """Delete a specific bid row by ID. Returns True if a row was deleted."""
+    async with session_scope() as session:
+        bid = await session.get(AuctionBid, bid_id)
+        if bid is None:
+            return False
+        await session.delete(bid)
+        return True

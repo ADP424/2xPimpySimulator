@@ -8,7 +8,11 @@ from .enums import (
     RarityWeight,
 )
 from .main import (
+    AuctionBid,
+    AuctionBountyListing,
+    AuctionSaleListing,
     EventOccurrence,
+    GlobalState,
     GraveyardPooch,
     HellPooch,
     Kennel,
@@ -25,6 +29,8 @@ from .main import (
     ServerEventParticipation,
     StrayPooch,
     Vendor,
+    VendorDesiredBreed,
+    VendorDesiredMutation,
     VendorPoochForSale,
 )
 from .static import (
@@ -47,6 +53,9 @@ from .static import (
 )
 
 __all__ = [
+    "AuctionBid",
+    "AuctionBountyListing",
+    "AuctionSaleListing",
     "Base",
     "EVENT_SEVERITY",
     "HEALTH_IMPACT",
@@ -58,6 +67,7 @@ __all__ = [
     "Owner",
     "Pooch",
     "EventOccurrence",
+    "GlobalState",
     "GraveyardPooch",
     "HellPooch",
     "KennelPooch",
@@ -70,8 +80,10 @@ __all__ = [
     "ServerEventOccurrence",
     "ServerEventParticipation",
     "StrayPooch",
-    "VendorPoochForSale",
     "Vendor",
+    "VendorDesiredBreed",
+    "VendorDesiredMutation",
+    "VendorPoochForSale",
     "Breed",
     "DogName",
     "Event",

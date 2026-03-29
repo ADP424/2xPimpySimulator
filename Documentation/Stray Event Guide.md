@@ -98,6 +98,7 @@ Eligibility requirements for the event. The event will only be triggered on a se
 
 | Field | Type | Notes |
 |-------|------|-------|
+| `seasons` | list[string] | Seasons in which this event can fire. Valid values: `spring`, `summer`, `autumn`, `winter` (case-insensitive). Omit to allow all seasons. |
 | `min_count` | int | Minimum number of alive strays required on the server |
 | `max_count` | int | Maximum number of alive strays allowed on the server |
 | `pooches` | list | List of pooch filter specs (see below) — each must independently pass |

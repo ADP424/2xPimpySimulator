@@ -9,6 +9,8 @@
         "dollar_value_add": -15,
         "incompatible_mutations": [
             "Total Deafness"
-        ]
+        ],
+        "intelligence_mult": 0.9,
+        "strength_add": -1
     }
 }

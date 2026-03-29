@@ -11,6 +11,7 @@
         "incompatible_mutations": [
             "Polycystic Ovary Syndrome",
             "Severe Polycystic Ovary Syndrome"
-        ]
+        ],
+        "fertility_mult": 0.0
     }
 }

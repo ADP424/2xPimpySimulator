@@ -2,5 +2,14 @@
     "name": "Martian Dog",
     "alt_name": "Red Dog",
     "description": "Martain dogs are from Mars. Duh!",
-    "rarity": "EXTRAORDINARY"
+    "rarity": "EXTRAORDINARY",
+    "parameters": {
+        "min_size": 9, 
+        "max_size": 13,
+        "strength_add": -2,
+        "intelligence_add": 3,
+        "constitution_add": -2,
+        "fluffiness_add": 2,
+        "dexerity_mult": 3.0
+    }
 }

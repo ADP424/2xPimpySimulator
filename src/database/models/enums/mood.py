@@ -13,5 +13,5 @@ MOOD = ENUM(
     "clingy",
     "dead",
     name="mood",
-    create_type=False,
+    create_type=True,
 )

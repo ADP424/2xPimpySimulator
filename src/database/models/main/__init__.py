@@ -1,5 +1,8 @@
-from .entities import Kennel, Owner, Pooch, Server, Vendor
+from .entities import GlobalState, Kennel, Owner, Pooch, Server, Vendor
 from .relationships import (
+    AuctionBid,
+    AuctionBountyListing,
+    AuctionSaleListing,
     EventOccurrence,
     GraveyardPooch,
     HellPooch,
@@ -12,10 +15,16 @@ from .relationships import (
     ServerEventOccurrence,
     ServerEventParticipation,
     StrayPooch,
+    VendorDesiredBreed,
+    VendorDesiredMutation,
     VendorPoochForSale,
 )
 
 __all__ = [
+    "AuctionBid",
+    "AuctionBountyListing",
+    "AuctionSaleListing",
+    "GlobalState",
     "Kennel",
     "Owner",
     "Pooch",
@@ -33,5 +42,7 @@ __all__ = [
     "ServerEventOccurrence",
     "ServerEventParticipation",
     "StrayPooch",
+    "VendorDesiredBreed",
+    "VendorDesiredMutation",
     "VendorPoochForSale",
 ]

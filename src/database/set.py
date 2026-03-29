@@ -13,10 +13,14 @@ from .constants import (
     POOCH_HEALTH_LOSS_AGE,
     POOCH_STAT_DEFAULT,
     RANDOM_SEED_SIZE_LIMIT,
+    VENDOR_DESIRED_MUTATION_COUNT_RANGE,
     VENDOR_PRICE_MARKUP,
 )
 from .get import get_owner_by_discord_id, get_pooch_by_id, get_vendor_by_id
 from .models import (
+    AuctionBid,
+    AuctionBountyListing,
+    AuctionSaleListing,
     Breed,
     DogName,
     EventOccurrence,
@@ -38,6 +42,8 @@ from .models import (
     ServerEventParticipation,
     StrayPooch,
     Vendor,
+    VendorDesiredBreed,
+    VendorDesiredMutation,
     VendorFirstName,
     VendorLastName,
     VendorPoochForSale,
@@ -190,10 +196,15 @@ async def add_mutation_to_pooch(
     max_rarity: Optional[str] = None,
     min_health_impact: Optional[str] = None,
     max_health_impact: Optional[str] = None,
+    exclude_mutation_ids: Optional[list[int]] = None,
+    season: Optional[str] = None,
 ) -> Optional[PoochMutation]:
     """
     Add the mutation with the given ID to the pooch with the given ID.
     If a mutation ID isn't given, choose a random one, with chance based on its rarity.
+    When ``season`` is provided (e.g. ``"spring"``), mutations whose ``parameters.seasons``
+    list does not include that season are excluded from random selection (case-insensitive).
+    Mutations with no ``seasons`` key are always eligible.
 
     Parameters
     ----------
@@ -270,9 +281,22 @@ async def add_mutation_to_pooch(
             if max_health_impact is not None and max_health_impact.lower() in _HEALTH_IMPACT_ORDER:
                 max_idx = _HEALTH_IMPACT_ORDER.index(max_health_impact.lower())
                 mutation_query = mutation_query.where(Mutation.health_impact.in_(_HEALTH_IMPACT_ORDER[: max_idx + 1]))
+            if exclude_mutation_ids:
+                mutation_query = mutation_query.where(Mutation.id.not_in(exclude_mutation_ids))
 
             mutation_response = await session.execute(mutation_query)
             rows = [(mutation, weight) for mutation, weight in mutation_response.tuples().all()]
+            if season is not None:
+                season_lower = season.lower()
+                rows = [
+                    (m, w)
+                    for m, w in rows
+                    if (
+                        not m.parameters
+                        or "seasons" not in m.parameters
+                        or season_lower in [s.lower() for s in m.parameters["seasons"]]
+                    )
+                ]
             mutation = weighted_choice(rng, rows)
             mutation_id = mutation.id if mutation is not None else None
 
@@ -880,6 +904,9 @@ async def create_vendor(
 
     rng = rng if rng is not None else random.Random()
 
+    # All distinct rarity tiers in the game
+    _ALL_RARITIES = ["common", "uncommon", "novel", "rare", "unprecedented", "remarkable", "extraordinary", "unique"]
+
     async def _get_random_vendor_name() -> str:
         statement = (
             select(VendorFirstName).order_by(func.hashtextextended(VendorFirstName.name, bindparam("seed"))).limit(1)
@@ -898,22 +925,43 @@ async def create_vendor(
             f"{last_name.name if last_name is not None else ''}"
         )
 
-    async def _get_random_mutation_id() -> Optional[int]:
-        statement = select(Mutation.id).order_by(func.hashtextextended(Mutation.name, bindparam("seed"))).limit(1)
+    async def _get_unique_random_mutation_ids(count: int) -> list[int]:
+        """Pick `count` distinct mutation IDs by shuffling all IDs with a seed."""
+        statement = select(Mutation.id).order_by(func.hashtextextended(Mutation.name, bindparam("seed"))).limit(count)
         response = await session.execute(statement, {"seed": rng.randint(0, RANDOM_SEED_SIZE_LIMIT)})
-        mutation = response.scalar_one_or_none()
-        return mutation
+        return list(response.scalars().all())
+
+    async def _get_random_breed_id_for_rarity(rarity: str) -> Optional[int]:
+        statement = (
+            select(Breed.id)
+            .where(Breed.rarity == rarity)
+            .order_by(func.hashtextextended(Breed.name, bindparam("seed")))
+            .limit(1)
+        )
+        response = await session.execute(statement, {"seed": rng.randint(0, RANDOM_SEED_SIZE_LIMIT)})
+        return response.scalar_one_or_none()
 
     async with session_scope() as session:
         vendor = Vendor(
             server_discord_id=server_discord_id,
             name=name or await _get_random_vendor_name(),
             price_markup=price_markup,
-            desired_mutation_1=(await _get_random_mutation_id()),
-            desired_mutation_2=(await _get_random_mutation_id()),
-            desired_mutation_3=(await _get_random_mutation_id()),
         )
         session.add(vendor)
+        await session.flush()
+
+        # Assign 2–5 unique desired mutations
+        mutation_count = rng.randint(*VENDOR_DESIRED_MUTATION_COUNT_RANGE)
+        mutation_ids = await _get_unique_random_mutation_ids(mutation_count)
+        for mutation_id in mutation_ids:
+            session.add(VendorDesiredMutation(vendor_id=vendor.id, mutation_id=mutation_id))
+
+        # Assign exactly one desired breed per rarity tier
+        for rarity in _ALL_RARITIES:
+            breed_id = await _get_random_breed_id_for_rarity(rarity)
+            if breed_id is not None:
+                session.add(VendorDesiredBreed(vendor_id=vendor.id, breed_id=breed_id))
+
         await session.flush()
 
     return vendor
@@ -1129,3 +1177,62 @@ async def append_server_event_submission(
                 .where(ServerEventParticipation.id == participation_id)
                 .values(submissions=current)
             )
+
+
+async def create_auction_sale_listing(
+    pooch_id: int,
+    seller_discord_id: int,
+    server_discord_id: int,
+    minimum_bid: int,
+    expires_at: Optional[datetime] = None,
+) -> AuctionSaleListing:
+    """Create a new active auction sale listing for the given pooch."""
+    async with session_scope() as session:
+        listing = AuctionSaleListing(
+            pooch_id=pooch_id,
+            seller_discord_id=seller_discord_id,
+            server_discord_id=server_discord_id,
+            minimum_bid=minimum_bid,
+            expires_at=expires_at,
+        )
+        session.add(listing)
+        await session.flush()
+    return listing
+
+
+async def create_auction_bid(
+    listing_id: int,
+    bidder_discord_id: int,
+    amount: int,
+) -> AuctionBid:
+    """Insert a new bid row for the given listing."""
+    async with session_scope() as session:
+        bid = AuctionBid(
+            listing_id=listing_id,
+            bidder_discord_id=bidder_discord_id,
+            amount=amount,
+        )
+        session.add(bid)
+        await session.flush()
+    return bid
+
+
+async def create_auction_bounty_listing(
+    buyer_discord_id: int,
+    server_discord_id: int,
+    title: str,
+    escrow_amount: int,
+    criteria: list,
+) -> AuctionBountyListing:
+    """Create a new active bounty listing. Does NOT deduct escrow — caller handles that."""
+    async with session_scope() as session:
+        listing = AuctionBountyListing(
+            buyer_discord_id=buyer_discord_id,
+            server_discord_id=server_discord_id,
+            title=title,
+            escrow_amount=escrow_amount,
+            criteria=criteria,
+        )
+        session.add(listing)
+        await session.flush()
+    return listing

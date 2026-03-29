@@ -1,0 +1,33 @@
+{
+    "name": "Increase Prowess",
+    "severity": "MINOR",
+    "rarity": "UNCOMMON",
+    "filter": {
+        "min_count": 1
+    },
+   "actions": [
+        {
+            "action_type": "modify_strength",
+            "parameters": {
+                "selector": "random",
+                "min_amount": 1,
+                "max_amount": 2,
+                "save_as": "Prowess Pooch"
+            }
+        },
+        {
+            "action_type": "modify_dexterity",
+            "parameters": {
+                "use_saved": "Prowess Pooch",
+                "count": 1
+            }
+        },
+        {
+            "action_type": "modify_intelligence",
+            "parameters": {
+                "use_saved": "Prowess Pooch",
+                "count": -1
+            }
+        }
+    ]
+}

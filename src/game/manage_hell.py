@@ -9,6 +9,7 @@ from src.database import (
     create_pooch,
     damn_pooch,
     delete_pooch,
+    get_current_season,
     get_mutation_by_name,
     get_owner_by_discord_id,
     get_pooch_by_id,
@@ -25,6 +26,7 @@ from src.database import (
     list_pooches_for_kennel,
     remove_pooch_from_kennel,
     set_pooch_dead,
+    update_pooch_mood,
 )
 
 from .constants import (
@@ -166,6 +168,7 @@ async def sacrifice_pooch(owner_discord_id: int, pooch_id: int) -> tuple[bool, s
     await give_bloodskulls_to_owner(owner_discord_id, value)
     await give_bones_to_owner(owner_discord_id, 1)
     await set_pooch_dead(pooch.id)
+    await update_pooch_mood(pooch.id, "dead")
     await remove_pooch_from_kennel(pooch.id)
     await damn_pooch(pooch_id)
 
@@ -222,10 +225,12 @@ async def conjure_pooch(owner_discord_id: int, num_rolls: int = 1, rng_seed: Opt
     if target_kennel is None:
         return (False, "You don't have any kennel space available.")
 
+    _hell_season = await get_current_season()
+
     conjured_pooch = None
     for _ in range(num_rolls):
         num_breeds = rng.randint(NUM_BREEDS_PER_SUMMON_POOCH_RANGE[0], NUM_BREEDS_PER_SUMMON_POOCH_RANGE[1])
-        ritual_breed_ids = await get_random_breed_ids(num_breeds, rng=rng, from_ritual=True)
+        ritual_breed_ids = await get_random_breed_ids(num_breeds, rng=rng, from_ritual=True, season=_hell_season)
         pooch = await create_pooch(
             owner_discord_id=owner.discord_id,
             age=0,

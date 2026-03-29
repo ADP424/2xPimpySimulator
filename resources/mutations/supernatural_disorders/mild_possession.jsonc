@@ -6,6 +6,8 @@
     "health_impact": "HARMFUL",
     "rarity": "REMARKABLE",
     "parameters": {
-        "bloodskull_value_mult": 3
+        "bloodskull_value_mult": 3,
+        "aggressiveness_add": 2,
+        "intelligence_mult": 2
     }
 }

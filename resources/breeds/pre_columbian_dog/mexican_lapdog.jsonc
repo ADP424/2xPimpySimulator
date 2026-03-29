@@ -4,6 +4,8 @@
     "description": "he Mexican lapdog is an extinct breed of lap dog originating in Mexico. Noted for its small size, it was the smallest known dog breed.",
     "rarity": "EXTRAORDINARY",
     "parameters": {
+        "min_size": 1,
+        "max_size": 2,
         "sold_by_vendors": false
     }
 }

@@ -3,7 +3,6 @@
 # Miscellaneous
 | Feature                                                                                                                       | Points |
 | ----------------------------------------------------------------------------------------------------------------------------- | ------ |
-| Have per-server auction houses players can put their pooches in / players bid, highest bid by EOD gets the pooch              | 8      |
 | Create new breeds at runtime ???                                                                                              | ???    |
 | Get breed population stats for server (add this info to the vet)                                                              | 3      |
 | Have rarity be rolled first, then pick one from that rarity (mutations, breeds, events, etc.)                                 | 2      |
@@ -11,34 +10,20 @@
 ## UI
 | Feature                                                                                                                       | Points |
 | ----------------------------------------------------------------------------------------------------------------------------- | ------ |
-| Show where breeds can be obtained from (altar, vendor, etc.) on the breed page                                                | 2      |
 | Remove showing markup on vendors                                                                                              | 1      |
 | In the rarity filter menu (for mutations and breeds) sort by decreasing weight                                                | 3      |
-| Always display your dollars and bloodskulls in the web header                                                                 | 3      |
-| Add sorting to the lists on the website, as well as filtering and searching                                                   | 1      |
-| Have timeline per pooch showing birthday / other significant events (like being bought) / death using cool timeline comp      | 5      |
+| Have timeline per pooch showing birthday / other significant events (like being bought) / death using cool timeline comp      | 8      |
 | Obfuscate mutations (so they don't tell you exactly what a pooch has unless you get it checked at vet)                        | 8      |
 | Gendered pronoun placeholders in JSON where it's relevant                                                                     | 3      |
 
 ## Random Events
 | Feature                                                                                                                       | Points |
 | ----------------------------------------------------------------------------------------------------------------------------- | ------ |
-| Add a dog fighting ring in each server with gambling (winner gets skulls of dead pooches as bloodskulls)                      | 8      |
 | Dog show where you want to match closest to breed, mutations, and stats                                                       | 13     |
-| Major weekly server events guaranteed each week, minor events change per day (except major weekly start day)                  | 21     |
-| Add event action to take a pooch from hell and move it somewhere else                                                         | 3      |
-| Add summon pooch, sacrifice pooch, then more general send pooch to Hell (damn_pooch) event action types                       | 5      |
-
-## Seasons
-| Feature                                                                                                                       | Points |
-| ----------------------------------------------------------------------------------------------------------------------------- | ------ |
-| Minor server events change season, season only changes back when another season event happens (winter = dead strays)          | 13     |
-| Certain diseases, mutations (and maybe breeds) that can only show up in certain seasons                                       | 13     |
-| Certain events only happen during certain seasons                                                                             | 5      |
 
 ## Blood Magic
 | Feature                                                                                                                       | Points |
-| ----------------------------------------------------------------------------------------------------------------------------- | ------ |
+| ------------------------------------a----------------------------------------------------------------------------------------- | ------ |
 | Clone your pooches by spending bloodskulls (better breeds = more expensive)                                                   | 5      |
 | Spend bloodskulls to reset pooch age (but at some EVIL cost)                                                                  | 5      |
 | Spend a LOT of bloodskulls to make your pooch IMMORTAL (but infertile, like a vampire, also can't go out at night)            | 5      |
@@ -62,6 +47,7 @@
 | Kennel cleanliness stat, which affects disease chance                                                                         | 3      |
 | Buy cleaning products to clean kennels                                                                                        | 5      |
 | Dogs have a randomized mess stat (affected by mutations and breeds via advanced options) - produces mess each day in kennel   | 8      |
+| Add season-based filtering for diseases (so some diseases only show up in certain seasons)                                    | 2      |
 
 ## Canine Violence
 | Feature                                                                                                                       | Points |
@@ -71,6 +57,7 @@
 | Add aggressiveness stat that makes dogs have a chance each day to fight another dog (causing injury or DEATH)                 | 8      |
 | Add a strength stat which dictates how well a dog fights (and how likely they are to be injured/injure another in a fight)    | 3      |
 | Add a pooch fight event action type with its own internal logic for determining winners and damage and such                   | 5      |
+| Make constitution involved in dog fights, so later rounds are debuffed depending constitution, like endurance                 | 2      |
 
 ## Breeding
 | Feature                                                                                                                       | Points |
@@ -80,23 +67,13 @@
 | Add option to neuter dogs at the vet                                                                                          | 3      |
 | Have percentage of a breed increase by more if both pooches have a bit of that breed (so you can get closer to pure)          | 2      |
 
-## Vendors
-| Feature                                                                                                                       | Points |
-| ----------------------------------------------------------------------------------------------------------------------------- | ------ |
-| Vendors desire specific breeds (at least one of each rarity)                                                                  | 5      |
-| Fix exploit where you can buy and resell pooches between vendors (make vendors unable to sell what other vendors want)        | 5      |
-
 ## Stat Management
 | Feature                                                                                                                       | Points |
 | ----------------------------------------------------------------------------------------------------------------------------- | ------ |
-| Add strength stat that affects how good a do is at fighting (> change to deal injury, < chance to take injury)                | 5      |
-| Add a cuteness stat, which could reduce the chance to be killed in combat slightly (mostly for pageants and stuff)            | 5      |
-| Add a fluffiness stat, which affects temperature regulation (important for seasons)                                           | 3      |
-| Add intelligence and dexterity as placeholder stats (don't affect anything yet)                                               | 2      |
+| Maybe make female pooches 1 size smaller (or some percentage smaller or something)                                            | 1      |
 | Add "pooch snapshots" you can get from the vet clinic that show a pooch's stats at that point in time                         | 13     |
 | Special procedure to get exact numbers on the buffs/debuffs pooches have on their stats                                       | 13     |
 | Pooch snapshots should display on pooch info pages (and it makes it easier to tell the value of auction pooches)              | 5      |
-| Make size act like all the other stats except its bounds are determined by the breed                                          | 3      |
 
 ## Food
 | Feature                                                                                                                       | Points |

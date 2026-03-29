@@ -4,5 +4,8 @@
     "description": "This pooch has the moon in its blood.",
     "heritability": 0.35,
     "health_impact": "SEVERE",
-    "rarity": "UNCOMMON"
+    "rarity": "UNCOMMON",
+    "parameters": {
+        "constitution_mult": 0.8
+    }
 }

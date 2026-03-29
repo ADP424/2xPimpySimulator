@@ -59,6 +59,11 @@ class _MarketplaceSelect(Select):
                     value="construction",
                     description="Buy kennels and upgrade capacity",
                 ),
+                discord.SelectOption(
+                    label="Auction House",
+                    value="auction",
+                    description="Player-driven auctions and bounty listings",
+                ),
             ],
             row=0,
         )
@@ -90,6 +95,12 @@ class _MarketplaceSelect(Select):
             )
             embed = await view.build_embed()
             await r.reply(content="**Construction Company**", embed=embed, view=view)
+
+        elif self.values[0] == "auction":
+            from .auction import AuctionHouseView
+
+            view = AuctionHouseView(server_discord_id=self.server_discord_id, owner_discord_id=self.owner_discord_id)
+            await r.reply(content="**Auction House**", view=view)
 
 
 # ---------------------------------------------------------------------------

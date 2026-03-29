@@ -1,10 +1,14 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import and_, func, or_, select, true
+from sqlalchemy import Text as SAText
+from sqlalchemy import and_, case, cast, func, or_, select, true
 from sqlalchemy.orm import selectinload
 
 from .get import get_pooch_parents
 from .models import (
+    AuctionBid,
+    AuctionBountyListing,
+    AuctionSaleListing,
     Breed,
     Event,
     EventOccurrence,
@@ -33,6 +37,8 @@ from .models import (
     StrayEvent,
     StrayPooch,
     Vendor,
+    VendorDesiredBreed,
+    VendorDesiredMutation,
     VendorPoochForSale,
 )
 from .session import session_scope
@@ -849,6 +855,66 @@ async def list_vendors(server_discord_id: int) -> list[Vendor]:
     return list(response.scalars().all())
 
 
+async def list_vendor_desired_mutations(vendor_id: int) -> list[Mutation]:
+    """
+    Fetch the mutations that the given vendor desires.
+
+    Parameters
+    ----------
+    vendor_id: int
+        The ID of the vendor.
+
+    Returns
+    -------
+    list[Mutation]
+        The list of Mutation ORM objects the vendor desires.
+    """
+
+    async with session_scope() as session:
+        query = (
+            select(Mutation)
+            .join(VendorDesiredMutation, VendorDesiredMutation.mutation_id == Mutation.id)
+            .where(VendorDesiredMutation.vendor_id == vendor_id)
+        )
+        response = await session.execute(query)
+
+    return list(response.scalars().all())
+
+
+async def list_vendor_desired_breeds(vendor_id: int) -> list[Breed]:
+    """
+    Fetch the breeds that the given vendor desires (one per rarity tier).
+
+    Parameters
+    ----------
+    vendor_id: int
+        The ID of the vendor.
+
+    Returns
+    -------
+    list[Breed]
+        The list of Breed ORM objects the vendor desires.
+    """
+
+    _RARITY_ORDER = ["common", "uncommon", "novel", "rare", "unprecedented", "remarkable", "extraordinary", "unique"]
+    rarity_sort = case(
+        {rarity: i for i, rarity in enumerate(_RARITY_ORDER)},
+        value=cast(Breed.rarity, SAText),
+        else_=len(_RARITY_ORDER),
+    )
+
+    async with session_scope() as session:
+        query = (
+            select(Breed)
+            .join(VendorDesiredBreed, VendorDesiredBreed.breed_id == Breed.id)
+            .where(VendorDesiredBreed.vendor_id == vendor_id)
+            .order_by(rarity_sort)
+        )
+        response = await session.execute(query)
+
+    return list(response.scalars().all())
+
+
 async def list_active_server_event_occurrences() -> list[ServerEventOccurrence]:
     async with session_scope() as session:
         query = (
@@ -944,3 +1010,89 @@ async def list_matching_stray_pooch_ids(server_discord_id: int, filter_spec: dic
 
     async with session_scope() as session:
         return await get_matching_stray_pooch_ids_for_server(session, server_discord_id, filter_spec or {})
+
+
+async def list_active_sale_listings_for_server(server_discord_id: int) -> list[AuctionSaleListing]:
+    """All active sale listings on a server, ordered by created_at DESC."""
+    async with session_scope() as session:
+        query = (
+            select(AuctionSaleListing)
+            .where(
+                AuctionSaleListing.server_discord_id == server_discord_id,
+                AuctionSaleListing.is_active.is_(True),
+            )
+            .order_by(AuctionSaleListing.created_at.desc())
+        )
+        return list((await session.execute(query)).scalars().all())
+
+
+async def list_active_sale_listings_for_owner(owner_discord_id: int) -> list[AuctionSaleListing]:
+    """All active listings where the owner is the seller."""
+    async with session_scope() as session:
+        query = (
+            select(AuctionSaleListing)
+            .where(
+                AuctionSaleListing.seller_discord_id == owner_discord_id,
+                AuctionSaleListing.is_active.is_(True),
+            )
+            .order_by(AuctionSaleListing.created_at.desc())
+        )
+        return list((await session.execute(query)).scalars().all())
+
+
+async def list_active_bounty_listings_for_server(server_discord_id: int) -> list[AuctionBountyListing]:
+    """All active bounty listings on a server, ordered by created_at DESC."""
+    async with session_scope() as session:
+        query = (
+            select(AuctionBountyListing)
+            .where(
+                AuctionBountyListing.server_discord_id == server_discord_id,
+                AuctionBountyListing.is_active.is_(True),
+            )
+            .order_by(AuctionBountyListing.created_at.desc())
+        )
+        return list((await session.execute(query)).scalars().all())
+
+
+async def list_active_bounty_listings_for_owner(owner_discord_id: int) -> list[AuctionBountyListing]:
+    """All active bounty listings created by this owner."""
+    async with session_scope() as session:
+        query = (
+            select(AuctionBountyListing)
+            .where(
+                AuctionBountyListing.buyer_discord_id == owner_discord_id,
+                AuctionBountyListing.is_active.is_(True),
+            )
+            .order_by(AuctionBountyListing.created_at.desc())
+        )
+        return list((await session.execute(query)).scalars().all())
+
+
+async def list_bids_for_listing(listing_id: int) -> list[AuctionBid]:
+    """All bids for a listing, ordered by amount DESC."""
+    async with session_scope() as session:
+        query = select(AuctionBid).where(AuctionBid.listing_id == listing_id).order_by(AuctionBid.amount.desc())
+        return list((await session.execute(query)).scalars().all())
+
+
+async def list_expired_sale_listings() -> list[AuctionSaleListing]:
+    """Active listings whose expiry time has passed."""
+    async with session_scope() as session:
+        now = datetime.now(timezone.utc)
+        query = select(AuctionSaleListing).where(
+            AuctionSaleListing.is_active.is_(True),
+            AuctionSaleListing.expires_at.is_not(None),
+            AuctionSaleListing.expires_at <= now,
+        )
+        return list((await session.execute(query)).scalars().all())
+
+
+async def list_owner_bid_history(owner_discord_id: int) -> list[AuctionBid]:
+    """All bids ever placed by this owner, newest first."""
+    async with session_scope() as session:
+        query = (
+            select(AuctionBid)
+            .where(AuctionBid.bidder_discord_id == owner_discord_id)
+            .order_by(AuctionBid.placed_at.desc())
+        )
+        return list((await session.execute(query)).scalars().all())

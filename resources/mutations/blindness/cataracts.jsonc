@@ -9,6 +9,7 @@
         "incompatible_mutations": [
             "Partial Blindness",
             "Total Blindness"
-        ]
+        ],
+        "strength_add": -1
     }
 }

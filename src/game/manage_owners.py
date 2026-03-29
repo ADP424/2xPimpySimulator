@@ -11,6 +11,7 @@ from src.database import (
     create_kennel,
     create_owner,
     create_pooch,
+    get_current_season,
     get_owner_by_discord_id,
     get_owner_server,
     get_random_breed_ids,
@@ -36,6 +37,7 @@ from .constants import (
     POOCH_STATS,
 )
 from .exceptions import OwnerNotFound
+from .manage_auctions import cancel_listing_for_pooch
 from .manage_servers import get_or_create_server
 from .models import to_kennel, to_owner
 
@@ -151,8 +153,9 @@ async def get_or_create_owner(
 
         await add_owner_to_server(server_discord_id, owner_discord_id)
         kennel = await create_kennel(owner_discord_id)
-        female_breed_ids = await get_random_breed_ids(1, rng=rng, from_vendor=True)
-        male_breed_ids = await get_random_breed_ids(1, rng=rng, from_vendor=True)
+        _season = await get_current_season()
+        female_breed_ids = await get_random_breed_ids(1, rng=rng, from_vendor=True, season=_season)
+        male_breed_ids = await get_random_breed_ids(1, rng=rng, from_vendor=True, season=_season)
         female_pooch = await create_pooch(
             owner_discord_id=owner_discord_id,
             sex="female",
@@ -271,6 +274,7 @@ async def _attempt_catch_stray(
 
     chosen = rng.choice(strays)
     await remove_pooch_from_strays(chosen.id)
+    await cancel_listing_for_pooch(chosen.id)
     await transfer_pooch_to_owner(chosen.id, owner_discord_id)
 
     kennels = await list_kennels_for_owner(owner_discord_id)
@@ -357,4 +361,5 @@ async def spend_bone_at_park(
 
 
 async def cast_out_pooch(pooch_id: int, server_discord_id: int) -> None:
+    await cancel_listing_for_pooch(pooch_id)
     await add_pooch_to_strays(pooch_id, server_discord_id)

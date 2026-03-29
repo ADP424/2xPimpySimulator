@@ -5,6 +5,26 @@ from .breeding import (
 from .change_day import (
     run_day_change,
 )
+from .manage_auctions import (
+    cancel_bounty_listing,
+    cancel_listing_for_pooch,
+    close_sale_listing,
+    create_bounty_listing,
+    create_sale_listing,
+    evaluate_bounty_match,
+    fulfill_bounty,
+    get_sale_listing,
+    list_owner_bounty_listings,
+    list_owner_sale_listings,
+    list_server_bounty_listings,
+    list_server_sale_listings,
+    place_bid,
+    process_expired_sale_listings,
+)
+from .manage_global import (
+    advance_season,
+    get_season,
+)
 from .manage_graveyard import (
     list_graveyard_pooches,
 )
@@ -62,6 +82,7 @@ from .manage_server_events import (
     run_daily_server_event_cycle,
     set_server_event_message_id,
     trigger_daily_server_event,
+    trigger_server_event_by_name,
 )
 from .manage_servers import (
     get_event_channel,
@@ -76,6 +97,7 @@ from .manage_static import (
 )
 from .manage_stray_events import (
     run_daily_stray_event_check,
+    trigger_stray_event_by_name,
 )
 from .manage_vendors import (
     buy_pooch,
@@ -104,6 +126,9 @@ __all__ = [
     "process_expired_events",
     "run_hourly_event_check",
     "get_event_history",
+    # Global commands
+    "advance_season",
+    "get_season",
     # Graveyard commands
     "list_graveyard_pooches",
     # Hell / ritual commands
@@ -139,6 +164,7 @@ __all__ = [
     "run_hourly_breeding_cooldown_check",
     # Stray event commands
     "run_daily_stray_event_check",
+    "trigger_stray_event_by_name",
     # Server commands
     "get_event_channel",
     "get_or_create_server",
@@ -149,11 +175,27 @@ __all__ = [
     "run_daily_server_event_cycle",
     "set_server_event_message_id",
     "trigger_daily_server_event",
+    "trigger_server_event_by_name",
     # Static listing commands
     "get_breed_by_id",
     "get_mutation_by_id",
     "list_all_breeds",
     "list_all_mutations",
+    # Auction house commands
+    "cancel_bounty_listing",
+    "cancel_listing_for_pooch",
+    "close_sale_listing",
+    "create_bounty_listing",
+    "create_sale_listing",
+    "evaluate_bounty_match",
+    "fulfill_bounty",
+    "get_sale_listing",
+    "list_owner_bounty_listings",
+    "list_owner_sale_listings",
+    "list_server_bounty_listings",
+    "list_server_sale_listings",
+    "place_bid",
+    "process_expired_sale_listings",
     # Vendor commands
     "buy_pooch",
     "get_pooch_buy_price",

@@ -11,6 +11,9 @@
             "Cataracts",
             "Partial Blindness",
             "Schizophrenia"
-        ]
+        ],
+        "cuteness_add": -1,
+        "strength_add": -3,
+        "fertility_mult": 0.8
     }
 }

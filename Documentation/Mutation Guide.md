@@ -6,7 +6,7 @@
 
 Mutations are structured within resources/mutations/**/*.jsonc, like:
 ```jsonc
-"[category]": {
+{
     "[mutation name]": {
         "alt_name": "string",
         "description": "string",
@@ -16,13 +16,9 @@ Mutations are structured within resources/mutations/**/*.jsonc, like:
         "parameters": {
             "[option]": "string/float/int/list"
         }
-    },
-    ...
+    }
 }
 ```
-
-#### Category
-This is the name of the category the mutation belongs to (for example, "autism" and "schizophrenia" are both neurodevelopmental conditions). There can be any number of mutations in a category.
 
 #### Mutation Name
 The common name of the mutation, i.e. the main one that it should be referred to as.
@@ -80,6 +76,11 @@ Whether the mutation can show up in pooches created by spending bloodskulls on t
 Whether the mutation can show up on pooches generated to be sold by vendors or not.
 - `true`: The mutation can show up in vendor pooches. This is the default.
 - `false`: The mutation will not show up in vendor pooches.
+
+### `seasons` : `list[string]`
+Which seasons this mutation can appear in when randomly assigned (e.g. for vendor pooches, strays, event-created pooches). Case-insensitive. Valid values: `spring`, `summer`, `autumn`, `winter`.
+- If omitted, the mutation can appear in all seasons. This is the default.
+- Example: `["spring"]` — this mutation only appears in spring.
 
 ## Breeding
 
@@ -145,6 +146,7 @@ The following `_add` (int) and `_mult` (float) parameters are available for each
 | Fertility | `fertility_add` | `fertility_mult` |
 | Aggressiveness | `aggressiveness_add` | `aggressiveness_mult` |
 | Constitution | `constitution_add` | `constitution_mult` |
+| Size | `size_add` | `size_mult` |
 
 
 ## Value

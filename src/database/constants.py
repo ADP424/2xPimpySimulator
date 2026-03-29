@@ -11,6 +11,7 @@ KENNEL_POOCH_LIMIT = 10
 
 # Vendor Defaults
 VENDOR_PRICE_MARKUP = 1.0
+VENDOR_DESIRED_MUTATION_COUNT_RANGE = (2, 5)  # inclusive min/max number of desired mutations per vendor
 
 # Database RNG
 RANDOM_SEED_SIZE_LIMIT = 2**16

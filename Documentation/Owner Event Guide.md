@@ -398,6 +398,7 @@ These fields live directly inside the root `filter` object:
 - `min_kennels`
 - `max_kennels`
 - `exclude_kennels`
+- `seasons`
 - `kennels`
 - `pooches`
 - `graveyard_pooches`
@@ -405,6 +406,8 @@ These fields live directly inside the root `filter` object:
 
 ### Owner Counts
 
+- `min_money` / `max_money` count the dollars the owner has
+- `min_bloodskulls` / `max_bloodskulls` count the bloodskulls the owner has
 - `min_pooches` / `max_pooches` count all pooches owned by the owner, regardless of kennel placement
 - `min_kennels` / `max_kennels` count all kennels owned by the owner
 
@@ -421,6 +424,12 @@ Any numeric range field has a corresponding `exclude_*` list that explicitly dis
 ```
 
 That matches owners with exactly 4 or 7 pooches, but not 5 or 6.
+
+### Seasons
+
+A list of seasons in which this event (or option) is eligible to fire. Valid values: `spring`, `summer`, `autumn`, `winter`. Case-insensitive.
+Example: `["autumn", "winter"]`.
+If omitted, the event is eligible in all seasons.
 
 ---
 

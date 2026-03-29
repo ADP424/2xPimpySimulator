@@ -4,6 +4,10 @@
     "description": "The Dalbo dog (Dalbohund) or Dalsland Mastiff is an extinct livestock guardian dog breed from Sweden.",
     "rarity": "REMARKABLE",
     "parameters": {
-        "sold_by_vendors": false
+        "min_size": 18,
+        "max_size": 21,
+        "sold_by_vendors": false,
+        "fluffiness_add": 2,
+        "aggressiveness_add": 1
     }
 }

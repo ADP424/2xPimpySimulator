@@ -1,3 +1,3 @@
 from sqlalchemy.dialects.postgresql import ENUM
 
-SEX = ENUM("female", "male", name="sex", create_type=False)
+SEX = ENUM("female", "male", name="sex", create_type=True)

@@ -7,6 +7,7 @@ POOCH_BREEDING_COOLDOWN = 10
 BREEDING_COOLDOWN_HOURLY_FERTILITY_DIVISOR = 50
 
 # All heritable pooch stats (all use POOCH_STAT_RANGE)
+# The size range is determined by breeds, so that's why it's not included here
 POOCH_STATS = [
     "strength",
     "cuteness",
@@ -17,6 +18,10 @@ POOCH_STATS = [
     "aggressiveness",
     "constitution",
 ]
+
+# Breed Inheritance
+SHARED_BREED_WEIGHT_BONUS = 1.5  # multiplier applied to a breed weight when both parents share that breed
+BREED_NOISE_RANGE = (0.75, 1.5)  # random noise multiplier applied to each breed weight during inheritance
 
 # Baby
 POOCH_FETAL_AGE = -1
@@ -52,6 +57,12 @@ POOCH_DOLLAR_VALUE_LOSS_BY_AGE = 5
 POOCH_DOLLAR_VALUE_LOSS_BY_HEALTH_BELOW_AVERAGE = 5
 VENDOR_DESIRED_MUTATION_MULT = 2
 
+# Vendor Pure-Breed Pricing
+# A pooch whose dominant breed makes up <= this fraction of its total weight gets no bonus (1x).
+# At 100% it gets VENDOR_PURE_BREED_MAX_MULT. The range scales linearly between the two.
+VENDOR_PURE_BREED_THRESHOLD = 0.5
+VENDOR_PURE_BREED_MAX_MULT = 2.0
+
 # Sacrifice Value
 BASE_POOCH_BLOODSKULL_VALUE = 8
 POOCH_BLOODSKULL_VIRGINITY_MULT = 2
@@ -81,6 +92,18 @@ BEG_MAX_DOLLARS = 50
 # Strays
 PARK_STRAY_CATCH_DIVISOR = 5
 STRAY_EVENT_TRIGGER_CHANCE = 0.5
+
+# Fight Mechanics
+FIGHT_ROUNDS = 3
+FIGHT_ATTACK_STRENGTH_WEIGHT = 0.2
+FIGHT_ATTACK_SIZE_STENGTH_WEIGHT = 0.1
+FIGHT_ATTACK_DEXTERITY_WEIGHT = 0.1
+FIGHT_ATTACK_AGGRESSIVENESS_WEIGHT = 0.2
+FIGHT_DEFENSE_STRENGTH_WEIGHT = 0.2
+FIGHT_DEFENSE_DEXTERITY_WEIGHT = 0.1
+FIGHT_DEFENSE_CONSTITUTION_WEIGHT = 0.2
+FIGHT_RANDOM_MULTIPLIER_RANGE = (0.5, 1.5)
+FIGHT_DEFENDER_STRENGTH_BONUS = 0
 
 # Other
 MAX_NAME_LENGTH = 100

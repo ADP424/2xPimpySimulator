@@ -10,5 +10,5 @@ RARITY = ENUM(
     "extraordinary",
     "unique",
     name="rarity",
-    create_type=False,
+    create_type=True,
 )

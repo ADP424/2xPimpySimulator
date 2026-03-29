@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from sqlalchemy import BigInteger, ForeignKey, UniqueConstraint
+from sqlalchemy import BigInteger, CheckConstraint, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ... import Base
@@ -11,7 +11,10 @@ if TYPE_CHECKING:
 
 class PoochPregnancy(Base):
     __tablename__ = "pooch_pregnancy"
-    __table_args__ = (UniqueConstraint("fetus_id", name="pooch_pregnancy_unique_fetus"),)
+    __table_args__ = (
+        UniqueConstraint("fetus_id", name="pooch_pregnancy_unique_fetus"),
+        CheckConstraint("mother_id <> fetus_id", name="no_self_fetus"),
+    )
 
     mother_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("pooches.id", ondelete="CASCADE"), primary_key=True)
     fetus_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("pooches.id", ondelete="CASCADE"), primary_key=True)

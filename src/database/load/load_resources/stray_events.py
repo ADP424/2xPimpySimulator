@@ -51,6 +51,14 @@ _STRAY_ACTION_TYPES = {
     "enter_vendor_stock",
     "start_stray_event",
     "select_pooch",
+    "modify_strength",
+    "modify_cuteness",
+    "modify_fluffiness",
+    "modify_intelligence",
+    "modify_dexterity",
+    "modify_fertility",
+    "modify_aggressiveness",
+    "modify_constitution",
 }
 
 _STRAY_SELECTORS = {"random", "random_exclude", "all", "all_exclude"}
@@ -99,8 +107,9 @@ class _StrayEventValidator(BaseEventValidator):
             self.error(path, "filter must be an object")
             return
 
-        allowed = {"min_count", "max_count", "description", "pooches"}
+        allowed = {"seasons", "min_count", "max_count", "description", "pooches"}
         self._validate_unknown_keys(path, filter_spec, allowed)
+        self._validate_seasons_list(path, filter_spec)
         self._validate_optional_int(path, filter_spec, "min_count", minimum=0)
         self._validate_optional_int(path, filter_spec, "max_count", minimum=0)
 

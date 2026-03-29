@@ -64,6 +64,7 @@ def _make_pooch(
         created_at=datetime(2024, 1, 1, tzinfo=timezone.utc),
         size=size,
         health=health,
+        mood=None,
         owner=None,
         vendor=None,
         breeds=breeds or [],

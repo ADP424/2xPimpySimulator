@@ -14,6 +14,7 @@ from src.database import (
     create_pooch,
     damn_pooch,
     delete_pooch,
+    get_current_season,
     get_kennel_by_id,
     get_mutation_by_name,
     get_owner_by_discord_id,
@@ -75,6 +76,7 @@ from ..constants import (
     POOCH_STAT_RANGE,
     POOCH_STATS,
 )
+from ..manage_auctions import cancel_listing_for_pooch
 from ..manage_hell import get_pooch_bloodskull_value
 from ..manage_vendors import get_pooch_buy_price, get_pooch_sell_price
 from ..models import (
@@ -96,7 +98,11 @@ logger = logging.getLogger(__name__)
 
 
 async def _execute_single_action(
-    owner_discord_id: int, action: "EventAction", context: OwnerEventContext, rng: random.Random
+    owner_discord_id: int,
+    action: "EventAction",
+    context: OwnerEventContext,
+    rng: random.Random,
+    season: Optional[str] = None,
 ) -> OwnerEventResult:
     """
     Execute a single event action.
@@ -156,7 +162,7 @@ async def _execute_single_action(
             if isinstance(breeds_param, list):
                 create_pooch_kwargs["breeds"] = breeds_param
             elif isinstance(breeds_param, int) and breeds_param > 0:
-                create_pooch_kwargs["breeds"] = await get_random_breed_ids(breeds_param, rng=rng)
+                create_pooch_kwargs["breeds"] = await get_random_breed_ids(breeds_param, rng=rng, season=season)
 
             mutations_param = parameters.get("mutations")
             if isinstance(mutations_param, list):
@@ -166,7 +172,7 @@ async def _execute_single_action(
 
             if pooch and isinstance(mutations_param, int) and mutations_param > 0:
                 for _ in range(mutations_param):
-                    await add_mutation_to_pooch(pooch.id, rng=rng)
+                    await add_mutation_to_pooch(pooch.id, rng=rng, season=season)
             if pooch:
                 context.selected_pooch_id = pooch.id
                 candidate_pooch_ids = context.extra_data.setdefault("candidate_pooch_ids", [])
@@ -348,6 +354,7 @@ async def _execute_single_action(
                 else:
                     chosen = rng.choice(pool_objs)
                     await remove_pooch_from_strays(chosen.id)
+                    await cancel_listing_for_pooch(chosen.id)
                     await transfer_pooch_to_owner(chosen.id, owner_discord_id)
 
                     if target_type == "kennel":
@@ -405,8 +412,10 @@ async def _execute_single_action(
             vendor_id = parameters.get("vendor_id")
             for pooch_id in pooch_ids:
                 if new_owner_id:
+                    await cancel_listing_for_pooch(pooch_id)
                     await transfer_pooch_to_owner(pooch_id, new_owner_id)
                 elif vendor_id:
+                    await cancel_listing_for_pooch(pooch_id)
                     await transfer_pooch_to_vendor(pooch_id, vendor_id)
                 result.pooches_affected.append(pooch_id)
 
@@ -548,6 +557,7 @@ async def _execute_single_action(
                 if resolved_vendor_id is not None:
                     price = round((await get_pooch_sell_price(pooch_id, resolved_vendor_id)) * multiplier)
                     await give_money_to_owner(owner_discord_id, price)
+                    await cancel_listing_for_pooch(pooch_id)
                     await transfer_pooch_to_vendor(pooch_id, resolved_vendor_id)
                     await remove_pooch_from_kennel(pooch_id)
                     await add_pooch_to_vendor_stock(resolved_vendor_id, pooch_id)
@@ -605,6 +615,7 @@ async def _execute_single_action(
                     else:
                         await remove_pooch_from_vendor_stock(resolved_vendor_id, pooch_db.id)
                         await give_money_to_owner(owner_discord_id, -price)
+                        await cancel_listing_for_pooch(pooch_db.id)
                         await transfer_pooch_to_owner(pooch_db.id, owner_discord_id)
 
                         if buy_kennel_id is not None:
@@ -668,19 +679,19 @@ async def _execute_single_action(
                 else:
                     # Instant events run inline, sharing the current context so save_as/use_saved slots carry over
                     followup_result = await execute_event_actions(
-                        owner_discord_id, followup_event.actions, context, rng
+                        owner_discord_id, followup_event.actions, context, rng, season=season
                     )
                     result.merge(followup_result)
                     default_option = next((opt for opt in followup_event.options if opt.is_default), None)
                     if default_option is not None:
                         option_result = await execute_event_actions(
-                            owner_discord_id, default_option.actions, context, rng
+                            owner_discord_id, default_option.actions, context, rng, season=season
                         )
                         result.merge(option_result)
                         selected_outcome = await choose_option_outcome(default_option, context, rng)
                         if selected_outcome is not None:
                             outcome_result = await execute_event_actions(
-                                owner_discord_id, selected_outcome.actions, context, rng
+                                owner_discord_id, selected_outcome.actions, context, rng, season=season
                             )
                             result.merge(outcome_result)
 
@@ -786,7 +797,7 @@ async def _execute_single_action(
             conjured: Any = None
             for _ in range(num_rolls):
                 num_breeds = rng.randint(NUM_BREEDS_PER_SUMMON_POOCH_RANGE[0], NUM_BREEDS_PER_SUMMON_POOCH_RANGE[1])
-                ritual_breed_ids = await get_random_breed_ids(num_breeds, rng=rng, from_ritual=True)
+                ritual_breed_ids = await get_random_breed_ids(num_breeds, rng=rng, from_ritual=True, season=season)
                 pooch = await create_pooch(
                     owner_discord_id=owner_discord_id,
                     age=0,
@@ -827,6 +838,65 @@ async def _execute_single_action(
                 if isinstance(save_as, str) and save_as:
                     context.extra_data[save_as] = {"pooch_ids": [conjured.id]}
 
+        elif action_type == "fight_pooches":
+            from ..action_helpers.pooch_actions import handle_fight_pooches
+
+            attacker_slot = parameters.get("attacker_slot")
+            defender_slot = parameters.get("defender_slot")
+            attacker_id: int | None = None
+            defender_id: int | None = None
+
+            if isinstance(attacker_slot, str) and attacker_slot:
+                slot_data = context.extra_data.get(attacker_slot, {})
+                ids = slot_data.get("pooch_ids", []) if isinstance(slot_data, dict) else []
+                attacker_id = ids[0] if ids else None
+            elif target_type == "pooch":
+                pooch_ids = await get_target_pooch_ids(
+                    owner_discord_id, context, rng, target_type, selector, parameters
+                )
+                attacker_id = pooch_ids[0] if pooch_ids else None
+
+            if isinstance(defender_slot, str) and defender_slot:
+                slot_data = context.extra_data.get(defender_slot, {})
+                ids = slot_data.get("pooch_ids", []) if isinstance(slot_data, dict) else []
+                defender_id = ids[0] if ids else None
+            else:
+                defender_filter = parameters.get("defender_filter", {})
+                second_params = {**parameters, "selector": "random", "filter": defender_filter}
+                candidates = await get_target_pooch_ids(
+                    owner_discord_id, context, rng, target_type, "random", second_params
+                )
+                defender_id = next((pid for pid in candidates if pid != attacker_id), None)
+
+            if attacker_id is not None and defender_id is not None:
+                from src.game.constants import (
+                    FIGHT_DEFENDER_STRENGTH_BONUS,
+                    FIGHT_ROUNDS,
+                )
+
+                fight_result = await handle_fight_pooches(
+                    attacker_id,
+                    defender_id,
+                    rounds=int(parameters.get("rounds", FIGHT_ROUNDS)),
+                    defender_strength_bonus=int(
+                        parameters.get("defender_strength_bonus", FIGHT_DEFENDER_STRENGTH_BONUS)
+                    ),
+                    rng=rng,
+                )
+                result.extra_data["fight_result"] = fight_result
+                result.pooches_affected.extend(
+                    pid for pid in [attacker_id, defender_id] if pid not in result.pooches_affected
+                )
+                if fight_result.get("attacker_died"):
+                    result.pooches_killed.append(attacker_id)
+                if fight_result.get("defender_died"):
+                    result.pooches_killed.append(defender_id)
+                save_as = parameters.get("save_as")
+                if isinstance(save_as, str) and save_as and fight_result.get("winner_id"):
+                    context.extra_data[save_as] = {"pooch_ids": [fight_result["winner_id"]]}
+            else:
+                logger.warning("fight_pooches: could not resolve both pooches; skipping")
+
         elif action_type == "sacrifice_pooch":
             pooch_ids = await get_target_pooch_ids(owner_discord_id, context, rng, target_type, selector, parameters)
             value_multiplier = parameters.get("value_multiplier")
@@ -857,13 +927,20 @@ async def _execute_single_action(
             if not servers:
                 logger.warning("server-scoped action: owner %s has no servers; skipping", owner_discord_id)
             else:
-                server_discord_id = rng.choice(servers).discord_id
+                chosen_server = rng.choice(servers)
+                server_discord_id = chosen_server.discord_id
                 from ..manage_server_events import _execute_server_actions
                 from ..models.events import ServerEventContext
 
                 server_ctx = ServerEventContext(server_discord_id=server_discord_id)
                 action_dict = {"action_type": action_type, "parameters": parameters}
-                server_result = await _execute_server_actions(server_discord_id, [action_dict], server_ctx, rng)
+                server_result = await _execute_server_actions(
+                    server_discord_id,
+                    [action_dict],
+                    server_ctx,
+                    rng,
+                    season=await get_current_season(),
+                )
                 result.merge(server_result)
 
         else:
@@ -878,18 +955,25 @@ async def _execute_single_action(
 
 
 async def execute_event_actions(
-    owner_discord_id: int, actions: list["EventAction"], context: OwnerEventContext, rng: random.Random
+    owner_discord_id: int,
+    actions: list["EventAction"],
+    context: OwnerEventContext,
+    rng: random.Random,
+    season: Optional[str] = None,
 ) -> OwnerEventResult:
     """
     Execute a list of event actions.
     """
+
+    if season is None:
+        season = await get_current_season()
 
     result = OwnerEventResult()
 
     for action in sorted(actions, key=lambda a: a.action_order):
         repeat = max(int(action.repeat), 1) if isinstance(action.repeat, int) else 1
         for _ in range(repeat):
-            action_result = await _execute_single_action(owner_discord_id, action, context, rng)
+            action_result = await _execute_single_action(owner_discord_id, action, context, rng, season=season)
             result.merge(action_result)
 
     return result
@@ -943,7 +1027,8 @@ async def create_and_execute_event(
     logger.info(f"Triggered event '{event.name}' for owner {owner_discord_id}")
 
     # OwnerEvent-level actions always fire immediately at trigger time (before the user picks)
-    result = await execute_event_actions(owner_discord_id, event.actions, context, rng)
+    _season = await get_current_season()
+    result = await execute_event_actions(owner_discord_id, event.actions, context, rng, season=_season)
     await update_active_event_result(active_event.id, result.to_dict())
 
     # Preflight: pre-resolve exclude_claimed targets for visible options so that each option

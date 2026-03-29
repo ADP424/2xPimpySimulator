@@ -5,6 +5,9 @@ from sqlalchemy import and_, func, literal, not_, or_, select, true, union
 from sqlalchemy.orm import selectinload
 
 from .models import (
+    AuctionBid,
+    AuctionBountyListing,
+    AuctionSaleListing,
     Breed,
     Event,
     EventOccurrence,
@@ -113,11 +116,29 @@ async def get_breed_by_name(name: str) -> Optional[Breed]:
     return response.scalar_one_or_none()
 
 
+def _breed_allowed_in_season(breed: "Breed", season: str) -> bool:
+    """Return True if the breed is available in the given season (already lowercased)."""
+    seasons = breed.parameters.get("seasons") if breed.parameters else None
+    if seasons is None:
+        return True
+    return season in [s.lower() for s in seasons]
+
+
+def _mutation_allowed_in_season(mutation: "Mutation", season: str) -> bool:
+    """Return True if the mutation is available in the given season (already lowercased)."""
+    seasons = mutation.parameters.get("seasons") if mutation.parameters else None
+    if seasons is None:
+        return True
+    return season in [s.lower() for s in seasons]
+
+
 async def get_random_breed_ids(
     n: int,
     rng: Optional[random.Random] = None,
     from_vendor: bool = False,
     from_ritual: bool = False,
+    exclude_ids: Optional[list[int]] = None,
+    season: Optional[str] = None,
 ) -> list[int]:
     """
     Return a list of `n` randomly-selected breed IDs, weighted by rarity.
@@ -137,6 +158,10 @@ async def get_random_breed_ids(
     from_ritual: bool, default : False
         When True, exclude breeds whose parameters contain ``{"born_from_ritual": False}``.
 
+    season: str, optional
+        When provided, exclude breeds whose ``parameters.seasons`` list does not include
+        this season (case-insensitive). Breeds with no ``seasons`` key are always eligible.
+
     Returns
     -------
     list[int]
@@ -155,8 +180,16 @@ async def get_random_breed_ids(
             query = query.where(not_(Breed.parameters.contains({"sold_by_vendors": False})))
         if from_ritual:
             query = query.where(not_(Breed.parameters.contains({"born_from_ritual": False})))
+        if exclude_ids:
+            query = query.where(Breed.id.not_in(exclude_ids))
         response = await session.execute(query)
-        rows = [(breed, weight) for breed, weight in response.tuples().all()]
+        raw_rows = [(breed, weight) for breed, weight in response.tuples().all()]
+
+    if season is not None:
+        season_lower = season.lower()
+        rows = [(breed, weight) for breed, weight in raw_rows if _breed_allowed_in_season(breed, season_lower)]
+    else:
+        rows = raw_rows
 
     if not rows:
         return result
@@ -673,6 +706,7 @@ async def get_random_eligible_owner_event_for_owner(
     owner_discord_id: int,
     rng: Optional[random.Random] = None,
     include_triggered_only: bool = False,
+    season: Optional[str] = None,
 ) -> Optional[Event]:
     """
     Get a random eligible event for an owner, weighted by rarity.
@@ -721,7 +755,7 @@ async def get_random_eligible_owner_event_for_owner(
 
         eligible_rows: list[tuple[Event, float]] = []
         for event, weight in rows:
-            if await check_owner_event_filter(session, owner_discord_id, event.filter):
+            if await check_owner_event_filter(session, owner_discord_id, event.filter, season=season):
                 eligible_rows.append((event, weight))
 
         if not eligible_rows:
@@ -890,6 +924,30 @@ async def get_active_server_event_occurrence(server_discord_id: int) -> Optional
     return response.scalar_one_or_none()
 
 
+async def get_active_server_event_occurrence_by_tier(
+    server_discord_id: int, tier: str
+) -> Optional[ServerEventOccurrence]:
+    """Return the active (unresolved, unarchived) server event occurrence for the given tier, or None."""
+    async with session_scope() as session:
+        query = (
+            select(ServerEventOccurrence)
+            .join(ServerEvent, ServerEventOccurrence.server_event_id == ServerEvent.id)
+            .where(
+                ServerEventOccurrence.server_discord_id == server_discord_id,
+                ServerEventOccurrence.archived.is_(False),
+                ServerEventOccurrence.resolved_at.is_(None),
+                ServerEvent.tier == tier.strip().lower(),
+            )
+            .options(
+                selectinload(ServerEventOccurrence.server_event).options(*_server_event_load_options()),
+                selectinload(ServerEventOccurrence.participations),
+            )
+        )
+        response = await session.execute(query)
+
+    return response.scalar_one_or_none()
+
+
 async def get_server_event_participation(
     occurrence_id: int, owner_discord_id: int
 ) -> Optional[ServerEventParticipation]:
@@ -909,6 +967,28 @@ async def list_all_server_events_with_weights() -> list[tuple[ServerEvent, int]]
         event_query = (
             select(ServerEvent, RarityWeight.weight)
             .join(RarityWeight, RarityWeight.rarity == ServerEvent.rarity)
+            .options(*_server_event_load_options())
+        )
+        response = await session.execute(event_query)
+        return [(event, weight) for event, weight in response.tuples().all()]
+
+
+async def get_server_event_by_name(name: str) -> Optional[ServerEvent]:
+    """Return a fully-loaded ServerEvent by its unique name, or None."""
+    async with session_scope() as session:
+        result = await session.execute(
+            select(ServerEvent).where(ServerEvent.name == name).options(*_server_event_load_options())
+        )
+        return result.scalars().first()
+
+
+async def list_server_events_with_weights_by_tier(tier: str) -> list[tuple[ServerEvent, int]]:
+    """Return server events for a specific tier ('minor' or 'major') with rarity weights."""
+    async with session_scope() as session:
+        event_query = (
+            select(ServerEvent, RarityWeight.weight)
+            .join(RarityWeight, RarityWeight.rarity == ServerEvent.rarity)
+            .where(ServerEvent.tier == tier.lower())
             .options(*_server_event_load_options())
         )
         response = await session.execute(event_query)
@@ -940,6 +1020,7 @@ async def get_random_eligible_stray_event_for_server(
     server_discord_id: int,
     rng: Optional[random.Random] = None,
     include_triggered_only: bool = False,
+    season: Optional[str] = None,
 ) -> Optional[StrayEvent]:
     """
     Pick a random stray event weighted by rarity, from those whose top-level filter is satisfied
@@ -966,7 +1047,7 @@ async def get_random_eligible_stray_event_for_server(
 
         eligible_rows: list[tuple[StrayEvent, float]] = []
         for event, weight in rows:
-            if await check_stray_event_filter(session, server_discord_id, event.filter):
+            if await check_stray_event_filter(session, server_discord_id, event.filter, season=season):
                 eligible_rows.append((event, weight))
 
         if not eligible_rows:
@@ -1106,3 +1187,34 @@ async def get_parentage_maps(
         kids.sort()
 
     return parents_of, children_of
+
+
+async def get_auction_sale_listing_by_id(listing_id: int) -> Optional[AuctionSaleListing]:
+    """Fetch a sale listing by primary key, regardless of active status."""
+    async with session_scope() as session:
+        return await session.get(AuctionSaleListing, listing_id)
+
+
+async def get_active_auction_sale_listing_for_pooch(pooch_id: int) -> Optional[AuctionSaleListing]:
+    """Return the active listing for a pooch, or None if not listed."""
+    async with session_scope() as session:
+        query = select(AuctionSaleListing).where(
+            AuctionSaleListing.pooch_id == pooch_id,
+            AuctionSaleListing.is_active.is_(True),
+        )
+        return (await session.execute(query)).scalar_one_or_none()
+
+
+async def get_auction_bounty_listing_by_id(listing_id: int) -> Optional[AuctionBountyListing]:
+    """Fetch a bounty listing by primary key, regardless of active status."""
+    async with session_scope() as session:
+        return await session.get(AuctionBountyListing, listing_id)
+
+
+async def get_highest_bid_for_listing(listing_id: int) -> Optional[AuctionBid]:
+    """Return the bid with the highest amount for the listing, or None if no bids."""
+    async with session_scope() as session:
+        query = (
+            select(AuctionBid).where(AuctionBid.listing_id == listing_id).order_by(AuctionBid.amount.desc()).limit(1)
+        )
+        return (await session.execute(query)).scalar_one_or_none()

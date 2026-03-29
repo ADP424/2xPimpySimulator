@@ -2,5 +2,10 @@
     "name": "American Hairless Terrier",
     "alt_name": "Hairless Rat Terrier",
     "description": "The American Hairless Terrier is a breed of companion dog from the United States that was developed from naturally hairless Rat Terriers.",
-    "rarity": "NOVEL"
+    "rarity": "NOVEL",
+    "parameters": {
+        "min_size": 2, // 7-14 lbs
+        "max_size": 4,
+        "fluffiness_mult": 0.1
+    }
 }

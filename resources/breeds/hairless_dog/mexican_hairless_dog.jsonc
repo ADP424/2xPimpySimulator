@@ -2,5 +2,12 @@
     "name": "Mexican hairless dog",
     "alt_name": "Xoloitzcuintle",
     "description": "The Xoloitzcuintle is one of several breeds of hairless dog. It is found in standard, intermediate, and miniature sizes.  It is characterized by its wrinkles and dental abnormalities.",
-    "rarity": "UNCOMMON"
+    "rarity": "UNCOMMON",
+    "parameters": {
+        "min_size": 8, // 10-55 lbs
+        "max_size": 12,
+        "fluffiness_mult": 0.1,
+        "aggressiveness_add": -1,
+        "intelligence_add": 1
+    }
 }

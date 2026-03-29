@@ -19,6 +19,9 @@ logger = get_logger("database/load/load_resources/mutations")
 _MUTATIONS_ROOT = RESOURCE_ROOT / "mutations"
 
 
+_VALID_SEASONS = {"spring", "summer", "autumn", "winter"}
+
+
 def _validate_mutations_json(mutations_json: dict[str, dict[str, dict[str, Any]]]) -> None:
     errors: list[str] = []
     allowed_keys = {
@@ -70,6 +73,18 @@ def _validate_mutations_json(mutations_json: dict[str, dict[str, dict[str, Any]]
             parameters = attributes.get("parameters")
             if parameters is not None and not isinstance(parameters, dict):
                 errors.append(f"{path}.parameters: must be an object")
+            elif isinstance(parameters, dict):
+                seasons = parameters.get("seasons")
+                if seasons is not None:
+                    if not isinstance(seasons, list):
+                        errors.append(f"{path}.parameters.seasons: must be a list")
+                    else:
+                        for s in seasons:
+                            if not isinstance(s, str) or s.strip().lower() not in _VALID_SEASONS:
+                                errors.append(
+                                    f"{path}.parameters.seasons: '{s}' is not a valid season "
+                                    f"(must be one of: {', '.join(sorted(_VALID_SEASONS))})"
+                                )
     if errors:
         joined = "\n".join(f"- {error}" for error in errors)
         raise ResourceValidationError(f"Invalid mutation resources:\n{joined}")

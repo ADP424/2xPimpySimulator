@@ -10,6 +10,7 @@
         "born_from_ritual": false,
         // TODO: Add an on death for the dog to be sent to hell instead of the graveyard
         "on_death_chance": 0.33,
-        "always_on_death": true
+        "always_on_death": true,
+        "dexterity_add": 3
     }
 }
