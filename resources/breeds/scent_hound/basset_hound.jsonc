@@ -2,5 +2,9 @@
     "name": "Basset Hound",
     "alt_name": "Based Hound",
     "description": "The Basset Hound is a short-legged breed of scent hound. The Basset Hound was developed in Great Britain from several now-extinct strains of French basset breeds.",
-    "rarity": "UNCOMMON"
+    "rarity": "UNCOMMON",
+    "parameters": {
+        "min_size": 11,
+        "max_size": 19
+    }
 }

@@ -4,6 +4,8 @@
     "description": "The Tahltan Bear Dog was a breed of dog that came to Canada in early migrations and acclimatised to the environment.",
     "rarity": "EXTRAORDINARY",
     "parameters": {
+        "min_size": 7,
+        "max_size": 10,
         "sold_by_vendors": false
     }
 }

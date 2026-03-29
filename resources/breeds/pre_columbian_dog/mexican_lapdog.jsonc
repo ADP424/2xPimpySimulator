@@ -5,7 +5,7 @@
     "rarity": "EXTRAORDINARY",
     "parameters": {
         "min_size": 1,
-        "max_size": 2,
+        "max_size": 1,
         "sold_by_vendors": false
     }
 }

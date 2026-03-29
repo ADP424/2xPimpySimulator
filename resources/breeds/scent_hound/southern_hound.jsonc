@@ -4,6 +4,8 @@
     "description": "The Southern Hound was a tall, heavy dog with a square head, and long ears. It had a deep chest, a long bony body and a deep melodious voice. It was a slow dog, but with excellent scenting abilities and was employed to follow the trail of the quarry during a hunt.",
     "rarity": "REMARKABLE",
     "parameters": {
+        "min_size": 20,
+        "max_size": 25,
         "sold_by_vendors": false
     }
 }
