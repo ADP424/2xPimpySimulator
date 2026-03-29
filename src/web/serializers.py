@@ -46,6 +46,9 @@ def serialize_owner(owner: Any) -> dict:
         "discord_name": owner.discord_name,
         "dollars": owner.dollars,
         "bloodskulls": owner.bloodskulls,
+        "bones": owner.bones,
+        "begged_today": owner.begged_today,
+        "visited_park_today": owner.visited_park_today,
     }
 
 

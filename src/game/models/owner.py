@@ -14,6 +14,8 @@ class Owner:
     dollars: int
     bloodskulls: int
     bones: int
+    begged_today: bool
+    visited_park_today: bool
 
 
 async def to_owner(owner: OwnerORM) -> Owner:
@@ -37,4 +39,6 @@ async def to_owner(owner: OwnerORM) -> Owner:
         dollars=owner.dollars,
         bloodskulls=owner.bloodskulls,
         bones=owner.bones,
+        begged_today=owner.begged_today,
+        visited_park_today=owner.visited_park_today,
     )

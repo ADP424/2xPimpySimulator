@@ -47,6 +47,7 @@ def create_app(config: dict | None = None) -> Flask:
     from src.web.routes.info import info_bp
     from src.web.routes.kennel import kennel_bp
     from src.web.routes.main import main_bp
+    from src.web.routes.park import park_bp
     from src.web.routes.pooch import pooch_bp
     from src.web.routes.vendor import vendor_bp
     from src.web.routes.webhooks import webhooks_bp
@@ -58,6 +59,7 @@ def create_app(config: dict | None = None) -> Flask:
     app.register_blueprint(construction_bp, url_prefix="/construction")
     app.register_blueprint(graveyard_bp, url_prefix="/graveyard")
     app.register_blueprint(kennel_bp, url_prefix="/kennel")
+    app.register_blueprint(park_bp, url_prefix="/park")
     app.register_blueprint(pooch_bp, url_prefix="/pooch")
     app.register_blueprint(vendor_bp, url_prefix="/vendor")
     app.register_blueprint(info_bp, url_prefix="/info")

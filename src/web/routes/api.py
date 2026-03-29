@@ -403,6 +403,38 @@ def beg_route():
         return jsonify({"error": str(e)}), 500
 
 
+@api_bp.route("/park/visit", methods=["POST"])
+@server_required
+def park_visit():
+    """Free daily park visit to attract a stray."""
+    from src.game import visit_park
+
+    discord_id = get_current_user_id()
+    server_id = get_current_server_id()
+
+    try:
+        caught, message = run_async(visit_park(server_id, discord_id))
+        return jsonify({"success": caught, "message": message})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@api_bp.route("/park/bone", methods=["POST"])
+@server_required
+def park_use_bone():
+    """Spend a bone for an extra park attempt."""
+    from src.game import spend_bone_at_park
+
+    discord_id = get_current_user_id()
+    server_id = get_current_server_id()
+
+    try:
+        caught, message = run_async(spend_bone_at_park(server_id, discord_id))
+        return jsonify({"success": caught, "message": message})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @api_bp.route("/construction/buy-price")
 @login_required
 def get_kennel_buy_price_route():

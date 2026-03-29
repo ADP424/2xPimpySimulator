@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+
+{% block title %}Construction Company - Pooch Breeder{% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-6 flex-wrap gap-3">
+    <a href="{{ url_for('main.town') }}" class="btn btn-ghost btn-sm">← Back to Town</a>
+    <h1 class="text-3xl font-bold">🏗️ Construction Company</h1>
+    <div></div>
+</div>
+
+<div id="loading" class="flex items-center gap-3 text-base-content/50 py-8">
+    <span class="loading loading-spinner loading-md"></span>
+    <span>Loading construction options...</span>
+</div>
+
+<div id="construction-container" style="display: none;">
+    <!-- Balance -->
+    <div class="card bg-base-200 shadow-md mb-6">
+        <div class="card-body py-4">
+            <div class="flex items-center gap-4">
+                <span class="text-xs text-base-content/50 uppercase tracking-wide">Your Balance</span>
+                <span class="text-2xl font-black text-success" id="owner-balance">—</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Buy New Kennel -->
+    <div class="card bg-base-200 shadow-md mb-6">
+        <div class="card-body">
+            <h2 class="card-title text-lg">Buy New Kennel</h2>
+            <p class="text-sm text-base-content/60" id="buy-status">Loading...</p>
+            <div class="card-actions justify-end mt-2">
+                <button id="buy-kennel-btn" class="btn btn-success btn-sm" disabled onclick="buyKennel()">
+                    Buy Kennel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upgrade Kennels -->
+    <div class="card bg-base-200 shadow-md">
+        <div class="card-body">
+            <h2 class="card-title text-lg">Upgrade a Kennel</h2>
+
+            <div id="no-kennels" class="text-sm text-base-content/50 py-4" style="display: none;">
+                You don't have any kennels to upgrade.
+            </div>
+
+            <div id="kennels-list" class="flex flex-col gap-3 mt-2"></div>
+
+            <div id="upgrade-action" class="card-actions justify-end mt-4" style="display: none;">
+                <button id="upgrade-kennel-btn" class="btn btn-primary btn-sm" disabled onclick="upgradeKennel()">
+                    Upgrade Kennel
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let ownerBalance = 0;
+let kennelsData = [];
+let selectedKennelId = null;
+let selectedUpgradePrice = null;
+
+document.addEventListener('DOMContentLoaded', loadPage);
+
+async function loadPage() {
+    try {
+        const [ownerResp, kennelsResp, buyPriceResp] = await Promise.all([
+            fetch('/api/owner'),
+            fetch('/api/kennels'),
+            fetch('/api/construction/buy-price'),
+        ]);
+
+        const owner = await ownerResp.json();
+        kennelsData = await kennelsResp.json();
+        const buyInfo = await buyPriceResp.json();
+
+        ownerBalance = owner.dollars;
+
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('construction-container').style.display = 'block';
+
+        // Balance
+        document.getElementById('owner-balance').textContent = `$${ownerBalance.toLocaleString()}`;
+
+        // Buy section
+        document.getElementById('buy-status').textContent = buyInfo.status;
+        const buyBtn = document.getElementById('buy-kennel-btn');
+        if (buyInfo.price !== null) {
+            buyBtn.textContent = `Buy Kennel ($${buyInfo.price})`;
+            buyBtn.disabled = ownerBalance < buyInfo.price;
+        } else {
+            buyBtn.textContent = 'Buy Kennel (max)';
+            buyBtn.disabled = true;
+        }
+
+        // Upgrade section
+        if (kennelsData.length === 0) {
+            document.getElementById('no-kennels').style.display = 'block';
+            return;
+        }
+
+        document.getElementById('upgrade-action').style.display = 'flex';
+
+        // Fetch upgrade prices for each kennel
+        const upgradePrices = await Promise.all(
+            kennelsData.map(k => fetch(`/api/construction/upgrade-price/${k.id}`).then(r => r.json()))
+        );
+
+        const list = document.getElementById('kennels-list');
+        list.innerHTML = kennelsData.map((kennel, i) => {
+            const info = upgradePrices[i];
+            const isMaxed = info.price === null;
+            return `
+                <label class="flex items-center gap-4 p-3 rounded-lg bg-base-300 cursor-pointer hover:bg-base-100 transition-colors ${isMaxed ? 'opacity-50' : ''}"
+                       data-kennel-id="${kennel.id}" data-price="${info.price}">
+                    <input type="radio" name="kennel-upgrade" class="radio radio-primary radio-sm"
+                           value="${kennel.id}" ${isMaxed ? 'disabled' : ''}
+                           onchange="selectKennel(${kennel.id}, ${info.price})">
+                    <div class="flex-1 min-w-0">
+                        <div class="font-bold text-sm">${escapeHtml(kennel.name)}</div>
+                        <div class="text-xs text-base-content/50">Capacity: ${kennel.pooch_limit}</div>
+                    </div>
+                    <div class="text-sm ${isMaxed ? 'text-base-content/40' : 'text-base-content/70'}">
+                        ${escapeHtml(info.status)}
+                    </div>
+                </label>
+            `;
+        }).join('');
+
+    } catch (error) {
+        document.getElementById('loading').innerHTML = '<span class="text-error">Failed to load construction data</span>';
+        console.error('Error:', error);
+    }
+}
+
+function selectKennel(kennelId, price) {
+    selectedKennelId = kennelId;
+    selectedUpgradePrice = price;
+
+    const btn = document.getElementById('upgrade-kennel-btn');
+    if (price !== null) {
+        btn.textContent = `Upgrade Kennel ($${price})`;
+        btn.disabled = ownerBalance < price;
+    } else {
+        btn.textContent = 'Upgrade Kennel (max)';
+        btn.disabled = true;
+    }
+}
+
+async function buyKennel() {
+    if (!confirm('Buy a new kennel?')) return;
+
+    const btn = document.getElementById('buy-kennel-btn');
+    btn.disabled = true;
+
+    try {
+        const resp = await fetch('/api/construction/buy-kennel', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+        });
+        const result = await resp.json();
+
+        if (result.success) {
+            App.queueNotification(result.message, 'success');
+            window.location.reload();
+        } else {
+            App.showNotification(result.message || result.error || 'Purchase failed', 'error');
+            btn.disabled = false;
+        }
+    } catch (error) {
+        App.showNotification('Something went wrong. Please try again.', 'error');
+        btn.disabled = false;
+        console.error('Error:', error);
+    }
+}
+
+async function upgradeKennel() {
+    if (!selectedKennelId) return;
+    if (!confirm('Upgrade this kennel?')) return;
+
+    const btn = document.getElementById('upgrade-kennel-btn');
+    btn.disabled = true;
+
+    try {
+        const resp = await fetch(`/api/construction/upgrade-kennel/${selectedKennelId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+        });
+        const result = await resp.json();
+
+        if (result.success) {
+            App.queueNotification(result.message, 'success');
+            window.location.reload();
+        } else {
+            App.showNotification(result.message || result.error || 'Upgrade failed', 'error');
+            btn.disabled = false;
+        }
+    } catch (error) {
+        App.showNotification('Something went wrong. Please try again.', 'error');
+        btn.disabled = false;
+        console.error('Error:', error);
+    }
+}
+</script>
+{% endblock %}

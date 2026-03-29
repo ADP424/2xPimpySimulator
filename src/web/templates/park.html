@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block title %}Park - Pooch Breeder{% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-8 flex-wrap gap-3">
+    <div>
+        <h1 class="text-3xl font-bold">🌳 Park</h1>
+        <p class="text-base-content/60 mt-1">Attract stray pooches wandering through the park.</p>
+    </div>
+    <a href="{{ url_for('main.town') }}" class="btn btn-ghost btn-sm">← Back to Town</a>
+</div>
+
+<div class="max-w-sm">
+    <div class="card bg-base-200 shadow-md">
+        <div class="card-body gap-4">
+
+            <div id="loading" class="flex items-center gap-3 text-base-content/50">
+                <span class="loading loading-spinner loading-sm"></span>
+                <span>Loading...</span>
+            </div>
+
+            <div id="park-content" style="display: none;">
+                <div class="flex flex-col gap-1 mb-4">
+                    <span class="text-xs text-base-content/50 uppercase tracking-wide">Your Bones</span>
+                    <span class="text-3xl font-black" id="bone-count">—</span>
+                </div>
+
+                <div class="flex flex-col gap-3">
+                    <div id="visit-section">
+                        <button id="visit-btn" class="btn btn-primary btn-block" onclick="doVisit()">
+                            Attract a Stray
+                        </button>
+                    </div>
+
+                    <div id="visited-section" style="display: none;">
+                        <div class="alert alert-warning text-sm">You already visited the park today. Come back tomorrow!</div>
+                    </div>
+
+                    <button id="bone-btn" class="btn btn-secondary btn-block" onclick="useBone()">
+                        🦴 Use a Bone
+                    </button>
+
+                    <p id="no-bones-msg" class="text-sm text-base-content/50 text-center" style="display: none;">
+                        You don't have any bones.
+                    </p>
+                </div>
+
+                <div id="result-section" class="mt-4" style="display: none;">
+                    <div class="alert text-sm" id="result-alert"></div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let currentBones = 0;
+
+document.addEventListener('DOMContentLoaded', async function() {
+    try {
+        const resp = await fetch('/api/owner');
+        const owner = await resp.json();
+
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('park-content').style.display = 'block';
+
+        currentBones = owner.bones;
+        document.getElementById('bone-count').textContent = currentBones;
+
+        if (owner.visited_park_today) {
+            document.getElementById('visit-section').style.display = 'none';
+            if (owner.bones <= 0) {
+                document.getElementById('visited-section').style.display = 'block';
+            }
+        }
+
+        updateBoneButton();
+    } catch (e) {
+        document.getElementById('loading').innerHTML = '<span class="text-error">Failed to load.</span>';
+        console.error(e);
+    }
+});
+
+function updateBoneButton() {
+    const btn = document.getElementById('bone-btn');
+    const msg = document.getElementById('no-bones-msg');
+    const visitHidden = document.getElementById('visit-section').style.display === 'none';
+    if (currentBones <= 0) {
+        btn.style.display = 'none';
+        const resultVisible = document.getElementById('result-section').style.display !== 'none';
+        if (visitHidden && !resultVisible) {
+            document.getElementById('visited-section').style.display = 'block';
+            msg.style.display = 'none';
+        } else {
+            msg.style.display = 'block';
+        }
+    } else {
+        btn.style.display = '';
+        msg.style.display = 'none';
+    }
+}
+
+function showResult(success, message) {
+    const section = document.getElementById('result-section');
+    const alert = document.getElementById('result-alert');
+    section.style.display = 'block';
+    alert.className = success ? 'alert alert-success text-sm' : 'alert alert-warning text-sm';
+    alert.textContent = message;
+}
+
+async function doVisit() {
+    const btn = document.getElementById('visit-btn');
+    btn.disabled = true;
+    btn.classList.add('loading');
+
+    try {
+        const resp = await fetch('/api/park/visit', { method: 'POST' });
+        const result = await resp.json();
+
+        showResult(result.success, result.message);
+        App.haptics.trigger(result.success ? 'success' : 'warning');
+
+        document.getElementById('visit-section').style.display = 'none';
+    } catch (e) {
+        App.haptics.trigger('error');
+        App.showNotification('Something went wrong.', 'error');
+        btn.disabled = false;
+        btn.classList.remove('loading');
+        console.error(e);
+    }
+}
+
+async function useBone() {
+    const btn = document.getElementById('bone-btn');
+    btn.disabled = true;
+    btn.classList.add('loading');
+
+    try {
+        const resp = await fetch('/api/park/bone', { method: 'POST' });
+        const result = await resp.json();
+
+        showResult(result.success, result.message);
+        App.haptics.trigger(result.success ? 'success' : 'warning');
+
+        currentBones = Math.max(0, currentBones - 1);
+        document.getElementById('bone-count').textContent = currentBones;
+        updateBoneButton();
+
+        btn.disabled = false;
+        btn.classList.remove('loading');
+    } catch (e) {
+        App.haptics.trigger('error');
+        App.showNotification('Something went wrong.', 'error');
+        btn.disabled = false;
+        btn.classList.remove('loading');
+        console.error(e);
+    }
+}
+</script>
+{% endblock %}
