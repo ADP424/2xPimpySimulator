@@ -24,6 +24,12 @@
                 <p class="text-xs text-base-content/50 mb-3">This vendor pays a bonus for pooches with these mutations.</p>
                 <div id="desired-mutations-list" class="flex flex-wrap gap-3"></div>
             </div>
+            <div id="desired-breeds-section" style="display: none;">
+                <div class="divider my-2"></div>
+                <h2 class="card-title text-sm uppercase tracking-wide text-base-content/50">🐾 Desired Breeds</h2>
+                <p class="text-xs text-base-content/50 mb-3">This vendor pays a bonus for pooches with these breeds.</p>
+                <div id="desired-breeds-list" class="flex flex-wrap gap-3"></div>
+            </div>
         </div>
     </div>
 
@@ -42,6 +48,7 @@ const PAGE_DATA = {
 };
 
 let desiredMutationIds = new Set();
+let desiredBreedIds = new Set();
 
 document.addEventListener('DOMContentLoaded', async function() {
     try {
@@ -63,6 +70,20 @@ document.addEventListener('DOMContentLoaded', async function() {
                 <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-base-300 health-${App.healthImpactGroup(m.health_impact)}">
                     <span class="font-medium text-sm">${escapeHtml(m.name)}</span>
                     <span class="rarity-badge rarity-${(m.rarity || '').toLowerCase()}">${escapeHtml(App.format.enumLabel(m.rarity))}</span>
+                </div>
+            `).join('');
+        }
+
+        // Desired breeds
+        if (vendor.desired_breeds && vendor.desired_breeds.length > 0) {
+            desiredBreedIds = new Set(vendor.desired_breeds.map(b => b.id));
+            const section = document.getElementById('desired-breeds-section');
+            const list = document.getElementById('desired-breeds-list');
+            section.style.display = '';
+            list.innerHTML = vendor.desired_breeds.map(b => `
+                <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-base-300">
+                    <span class="font-medium text-sm">${escapeHtml(b.name)}</span>
+                    <span class="rarity-badge rarity-${(b.rarity || '').toLowerCase()}">${escapeHtml(App.format.enumLabel(b.rarity))}</span>
                 </div>
             `).join('');
         }
@@ -109,9 +130,10 @@ function formatMarkup(markup) {
 function createPoochCard(pooch) {
     const sexEmoji = pooch.sex === 'female' ? '♀️' : '♂️';
     const breedsHtml = pooch.breeds.length > 0
-        ? pooch.breeds.map((b, i) =>
-            `<span class="rarity-text-${(b.breed.rarity || '').toLowerCase()}">${escapeHtml(b.breed.name)}${i < pooch.breeds.length - 1 ? ',' : ''}</span>`
-          ).join(' ')
+        ? pooch.breeds.map((b, i) => {
+            const isDesired = desiredBreedIds.has(b.breed.id);
+            return `<span class="rarity-text-${(b.breed.rarity || '').toLowerCase()}">${isDesired ? '🐾' : ''}${escapeHtml(b.breed.name)}${i < pooch.breeds.length - 1 ? ',' : ''}</span>`;
+          }).join(' ')
         : `<span>Unknown</span>`;
     const mutationsHtml = pooch.mutations.length > 0
         ? pooch.mutations.map((m, i) => {
