@@ -109,7 +109,7 @@ function showResult(success, message) {
     const alert = document.getElementById('result-alert');
     section.style.display = 'block';
     alert.className = success ? 'alert alert-success text-sm' : 'alert alert-warning text-sm';
-    alert.textContent = message;
+    alert.innerHTML = '<span>' + escapeHtml(message).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>') + '</span>';
 }
 
 async function doVisit() {
