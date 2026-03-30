@@ -2,5 +2,9 @@
     "name": "German Shepherd",
     "alt_name": "Alsatian",
     "description": "The German Shepherd a German breed of working dog of medium to large size. It is characterized by its intelligent and obedient nature.",
-    "rarity": "COMMON"
+    "rarity": "COMMON",
+    "parameters": {
+        "min_size": 12,
+        "max_size": 22
+    }
 }

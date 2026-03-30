@@ -2,5 +2,9 @@
     "name": "Standard Poodle",
     "alt_name": "Pudelin",
     "description": "The first and largest breed of poodle, first bred as hunting companions. They are thin with a curly coat of fur, at least 15 inches tall, and weigh 40-70 pounds on average.",
-    "rarity": "COMMON"
+    "rarity": "COMMON",
+    "parameters": {
+        "min_size": 11,
+        "max_size": 18
+    }
 }

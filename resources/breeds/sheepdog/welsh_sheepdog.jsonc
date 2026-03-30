@@ -2,5 +2,9 @@
     "name": "Welsh Sheepdog",
     "alt_name": "Ci Defaid Cymreig",
     "description": "Welsh Sheepdogs are normally bred for their herding abilities rather than appearance, and so they are generally somewhat variable in build, colour and size.",
-    "rarity": "NOVEL"
+    "rarity": "NOVEL",
+    "parameters": {
+        "min_size": 9,
+        "max_size": 11
+    }
 }
