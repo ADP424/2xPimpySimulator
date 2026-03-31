@@ -4,6 +4,8 @@
     "description": "The North Country Beagle was a large, bony hound with a square head and long trailing ears.",
     "rarity": "REMARKABLE",
     "parameters": {
+        "min_size": 13,
+        "max_size": 20,
         "sold_by_vendors": false
     }
 }

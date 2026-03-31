@@ -46,6 +46,9 @@ def serialize_owner(owner: Any) -> dict:
         "discord_name": owner.discord_name,
         "dollars": owner.dollars,
         "bloodskulls": owner.bloodskulls,
+        "bones": owner.bones,
+        "begged_today": owner.begged_today,
+        "visited_park_today": owner.visited_park_today,
     }
 
 
@@ -106,10 +109,14 @@ def serialize_vendor(vendor: Any) -> dict:
         "price_markup": vendor.price_markup,
         "stock_count": vendor.stock_count,
         "desired_mutations": [],
+        "desired_breeds": [],
     }
 
     for mutation in vendor.desired_mutations:
         data["desired_mutations"].append(serialize_mutation(mutation))
+
+    for breed in vendor.desired_breeds:
+        data["desired_breeds"].append(serialize_breed(breed))
 
     return data
 

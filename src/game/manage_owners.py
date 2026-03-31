@@ -264,7 +264,7 @@ async def _attempt_catch_stray(
     """Roll one attempt to attract a stray. Does NOT check or set any daily flags."""
     strays = await list_strays_for_server(server_discord_id)
     if not strays:
-        return False, "You sit in the park for a while, but no stray pooches appear."
+        return False, "You sit in the park for a while, but no stray pooches appear. The town is bereft of strays."
 
     owner_count = await count_owners_for_server(server_discord_id)
     catch_chance = min(len(strays) / max(owner_count, 1) / PARK_STRAY_CATCH_DIVISOR, 1.0)

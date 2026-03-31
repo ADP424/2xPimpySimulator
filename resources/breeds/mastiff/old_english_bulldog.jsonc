@@ -4,6 +4,8 @@
     "description": "The Old English Bulldog is an extinct breed of dog.",
     "rarity": "REMARKABLE",
     "parameters": {
+        "min_size": 9,
+        "max_size": 13,
         "sold_by_vendors": false
     }
 }

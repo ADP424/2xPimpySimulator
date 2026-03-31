@@ -19,6 +19,12 @@ from src.web.serializers import (
 api_bp = Blueprint("api", __name__)
 
 
+@api_bp.after_request
+def no_cache(response):
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
 @api_bp.route("/owner")
 @server_required
 def get_owner():
@@ -393,6 +399,98 @@ def beg_route():
         if error:
             return jsonify({"success": False, "amount": 0, "message": error})
         return jsonify({"success": True, "amount": amount, "message": f"You received ${amount}!"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@api_bp.route("/park/visit", methods=["POST"])
+@server_required
+def park_visit():
+    """Free daily park visit to attract a stray."""
+    from src.game import visit_park
+
+    discord_id = get_current_user_id()
+    server_id = get_current_server_id()
+
+    try:
+        caught, message = run_async(visit_park(server_id, discord_id))
+        return jsonify({"success": caught, "message": message})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@api_bp.route("/park/bone", methods=["POST"])
+@server_required
+def park_use_bone():
+    """Spend a bone for an extra park attempt."""
+    from src.game import spend_bone_at_park
+
+    discord_id = get_current_user_id()
+    server_id = get_current_server_id()
+
+    try:
+        caught, message = run_async(spend_bone_at_park(server_id, discord_id))
+        return jsonify({"success": caught, "message": message})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@api_bp.route("/construction/buy-price")
+@login_required
+def get_kennel_buy_price_route():
+    """Get the price to buy the next kennel for the current user."""
+    from src.game import get_kennel_buy_price
+
+    discord_id = get_current_user_id()
+    price, status = run_async(get_kennel_buy_price(discord_id))
+    return jsonify({"price": price, "status": status})
+
+
+@api_bp.route("/construction/upgrade-price/<int:kennel_id>")
+@login_required
+def get_kennel_upgrade_price_route(kennel_id: int):
+    """Get the price to upgrade a kennel. Verifies the current user owns it."""
+    from src.game import get_kennel_upgrade_price, list_owner_kennels
+
+    discord_id = get_current_user_id()
+    kennels = run_async(list_owner_kennels(discord_id))
+    if not any(k.id == kennel_id for k in kennels):
+        return jsonify({"error": "You don't own that kennel"}), 403
+
+    price, status = run_async(get_kennel_upgrade_price(kennel_id))
+    return jsonify({"price": price, "status": status})
+
+
+@api_bp.route("/construction/buy-kennel", methods=["POST"])
+@login_required
+def buy_kennel_route():
+    """Buy a new kennel for the current user."""
+    from src.game import buy_kennel
+
+    discord_id = get_current_user_id()
+
+    try:
+        success, message = run_async(buy_kennel(discord_id))
+        return jsonify({"success": success, "message": message})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@api_bp.route("/construction/upgrade-kennel/<int:kennel_id>", methods=["POST"])
+@login_required
+def upgrade_kennel_route(kennel_id: int):
+    """Upgrade a kennel's capacity. Verifies the current user owns it."""
+    from src.game import list_owner_kennels, upgrade_kennel
+
+    discord_id = get_current_user_id()
+
+    kennels = run_async(list_owner_kennels(discord_id))
+    if not any(k.id == kennel_id for k in kennels):
+        return jsonify({"error": "You don't own that kennel"}), 403
+
+    try:
+        success, message = run_async(upgrade_kennel(discord_id, kennel_id))
+        return jsonify({"success": success, "message": message})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

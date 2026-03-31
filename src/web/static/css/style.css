@@ -42,6 +42,13 @@ body {
     --noise: 0;
 }
 
+/* ===== Tailwind Font Weight Fix (v4 @layer vs DaisyUI v5 unlayered) ===== */
+.font-medium   { font-weight: 500; }
+.font-semibold { font-weight: 600; }
+.font-bold     { font-weight: 700; }
+.font-extrabold{ font-weight: 800; }
+.font-black    { font-weight: 900; }
+
 /* ===== Rarity Badge Colors ===== */
 /* Used in JS-generated HTML and templates */
 .rarity-badge {
