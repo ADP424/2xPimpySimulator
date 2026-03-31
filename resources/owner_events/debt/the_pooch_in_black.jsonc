@@ -28,6 +28,7 @@
                 "name": "The Pooch In Black",
                 "sex": "male",
                 "age": 3,
+                "breeds": ["Mexican Hairless Dog"],
                 "breeding_cooldown": 0,
                 "destination": "kennel",
                 "save_as": "black_pooch"
@@ -38,8 +39,7 @@
             "target_type": "pooch",
             "parameters": {
                 "use_saved": "black_pooch",
-                "breed": "Mexican Hairless Dog",
-                "weight": 0.75
+                "weight": 0.25
             }
         },
         {

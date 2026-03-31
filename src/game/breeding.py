@@ -138,7 +138,8 @@ async def breed_pooches(
             rng=rng,
         )
 
-        await set_pooch_parentage(puppy.id, father_id=father.id, mother_id=mother.id)
+        effective_father_id = None if father.id == mother.id else father.id
+        await set_pooch_parentage(puppy.id, father_id=effective_father_id, mother_id=mother.id)
         await create_pooch_pregnancy(mother.id, puppy.id)
 
         # The child gets 50% of the breeds from each parent (normalized first)

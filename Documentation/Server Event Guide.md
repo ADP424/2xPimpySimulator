@@ -58,10 +58,6 @@ Each file defines one event. The tier comes from the first-level folder name (`m
 
 ## Event Parameters
 
-### `name`
-
-The human-readable event name. Required.
-
 ### `description`
 
 Plain-language description of the event.
@@ -70,16 +66,9 @@ Plain-language description of the event.
 
 Immersive text shown when the event is announced.
 
-### `severity`
+### `name`
 
-How impactful the event appears in the UI.
-
-- `trivial`
-- `minor`
-- `moderate`
-- `major`
-- `critical`
-- `catastrophic`
+The human-readable event name. Required.
 
 ### `parameters`
 
@@ -97,6 +86,17 @@ How likely the event is to be selected relative to other eligible server events 
 - `remarkable`
 - `extraordinary`
 - `unique`
+
+### `severity`
+
+How impactful the event appears in the UI.
+
+- `trivial`
+- `minor`
+- `moderate`
+- `major`
+- `critical`
+- `catastrophic`
 
 ---
 
@@ -175,7 +175,7 @@ Server events can fire actions at trigger time, targeting pools of pooches acros
             "pool": "dead",
             "selector": "random",
             "count": 1,
-            "destination": "stray",
+            "destination": "town",
             "save_as": "revenant"
         }
     },
@@ -184,7 +184,7 @@ Server events can fire actions at trigger time, targeting pools of pooches acros
         "target_type": "server",
         "parameters": {
             "pool": "saved",
-            "save_slot": "revenant",
+            "use_saved": "revenant",
             "selector": "all",
             "mutations": ["Sent by Death"]
         }
@@ -207,7 +207,7 @@ Specifies which group of pooches to draw from, or (for owner-targeting actions) 
 | `"in_hell"` | Pooches condemned to Hell |
 | `"all_alive"` | All living pooches on the server (kennel + stray) |
 | `"all"` | All pooches on the server |
-| `"saved"` | Pooches previously stored in a named slot (requires `save_slot`) |
+| `"saved"` | Pooches previously stored in a named slot (requires `use_saved`) |
 
 #### Owner pools
 
@@ -216,7 +216,7 @@ Owner pools are used with owner-targeting actions (`modify_money`, `modify_blood
 | Value | Owners included |
 |-------|----------------|
 | `"owner"` | All registered owners in the server |
-| `"saved_owner"` | Owners previously stored in a named owner slot (requires `save_slot`) |
+| `"saved_owner"` | Owners previously stored in a named owner slot (requires `use_saved`) |
 
 ### `selector`
 
@@ -234,13 +234,13 @@ With `"random"`: picks exactly `count` entities. If fewer exist, all are used.
 
 A pooch filter spec to narrow the resolved pool before applying `selector`. Uses the same fields as stray event filters.
 
-### `save_as` / `save_slot`
+### `save_as` / `use_saved`
 
 Named-slot chaining across actions:
 
 - **`save_as`** (pooch pools): after resolving targets, write their IDs into `server_context.saved_slots["slot_name"]`
 - **`save_as`** (owner pools): after resolving targets, write their owner discord IDs into `server_context.saved_owner_slots["slot_name"]`
-- **`save_slot`**: when `pool` is `"saved"` or `"saved_owner"`, read IDs from this named slot
+- **`use_saved`**: when `pool` is `"saved"` or `"saved_owner"`, read IDs from this named slot
 
 ```jsonc
 // Revive a random hell pooch and save it as "escapee"
@@ -248,7 +248,7 @@ Named-slot chaining across actions:
   "parameters": { "pool": "in_hell", "selector": "random", "save_as": "escapee" } },
 // Add a mutation to the same pooch
 { "action_type": "add_mutation", "target_type": "server",
-  "parameters": { "pool": "saved", "save_slot": "escapee", "selector": "all",
+  "parameters": { "pool": "saved", "use_saved": "escapee", "selector": "all",
                   "mutations": ["Mild Possession"] } }
 ```
 
@@ -262,7 +262,7 @@ When `save_as` is present on a pooch-pool action, also look up each targeted poo
   "parameters": { "pool": "stray", "selector": "random", "save_as": "victim", "save_owner": true } },
 // Give money to the owner of the killed pooch
 { "action_type": "modify_money", "target_type": "server",
-  "parameters": { "pool": "saved_owner", "save_slot": "victim", "selector": "all",
+  "parameters": { "pool": "saved_owner", "use_saved": "victim", "selector": "all",
                   "min_amount": 50, "max_amount": 100 } }
 ```
 
@@ -475,7 +475,7 @@ When `target` is `"server"`, outcome actions use `target_type: "server"` and the
 
 ## Supported Server-Scoped Action Types
 
-All actions with `"target_type": "server"` use the pool/selector/filter/save_as/save_slot parameters documented above.
+All actions with `"target_type": "server"` use the pool/selector/filter/save_as/use_saved parameters documented above.
 
 ### Pooch-pool actions
 
@@ -483,7 +483,7 @@ These actions target pooches via a pooch pool (`"stray"`, `"dead"`, `"in_hell"`,
 
 | Action | Notes |
 |--------|-------|
-| `modify_base_health` | Modify base health of targeted pooches (alias: `modify_pooch_health`) |
+| `modify_base_health` | Modify base health of targeted pooches |
 | `modify_pooch_age` | Modify age |
 | `set_pooch_age` | Set age to an exact value |
 | `modify_strength` | Modify strength stat |
@@ -502,7 +502,7 @@ These actions target pooches via a pooch pool (`"stray"`, `"dead"`, `"in_hell"`,
 | `add_breed` | Add a breed weight |
 | `remove_breed` | Remove a breed |
 | `rename_pooch` | Rename targeted pooches |
-| `modify_breeding_cooldown` | Modify or set breeding cooldown (alias: `set_breeding_cooldown`) |
+| `modify_breeding_cooldown` | Modify or set breeding cooldown |
 | `release_stray` | Remove from kennel and add to stray pool |
 | `enter_kennel` | Move a stray into a random owner kennel with free space |
 | `enter_vendor_stock` | Move a stray into a random vendor's stock |
@@ -528,43 +528,7 @@ Other owner-only actions (`modify_kennel_capacity`, `sell_pooch`, `buy_pooch`, `
 
 ## Action Parameter Reference (Server-Scoped)
 
-### `modify_money` / `modify_bloodskulls`
-
-Target an owner pool to modify money or bloodskulls for each resolved owner.
-
-| Parameter | Type | Notes |
-|-----------|------|-------|
-| `pool` | string | **Required.** Must be `"owner"` or `"saved_owner"` |
-| `selector` | string | `"all"`, `"random"`, `"first"` |
-| `count` | int | Number to pick with `"random"` |
-| `save_as` / `save_slot` | string | Named owner slot operations |
-| `amount` | int | Fixed delta |
-| `min_amount` / `max_amount` | int | Random delta in range |
-| `roll_once` | bool | Roll once and apply the same amount to all owners |
-
-```jsonc
-// Deduct 50 money from every owner on the server
-{ "action_type": "modify_money", "target_type": "server",
-  "parameters": { "pool": "owner", "selector": "all", "amount": -50 } }
-```
-
-### `modify_base_health` / `modify_pooch_age` / stat modifiers
-
-| Parameter | Type | Notes |
-|-----------|------|-------|
-| `pool` | string | Which pool to target |
-| `selector` | string | `"all"`, `"random"`, `"first"` |
-| `count` | int | Number to pick with `"random"` |
-| `filter` | object | Pooch filter to narrow pool |
-| `save_as` / `save_slot` | string | Named slot operations |
-| `save_owner` | bool | Also save the owners of targeted pooches into `saved_owner_slots` |
-| `amount` | int | Fixed delta; or absolute when `mode` is `"set"` |
-| `min_amount` / `max_amount` | int | Random delta in range |
-| `exclude_amount` | list[int] | Values to exclude from random range |
-| `roll_once` | bool | Roll once and apply to all targets |
-| `mode` | string | `"modify"` (default) or `"set"` |
-
-### `set_pooch_age`
+### `add_breed` / `remove_breed`
 
 | Parameter | Type | Notes |
 |-----------|------|-------|
@@ -572,29 +536,9 @@ Target an owner pool to modify money or bloodskulls for each resolved owner.
 | `selector` | string | |
 | `count` | int | |
 | `filter` | object | |
-| `save_as` / `save_slot` | string | |
-| `age` | int | **Required.** The exact age to set |
-
-### `kill_pooch` / `damn_pooch`
-
-| Parameter | Type | Notes |
-|-----------|------|-------|
-| `pool` | string | |
-| `selector` | string | |
-| `count` | int | |
-| `filter` | object | |
-| `save_as` / `save_slot` | string | |
-
-### `revive_pooch`
-
-| Parameter | Type | Notes |
-|-----------|------|-------|
-| `pool` | string | Typically `"dead"` or `"in_hell"` |
-| `selector` | string | |
-| `count` | int | |
-| `filter` | object | |
-| `destination` | string | `"stray"` (default), `"kennel"`, `"vendor"`, `"graveyard"`, `"hell"` |
-| `save_as` / `save_slot` | string | |
+| `save_as` / `use_saved` | string | |
+| `breed` | string | Breed name; omit for random |
+| `weight` | float | Breed weight for `add_breed` (default `0.5`) |
 
 ### `add_mutation`
 
@@ -604,85 +548,24 @@ Target an owner pool to modify money or bloodskulls for each resolved owner.
 | `selector` | string | |
 | `count` | int | |
 | `filter` | object | |
-| `save_as` / `save_slot` | string | |
+| `save_as` / `use_saved` | string | |
 | `mutations` | list[string] | One or more mutation names to add; omit for random |
 | `mutation` | string | Single mutation name (alternative to `mutations`) |
 
-### `remove_mutation`
+### `breed_pooches`
+
+Breeds two pooches. Offspring goes to `destination`.
 
 | Parameter | Type | Notes |
 |-----------|------|-------|
-| `pool` | string | |
-| `selector` | string | |
-| `count` | int | |
-| `filter` | object | |
-| `save_as` / `save_slot` | string | |
-| `mutation` | string | Mutation name to remove; omit for random |
+| `first_filter` / `second_filter` | object | Pooch filters for each parent |
+| `require_unique` | bool | Ensure parents are different pooches (default: `true`) |
+| `require_same` | bool | Both parents are the same pooch (self-breeding) |
+| `destination` | string | Where offspring is placed |
+| `baby_name` / `baby_age` / `baby_base_health` / `baby_breeding_cooldown` | various | Override offspring attributes |
+| `save_as` | string or list | Save participants into named slots |
 
-### `add_breed` / `remove_breed`
-
-| Parameter | Type | Notes |
-|-----------|------|-------|
-| `pool` | string | |
-| `selector` | string | |
-| `count` | int | |
-| `filter` | object | |
-| `save_as` / `save_slot` | string | |
-| `breed` | string | Breed name; omit for random |
-| `weight` | float | Breed weight for `add_breed` (default `0.5`) |
-
-### `rename_pooch`
-
-| Parameter | Type | Notes |
-|-----------|------|-------|
-| `pool` | string | |
-| `selector` | string | |
-| `count` | int | |
-| `filter` | object | |
-| `save_as` / `save_slot` | string | |
-| `name` | string | **Required.** New name |
-
-### `modify_breeding_cooldown`
-
-| Parameter | Type | Notes |
-|-----------|------|-------|
-| `pool` | string | |
-| `selector` | string | |
-| `count` | int | |
-| `filter` | object | |
-| `save_as` / `save_slot` | string | |
-| `amount` | int | Fixed delta |
-| `min_amount` / `max_amount` | int | Random delta range |
-| `cooldown` | int or `"base"` | Legacy key — sets directly; `"base"` resets to mutation-adjusted base |
-
-### `release_stray` / `enter_kennel` / `enter_vendor_stock`
-
-| Parameter | Type | Notes |
-|-----------|------|-------|
-| `pool` | string | |
-| `selector` | string | |
-| `count` | int | |
-| `filter` | object | |
-| `save_as` / `save_slot` | string | |
-
-For `enter_kennel`: if no owner kennel has free space, the pooch is left in place.
-For `enter_vendor_stock`: if the server has no vendors, the pooch is left in place.
-
-### `create_pooch`
-
-Creates a new ownerless pooch.
-
-| Parameter | Type | Notes |
-|-----------|------|-------|
-| `name` | string | Defaults to a generated name |
-| `sex` | string | `"male"` or `"female"` — random if omitted |
-| `age` | int | Default: `0` |
-| `base_health` | int | |
-| `breeding_cooldown` | int | |
-| `breeds` | list or int | List of breed names, or int = number of random breeds to assign |
-| `mutations` | list or int | List of mutation names, or int = number of random mutations |
-| `destination` | string | `"stray"` (default), `"kennel"`, `"vendor"`, `"graveyard"`, `"hell"` |
-| `save_as` | string | Save new pooch's ID into a named slot |
+`save_as` list form: `[{ "slot": "...", "target": "baby" | "first_parent" | "second_parent" }]`
 
 ### `clone_pooch`
 
@@ -700,20 +583,126 @@ Duplicates an existing pooch.
 
 `save_as` list form: `[{ "slot": "...", "target": "clone" | "source" }]`
 
-### `breed_pooches`
+### `create_pooch`
 
-Breeds two pooches. Offspring goes to `destination`.
+Creates a new ownerless pooch.
 
 | Parameter | Type | Notes |
 |-----------|------|-------|
-| `first_filter` / `second_filter` | object | Pooch filters for each parent |
-| `require_unique` | bool | Ensure parents are different pooches (default: `true`) |
-| `require_same` | bool | Both parents are the same pooch (self-breeding) |
-| `destination` | string | Where offspring is placed |
-| `baby_name` / `baby_age` / `baby_base_health` / `baby_breeding_cooldown` | various | Override offspring attributes |
-| `save_as` | string or list | Save participants into named slots |
+| `name` | string | Defaults to a generated name |
+| `sex` | string | `"male"` or `"female"` — random if omitted |
+| `age` | int | Default: `0` |
+| `base_health` | int | |
+| `breeding_cooldown` | int | |
+| `breeds` | list or int | List of breed names, or int = number of random breeds to assign |
+| `mutations` | list or int | List of mutation names, or int = number of random mutations |
+| `destination` | string | `"town"` / `"stray"` (default — stray pool), `"kennel"`, `"vendor"`, `"graveyard"`, `"hell"` |
+| `save_as` | string | Save new pooch's ID into a named slot |
 
-`save_as` list form: `[{ "slot": "...", "target": "baby" | "first_parent" | "second_parent" }]`
+### `damn_pooch` / `kill_pooch`
+
+| Parameter | Type | Notes |
+|-----------|------|-------|
+| `pool` | string | |
+| `selector` | string | |
+| `count` | int | |
+| `filter` | object | |
+| `save_as` / `use_saved` | string | |
+
+### `enter_kennel` / `enter_vendor_stock` / `release_stray`
+
+| Parameter | Type | Notes |
+|-----------|------|-------|
+| `pool` | string | |
+| `selector` | string | |
+| `count` | int | |
+| `filter` | object | |
+| `save_as` / `use_saved` | string | |
+
+For `enter_kennel`: if no owner kennel has free space, the pooch is left in place.
+For `enter_vendor_stock`: if the server has no vendors, the pooch is left in place.
+
+### `modify_base_health` / `modify_pooch_age` / stat modifiers
+
+| Parameter | Type | Notes |
+|-----------|------|-------|
+| `pool` | string | Which pool to target |
+| `selector` | string | `"all"`, `"random"`, `"first"` |
+| `count` | int | Number to pick with `"random"` |
+| `filter` | object | Pooch filter to narrow pool |
+| `save_as` / `use_saved` | string | Named slot operations |
+| `save_owner` | bool | Also save the owners of targeted pooches into `saved_owner_slots` |
+| `amount` | int | Fixed delta; or absolute when `mode` is `"set"` |
+| `min_amount` / `max_amount` | int | Random delta in range |
+| `exclude_amount` | list[int] | Values to exclude from random range |
+| `roll_once` | bool | Roll once and apply to all targets |
+| `mode` | string | `"modify"` (default) or `"set"` |
+
+### `modify_breeding_cooldown`
+
+| Parameter | Type | Notes |
+|-----------|------|-------|
+| `pool` | string | |
+| `selector` | string | |
+| `count` | int | |
+| `filter` | object | |
+| `save_as` / `use_saved` | string | |
+| `amount` | int | Fixed delta |
+| `min_amount` / `max_amount` | int | Random delta range |
+| `cooldown` | int or `"base"` | Legacy key — sets directly; `"base"` resets to mutation-adjusted base |
+
+### `modify_money` / `modify_bloodskulls`
+
+Target an owner pool to modify money or bloodskulls for each resolved owner.
+
+| Parameter | Type | Notes |
+|-----------|------|-------|
+| `pool` | string | **Required.** Must be `"owner"` or `"saved_owner"` |
+| `selector` | string | `"all"`, `"random"`, `"first"` |
+| `count` | int | Number to pick with `"random"` |
+| `save_as` / `use_saved` | string | Named owner slot operations |
+| `amount` | int | Fixed delta |
+| `min_amount` / `max_amount` | int | Random delta in range |
+| `roll_once` | bool | Roll once and apply the same amount to all owners |
+
+```jsonc
+// Deduct 50 money from every owner on the server
+{ "action_type": "modify_money", "target_type": "server",
+  "parameters": { "pool": "owner", "selector": "all", "amount": -50 } }
+```
+
+### `remove_mutation`
+
+| Parameter | Type | Notes |
+|-----------|------|-------|
+| `pool` | string | |
+| `selector` | string | |
+| `count` | int | |
+| `filter` | object | |
+| `save_as` / `use_saved` | string | |
+| `mutation` | string | Mutation name to remove; omit for random |
+
+### `rename_pooch`
+
+| Parameter | Type | Notes |
+|-----------|------|-------|
+| `pool` | string | |
+| `selector` | string | |
+| `count` | int | |
+| `filter` | object | |
+| `save_as` / `use_saved` | string | |
+| `name` | string | **Required.** New name |
+
+### `revive_pooch`
+
+| Parameter | Type | Notes |
+|-----------|------|-------|
+| `pool` | string | Typically `"dead"` or `"in_hell"` |
+| `selector` | string | |
+| `count` | int | |
+| `filter` | object | |
+| `destination` | string | `"kennel"` (default), `"town"`, `"vendor"`, `"graveyard"`, `"hell"` (`"stray"` is a legacy alias for `"town"`) |
+| `save_as` / `use_saved` | string | |
 
 ### `select_pooch`
 
@@ -726,15 +715,18 @@ Resolves pooches and saves IDs into a named slot. No side effects.
 | `count` | int | |
 | `filter` | object | |
 | `save_as` | string | Saves the resolved IDs into this slot |
-| `save_slot` | string | Used when `pool` is `"saved"` |
+| `use_saved` | string | Used when `pool` is `"saved"` |
 
-### `start_stray_event`
-
-Chains into a stray event. The stray event's actions run immediately against the server's current stray pool.
+### `set_pooch_age`
 
 | Parameter | Type | Notes |
 |-----------|------|-------|
-| `event` | string | **Required.** Name of the stray event to trigger |
+| `pool` | string | |
+| `selector` | string | |
+| `count` | int | |
+| `filter` | object | |
+| `save_as` / `use_saved` | string | |
+| `age` | int | **Required.** The exact age to set |
 
 ### `start_server_event`
 
@@ -743,6 +735,14 @@ Chains into another server event's root-level `actions`.
 | Parameter | Type | Notes |
 |-----------|------|-------|
 | `event` | string | **Required.** Name of the server event |
+
+### `start_stray_event`
+
+Chains into a stray event. The stray event's actions run immediately against the server's current stray pool.
+
+| Parameter | Type | Notes |
+|-----------|------|-------|
+| `event` | string | **Required.** Name of the stray event to trigger |
 
 ---
 
@@ -812,7 +812,7 @@ Server events resolve after their active window ends.
                 "pool": "in_hell",
                 "selector": "random",
                 "count": 1,
-                "destination": "stray",
+                "destination": "town",
                 "save_as": "escapee"
             }
         },
@@ -821,7 +821,7 @@ Server events resolve after their active window ends.
             "target_type": "server",
             "parameters": {
                 "pool": "saved",
-                "save_slot": "escapee",
+                "use_saved": "escapee",
                 "selector": "all",
                 "mutations": ["Mild Possession"]
             }

@@ -49,6 +49,7 @@ from .action_helpers.pooch_actions import (
     handle_add_breed,
     handle_add_mutation_by_name,
     handle_damn_pooch,
+    handle_injure_pooch,
     handle_kill_pooch,
     handle_modify_age,
     handle_modify_breeding_cooldown,
@@ -194,9 +195,13 @@ async def _execute_single_stray_action(
     selector = str(raw_selector).strip().lower() if isinstance(raw_selector, str) else "random"
 
     try:
-        if action_type in ("modify_base_health", "modify_pooch_health"):
+        if action_type in ("modify_base_health"):
             pooch_ids = await _resolve_stray_target_ids(context, selector, parameters, rng)
             await handle_modify_health(pooch_ids, parameters, rng, result)
+
+        elif action_type == "injure_pooch":
+            pooch_ids = await _resolve_stray_target_ids(context, selector, parameters, rng)
+            await handle_injure_pooch(pooch_ids, parameters, rng, result)
 
         elif action_type == "modify_pooch_age":
             pooch_ids = await _resolve_stray_target_ids(context, selector, parameters, rng)
@@ -229,7 +234,7 @@ async def _execute_single_stray_action(
             pooch_ids = await _resolve_stray_target_ids(context, selector, parameters, rng)
             await handle_rename_pooch(pooch_ids, parameters, rng, result)
 
-        elif action_type in ("modify_breeding_cooldown", "set_breeding_cooldown"):
+        elif action_type in ("modify_breeding_cooldown"):
             pooch_ids = await _resolve_stray_target_ids(context, selector, parameters, rng)
             await handle_modify_breeding_cooldown(pooch_ids, parameters, rng, result)
 
@@ -252,7 +257,7 @@ async def _execute_single_stray_action(
 
         elif action_type == "revive_pooch":
             pooch_ids = await _resolve_stray_target_ids(context, selector, parameters, rng)
-            destination = str(parameters.get("destination", "stray")).strip().lower()
+            destination = str(parameters.get("destination", "town")).strip().lower()
             for pooch_id in pooch_ids:
                 pooch = await revive_pooch(pooch_id)
                 if pooch:
@@ -267,7 +272,7 @@ async def _execute_single_stray_action(
                             await add_pooch_to_strays(pooch_id, server_discord_id)
                             context.candidate_stray_ids.append(pooch_id)
                     else:
-                        # "stray" or anything else — put back in strays
+                        # "town" or anything else — put back in strays
                         await add_pooch_to_strays(pooch_id, server_discord_id)
                         context.candidate_stray_ids.append(pooch_id)
                     result.pooches_affected.append(pooch_id)

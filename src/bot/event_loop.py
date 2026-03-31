@@ -3,7 +3,11 @@ import os
 
 import discord
 
-from src.game import run_hourly_breeding_cooldown_check, run_hourly_event_check
+from src.game import (
+    run_hourly_breeding_cooldown_check,
+    run_hourly_event_check,
+    run_hourly_injury_persistence_check,
+)
 from src.logger import get_logger
 
 from .constants import EVENT_LOOP_INTERVAL_SECONDS
@@ -30,12 +34,13 @@ async def hourly_event_runner(bot: discord.Client, stage: str):
         triggered_events = await run_hourly_event_check(rng_seed=int.from_bytes(os.urandom(8)))
         await post_hourly_event_notifications(bot, triggered_events)
         await run_hourly_breeding_cooldown_check(rng_seed=int.from_bytes(os.urandom(8)))
+        await run_hourly_injury_persistence_check(rng_seed=int.from_bytes(os.urandom(8)))
 
     bot._hourly_event_run_once = run_once
 
     logger.info("Beginning hourly event loop...")
     while True:
-        sleep_seconds = 60.0 if stage == "dev" else EVENT_LOOP_INTERVAL_SECONDS
+        sleep_seconds = 5.0 if stage == "dev" else EVENT_LOOP_INTERVAL_SECONDS
         await asyncio.sleep(sleep_seconds)
         try:
             await run_once()

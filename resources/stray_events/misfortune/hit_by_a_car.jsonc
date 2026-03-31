@@ -7,11 +7,10 @@
     },
    "actions": [
         {
-            "action_type": "modify_pooch_health",
+            "action_type": "injure_pooch",
             "parameters": {
                 "selector": "random",
-                "min_amount": -15,
-                "max_amount": -5
+                "injury": "Fatal"
             }
         }
     ]

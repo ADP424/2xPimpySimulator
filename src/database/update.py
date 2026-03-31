@@ -11,11 +11,13 @@ from .models import (
     Breed,
     EventOccurrence,
     GlobalState,
+    Injury,
     Kennel,
     Mutation,
     Owner,
     Pooch,
     PoochBreed,
+    PoochInjury,
     PoochMutation,
     Server,
     ServerEventOccurrence,
@@ -121,6 +123,104 @@ async def tick_hourly_breeding_cooldowns(fertility_divisor: float, rng_seed: Opt
             if rng.random() < chance:
                 pooch.breeding_cooldown = max(pooch.breeding_cooldown - 1, 0)
                 decremented += 1
+
+    return decremented
+
+
+async def tick_hourly_injury_persistence(constitution_divisor: float, rng_seed: Optional[int] = None) -> int:
+    """
+    For each living pooch, roll a constitution-based chance to decrement the persistence
+    counter on each of their injuries that has one. When persistence reaches 0 the injury
+    is removed.
+
+    Chance per injury instance = constitution / constitution_divisor.
+
+    Parameters
+    ----------
+    constitution_divisor: float
+        Divisor applied to the pooch's effective constitution to compute the per-hour
+        decrement chance.
+
+    rng_seed: int, optional
+        Seed for the random number generator.
+
+    Returns
+    -------
+    int
+        The number of injury instances whose persistence was decremented (including removals).
+    """
+
+    rng = random.Random(rng_seed)
+
+    async with session_scope() as session:
+        query = (
+            select(PoochInjury)
+            .join(Pooch, Pooch.id == PoochInjury.pooch_id)
+            .join(Injury, Injury.id == PoochInjury.injury_id)
+            .where(Pooch.alive.is_(True), PoochInjury.persistence.is_not(None))
+        )
+        injury_instances = (await session.execute(query)).scalars().all()
+
+        if not injury_instances:
+            return 0
+
+        # Gather unique pooch ids and fetch their stats + modifiers in bulk
+        pooch_ids = list({pi.pooch_id for pi in injury_instances})
+        pooches = {
+            p.id: p for p in (await session.execute(select(Pooch).where(Pooch.id.in_(pooch_ids)))).scalars().all()
+        }
+        mutations_by_pooch: dict[int, list] = {pid: [] for pid in pooch_ids}
+        for m, pid in (
+            await session.execute(
+                select(Mutation, PoochMutation.pooch_id)
+                .join(PoochMutation, PoochMutation.mutation_id == Mutation.id)
+                .where(PoochMutation.pooch_id.in_(pooch_ids))
+            )
+        ).all():
+            mutations_by_pooch[pid].append(m)
+        breed_rows_by_pooch: dict[int, list] = {pid: [] for pid in pooch_ids}
+        for b, w, pid in (
+            await session.execute(
+                select(Breed, PoochBreed.weight, PoochBreed.pooch_id)
+                .join(PoochBreed, PoochBreed.breed_id == Breed.id)
+                .where(PoochBreed.pooch_id.in_(pooch_ids))
+            )
+        ).all():
+            breed_rows_by_pooch[pid].append((b, w))
+
+        # Cache effective constitution per pooch
+        effective_constitution: dict[int, float] = {}
+        for pid in pooch_ids:
+            pooch = pooches[pid]
+            ec = float(pooch.constitution)
+            mutations = mutations_by_pooch[pid]
+            mut_add = sum(m.parameters.get("constitution_add", 0) for m in mutations)
+            mut_mult = 1.0
+            for m in mutations:
+                mut_mult *= m.parameters.get("constitution_mult", 1.0)
+            ec = (ec + mut_add) * mut_mult
+            breed_rows = breed_rows_by_pooch[pid]
+            total_weight = sum(w for _, w in breed_rows)
+            if total_weight > 0:
+                breed_add = sum(b.parameters.get("constitution_add", 0) * (w / total_weight) for b, w in breed_rows)
+                breed_mult = sum(b.parameters.get("constitution_mult", 1.0) * (w / total_weight) for b, w in breed_rows)
+                ec = (ec + breed_add) * breed_mult
+            effective_constitution[pid] = ec
+
+        decremented = 0
+        to_delete: list[int] = []
+        for pi in injury_instances:
+            chance = round(effective_constitution[pi.pooch_id]) / constitution_divisor
+            if rng.random() < chance:
+                pi.persistence -= 1
+                decremented += 1
+                if pi.persistence <= 0:
+                    to_delete.append(pi.id)
+
+        for pi_id in to_delete:
+            pi = await session.get(PoochInjury, pi_id)
+            if pi is not None:
+                await session.delete(pi)
 
     return decremented
 
@@ -651,6 +751,38 @@ async def set_kennel_pooch_limit(kennel_id: int, limit: int) -> Optional[Kennel]
             return None
 
         kennel.pooch_limit = max(1, limit)
+
+        await session.flush()
+        return kennel
+
+
+async def modify_kennel_upgrade_tier(kennel_id: int, amount: int) -> Optional[Kennel]:
+    """
+    Modify a kennel's upgrade tier by a given amount (can be negative).
+
+    Parameters
+    ----------
+    kennel_id: int
+        The ID of the kennel to modify.
+
+    amount: int
+        The amount to add to the upgrade tier (can be negative, minimum 0).
+
+    Returns
+    -------
+    Kennel, optional
+        The updated Kennel, or None if not found.
+    """
+
+    async with session_scope() as session:
+        query = select(Kennel).where(Kennel.id == kennel_id)
+        result = await session.execute(query)
+        kennel = result.scalar_one_or_none()
+
+        if kennel is None:
+            return None
+
+        kennel.upgrade_tier = max(0, kennel.upgrade_tier + amount)
 
         await session.flush()
         return kennel

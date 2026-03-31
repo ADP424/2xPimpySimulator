@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Optional
 from src.database import (
     add_pooch_to_kennel,
     add_pooch_to_strays,
+    add_pooch_to_vendor_stock,
     bury_pooch,
     damn_pooch,
     get_random_matching_kennel_id,
@@ -14,6 +15,8 @@ from src.database import (
     list_matching_pooch_ids,
     list_pooches_for_kennel,
     list_servers_for_owner,
+    list_vendors,
+    transfer_pooch_to_vendor,
 )
 
 if TYPE_CHECKING:
@@ -108,9 +111,10 @@ async def deliver_pooch(owner_discord_id: int, pooch_id: int, destination: str) 
     """
     Deliver a pooch to a destination. Returns (destination_key, kennel_name_or_None).
 
-    Destinations: "kennel" | "graveyard" | "hell" | "town"
+    Destinations: "kennel" | "graveyard" | "hell" | "town" | "vendor"
     For "kennel", places in the first kennel with free space. If no kennel has space, falls back to "town".
     For "town", releases the pooch as a stray on a random server the owner belongs to.
+    For "vendor", transfers to a random vendor across all owner's servers.
     """
 
     destination = destination.strip().lower() if isinstance(destination, str) else "town"
@@ -131,6 +135,23 @@ async def deliver_pooch(owner_discord_id: int, pooch_id: int, destination: str) 
             server = random.choice(servers)
             await add_pooch_to_strays(pooch_id, server.discord_id)
         return "town", None
+
+    elif destination == "vendor":
+        servers = await list_servers_for_owner(owner_discord_id)
+        all_vendors = []
+        for server in servers:
+            all_vendors.extend(await list_vendors(server.discord_id))
+        if all_vendors:
+            vendor = random.choice(all_vendors)
+            await transfer_pooch_to_vendor(pooch_id, vendor.id)
+            await add_pooch_to_vendor_stock(vendor.id, pooch_id)
+        else:
+            # No vendor available — fall through to town
+            servers_list = await list_servers_for_owner(owner_discord_id)
+            if servers_list:
+                server = random.choice(servers_list)
+                await add_pooch_to_strays(pooch_id, server.discord_id)
+        return "vendor", None
 
     elif destination == "graveyard":
         await bury_pooch(owner_discord_id, pooch_id)

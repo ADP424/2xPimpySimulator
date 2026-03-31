@@ -15,10 +15,15 @@ from src.database import (
 from src.database import rename_pooch as db_rename_pooch
 from src.database import (
     tick_hourly_breeding_cooldowns,
+    tick_hourly_injury_persistence,
 )
 from src.logger import get_logger
 
-from .constants import BREEDING_COOLDOWN_HOURLY_FERTILITY_DIVISOR, MAX_NAME_LENGTH
+from .constants import (
+    BREEDING_COOLDOWN_HOURLY_FERTILITY_DIVISOR,
+    INJURY_PERSISTENCE_HOURLY_CONSTITUTION_DIVISOR,
+    MAX_NAME_LENGTH,
+)
 from .exceptions import PoochNotFound
 from .models import to_pooch
 
@@ -264,6 +269,32 @@ async def run_hourly_breeding_cooldown_check(rng_seed: Optional[int] = None) -> 
         rng_seed=rng_seed,
     )
     logger.info("Hourly breeding cooldown tick: %d pooch(es) decremented.", decremented)
+    return decremented
+
+
+async def run_hourly_injury_persistence_check(rng_seed: Optional[int] = None) -> int:
+    """
+    Roll a constitution-based chance to decrement the persistence counter on each living
+    pooch's injuries that have one. Injuries whose persistence reaches 0 are removed.
+
+    Chance per injury instance = constitution / INJURY_PERSISTENCE_HOURLY_CONSTITUTION_DIVISOR.
+
+    Parameters
+    ----------
+    rng_seed: int, optional
+        Seed for reproducible rolls.
+
+    Returns
+    -------
+    int
+        Number of injury instances whose persistence was decremented.
+    """
+
+    decremented = await tick_hourly_injury_persistence(
+        constitution_divisor=INJURY_PERSISTENCE_HOURLY_CONSTITUTION_DIVISOR,
+        rng_seed=rng_seed,
+    )
+    logger.info("Hourly injury persistence tick: %d injury instance(s) decremented.", decremented)
     return decremented
 
 

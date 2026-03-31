@@ -15,14 +15,25 @@
     },
     "actions": [
         {
-            "action_type": "set_breeding_cooldown",
+            "action_type": "modify_breeding_cooldown",
             "target_type": "pooch",
             "parameters": {
-                "cooldown": 99,
+                "amount": 999,
+                "mode": "set",
                 "selector": "random",
+                "save_as": "infertile_pooch",
                 "filter": {
                     "is_alive": true
                 }
+            }
+        },
+        {
+            "action_type": "modify_fertility",
+            "target_type": "pooch",
+            "parameters": {
+                "amount": 999,
+                "mode": "set",
+                "use_saved": "infertile_pooch"
             }
         }
     ]

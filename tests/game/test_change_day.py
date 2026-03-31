@@ -4,8 +4,30 @@ import random
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
 from conftest import make_kennel, make_mutation, make_pooch, make_server, make_vendor
 from src.game.change_day import _death_roll, run_day_change
+
+
+@pytest.fixture(autouse=True)
+def mock_change_day_db_calls():
+    """Auto-patch DB-touching functions so old-style @patch tests never hit the real DB."""
+    with (
+        patch("src.game.change_day.get_current_season", new=AsyncMock(return_value="spring")),
+        patch("src.game.change_day.update_pooch_mood", new=AsyncMock()),
+        patch("src.game.change_day.get_active_auction_sale_listing_for_pooch", new=AsyncMock(return_value=None)),
+        patch("src.game.change_day.list_bids_for_listing", new=AsyncMock(return_value=[])),
+        patch("src.game.change_day.close_auction_sale_listing", new=AsyncMock()),
+        patch("src.game.change_day.give_money_to_owner", new=AsyncMock()),
+        patch("src.game.change_day.process_expired_sale_listings", new=AsyncMock(return_value=[])),
+        patch("src.game.change_day.list_hell_pooches", new=AsyncMock(return_value=[])),
+        patch("src.game.change_day.bury_pooch", new=AsyncMock()),
+        patch("src.game.change_day.list_vendor_desired_mutations", new=AsyncMock(return_value=[])),
+        patch("src.game.change_day.list_vendor_desired_breeds", new=AsyncMock(return_value=[])),
+    ):
+        yield
+
 
 # ---------------------------------------------------------------------------
 # _death_roll
@@ -201,6 +223,7 @@ class TestRunDayChange:
         mock_add_to_kennel.return_value = True  # success
 
         mock_living.return_value = []
+        mock_health.return_value = 10
         mock_servers.return_value = [server]
         mock_strays.return_value = [make_pooch()]
         mock_vendors.return_value = [make_vendor(), make_vendor(vendor_id=2), make_vendor(vendor_id=3)]
@@ -388,6 +411,16 @@ _RUN_DAY_PATCHES = [
     "src.game.change_day.get_mutation_health_impact",
     "src.game.change_day.list_pooches_for_kennel",
     "src.game.change_day.update_pooch_mood",
+    "src.game.change_day.get_current_season",
+    "src.game.change_day.get_active_auction_sale_listing_for_pooch",
+    "src.game.change_day.list_bids_for_listing",
+    "src.game.change_day.close_auction_sale_listing",
+    "src.game.change_day.give_money_to_owner",
+    "src.game.change_day.process_expired_sale_listings",
+    "src.game.change_day.list_hell_pooches",
+    "src.game.change_day.list_vendor_desired_mutations",
+    "src.game.change_day.list_vendor_desired_breeds",
+    "src.game.change_day.bury_pooch",
 ]
 
 
@@ -411,6 +444,14 @@ def _apply_default_mocks(mocks, server=None, vendors=None):
     mocks["src.game.change_day.get_random_breed_ids"].return_value = [1]
     mocks["src.game.change_day.create_pooch"].return_value = make_pooch(pooch_id=50)
     mocks["src.game.change_day.run_daily_stray_event_check"].return_value = {}
+    mocks["src.game.change_day.get_pooch_health"].return_value = 10
+    mocks["src.game.change_day.get_current_season"].return_value = "spring"
+    mocks["src.game.change_day.get_active_auction_sale_listing_for_pooch"].return_value = None
+    mocks["src.game.change_day.list_bids_for_listing"].return_value = []
+    mocks["src.game.change_day.process_expired_sale_listings"].return_value = []
+    mocks["src.game.change_day.list_hell_pooches"].return_value = []
+    mocks["src.game.change_day.list_vendor_desired_mutations"].return_value = []
+    mocks["src.game.change_day.list_vendor_desired_breeds"].return_value = []
     mocks["src.game.change_day.to_server"].side_effect = lambda s: SimpleNamespace(discord_id=s.discord_id)
     mocks["src.game.change_day.to_pooch"].side_effect = lambda p: SimpleNamespace(id=p.id, name=p.name)
 
@@ -568,10 +609,14 @@ class TestRunDayChangeDeath:
             mutation_id=10,
             name="KillMut",
             parameters={
-                "on_death": "kill",
-                "on_death_targets": "all",
-                "always_on_death": True,
-                "on_death_chance": 1.0,
+                "on_death_triggers": [
+                    {
+                        "on_death": "kill",
+                        "on_death_targets": "all",
+                        "always_on_death": True,
+                        "on_death_chance": 1.0,
+                    }
+                ]
             },
         )
 
@@ -617,10 +662,14 @@ class TestRunDayChangeDeath:
             mutation_id=10,
             name="SpreadMut",
             parameters={
-                "on_death": "spread",
-                "on_death_targets": "all",
-                "always_on_death": True,
-                "on_death_chance": 1.0,
+                "on_death_triggers": [
+                    {
+                        "on_death": "spread",
+                        "on_death_targets": "all",
+                        "always_on_death": True,
+                        "on_death_chance": 1.0,
+                    }
+                ]
             },
         )
 
@@ -663,10 +712,14 @@ class TestRunDayChangeDeath:
             mutation_id=10,
             name="SpreadAllMut",
             parameters={
-                "on_death": "spread_all",
-                "on_death_targets": "all",
-                "always_on_death": True,
-                "on_death_chance": 1.0,
+                "on_death_triggers": [
+                    {
+                        "on_death": "spread_all",
+                        "on_death_targets": "all",
+                        "always_on_death": True,
+                        "on_death_chance": 1.0,
+                    }
+                ]
             },
         )
         other_mut = make_mutation(mutation_id=11, name="OtherMut")
@@ -712,10 +765,14 @@ class TestRunDayChangeDeath:
             mutation_id=10,
             name="RandomKillMut",
             parameters={
-                "on_death": "kill",
-                "on_death_targets": "random",
-                "always_on_death": True,
-                "on_death_chance": 1.0,
+                "on_death_triggers": [
+                    {
+                        "on_death": "kill",
+                        "on_death_targets": "random",
+                        "always_on_death": True,
+                        "on_death_chance": 1.0,
+                    }
+                ]
             },
         )
 
@@ -754,10 +811,14 @@ class TestRunDayChangeDeath:
             mutation_id=10,
             name="KillMutNoKennel",
             parameters={
-                "on_death": "kill",
-                "on_death_targets": "all",
-                "always_on_death": True,
-                "on_death_chance": 1.0,
+                "on_death_triggers": [
+                    {
+                        "on_death": "kill",
+                        "on_death_targets": "all",
+                        "always_on_death": True,
+                        "on_death_chance": 1.0,
+                    }
+                ]
             },
         )
 
@@ -1001,11 +1062,15 @@ class TestRunDayChangeSummaryCompilation:
             mutation_id=10,
             name="SpreadMut2",
             parameters={
-                "on_death": "spread",
-                "on_death_targets": "all",
-                "always_on_death": True,
-                "on_death_chance": 1.0,
-                "impact_message": "[pooch] spread to [victim].",
+                "on_death_triggers": [
+                    {
+                        "on_death": "spread",
+                        "on_death_targets": "all",
+                        "always_on_death": True,
+                        "on_death_chance": 1.0,
+                        "impact_message": "[pooch] spread to [victim].",
+                    }
+                ]
             },
         )
 

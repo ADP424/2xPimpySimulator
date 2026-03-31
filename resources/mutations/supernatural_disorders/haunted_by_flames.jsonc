@@ -8,9 +8,14 @@
     "parameters": {
         "bloodskull_value_mult": 1.1,
         "born_from_ritual": false,
-        // TODO: Add an on death for the dog to be sent to hell instead of the graveyard
-        "on_death_chance": 0.33,
-        "always_on_death": true,
-        "dexterity_add": 3
+        "dexterity_add": 3,
+        "on_death_triggers": [
+            {
+                "on_death": "send_to_hell",
+                "on_death_chance": 0.33,
+                "always_on_death": true,
+                "impact_message": "[pooch] was dragged back to hell."
+            }
+        ]
     }
 }

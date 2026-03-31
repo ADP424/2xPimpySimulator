@@ -28,9 +28,8 @@ class TestVendorCreation:
             name="Barks & Bites",
             price_markup=1.5,
             stock_count=3,
-            desired_mutation_1=None,
-            desired_mutation_2=None,
-            desired_mutation_3=None,
+            desired_mutations=[],
+            desired_breeds=[],
             server=None,
         )
         assert vendor.id == 1
@@ -38,7 +37,7 @@ class TestVendorCreation:
         assert vendor.name == "Barks & Bites"
         assert vendor.price_markup == 1.5
         assert vendor.stock_count == 3
-        assert vendor.desired_mutation_1 is None
+        assert vendor.desired_mutations == []
         assert vendor.server is None
 
     def test_with_mutations(self):
@@ -50,14 +49,12 @@ class TestVendorCreation:
             name="Shop",
             price_markup=1.0,
             stock_count=0,
-            desired_mutation_1=m1,
-            desired_mutation_2=m2,
-            desired_mutation_3=None,
+            desired_mutations=[m1, m2],
+            desired_breeds=[],
             server=None,
         )
-        assert vendor.desired_mutation_1.name == "Cataracts"
-        assert vendor.desired_mutation_2.name == "Sickle Cell"
-        assert vendor.desired_mutation_3 is None
+        assert vendor.desired_mutations[0].name == "Cataracts"
+        assert vendor.desired_mutations[1].name == "Sickle Cell"
 
     def test_with_server(self):
         server = Server(discord_id=999, event_channel_discord_id=888)
@@ -67,9 +64,8 @@ class TestVendorCreation:
             name="Shop",
             price_markup=1.0,
             stock_count=0,
-            desired_mutation_1=None,
-            desired_mutation_2=None,
-            desired_mutation_3=None,
+            desired_mutations=[],
+            desired_breeds=[],
             server=server,
         )
         assert vendor.server is not None
@@ -82,9 +78,8 @@ class TestVendorCreation:
             name="Shop",
             price_markup=1.0,
             stock_count=0,
-            desired_mutation_1=None,
-            desired_mutation_2=None,
-            desired_mutation_3=None,
+            desired_mutations=[],
+            desired_breeds=[],
             server=None,
         )
         with pytest.raises(AttributeError):
@@ -97,9 +92,8 @@ class TestVendorCreation:
             name="Shop",
             price_markup=1.0,
             stock_count=0,
-            desired_mutation_1=None,
-            desired_mutation_2=None,
-            desired_mutation_3=None,
+            desired_mutations=[],
+            desired_breeds=[],
             server=None,
         )
         assert Vendor(**args) == Vendor(**args)
@@ -111,9 +105,8 @@ class TestVendorCreation:
             name="Charity Shop",
             price_markup=0.0,
             stock_count=5,
-            desired_mutation_1=None,
-            desired_mutation_2=None,
-            desired_mutation_3=None,
+            desired_mutations=[],
+            desired_breeds=[],
             server=None,
         )
         assert vendor.price_markup == 0.0

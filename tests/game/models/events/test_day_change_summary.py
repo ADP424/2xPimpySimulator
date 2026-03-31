@@ -39,6 +39,7 @@ def _make_pooch(id: int, name: str = "Dog") -> Pooch:
         vendor=None,
         breeds=[],
         mutations=[],
+        injuries=[],
     )
 
 

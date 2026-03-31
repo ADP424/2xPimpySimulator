@@ -33,49 +33,17 @@ Stray events live in `resources/stray_events/**/*.jsonc`. Each **file** defines 
 
 ## Event Parameters
 
+### Actions
+
+The list of actions executed when the event fires. Actions run in `action_order` order (determined by their position in the list). There must be at least one action.
+
 ### Category
 
 Comes from the folder name (titleized automatically: `encounters` → `Encounters`).
 
-### Name
-
-The human-readable event name from the `name` field.
-
 ### Description
 
 Text describing the event.
-
-### Flavor Text
-
-Optional extra flavor for logs or display.
-
-### Severity
-
-How impactful the event is.
-
-- `TRIVIAL`
-- `MINOR`
-- `MODERATE`
-- `MAJOR`
-- `CRITICAL`
-- `CATASTROPHIC`
-
-### Rarity
-
-How likely the event is to be selected relative to other events. Uses relative weights, not direct percentages.
-
-- `COMMON`
-- `UNCOMMON`
-- `NOVEL`
-- `RARE`
-- `UNPRECEDENTED`
-- `REMARKABLE`
-- `EXTRAORDINARY`
-- `UNIQUE`
-
-### Triggered Only
-
-If `true`, this event is excluded from normal random daily rolls and can only be started by another stray event action (`start_stray_event`).
 
 ### Filter
 
@@ -118,13 +86,45 @@ These use the same fields as owner event pooch filters, except `location` is not
 
 The `pooches` filter also determines the initial **candidate pool** for event actions. If the first entry in `pooches` contains attribute filters (beyond counts), those attributes are used to build the initial stray pool the event works with.
 
+### Flavor Text
+
+Optional extra flavor for logs or display.
+
+### Name
+
+The human-readable event name from the `name` field.
+
 ### Parameters
 
 A free-form object reserved for future use.
 
-### Actions
+### Rarity
 
-The list of actions executed when the event fires. Actions run in `action_order` order (determined by their position in the list). There must be at least one action.
+How likely the event is to be selected relative to other events. Uses relative weights, not direct percentages.
+
+- `COMMON`
+- `UNCOMMON`
+- `NOVEL`
+- `RARE`
+- `UNPRECEDENTED`
+- `REMARKABLE`
+- `EXTRAORDINARY`
+- `UNIQUE`
+
+### Severity
+
+How impactful the event is.
+
+- `TRIVIAL`
+- `MINOR`
+- `MODERATE`
+- `MAJOR`
+- `CRITICAL`
+- `CATASTROPHIC`
+
+### Triggered Only
+
+If `true`, this event is excluded from normal random daily rolls and can only be started by another stray event action (`start_stray_event`).
 
 ---
 
@@ -158,7 +158,7 @@ Actions execute sequentially. To carry a resolved pooch ID forward to a later ac
 ```jsonc
 // Hurt a random stray and save it; then apply a mutation to the same stray
 {
-    "action_type": "modify_pooch_health",
+    "action_type": "modify_base_health",
     "target_type": "pooch",
     "parameters": {
         "selector": "random",
@@ -193,7 +193,7 @@ Since strays have no owner, `owner_ids` will always be `[]` for stray targets. T
 
 | Action | Notes |
 |--------|-------|
-| `modify_base_health` | Modify base health (alias: `modify_pooch_health`) |
+| `modify_base_health` | Modify base health |
 | `modify_pooch_age` | Modify age |
 | `modify_strength` | Modify strength stat |
 | `modify_cuteness` | Modify cuteness stat |
@@ -213,7 +213,7 @@ Since strays have no owner, `owner_ids` will always be `[]` for stray targets. T
 | `create_pooch` | Create a new stray and add it to the pool |
 | `clone_pooch` | Duplicate an existing stray into the pool |
 | `rename_pooch` | Rename a stray |
-| `modify_breeding_cooldown` | Modify or set breeding cooldown (alias: `set_breeding_cooldown`) |
+| `modify_breeding_cooldown` | Modify or set breeding cooldown |
 | `breed_pooches` | Breed two strays; offspring enters the stray pool |
 | `enter_kennel` | Move a stray into a random owner kennel with free space |
 | `enter_vendor_stock` | Move a stray into a random vendor's stock |
@@ -227,50 +227,6 @@ Actions **not** supported in stray events (owner-only):
 ## Action Parameter Reference
 
 Most action parameters mirror the owner event system. Only stray-specific differences are noted.
-
-### `modify_base_health` / `modify_pooch_age`
-
-> `modify_pooch_health` is a supported alias for `modify_base_health`.
-
-| Parameter | Type | Notes |
-|-----------|------|-------|
-| `selector` | string | `"random"` (default), `"all"`, `"random_exclude"`, `"all_exclude"` |
-| `count` | int | Number to pick (`"random"`) or exclude (`"random_exclude"`) |
-| `filter` | object | Pooch filter to narrow the target pool |
-| `amount` | int | Fixed delta; or absolute value when `mode` is `"set"` |
-| `min_amount` / `max_amount` | int | Random delta in range |
-| `exclude_amount` | list[int] | Exclude these values from the random range |
-| `roll_once` | bool | Roll once and apply to all targets |
-| `mode` | string | `"modify"` (default) or `"set"` |
-| `save_as` | string | Save resolved pooch IDs into a named slot |
-| `use_saved` | string | Use IDs from a named slot |
-
-### `kill_pooch`
-
-| Parameter | Type | Notes |
-|-----------|------|-------|
-| `selector` | string | `"random"`, `"all"`, `"random_exclude"`, `"all_exclude"` |
-| `count` | int | Number to pick or exclude |
-| `filter` | object | Pooch filter |
-| `save_as` | string | Save resolved pooch IDs |
-| `use_saved` | string | Use IDs from a named slot |
-
-Killed pooches are removed from the candidate pool so later actions in the same event don't target them.
-
-### `add_mutation` / `remove_mutation`
-
-| Parameter | Type | Notes |
-|-----------|------|-------|
-| `selector` | string | Selector |
-| `count` | int | |
-| `filter` | object | Pooch filter |
-| `mutation` | string | Mutation name — omit for a random mutation |
-| `mutation_id` | int | Internal mutation ID — prefer `mutation` over this |
-| `min_rarity` / `max_rarity` | string | Filter random mutation pool by rarity — values: `common`, `uncommon`, `novel`, `rare`, `unprecedented`, `remarkable`, `extraordinary`, `unique` |
-| `min_health_impact` / `max_health_impact` | string | Filter random mutation pool by health impact — values: `instant_death`, `fatal`, `brutal`, `severe`, `unhealthy`, `harmful`, `neutral`, `helpful`, `healthy`, `great`, `fantastic`, `brilliant`, `immortality` |
-| `save_as` / `use_saved` | string | Named slots |
-
-Rarity and health_impact filters only apply when selecting randomly (no `mutation` / `mutation_id` given).
 
 ### `add_breed`
 
@@ -286,32 +242,133 @@ Rarity and health_impact filters only apply when selecting randomly (no `mutatio
 
 Rarity filters only apply when no specific `breed` is given.
 
-### `remove_breed`
-
-Removes a breed from a stray. If no specific breed is given, removes a random breed.
+### `add_mutation` / `remove_mutation`
 
 | Parameter | Type | Notes |
 |-----------|------|-------|
 | `selector` | string | Selector |
 | `count` | int | |
 | `filter` | object | Pooch filter |
-| `breed_id` | int | Internal breed ID to remove — omit for a random breed |
-| `min_rarity` / `max_rarity` | string | Filter random breed removal by rarity (same values as `add_breed`) |
+| `mutation` | string | Mutation name — omit for a random mutation |
+| `mutations` | list[string] | List of mutation names to add; mutually exclusive with `mutation` |
+| `min_rarity` / `max_rarity` | string | Filter random mutation pool by rarity — values: `common`, `uncommon`, `novel`, `rare`, `unprecedented`, `remarkable`, `extraordinary`, `unique` |
+| `min_health_impact` / `max_health_impact` | string | Filter random mutation pool by health impact — values: `instant_death`, `fatal`, `brutal`, `severe`, `unhealthy`, `harmful`, `neutral`, `helpful`, `healthy`, `great`, `fantastic`, `brilliant`, `immortality` |
 | `save_as` / `use_saved` | string | Named slots |
 
-### `rename_pooch`
+Rarity and health_impact filters only apply when selecting randomly (no `mutation` or `mutations` given).
+
+### `breed_pooches`
+
+Breeds two strays. The offspring enters the stray pool.
+
+| Parameter | Type | Notes |
+|-----------|------|-------|
+| `first_pooch_selector` / `second_pooch_selector` | string | Selector for each parent (default: `"random"`) |
+| `first_filter` / `second_filter` | object | Pooch filters for each parent |
+| `require_unique` | bool | If `true`, ensure the two parents are different pooches (default: `true`) |
+| `require_same` | bool | If `true`, both parents are the same pooch (self-breeding) |
+| `baby_name` / `baby_age` / `baby_base_health` / `baby_breeding_cooldown` | various | Override offspring attributes |
+| `save_as` | string or list | Save participants into named slots |
+
+`save_as` list form: `[{ "slot": "...", "target": "baby" \| "first_parent" \| "second_parent" }]`
+
+### `clone_pooch`
+
+Duplicates an existing stray into the stray pool.
+
+| Parameter | Type | Notes |
+|-----------|------|-------|
+| `selector` | string | Selector for the source pooch |
+| `filter` | object | Pooch filter for source selection |
+| `name` / `sex` / `age` / `base_health` / `breeding_cooldown` | various | Override clone attributes |
+| `strength` / `cuteness` / `fluffiness` / `intelligence` / `dexterity` / `fertility` / `aggressiveness` / `constitution` | int | Override individual stat attributes on the clone |
+| `save_as` | string or list | Save clone and/or source into named slots |
+
+`save_as` list form: `[{ "slot": "...", "target": "clone" \| "source" }]`
+
+### `create_pooch`
+
+Creates a new ownerless pooch and adds it directly to the server's stray pool.
+
+| Parameter | Type | Notes |
+|-----------|------|-------|
+| `name` | string | Defaults to a generated name |
+| `sex` | string | `"male"` or `"female"` — random if omitted |
+| `age` | int | Default: `0` |
+| `base_health` | int | Default value from constants |
+| `strength` / `cuteness` / `fluffiness` / `intelligence` / `dexterity` / `fertility` / `aggressiveness` / `constitution` | int | Default value from constants |
+| `breeding_cooldown` | int | Default value from constants |
+| `save_as` | string | Save the new pooch's ID into a named slot |
+
+No `destination` parameter — new pooches always go into the stray pool.
+
+### `damn_pooch`
+
+Sends a stray to Hell without any reward. The stray is killed and removed from the stray pool.
 
 | Parameter | Type | Notes |
 |-----------|------|-------|
 | `selector` | string | Selector |
 | `count` | int | |
 | `filter` | object | Pooch filter |
-| `name` | string | **Required.** New name for the pooch(es) |
-| `use_saved` | string | Named slot |
+| `save_as` / `use_saved` | string | Named slots — damned pooch ID saved for potential later `revive_pooch` |
+
+### `enter_kennel`
+
+Removes a stray from the pool and places it in a random owner kennel with free space. The stray becomes owned.
+
+| Parameter | Type | Notes |
+|-----------|------|-------|
+| `selector` | string | Selector for which stray(s) to place |
+| `count` | int | |
+| `filter` | object | Pooch filter |
+| `save_as` / `use_saved` | string | Named slots |
+
+If no kennel with free space is found, the stray is left as-is.
+
+### `enter_vendor_stock`
+
+Removes a stray from the pool and adds it to a random vendor's stock on the server. The stray becomes owned by the vendor.
+
+| Parameter | Type | Notes |
+|-----------|------|-------|
+| `selector` | string | Selector |
+| `count` | int | |
+| `filter` | object | Pooch filter |
+| `save_as` / `use_saved` | string | Named slots |
+
+If the server has no vendors, the stray is left as-is.
+
+### `kill_pooch`
+
+| Parameter | Type | Notes |
+|-----------|------|-------|
+| `selector` | string | `"random"`, `"all"`, `"random_exclude"`, `"all_exclude"` |
+| `count` | int | Number to pick or exclude |
+| `filter` | object | Pooch filter |
+| `save_as` | string | Save resolved pooch IDs |
+| `use_saved` | string | Use IDs from a named slot |
+
+Killed pooches are removed from the candidate pool so later actions in the same event don't target them.
+
+### `modify_base_health` / `modify_pooch_age`
+
+| Parameter | Type | Notes |
+|-----------|------|-------|
+| `selector` | string | `"random"` (default), `"all"`, `"random_exclude"`, `"all_exclude"` |
+| `count` | int | Number to pick (`"random"`) or exclude (`"random_exclude"`) |
+| `filter` | object | Pooch filter to narrow the target pool |
+| `amount` | int | Fixed delta; or absolute value when `mode` is `"set"` |
+| `min_amount` / `max_amount` | int | Random delta in range |
+| `exclude_amount` | list[int] | Exclude these values from the random range |
+| `roll_once` | bool | Roll once and apply to all targets |
+| `mode` | string | `"modify"` (default) or `"set"` |
+| `save_as` | string | Save resolved pooch IDs into a named slot |
+| `use_saved` | string | Use IDs from a named slot |
 
 ### `modify_breeding_cooldown`
 
-Modifies or sets breeding cooldown. The legacy name `set_breeding_cooldown` still works as an alias.
+Modifies or sets breeding cooldown.
 
 | Parameter | Type | Notes |
 |-----------|------|-------|
@@ -342,16 +399,28 @@ Modifies one of the eight pooch stats. All support the same parameters as `modif
 | `mode` | string | `"modify"` (default) or `"set"` |
 | `save_as` / `use_saved` | string | Named slots |
 
-### `damn_pooch`
+### `remove_breed`
 
-Sends a stray to Hell without any reward. The stray is killed and removed from the stray pool.
+Removes a breed from a stray. If no specific breed is given, removes a random breed.
 
 | Parameter | Type | Notes |
 |-----------|------|-------|
 | `selector` | string | Selector |
 | `count` | int | |
 | `filter` | object | Pooch filter |
-| `save_as` / `use_saved` | string | Named slots — damned pooch ID saved for potential later `revive_pooch` |
+| `breed` | string | Breed name to remove — omit for a random breed |
+| `min_rarity` / `max_rarity` | string | Filter random breed removal by rarity (same values as `add_breed`) |
+| `save_as` / `use_saved` | string | Named slots |
+
+### `rename_pooch`
+
+| Parameter | Type | Notes |
+|-----------|------|-------|
+| `selector` | string | Selector |
+| `count` | int | |
+| `filter` | object | Pooch filter |
+| `name` | string | **Required.** New name for the pooch(es) |
+| `use_saved` | string | Named slot |
 
 ### `revive_pooch`
 
@@ -362,87 +431,8 @@ Revives a dead or damned pooch, returning it to life and routing it to a destina
 | `selector` | string | Selector |
 | `count` | int | |
 | `filter` | object | Pooch filter |
-| `destination` | string | `"stray"` (default) — re-adds to the stray pool; `"kennel"` — places in a random owner kennel with free space; `"vendor"` — places in a random vendor's stock |
+| `destination` | string | `"town"` (default) — re-adds to the stray pool; `"kennel"` — places in a random owner kennel with free space; `"vendor"` — places in a random vendor's stock (`"stray"` is a legacy alias for `"town"`) |
 | `save_as` / `use_saved` | string | Named slots |
-
-### `create_pooch`
-
-Creates a new ownerless pooch and adds it directly to the server's stray pool.
-
-| Parameter | Type | Notes |
-|-----------|------|-------|
-| `name` | string | Defaults to a generated name |
-| `sex` | string | `"male"` or `"female"` — random if omitted |
-| `age` | int | Default: `0` |
-| `base_health` | int | Default value from constants |
-| `strength` / `cuteness` / `fluffiness` / `intelligence` / `dexterity` / `fertility` / `aggressiveness` / `constitution` | int | Default value from constants |
-| `breeding_cooldown` | int | Default value from constants |
-| `save_as` | string | Save the new pooch's ID into a named slot |
-
-No `destination` parameter — new pooches always go into the stray pool.
-
-### `clone_pooch`
-
-Duplicates an existing stray into the stray pool.
-
-| Parameter | Type | Notes |
-|-----------|------|-------|
-| `selector` | string | Selector for the source pooch |
-| `filter` | object | Pooch filter for source selection |
-| `name` / `sex` / `age` / `base_health` / `breeding_cooldown` | various | Override clone attributes |
-| `strength` / `cuteness` / `fluffiness` / `intelligence` / `dexterity` / `fertility` / `aggressiveness` / `constitution` | int | Override individual stat attributes on the clone |
-| `save_as` | string or list | Save clone and/or source into named slots |
-
-`save_as` list form: `[{ "slot": "...", "target": "clone" \| "source" }]`
-
-### `breed_pooches`
-
-Breeds two strays. The offspring enters the stray pool.
-
-| Parameter | Type | Notes |
-|-----------|------|-------|
-| `first_pooch_selector` / `second_pooch_selector` | string | Selector for each parent (default: `"random"`) |
-| `first_filter` / `second_filter` | object | Pooch filters for each parent |
-| `require_unique` | bool | If `true`, ensure the two parents are different pooches (default: `true`) |
-| `require_same` | bool | If `true`, both parents are the same pooch (self-breeding) |
-| `baby_name` / `baby_age` / `baby_base_health` / `baby_breeding_cooldown` | various | Override offspring attributes |
-| `save_as` | string or list | Save participants into named slots |
-
-`save_as` list form: `[{ "slot": "...", "target": "baby" \| "first_parent" \| "second_parent" }]`
-
-### `enter_kennel`
-
-Removes a stray from the pool and places it in a random owner kennel with free space. The stray becomes owned.
-
-| Parameter | Type | Notes |
-|-----------|------|-------|
-| `selector` | string | Selector for which stray(s) to place |
-| `count` | int | |
-| `filter` | object | Pooch filter |
-| `save_as` / `use_saved` | string | Named slots |
-
-If no kennel with free space is found, the stray is left as-is.
-
-### `enter_vendor_stock`
-
-Removes a stray from the pool and adds it to a random vendor's stock on the server. The stray becomes owned by the vendor.
-
-| Parameter | Type | Notes |
-|-----------|------|-------|
-| `selector` | string | Selector |
-| `count` | int | |
-| `filter` | object | Pooch filter |
-| `save_as` / `use_saved` | string | Named slots |
-
-If the server has no vendors, the stray is left as-is.
-
-### `start_stray_event`
-
-Chains into another stray event. The sub-event's actions run immediately within the same context, sharing named slots.
-
-| Parameter | Type | Notes |
-|-----------|------|-------|
-| `event` | string | **Required.** Name of the stray event to trigger |
 
 ### `select_pooch`
 
@@ -455,6 +445,14 @@ Resolves a stray from the candidate pool and saves the ID into a named slot. No 
 | `filter` | object | Pooch filter to narrow the pool |
 | `save_as` | string | **Required** for this action to be useful. Saves resolved IDs into a named slot. |
 | `use_saved` | string | Use IDs from a named slot instead of resolving via `selector` |
+
+### `start_stray_event`
+
+Chains into another stray event. The sub-event's actions run immediately within the same context, sharing named slots.
+
+| Parameter | Type | Notes |
+|-----------|------|-------|
+| `event` | string | **Required.** Name of the stray event to trigger |
 
 ---
 
@@ -568,8 +566,8 @@ Outcomes are stat-weighted: a stronger, more aggressive, or larger fighter is mo
                 { "stat": "aggressiveness", "pooch": "fighter_b", "scale": 0.03, "direction": -1 }
             ],
             "actions": [
-                { "action_type": "modify_pooch_health", "parameters": { "use_saved": "fighter_a", "min_amount": -3, "max_amount": -1 } },
-                { "action_type": "modify_pooch_health", "parameters": { "use_saved": "fighter_b", "min_amount": -10, "max_amount": -5 } }
+                { "action_type": "modify_base_health", "parameters": { "use_saved": "fighter_a", "min_amount": -3, "max_amount": -1 } },
+                { "action_type": "modify_base_health", "parameters": { "use_saved": "fighter_b", "min_amount": -10, "max_amount": -5 } }
             ]
         },
         {
@@ -582,15 +580,15 @@ Outcomes are stat-weighted: a stronger, more aggressive, or larger fighter is mo
                 { "stat": "aggressiveness", "pooch": "fighter_a", "scale": 0.03, "direction": -1 }
             ],
             "actions": [
-                { "action_type": "modify_pooch_health", "parameters": { "use_saved": "fighter_b", "min_amount": -3, "max_amount": -1 } },
-                { "action_type": "modify_pooch_health", "parameters": { "use_saved": "fighter_a", "min_amount": -10, "max_amount": -5 } }
+                { "action_type": "modify_base_health", "parameters": { "use_saved": "fighter_b", "min_amount": -3, "max_amount": -1 } },
+                { "action_type": "modify_base_health", "parameters": { "use_saved": "fighter_a", "min_amount": -10, "max_amount": -5 } }
             ]
         },
         {
             "chance": 0.30,
             "actions": [
-                { "action_type": "modify_pooch_health", "parameters": { "use_saved": "fighter_a", "min_amount": -6, "max_amount": -3 } },
-                { "action_type": "modify_pooch_health", "parameters": { "use_saved": "fighter_b", "min_amount": -6, "max_amount": -3 } }
+                { "action_type": "modify_base_health", "parameters": { "use_saved": "fighter_a", "min_amount": -6, "max_amount": -3 } },
+                { "action_type": "modify_base_health", "parameters": { "use_saved": "fighter_b", "min_amount": -6, "max_amount": -3 } }
             ]
         }
     ]

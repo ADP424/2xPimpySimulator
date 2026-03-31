@@ -23,6 +23,7 @@ if TYPE_CHECKING:
     from ..relationships.hell_pooch import HellPooch
     from ..relationships.kennel_pooch import KennelPooch
     from ..relationships.pooch_breed import PoochBreed
+    from ..relationships.pooch_injury import PoochInjury
     from ..relationships.pooch_mutation import PoochMutation
     from ..relationships.pooch_parentage import PoochParentage
     from ..relationships.pooch_pregnancy import PoochPregnancy
@@ -126,6 +127,13 @@ class Pooch(Base):
         cascade="all, delete-orphan",
     )
     mutations = association_proxy("pooch_mutations", "mutation")
+
+    pooch_injuries: Mapped[list[PoochInjury]] = relationship(
+        "PoochInjury",
+        back_populates="pooch",
+        cascade="all, delete-orphan",
+    )
+    injuries = association_proxy("pooch_injuries", "injury")
 
     kennel_row: Mapped[KennelPooch] = relationship(
         "KennelPooch",

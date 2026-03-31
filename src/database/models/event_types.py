@@ -14,7 +14,6 @@ EventActionType: TypeAlias = Literal[
     "modify_money",
     "modify_bloodskulls",
     "modify_base_health",
-    "modify_pooch_health",  # legacy alias for modify_base_health
     "modify_pooch_age",
     "modify_strength",
     "modify_cuteness",
@@ -24,7 +23,6 @@ EventActionType: TypeAlias = Literal[
     "modify_fertility",
     "modify_aggressiveness",
     "modify_breeding_cooldown",
-    "set_breeding_cooldown",  # legacy alias for modify_breeding_cooldown
     "kill_pooch",
     "damn_pooch",
     "revive_pooch",
@@ -38,6 +36,8 @@ EventActionType: TypeAlias = Literal[
     "create_pooch",
     "clone_pooch",
     "modify_kennel_capacity",
+    "upgrade_kennel",
+    "delete_kennel",
     "rename_pooch",
     "start_event",
     "start_stray_event",
@@ -53,7 +53,6 @@ EventActionType: TypeAlias = Literal[
 
 StrayEventActionType: TypeAlias = Literal[
     "modify_base_health",
-    "modify_pooch_health",  # legacy alias for modify_base_health
     "modify_pooch_age",
     "modify_strength",
     "modify_cuteness",
@@ -63,7 +62,6 @@ StrayEventActionType: TypeAlias = Literal[
     "modify_fertility",
     "modify_aggressiveness",
     "modify_breeding_cooldown",
-    "set_breeding_cooldown",  # legacy alias for modify_breeding_cooldown
     "kill_pooch",
     "damn_pooch",
     "revive_pooch",
@@ -115,6 +113,9 @@ class KennelFilterSpec(TypedDict, total=False):
     min_capacity: int
     max_capacity: int
     exclude_capacity: list[int]
+    min_upgrade_tier: int
+    max_upgrade_tier: int
+    exclude_upgrade_tier: list[int]
     min_pooches: int
     max_pooches: int | str
     exclude_pooches: list[int]
@@ -384,7 +385,7 @@ class EventRenamePoochParameters(EventActionBaseParameters, total=False):
 
 
 class EventModifyBreedingCooldownParameters(EventActionBaseParameters, total=False):
-    cooldown: int | Literal["base"]  # "base" resets to the base cooldown constant; only meaningful with mode="set"
+    reset: bool  # if True, reset to the pooch's natural cooldown (accounting for mutations); all other params ignored
     mode: Literal["modify", "set"]  # default "modify"
     amount: int
     min_amount: int

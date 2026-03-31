@@ -20,6 +20,15 @@ _MUTATIONS_ROOT = RESOURCE_ROOT / "mutations"
 
 
 _VALID_SEASONS = {"spring", "summer", "autumn", "winter"}
+_VALID_ON_DEATH_EFFECTS = {"kill", "spread", "spread_all", "send_to_hell", "none"}
+_VALID_ON_DEATH_TARGETS = {"all", "random", "none"}
+_VALID_ON_DEATH_TRIGGER_KEYS = {
+    "on_death",
+    "on_death_targets",
+    "on_death_chance",
+    "always_on_death",
+    "impact_message",
+}
 
 
 def _validate_mutations_json(mutations_json: dict[str, dict[str, dict[str, Any]]]) -> None:
@@ -85,6 +94,48 @@ def _validate_mutations_json(mutations_json: dict[str, dict[str, dict[str, Any]]
                                     f"{path}.parameters.seasons: '{s}' is not a valid season "
                                     f"(must be one of: {', '.join(sorted(_VALID_SEASONS))})"
                                 )
+                on_death_triggers = parameters.get("on_death_triggers")
+                if on_death_triggers is not None:
+                    if not isinstance(on_death_triggers, list):
+                        errors.append(f"{path}.parameters.on_death_triggers: must be a list")
+                    else:
+                        for i, trigger in enumerate(on_death_triggers):
+                            trigger_path = f"{path}.parameters.on_death_triggers[{i}]"
+                            if not isinstance(trigger, dict):
+                                errors.append(f"{trigger_path}: each trigger must be an object")
+                                continue
+                            unknown_trigger_keys = sorted(set(trigger) - _VALID_ON_DEATH_TRIGGER_KEYS)
+                            if unknown_trigger_keys:
+                                errors.append(
+                                    f"{trigger_path}: contains unknown keys: {', '.join(unknown_trigger_keys)}"
+                                )
+                            on_death_effect = trigger.get("on_death")
+                            if on_death_effect is not None and (
+                                not isinstance(on_death_effect, str)
+                                or on_death_effect.strip().lower() not in _VALID_ON_DEATH_EFFECTS
+                            ):
+                                errors.append(
+                                    f"{trigger_path}.on_death: must be one of: "
+                                    f"{', '.join(sorted(_VALID_ON_DEATH_EFFECTS))}"
+                                )
+                            on_death_targets = trigger.get("on_death_targets")
+                            if on_death_targets is not None and (
+                                not isinstance(on_death_targets, str)
+                                or on_death_targets.strip().lower() not in _VALID_ON_DEATH_TARGETS
+                            ):
+                                errors.append(
+                                    f"{trigger_path}.on_death_targets: must be one of: "
+                                    f"{', '.join(sorted(_VALID_ON_DEATH_TARGETS))}"
+                                )
+                            on_death_chance = trigger.get("on_death_chance")
+                            if on_death_chance is not None and not isinstance(on_death_chance, (int, float)):
+                                errors.append(f"{trigger_path}.on_death_chance: must be a number")
+                            always_on_death = trigger.get("always_on_death")
+                            if always_on_death is not None and not isinstance(always_on_death, bool):
+                                errors.append(f"{trigger_path}.always_on_death: must be a boolean")
+                            impact_message = trigger.get("impact_message")
+                            if impact_message is not None and not isinstance(impact_message, str):
+                                errors.append(f"{trigger_path}.impact_message: must be a string")
     if errors:
         joined = "\n".join(f"- {error}" for error in errors)
         raise ResourceValidationError(f"Invalid mutation resources:\n{joined}")

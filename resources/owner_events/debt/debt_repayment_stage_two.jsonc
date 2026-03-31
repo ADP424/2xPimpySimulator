@@ -21,7 +21,11 @@
     },
     "actions": [
         {
-            "action_type": "modify_money", // TODO: Should force sell a random KENNEL you own.
+            "action_type": "delete_kennel",
+            "target_type": "owner"
+        },
+        {
+            "action_type": "modify_money",
             "target_type": "owner",
             "parameters": {
                 "min_amount": 100,

@@ -125,11 +125,13 @@ class TestRenameKennel:
 
 class TestGetKennelBuyPrice:
     @patch("src.game.manage_kennels.list_kennels_for_owner", new_callable=AsyncMock)
-    async def test_first_kennel_is_free(self, mock_list):
-        """Price = KENNEL_BASE_PRICE (250) * current count. With 0 kennels -> $0."""
+    async def test_first_kennel_base_price(self, mock_list):
+        """With 0 kennels, price = max(KENNEL_BASE_PRICE, KENNEL_BASE_PRICE*0) = KENNEL_BASE_PRICE (250)."""
         mock_list.return_value = []
+        from src.game.constants import KENNEL_BASE_PRICE
+
         price, msg = await get_kennel_buy_price(100)
-        assert price == 0
+        assert price == KENNEL_BASE_PRICE
 
     @patch("src.game.manage_kennels.list_kennels_for_owner", new_callable=AsyncMock)
     async def test_price_scales_with_count(self, mock_list):

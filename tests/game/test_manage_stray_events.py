@@ -7,6 +7,18 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from conftest import make_pooch, make_server
+
+
+@pytest.fixture(autouse=True)
+def mock_stray_events_db_calls():
+    """Auto-patch DB-touching functions so tests never hit the real DB."""
+    with (
+        patch("src.game.manage_stray_events.get_current_season", new=AsyncMock(return_value="spring")),
+        patch("src.game.manage_stray_events.cancel_listing_for_pooch", new=AsyncMock()),
+    ):
+        yield
+
+
 from src.game.manage_stray_events import (
     _choose_stray_event_outcome,
     _compute_outcome_stat_multiplier,
@@ -251,9 +263,12 @@ class TestDeliverStrayToKennel:
 class TestDeliverStrayToVendor:
     @patch("src.game.manage_stray_events.add_pooch_to_vendor_stock", new_callable=AsyncMock)
     @patch("src.game.manage_stray_events.transfer_pooch_to_vendor", new_callable=AsyncMock)
+    @patch("src.game.manage_stray_events.cancel_listing_for_pooch", new_callable=AsyncMock)
     @patch("src.game.manage_stray_events.remove_pooch_from_strays", new_callable=AsyncMock)
     @patch("src.game.manage_stray_events.list_vendors", new_callable=AsyncMock)
-    async def test_delivers_to_random_vendor(self, mock_vendors, mock_remove, mock_transfer, mock_add_stock):
+    async def test_delivers_to_random_vendor(
+        self, mock_vendors, mock_remove, mock_cancel, mock_transfer, mock_add_stock
+    ):
         vendor = SimpleNamespace(id=5)
         mock_vendors.return_value = [vendor]
         rng = random.Random(42)
@@ -293,15 +308,6 @@ class TestExecuteSingleStrayAction:
     async def test_modify_base_health_action(self, mock_modify):
         context = StrayEventContext(server_discord_id=200, candidate_stray_ids=[1, 2])
         action = _make_stray_action("modify_base_health", {"selector": "all", "amount": -2})
-        rng = random.Random(42)
-
-        await _execute_single_stray_action(200, action, context, rng)
-        mock_modify.assert_awaited_once()
-
-    @patch("src.game.manage_stray_events.handle_modify_health", new_callable=AsyncMock)
-    async def test_modify_pooch_health_alias(self, mock_modify):
-        context = StrayEventContext(server_discord_id=200, candidate_stray_ids=[1])
-        action = _make_stray_action("modify_pooch_health", {"selector": "all", "amount": 3})
         rng = random.Random(42)
 
         await _execute_single_stray_action(200, action, context, rng)
@@ -379,15 +385,6 @@ class TestExecuteSingleStrayAction:
     async def test_modify_breeding_cooldown_action(self, mock_mod_cd):
         context = StrayEventContext(server_discord_id=200, candidate_stray_ids=[1])
         action = _make_stray_action("modify_breeding_cooldown", {"selector": "all", "amount": 1})
-        rng = random.Random(42)
-
-        await _execute_single_stray_action(200, action, context, rng)
-        mock_mod_cd.assert_awaited_once()
-
-    @patch("src.game.manage_stray_events.handle_modify_breeding_cooldown", new_callable=AsyncMock)
-    async def test_set_breeding_cooldown_alias(self, mock_mod_cd):
-        context = StrayEventContext(server_discord_id=200, candidate_stray_ids=[1])
-        action = _make_stray_action("set_breeding_cooldown", {"selector": "all", "amount": 5})
         rng = random.Random(42)
 
         await _execute_single_stray_action(200, action, context, rng)

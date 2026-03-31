@@ -14,6 +14,21 @@
             }
         ]
     },
+    "actions": [
+        {
+            "action_type": "modify_base_health",
+            "target_type": "pooch",
+            "parameters": {
+                "selector": "random",
+                "min_amount": -5,
+                "max_amount": -1,
+                "filter": {
+                    "is_alive": true
+                },
+                "save_as": "sick_pooch"
+            }
+        }
+    ],
     "options": [
         {
             "label": "Pay for treatment",
@@ -22,6 +37,15 @@
                 "min_money": 50
             },
             "actions": [
+                {
+                    "action_type": "modify_base_health",
+                    "target_type": "pooch",
+                    "parameters": {
+                        "use_saved": "sick_pooch",
+                        "min_amount": 1,
+                        "max_amount": 5
+                    }
+                },
                 {
                     "action_type": "modify_money",
                     "target_type": "owner",
@@ -37,25 +61,22 @@
             "outcomes": [
                 {
                     "chance": 0.8,
-                    "message": "The sickness has done its damage.",
-                    "actions": [
-                        {
-                            "action_type": "modify_pooch_health",
-                            "target_type": "pooch",
-                            "parameters": {
-                                "min_amount": -5,
-                                "max_amount": -1,
-                                "selector": "random",
-                                "filter": {
-                                    "is_alive": true
-                                }
-                            }
-                        }
-                    ]
+                    "message": "The sickness has done its damage."
                 },
                 {
                     "chance": 0.2,
-                    "message": "Your pooch recovered without side effects!"
+                    "message": "Your pooch recovered some health with its resting.",
+                    "actions": [
+                        {
+                            "action_type": "modify_base_health",
+                            "target_type": "pooch",
+                            "parameters": {
+                                "use_saved": "sick_pooch",
+                                "min_amount": 1,
+                                "max_amount": 5
+                            }
+                        }
+                    ]
                 }
             ]
         },
@@ -63,20 +84,7 @@
             "label": "Ignore the bill",
             "description": "You neglected your pooch, and it suffered the consequences.",
             "default": true,
-            "visible": false,
-            "actions": [
-                {
-                    "action_type": "modify_pooch_health",
-                    "target_type": "pooch",
-                    "parameters": {
-                        "amount": -5,
-                        "selector": "random",
-                        "filter": {
-                            "is_alive": true
-                        }
-                    }
-                }
-            ]
+            "visible": false
         }
     ]
 }

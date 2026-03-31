@@ -4,6 +4,15 @@ import random
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def mock_get_current_season():
+    with patch("src.game.manage_owner_events.public.get_current_season", new=AsyncMock(return_value="spring")):
+        yield
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

@@ -14,6 +14,14 @@ from src.game.manage_hell import (
     sacrifice_pooch,
 )
 
+
+@pytest.fixture(autouse=True)
+def mock_hell_db_calls():
+    """Auto-patch get_current_season so tests never hit the real DB."""
+    with patch("src.game.manage_hell.get_current_season", new=AsyncMock(return_value="spring")):
+        yield
+
+
 # ---------------------------------------------------------------------------
 # get_conjure_pooch_price / get_summon_pooch_price
 # ---------------------------------------------------------------------------

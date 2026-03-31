@@ -14,6 +14,21 @@
             }
         ]
     },
+    "actions": [
+        {
+            "action_type": "select_pooch",
+            "target_type": "pooch",
+            "parameters": {
+                "selector": "random",
+                "filter": {
+                    "location": "kennel"
+                },
+                "save_as": "burning_pooch",
+                "featured": true,
+                "save_kennel": true
+            }
+        }
+    ],
     "options": [
         {
             "label": "Call the fire department",
@@ -21,18 +36,14 @@
             "outcomes": [
                 {
                     "chance": 0.4,
-                    "message": "The firefighters save your pooch! He's a little burnt though.",
+                    "message": "The firefighters save your pooch! It's a little burnt though.",
                     "actions": [
                         {
-                            "action_type": "modify_pooch_health",
+                            "action_type": "injure_pooch",
                             "target_type": "pooch",
                             "parameters": {
-                                "min_amount": -2, // TODO: change to minor burn
-                                "max_amount": -1,
-                                "selector": "random",
-                                "filter": {
-                                    "location": "kennel"
-                                }
+                                "use_saved": "burning_pooch",
+                                "injury": "Singed"
                             }
                         }
                     ]
@@ -45,10 +56,7 @@
                             "action_type": "kill_pooch",
                             "target_type": "pooch",
                             "parameters": {
-                                "selector": "random",
-                                "filter": {
-                                    "location": "kennel"
-                                }
+                                "use_saved": "burning_pooch"
                             }
                         }
                     ]
@@ -61,12 +69,7 @@
                             "action_type": "kill_pooch",
                             "target_type": "pooch",
                             "parameters": {
-                                "selector": "random",
-                                "filter": {
-                                    "location": "kennel"
-                                },
-                                "save_as": "fire_victim",
-                                "save_kennel": true
+                                "use_saved": "burning_pooch"
                             }
                         },
                         {
@@ -78,12 +81,11 @@
                             }
                         },
                         {
-                            "action_type": "modify_pooch_health",
+                            "action_type": "injure_pooch",
                             "target_type": "kennel",
                             "parameters": {
-                                "use_saved": "fire_victim",
-                                "min_amount": -2, // TODO: change to minor burn
-                                "max_amount": -1
+                                "use_saved": "burning_pooch",
+                                "injury": "Singed"
                             }
                         }
                     ]
@@ -111,15 +113,11 @@
                             }
                         },
                         {
-                            "action_type": "modify_pooch_health",
+                            "action_type": "injure_pooch",
                             "target_type": "pooch",
                             "parameters": {
-                                "min_amount": -2, // TODO: change to minor burn
-                                "max_amount": -1,
-                                "selector": "random",
-                                "filter": {
-                                    "location": "kennel"
-                                }
+                                "use_saved": "burning_pooch",
+                                "injury": "Burn"
                             }
                         }
                     ]
@@ -132,10 +130,7 @@
                             "action_type": "kill_pooch",
                             "target_type": "pooch",
                             "parameters": {
-                                "selector": "random",
-                                "filter": {
-                                    "location": "kennel"
-                                }
+                                "use_saved": "burning_pooch"
                             }
                         }
                     ]
@@ -156,10 +151,7 @@
                             "action_type": "kill_pooch",
                             "target_type": "pooch",
                             "parameters": {
-                                "selector": "random",
-                                "filter": {
-                                    "location": "kennel"
-                                }
+                                "use_saved": "burning_pooch"
                             }
                         }
                     ]
@@ -174,34 +166,27 @@
             "outcomes": [
                 {
                     "chance": 0.1,
-                    "message": "The fire goes out on it's own.",
+                    "message": "The fire goes out on its own.",
                     "actions": [
                         {
-                            "action_type": "modify_pooch_health",
+                            "action_type": "injure_pooch",
                             "target_type": "pooch",
                             "parameters": {
-                                "min_amount": -5, // TODO: change to major burn
-                                "max_amount": -1,
-                                "selector": "random",
-                                "filter": {
-                                    "location": "kennel"
-                                }
+                                "use_saved": "burning_pooch",
+                                "injury": "Severe Burn"
                             }
                         }
                     ]
                 },
                 {
                     "chance": 0.5,
-                    "message": "They die horribly but no more damage is done.",
+                    "message": "They die horribly, but no more damage is done.",
                     "actions": [
                         {
                             "action_type": "kill_pooch",
                             "target_type": "pooch",
                             "parameters": {
-                                "selector": "random",
-                                "filter": {
-                                    "location": "kennel"
-                                }
+                                "use_saved": "burning_pooch"
                             }
                         }
                     ]
@@ -214,21 +199,15 @@
                             "action_type": "kill_pooch",
                             "target_type": "pooch",
                             "parameters": {
-                                "selector": "random",
-                                "filter": { 
-                                    "location": "kennel"
-                                },
-                                "save_as": "fire_victim",
-                                "save_kennel": true
+                                "use_saved": "burning_pooch"
                             }
                         },
                         {
-                            "action_type": "modify_pooch_health",
+                            "action_type": "injure_pooch",
                             "target_type": "kennel",
                             "parameters": {
-                                "use_saved": "fire_victim",
-                                "min_amount": -2,
-                                "max_amount": -1
+                                "use_saved": "burning_pooch",
+                                "injury": "Singed"
                             }
                         }
                     ]
@@ -241,10 +220,7 @@
                             "action_type": "kill_pooch",
                             "target_type": "pooch",
                             "parameters": {
-                                "selector": "random",
-                                "filter": {
-                                    "location": "kennel"
-                                }
+                                "use_saved": "burning_pooch"
                             }
                         },
                         {

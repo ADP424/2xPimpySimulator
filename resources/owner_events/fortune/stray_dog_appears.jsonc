@@ -9,17 +9,32 @@
     "filter": {
         "pooches": [
             {
-                "min_count": 1, // TODO: Check if a stray exists
+                "min_count": 1,
+                "location": "town",
                 "is_alive": true
             }
         ],
         "kennels": [
             {
                 "min_count": 1,
-                "max_pooches": "capacity - 1"
+                "max_pooches": -1
             }
         ]
     },
+    "actions": [
+        {
+            "action_type": "select_pooch",
+            "target_type": "pooch",
+            "parameters": {
+                "selector": "random",
+                "filter": {
+                    "is_alive": true
+                },
+                "save_as": "stray_pooch",
+                "featured": true
+            }
+        }
+    ],
     "options": [
         {
             "label": "Let them in.",
@@ -27,10 +42,9 @@
             "actions": [
                 {
                     "action_type": "receive_stray",
-                    "target_type": "owner",
+                    "target_type": "pooch",
                     "parameters": {
-                        "destination": "kennel",
-                        "count": 1
+                        "use_saved": "stray_pooch"
                     }
                 }
             ]
@@ -50,15 +64,14 @@
                             "target_type": "owner",
                             "parameters": {
                                 "destination": "hell",
-                                "count": 1,
-                                "save_as": "damned_pooch"
+                                "use_saved": "stray_pooch"
                             }
                         },
                         {
                             "action_type": "rename_pooch",
                             "target_type": "pooch",
                             "parameters": {
-                                "use_saved": "damned_pooch",
+                                "use_saved": "stray_pooch",
                                 "name": "Forsaken Soul"
                             }
                         }

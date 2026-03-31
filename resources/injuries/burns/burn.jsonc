@@ -1,0 +1,10 @@
+{
+    "name": "Burn",
+    "health_impact": "unhealthy",
+    "description": "This pooch has painful burns across its body.",
+    "parameters": {
+        "persistence": 24,
+        "fluffiness_add": -2,
+        "constitution_add": -1
+    }
+}

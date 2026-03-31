@@ -23,7 +23,7 @@
         }
     ],
     "outcomes": [
-        // Fighter A dominates — boosted by A's strength/aggressiveness/size, hindered by B's strength and size
+        // Fighter A dominates — A takes minor damage, B takes heavy damage
         {
             "chance": 0.35,
             "stat_weights": [
@@ -34,21 +34,18 @@
                 { "stat": "size",           "pooch": "fighter_b", "scale": 0.03, "pivot": 10, "direction": -1 }
             ],
             "actions": [
-                // A takes minor damage, B takes heavy damage
                 {
-                    "action_type": "modify_pooch_health",
+                    "action_type": "injure_pooch",
                     "parameters": {
                         "use_saved": "fighter_a",
-                        "min_amount": -3,
-                        "max_amount": -1
+                        "injury": "Minor"
                     }
                 },
                 {
-                    "action_type": "modify_pooch_health",
+                    "action_type": "injure_pooch",
                     "parameters": {
                         "use_saved": "fighter_b",
-                        "min_amount": -10,
-                        "max_amount": -5
+                        "injury": "Brutal"
                     }
                 }
             ]
@@ -65,19 +62,17 @@
             ],
             "actions": [
                 {
-                    "action_type": "modify_pooch_health",
+                    "action_type": "injure_pooch",
                     "parameters": {
                         "use_saved": "fighter_b",
-                        "min_amount": -3,
-                        "max_amount": -1
+                        "injury": "Minor"
                     }
                 },
                 {
-                    "action_type": "modify_pooch_health",
+                    "action_type": "injure_pooch",
                     "parameters": {
                         "use_saved": "fighter_a",
-                        "min_amount": -10,
-                        "max_amount": -5
+                        "injury": "Brutal"
                     }
                 }
             ]
@@ -87,19 +82,17 @@
             "chance": 0.30,
             "actions": [
                 {
-                    "action_type": "modify_pooch_health",
+                    "action_type": "injure_pooch",
                     "parameters": {
                         "use_saved": "fighter_a",
-                        "min_amount": -6,
-                        "max_amount": -3
+                        "injury": "Severe"
                     }
                 },
                 {
-                    "action_type": "modify_pooch_health",
+                    "action_type": "injure_pooch",
                     "parameters": {
                         "use_saved": "fighter_b",
-                        "min_amount": -6,
-                        "max_amount": -3
+                        "injury": "Severe"
                     }
                 }
             ]

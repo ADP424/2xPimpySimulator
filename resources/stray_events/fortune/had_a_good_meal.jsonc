@@ -7,7 +7,7 @@
     },
    "actions": [
         {
-            "action_type": "modify_pooch_health",
+            "action_type": "modify_base_health",
             "parameters": {
                 "selector": "random",
                 "min_amount": 1,

@@ -144,6 +144,20 @@ def context() -> OwnerEventContext:
     return OwnerEventContext(owner_discord_id=1)
 
 
+@pytest.fixture(autouse=True)
+def mock_cancel_listing():
+    """Auto-patch cancel_listing_for_pooch so tests never hit the real DB."""
+    with patch("src.game.manage_owner_events.coordinator.cancel_listing_for_pooch", new=AsyncMock()):
+        yield
+
+
+@pytest.fixture(autouse=True)
+def mock_get_current_season():
+    """Auto-patch get_current_season so tests never hit the real DB."""
+    with patch("src.game.manage_owner_events.coordinator.get_current_season", new=AsyncMock(return_value="spring")):
+        yield
+
+
 # ---------------------------------------------------------------------------
 # _execute_single_action: modify_money
 # ---------------------------------------------------------------------------
@@ -479,7 +493,7 @@ class TestModifyKennelCapacity:
 
 
 # ---------------------------------------------------------------------------
-# _execute_single_action: modify_base_health / modify_pooch_health
+# _execute_single_action: modify_base_health
 # ---------------------------------------------------------------------------
 
 
@@ -489,16 +503,6 @@ class TestModifyHealth:
         action = _make_action("modify_base_health", "pooch", {"selector": "random", "amount": -5})
         with (
             patch("src.game.manage_owner_events.coordinator.get_target_pooch_ids", new=AsyncMock(return_value=[7])),
-            patch("src.game.manage_owner_events.coordinator.handle_modify_health", new=AsyncMock()) as mock_health,
-        ):
-            await _execute_single_action(1, action, context, rng)
-        mock_health.assert_awaited_once()
-
-    @pytest.mark.asyncio
-    async def test_modify_pooch_health_alias(self, context, rng):
-        action = _make_action("modify_pooch_health", "pooch", {"selector": "random", "amount": 3})
-        with (
-            patch("src.game.manage_owner_events.coordinator.get_target_pooch_ids", new=AsyncMock(return_value=[8])),
             patch("src.game.manage_owner_events.coordinator.handle_modify_health", new=AsyncMock()) as mock_health,
         ):
             await _execute_single_action(1, action, context, rng)
@@ -635,6 +639,7 @@ class TestReceiveStray:
                 "src.game.manage_owner_events.coordinator.list_strays_for_server", new=AsyncMock(return_value=[stray])
             ),
             patch("src.game.manage_owner_events.coordinator.remove_pooch_from_strays", new=AsyncMock()),
+            patch("src.game.manage_owner_events.coordinator.cancel_listing_for_pooch", new=AsyncMock()),
             patch("src.game.manage_owner_events.coordinator.transfer_pooch_to_owner", new=AsyncMock()),
             patch(
                 "src.game.manage_owner_events.coordinator.deliver_pooch", new=AsyncMock(return_value=("kennel", "K"))
@@ -746,7 +751,7 @@ class TestTransferPooch:
 
 
 # ---------------------------------------------------------------------------
-# _execute_single_action: modify_breeding_cooldown / set_breeding_cooldown
+# _execute_single_action: modify_breeding_cooldown
 # ---------------------------------------------------------------------------
 
 
@@ -754,18 +759,6 @@ class TestBreedingCooldown:
     @pytest.mark.asyncio
     async def test_modify_breeding_cooldown(self, context, rng):
         action = _make_action("modify_breeding_cooldown", "pooch", {"amount": -1})
-        with (
-            patch("src.game.manage_owner_events.coordinator.get_target_pooch_ids", new=AsyncMock(return_value=[4])),
-            patch(
-                "src.game.manage_owner_events.coordinator.handle_modify_breeding_cooldown", new=AsyncMock()
-            ) as mock_cd,
-        ):
-            await _execute_single_action(1, action, context, rng)
-        mock_cd.assert_awaited_once()
-
-    @pytest.mark.asyncio
-    async def test_set_breeding_cooldown(self, context, rng):
-        action = _make_action("set_breeding_cooldown", "pooch", {"amount": 0})
         with (
             patch("src.game.manage_owner_events.coordinator.get_target_pooch_ids", new=AsyncMock(return_value=[4])),
             patch(
@@ -1601,7 +1594,7 @@ class TestExecuteEventActions:
     async def test_executes_all_actions_in_order(self, context, rng):
         order = []
 
-        async def fake_single_action(owner_id, action, ctx, r):
+        async def fake_single_action(owner_id, action, ctx, r, **kwargs):
             order.append(action.action_order)
             return OwnerEventResult()
 
@@ -1612,9 +1605,12 @@ class TestExecuteEventActions:
         action_c = _make_action("modify_money", parameters={"amount": 3})
         action_c.action_order = 2
 
-        with patch(
-            "src.game.manage_owner_events.coordinator._execute_single_action",
-            new=fake_single_action,
+        with (
+            patch("src.game.manage_owner_events.coordinator.get_current_season", new=AsyncMock(return_value="spring")),
+            patch(
+                "src.game.manage_owner_events.coordinator._execute_single_action",
+                new=fake_single_action,
+            ),
         ):
             await execute_event_actions(1, [action_c, action_a, action_b], context, rng)
 
@@ -1624,7 +1620,7 @@ class TestExecuteEventActions:
     async def test_repeat_executes_multiple_times(self, context, rng):
         call_count = []
 
-        async def fake_single_action(owner_id, action, ctx, r):
+        async def fake_single_action(owner_id, action, ctx, r, **kwargs):
             call_count.append(1)
             return OwnerEventResult()
 
@@ -1632,9 +1628,12 @@ class TestExecuteEventActions:
         action.repeat = 3
         action.action_order = 0
 
-        with patch(
-            "src.game.manage_owner_events.coordinator._execute_single_action",
-            new=fake_single_action,
+        with (
+            patch("src.game.manage_owner_events.coordinator.get_current_season", new=AsyncMock(return_value="spring")),
+            patch(
+                "src.game.manage_owner_events.coordinator._execute_single_action",
+                new=fake_single_action,
+            ),
         ):
             await execute_event_actions(1, [action], context, rng)
 
@@ -1645,7 +1644,7 @@ class TestExecuteEventActions:
         res_a = OwnerEventResult(money_changed=10)
         res_b = OwnerEventResult(money_changed=20)
 
-        async def fake_single_action(owner_id, action, ctx, r):
+        async def fake_single_action(owner_id, action, ctx, r, **kwargs):
             return [res_a, res_b][action.action_order]
 
         action_a = _make_action("modify_money", parameters={"amount": 10})
@@ -1653,9 +1652,12 @@ class TestExecuteEventActions:
         action_b = _make_action("modify_money", parameters={"amount": 20})
         action_b.action_order = 1
 
-        with patch(
-            "src.game.manage_owner_events.coordinator._execute_single_action",
-            new=fake_single_action,
+        with (
+            patch("src.game.manage_owner_events.coordinator.get_current_season", new=AsyncMock(return_value="spring")),
+            patch(
+                "src.game.manage_owner_events.coordinator._execute_single_action",
+                new=fake_single_action,
+            ),
         ):
             result = await execute_event_actions(1, [action_a, action_b], context, rng)
 
@@ -1663,7 +1665,8 @@ class TestExecuteEventActions:
 
     @pytest.mark.asyncio
     async def test_empty_actions_returns_default_result(self, context, rng):
-        result = await execute_event_actions(1, [], context, rng)
+        with patch("src.game.manage_owner_events.coordinator.get_current_season", new=AsyncMock(return_value="spring")):
+            result = await execute_event_actions(1, [], context, rng)
         assert result.success is True
         assert result.money_changed == 0
 
@@ -1671,7 +1674,7 @@ class TestExecuteEventActions:
     async def test_non_int_repeat_defaults_to_one(self, context, rng):
         call_count = []
 
-        async def fake_single_action(owner_id, action, ctx, r):
+        async def fake_single_action(owner_id, action, ctx, r, **kwargs):
             call_count.append(1)
             return OwnerEventResult()
 
@@ -1679,9 +1682,12 @@ class TestExecuteEventActions:
         action.repeat = "not_an_int"
         action.action_order = 0
 
-        with patch(
-            "src.game.manage_owner_events.coordinator._execute_single_action",
-            new=fake_single_action,
+        with (
+            patch("src.game.manage_owner_events.coordinator.get_current_season", new=AsyncMock(return_value="spring")),
+            patch(
+                "src.game.manage_owner_events.coordinator._execute_single_action",
+                new=fake_single_action,
+            ),
         ):
             await execute_event_actions(1, [action], context, rng)
 

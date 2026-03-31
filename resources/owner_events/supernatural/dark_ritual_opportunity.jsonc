@@ -15,7 +15,7 @@
                 "kennels": [
                     {
                         "min_count": 1,
-                        "max_pooches": "capacity - 1"
+                        "max_pooches": -1
                     }
                 ]
             },

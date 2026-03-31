@@ -2,7 +2,7 @@ import random
 from typing import Optional
 
 from sqlalchemy import and_, func, literal, not_, or_, select, true, union
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import aliased, selectinload
 
 from .models import (
     AuctionBid,
@@ -14,6 +14,7 @@ from .models import (
     EventOption,
     EventOutcome,
     HealthImpactWeight,
+    Injury,
     Kennel,
     KennelPooch,
     Mutation,
@@ -21,6 +22,7 @@ from .models import (
     OwnerServer,
     Pooch,
     PoochBreed,
+    PoochInjury,
     PoochMutation,
     PoochParentage,
     RarityWeight,
@@ -342,6 +344,14 @@ async def get_mutation_by_name(name: str) -> Optional[Mutation]:
     return response.scalar_one_or_none()
 
 
+async def get_injury_by_name(name: str) -> Optional[Injury]:
+    """Fetch an injury by its name (case-insensitive)."""
+    async with session_scope() as session:
+        query = select(Injury).where(Injury.name.ilike(name))
+        response = await session.execute(query)
+    return response.scalar_one_or_none()
+
+
 async def get_mutation_health_impact(mutation_id: int) -> Optional[int]:
     """
     Get the health impact for the mutation with the given ID as an integer.
@@ -489,7 +499,7 @@ async def get_pooch_by_id(pooch_id: int) -> Optional[Pooch]:
 
 async def get_pooch_health(pooch_id: int) -> Optional[int]:
     """
-    Get the current health of the given pooch, taking into account age and mutations.
+    Get the current health of the given pooch, taking into account age, mutations, and injuries.
 
     Parameters
     ----------
@@ -503,8 +513,22 @@ async def get_pooch_health(pooch_id: int) -> Optional[int]:
     """
 
     async with session_scope() as session:
+        InjuryWeight = aliased(HealthImpactWeight)
+        injury_subq = (
+            select(func.coalesce(func.sum(InjuryWeight.weight), 0))
+            .select_from(PoochInjury)
+            .join(Injury, Injury.id == PoochInjury.injury_id)
+            .join(InjuryWeight, InjuryWeight.health_impact == Injury.health_impact)
+            .where(PoochInjury.pooch_id == pooch_id)
+            .scalar_subquery()
+        )
         query = (
-            select(Pooch.base_health - Pooch.health_loss_age + func.coalesce(func.sum(HealthImpactWeight.weight), 0))
+            select(
+                Pooch.base_health
+                - Pooch.health_loss_age
+                + func.coalesce(func.sum(HealthImpactWeight.weight), 0)
+                + injury_subq
+            )
             .outerjoin(PoochMutation, PoochMutation.pooch_id == Pooch.id)
             .outerjoin(Mutation, Mutation.id == PoochMutation.mutation_id)
             .outerjoin(HealthImpactWeight, HealthImpactWeight.health_impact == Mutation.health_impact)
@@ -676,6 +700,10 @@ async def get_pooch_parents(pooch_id: int) -> tuple[Optional[Pooch], Optional[Po
 
     father = await get_pooch_by_id(parentage.father_id)
     mother = await get_pooch_by_id(parentage.mother_id)
+
+    # Guard against asexual-reproduction rows where father_id == mother_id
+    if parentage.father_id is not None and parentage.father_id == parentage.mother_id:
+        father = None
 
     return (father, mother)
 

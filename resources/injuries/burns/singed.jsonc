@@ -1,0 +1,9 @@
+{
+    "name": "Singed",
+    "health_impact": "harmful",
+    "description": "This pooch has been lightly singed by fire.",
+    "parameters": {
+        "persistence": 12,
+        "fluffiness_add": -1
+    }
+}

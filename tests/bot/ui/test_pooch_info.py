@@ -69,6 +69,7 @@ def _make_pooch(
         vendor=None,
         breeds=breeds or [],
         mutations=mutations or [],
+        injuries=[],
     )
 
 

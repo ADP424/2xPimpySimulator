@@ -1,4 +1,3 @@
-import logging
 import random
 from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Any, Optional
@@ -13,6 +12,7 @@ from src.database import (
     create_active_owner_event,
     create_pooch,
     damn_pooch,
+    delete_kennel,
     delete_pooch,
     get_current_season,
     get_kennel_by_id,
@@ -37,6 +37,7 @@ from src.database import (
     list_vendor_pooch_stock,
     list_vendors,
     modify_kennel_pooch_limit,
+    modify_kennel_upgrade_tier,
     modify_pooch_age,
     modify_pooch_base_health,
     remove_pooch_from_kennel,
@@ -54,12 +55,14 @@ from src.database import (
     update_active_event_context,
     update_active_event_result,
 )
+from src.logger import get_logger
 
 from ..action_helpers.amount import get_amount_from_parameters, get_mode, resolve_amount
 from ..action_helpers.pooch_actions import (
     handle_add_breed,
     handle_add_mutation,
     handle_damn_pooch,
+    handle_injure_pooch,
     handle_kill_pooch,
     handle_modify_age,
     handle_modify_breeding_cooldown,
@@ -94,12 +97,12 @@ if TYPE_CHECKING:
     from src.database.models import Event as EventDB
     from src.database.models import EventAction
 
-logger = logging.getLogger(__name__)
+logger = get_logger("game/manage_owner_events/coordinator")
 
 
 async def _execute_single_action(
     owner_discord_id: int,
-    action: "EventAction",
+    action: EventAction,
     context: OwnerEventContext,
     rng: random.Random,
     season: Optional[str] = None,
@@ -309,10 +312,34 @@ async def _execute_single_action(
                         context.affected_kennel_ids.append(kennel_id)
                     result.extra_data.setdefault("kennel_capacity_changes", {})[kennel_id] = amount
 
+        elif action_type == "upgrade_kennel":
+            kennel_ids = await get_target_kennel_ids(owner_discord_id, context, rng, target_type, selector, parameters)
+            pre_rolled, roll_once = resolve_amount(parameters, rng)
+            for kennel_id in kennel_ids:
+                amount = pre_rolled if roll_once else get_amount_from_parameters(parameters, rng)
+                kennel = await modify_kennel_upgrade_tier(kennel_id, amount)
+                if kennel:
+                    if kennel_id not in context.affected_kennel_ids:
+                        context.affected_kennel_ids.append(kennel_id)
+                    result.extra_data.setdefault("kennel_upgrade_tier_changes", {})[kennel_id] = amount
+
+        elif action_type == "delete_kennel":
+            kennel_ids = await get_target_kennel_ids(owner_discord_id, context, rng, target_type, selector, parameters)
+            for kennel_id in kennel_ids:
+                kennel = await delete_kennel(kennel_id)
+                if kennel:
+                    result.extra_data.setdefault("kennels_deleted", []).append(kennel_id)
+                    if kennel_id in context.affected_kennel_ids:
+                        context.affected_kennel_ids.remove(kennel_id)
+
         # Pooch Actions
-        elif action_type in ("modify_base_health", "modify_pooch_health"):
+        elif action_type in ("modify_base_health"):
             pooch_ids = await get_target_pooch_ids(owner_discord_id, context, rng, target_type, selector, parameters)
             await handle_modify_health(pooch_ids, parameters, rng, result)
+
+        elif action_type == "injure_pooch":
+            pooch_ids = await get_target_pooch_ids(owner_discord_id, context, rng, target_type, selector, parameters)
+            await handle_injure_pooch(pooch_ids, parameters, rng, result)
 
         elif action_type == "modify_pooch_age":
             pooch_ids = await get_target_pooch_ids(owner_discord_id, context, rng, target_type, selector, parameters)
@@ -419,7 +446,7 @@ async def _execute_single_action(
                     await transfer_pooch_to_vendor(pooch_id, vendor_id)
                 result.pooches_affected.append(pooch_id)
 
-        elif action_type in ("modify_breeding_cooldown", "set_breeding_cooldown"):
+        elif action_type in ("modify_breeding_cooldown"):
             pooch_ids = await get_target_pooch_ids(owner_discord_id, context, rng, target_type, selector, parameters)
             await handle_modify_breeding_cooldown(pooch_ids, parameters, rng, result)
 
@@ -743,6 +770,10 @@ async def _execute_single_action(
         elif action_type == "select_pooch":
             pooch_ids = await get_target_pooch_ids(owner_discord_id, context, rng, target_type, selector, parameters)
             await handle_select_pooch(pooch_ids, parameters, rng, result)
+            if parameters.get("featured"):
+                save_as = parameters.get("save_as")
+                if isinstance(save_as, str) and save_as:
+                    context.extra_data["_featured_pooch_slot"] = save_as
 
         # Stat modify/set actions
         elif action_type in (

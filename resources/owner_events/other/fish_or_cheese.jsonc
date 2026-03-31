@@ -15,7 +15,7 @@
         ]
     },
     "options": [
-        
+
         {
             "label": "Say fish.",
             "description": "Fish.",
@@ -53,14 +53,14 @@
             "description": "You don't like the look of her or her questions.",
             "actions": [
                 {
-                    "action_type": "modify_pooch_health",
+                    "action_type": "injure_pooch",
                     "target_type": "pooch",
                     "parameters": {
-                        "amount": -1,
                         "selector": "random",
                         "filter": {
                             "is_alive": true
-                        }
+                        },
+                        "injury": "Minor"
                     }
                 }
             ]
@@ -72,14 +72,14 @@
             "visible": false,
             "actions": [
                 {
-                    "action_type": "modify_pooch_health",
+                    "action_type": "injure_pooch",
                     "target_type": "pooch",
                     "parameters": {
-                        "amount": -1,
                         "selector": "random",
                         "filter": {
                             "is_alive": true
-                        }
+                        },
+                        "injury": "Minor"
                     }
                 },
                 {

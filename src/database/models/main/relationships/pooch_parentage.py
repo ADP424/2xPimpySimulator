@@ -16,10 +16,6 @@ class PoochParentage(Base):
             "child_id <> father_id AND child_id <> mother_id",
             name="no_self_parent",
         ),
-        CheckConstraint(
-            "father_id IS NULL OR mother_id IS NULL OR father_id <> mother_id",
-            name="no_duplicate_parents",
-        ),
     )
 
     child_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("pooches.id", ondelete="CASCADE"), primary_key=True)

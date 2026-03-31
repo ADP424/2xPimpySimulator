@@ -11,6 +11,7 @@ from ...models import (
     Breed,
     Event,
     EventAction,
+    Injury,
     Mutation,
     ServerEvent,
     ServerEventMenu,
@@ -455,11 +456,13 @@ async def load_server_events():
             mutation.name.strip().lower(): mutation.id
             for mutation in (await session.execute(select(Mutation))).scalars().all()
         }
+        injury_names = {name.strip().lower() for name in (await session.execute(select(Injury.name))).scalars().all()}
 
         validator = _ServerEventValidator(
             breed_names=breed_names,
             mutation_names=mutation_names,
             event_names=event_names,
+            injury_names=injury_names,
         )
         validator.validate_server_events_json(server_events_json)
         validator.raise_if_invalid()

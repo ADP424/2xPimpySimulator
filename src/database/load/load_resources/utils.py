@@ -53,9 +53,13 @@ _KENNEL_FILTER_ALLOWED_KEYS = {
     "min_capacity",
     "max_capacity",
     "exclude_capacity",
+    "min_upgrade_tier",
+    "max_upgrade_tier",
+    "exclude_upgrade_tier",
     "min_pooches",
     "max_pooches",
     "exclude_pooches",
+    "at_capacity",
     "pooches",
 }
 _POOCH_FILTER_ALLOWED_KEYS = {
@@ -196,6 +200,17 @@ def resolve_event_action_parameters(
         if mutation_id is not None:
             resolved["mutation_id"] = mutation_id
 
+    # Resolve a list of mutation names to IDs
+    mutations_list = resolved.get("mutations")
+    if isinstance(mutations_list, list):
+        resolved_mutation_ids = []
+        for m in mutations_list:
+            if isinstance(m, str):
+                mid = mutation_name_to_id.get(m.strip().lower())
+                if mid is not None:
+                    resolved_mutation_ids.append(mid)
+        resolved["mutation_ids"] = resolved_mutation_ids
+
     breed_name = resolved.get("breed")
     if isinstance(breed_name, str):
         breed_id = breed_name_to_id.get(breed_name.strip().lower())
@@ -206,10 +221,17 @@ def resolve_event_action_parameters(
 
 
 class BaseEventValidator:
-    def __init__(self, breed_names: set[str], mutation_names: set[str], event_names: set[str]):
+    def __init__(
+        self,
+        breed_names: set[str],
+        mutation_names: set[str],
+        event_names: set[str],
+        injury_names: set[str] | None = None,
+    ):
         self.breed_names = breed_names
         self.mutation_names = mutation_names
         self.event_names = event_names
+        self.injury_names: set[str] = injury_names or set()
         self.errors: list[str] = []
 
     def error(self, path: str, message: str) -> None:
@@ -328,7 +350,7 @@ class BaseEventValidator:
             # Pooch/kennel actions that target "owner" apply to all pooches/kennels owned.
             # An optional filter narrows which ones are affected; no selector is needed.
             # Exception: clone_pooch with target_type "owner" needs a selector to pick which pooch to clone.
-            _kennel_only_actions = {"modify_kennel_capacity"}
+            _kennel_only_actions = {"modify_kennel_capacity", "upgrade_kennel", "delete_kennel"}
             _selector_picking_actions = {"clone_pooch"}
             _is_kennel_action = action_type in _kennel_only_actions
             _needs_selector = action_type in _selector_picking_actions
@@ -369,13 +391,16 @@ class BaseEventValidator:
                 "count",
                 "filter",
                 "save_as",
-                "save_slot",
+                "use_saved",
                 "save_owner",
                 "destination",
                 "mutations",
                 "amount",
                 "min_amount",
                 "max_amount",
+                "exclude_amount",
+                "roll_once",
+                "mode",
                 "age",
             }
             if "pool" in parameters:
@@ -395,13 +420,16 @@ class BaseEventValidator:
             if "destination" in parameters:
                 dest_val = parameters["destination"]
                 if not isinstance(dest_val, str) or dest_val.strip().lower() not in {
-                    "stray",
                     "town",
                     "kennel",
                     "graveyard",
                     "hell",
+                    "vendor",
                 }:
-                    self.error(params_path, "'destination' must be 'stray', 'town', 'kennel', 'graveyard', or 'hell'")
+                    self.error(
+                        params_path,
+                        "'destination' must be 'town', 'kennel', 'graveyard', 'hell', or 'vendor'",
+                    )
             if "filter" in parameters:
                 self._validate_pooch_filter(
                     f"{params_path}.filter", parameters["filter"], allow_counts=False, allow_location=True
@@ -440,7 +468,7 @@ class BaseEventValidator:
             else:
                 self._validate_target_type(path, action_type, target_type, {"owner"})
 
-        elif action_type in {"modify_pooch_health", "modify_pooch_age"}:
+        elif action_type in {"modify_base_health", "modify_pooch_age"}:
             self._validate_allowed_keys(
                 params_path,
                 parameters,
@@ -451,7 +479,18 @@ class BaseEventValidator:
             self._validate_optional_bool(params_path, parameters, "roll_once")
             if "mode" in parameters and parameters["mode"] not in {"modify", "set"}:
                 self.error(params_path, "'mode' must be 'modify' or 'set'")
-            self._validate_target_type(path, action_type, target_type, {"pooch", "kennel", "owner"})
+            self._validate_target_type(path, action_type, target_type, {"pooch", "kennel", "owner", "server"})
+
+        elif action_type == "injure_pooch":
+            self._validate_allowed_keys(params_path, parameters, common_allowed | {"injury"})
+            if "injury" not in parameters:
+                self.error(params_path, "'injure_pooch' requires an 'injury' parameter")
+            elif self.injury_names and str(parameters["injury"]).strip().lower() not in self.injury_names:
+                self.error(
+                    params_path,
+                    f"'injury' must be one of: {', '.join(sorted(self.injury_names))}",
+                )
+            self._validate_target_type(path, action_type, target_type, {"pooch", "kennel", "owner", "server"})
 
         elif action_type == "kill_pooch":
             self._validate_allowed_keys(params_path, parameters, common_allowed)
@@ -460,7 +499,6 @@ class BaseEventValidator:
         elif action_type in {"add_mutation", "remove_mutation"}:
             _mutation_filter_keys = {
                 "mutation",
-                "mutation_id",
                 "min_rarity",
                 "max_rarity",
                 "min_health_impact",
@@ -482,8 +520,20 @@ class BaseEventValidator:
                             elif self.mutation_names and m.strip().lower() not in self.mutation_names:
                                 self.error(f"{params_path}.mutations[{idx}]", f"unknown mutation '{m}'")
             else:
-                self._validate_allowed_keys(params_path, parameters, common_allowed | _mutation_filter_keys)
+                self._validate_allowed_keys(
+                    params_path, parameters, common_allowed | _mutation_filter_keys | {"mutations"}
+                )
                 self._validate_optional_known_name(params_path, parameters, "mutation", self.mutation_names)
+                if "mutations" in parameters:
+                    mutations_val = parameters["mutations"]
+                    if not isinstance(mutations_val, list):
+                        self.error(f"{params_path}.mutations", "must be a list")
+                    else:
+                        for idx, m in enumerate(mutations_val):
+                            if not isinstance(m, str):
+                                self.error(f"{params_path}.mutations[{idx}]", "must be a string")
+                            elif self.mutation_names and m.strip().lower() not in self.mutation_names:
+                                self.error(f"{params_path}.mutations[{idx}]", f"unknown mutation '{m}'")
                 if "min_rarity" in parameters:
                     self._validate_enum_string(params_path, parameters, "min_rarity", RARITY_VALUES)
                 if "max_rarity" in parameters:
@@ -496,16 +546,14 @@ class BaseEventValidator:
 
         elif action_type == "add_breed":
             self._validate_allowed_keys(
-                params_path, parameters, common_allowed | {"breed", "breed_id", "weight", "min_rarity", "max_rarity"}
+                params_path, parameters, common_allowed | {"breed", "weight", "min_rarity", "max_rarity"}
             )
             self._validate_optional_known_name(params_path, parameters, "breed", self.breed_names)
             self._validate_optional_number(params_path, parameters, "weight", minimum_exclusive=0)
             self._validate_target_type(path, action_type, target_type, {"pooch", "kennel", "owner", "server"})
 
         elif action_type == "remove_breed":
-            self._validate_allowed_keys(
-                params_path, parameters, common_allowed | {"breed", "breed_id", "min_rarity", "max_rarity"}
-            )
+            self._validate_allowed_keys(params_path, parameters, common_allowed | {"breed", "min_rarity", "max_rarity"})
             self._validate_optional_known_name(params_path, parameters, "breed", self.breed_names)
             self._validate_target_type(path, action_type, target_type, {"pooch", "kennel", "owner", "server"})
 
@@ -553,7 +601,7 @@ class BaseEventValidator:
             self._validate_optional_int(params_path, parameters, "base_health")
             self._validate_optional_int(params_path, parameters, "breeding_cooldown", minimum=0)
             self._validate_enum_string(
-                params_path, parameters, "destination", {"kennel", "graveyard", "hell", "town", "stray"}
+                params_path, parameters, "destination", {"kennel", "graveyard", "hell", "town", "vendor"}
             )
             self._validate_optional_string(params_path, parameters, "save_as", allow_blank=False)
             self._validate_target_type(path, action_type, target_type, {"owner", "server"})
@@ -586,7 +634,9 @@ class BaseEventValidator:
             self._validate_optional_int(params_path, parameters, "age", minimum=0)
             self._validate_optional_int(params_path, parameters, "base_health")
             self._validate_optional_int(params_path, parameters, "breeding_cooldown", minimum=0)
-            self._validate_enum_string(params_path, parameters, "destination", {"kennel", "graveyard", "hell", "town"})
+            self._validate_enum_string(
+                params_path, parameters, "destination", {"kennel", "graveyard", "hell", "town", "vendor"}
+            )
             self._validate_save_as_with_targets(params_path, parameters, {"clone", "source"})
             self._validate_target_type(path, action_type, target_type, {"pooch", "kennel", "owner", "server"})
 
@@ -603,29 +653,47 @@ class BaseEventValidator:
                 self.error(params_path, "'mode' must be 'modify' or 'set'")
             self._validate_target_type(path, action_type, target_type, {"kennel", "owner"})
 
+        elif action_type == "upgrade_kennel":
+            self._validate_allowed_keys(
+                params_path,
+                parameters,
+                common_allowed | {"amount", "min_amount", "max_amount", "exclude_amount", "roll_once"},
+            )
+            self._validate_requires_one_of(params_path, parameters, [("amount",), ("min_amount", "max_amount")])
+            self._validate_amount_group(params_path, parameters)
+            self._validate_optional_bool(params_path, parameters, "roll_once")
+            self._validate_target_type(path, action_type, target_type, {"kennel", "owner"})
+
+        elif action_type == "delete_kennel":
+            self._validate_allowed_keys(params_path, parameters, common_allowed)
+            self._validate_target_type(path, action_type, target_type, {"kennel", "owner"})
+
         elif action_type == "rename_pooch":
             self._validate_allowed_keys(params_path, parameters, common_allowed | {"name"})
             self._validate_optional_string(params_path, parameters, "name", allow_blank=False)
             self._validate_requires_one_of(params_path, parameters, [("name",)])
             self._validate_target_type(path, action_type, target_type, {"pooch", "kennel", "owner", "server"})
 
-        elif action_type in {"set_breeding_cooldown", "modify_breeding_cooldown"}:
+        elif action_type in {"modify_breeding_cooldown"}:
             self._validate_allowed_keys(
                 params_path,
                 parameters,
-                common_allowed
-                | {"cooldown", "amount", "min_amount", "max_amount", "exclude_amount", "roll_once", "mode"},
+                common_allowed | {"reset", "amount", "min_amount", "max_amount", "exclude_amount", "roll_once", "mode"},
             )
-            if "cooldown" in parameters:
-                self._validate_cooldown_value(params_path, parameters, "cooldown")
-            if "amount" in parameters or "min_amount" in parameters:
-                self._validate_amount_group(params_path, parameters)
-            self._validate_requires_one_of(
-                params_path, parameters, [("cooldown",), ("amount",), ("min_amount", "max_amount")]
-            )
-            self._validate_optional_bool(params_path, parameters, "roll_once")
-            if "mode" in parameters and parameters["mode"] not in {"modify", "set"}:
-                self.error(params_path, "'mode' must be 'modify' or 'set'")
+            is_reset = self._validate_optional_bool(params_path, parameters, "reset")
+            if is_reset:
+                for disallowed in ("amount", "min_amount", "max_amount", "roll_once", "mode"):
+                    if disallowed in parameters:
+                        self.error(params_path, f"'{disallowed}' cannot be used with 'reset'")
+            else:
+                if "amount" in parameters or "min_amount" in parameters:
+                    self._validate_amount_group(params_path, parameters)
+                self._validate_requires_one_of(
+                    params_path, parameters, [("reset",), ("amount",), ("min_amount", "max_amount")]
+                )
+                self._validate_optional_bool(params_path, parameters, "roll_once")
+                if "mode" in parameters and parameters["mode"] not in {"modify", "set"}:
+                    self.error(params_path, "'mode' must be 'modify' or 'set'")
             self._validate_target_type(path, action_type, target_type, {"pooch", "kennel", "owner", "server"})
 
         elif action_type == "start_event":
@@ -746,7 +814,7 @@ class BaseEventValidator:
             self._validate_target_type(path, action_type, target_type, {"server"})
 
         elif action_type == "select_pooch":
-            self._validate_allowed_keys(params_path, parameters, common_allowed | {"save_as"})
+            self._validate_allowed_keys(params_path, parameters, common_allowed | {"save_as", "featured"})
             self._validate_optional_string(params_path, parameters, "save_as", allow_blank=False)
             self._validate_target_type(path, action_type, target_type, {"pooch", "kennel", "owner", "server"})
 
@@ -799,6 +867,28 @@ class BaseEventValidator:
                 self.error(params_path, "'mode' must be 'modify' or 'set'")
             self._validate_target_type(path, action_type, target_type, {"pooch", "kennel", "owner", "server"})
 
+        elif action_type in {
+            "modify_strength",
+            "modify_cuteness",
+            "modify_fluffiness",
+            "modify_intelligence",
+            "modify_dexterity",
+            "modify_fertility",
+            "modify_aggressiveness",
+            "modify_constitution",
+        }:
+            self._validate_allowed_keys(
+                params_path,
+                parameters,
+                common_allowed | {"amount", "min_amount", "max_amount", "exclude_amount", "roll_once", "mode"},
+            )
+            self._validate_requires_one_of(params_path, parameters, [("amount",), ("min_amount", "max_amount")])
+            self._validate_amount_group(params_path, parameters)
+            self._validate_optional_bool(params_path, parameters, "roll_once")
+            if "mode" in parameters and parameters["mode"] not in {"add", "set"}:
+                self.error(params_path, "'mode' must be 'add' or 'set'")
+            self._validate_target_type(path, action_type, target_type, {"pooch", "kennel", "owner", "server"})
+
         elif action_type == "set_pooch_age":
             self._validate_allowed_keys(params_path, parameters, common_allowed | {"age"})
             self._validate_optional_int(params_path, parameters, "age", minimum=0)
@@ -840,9 +930,21 @@ class BaseEventValidator:
 
         self._validate_min_max_pair(path, filter_data, "min_capacity", "max_capacity", minimum=0)
         self._validate_int_list(path, filter_data, "exclude_capacity")
-        if isinstance(filter_data.get("max_pooches", 0), int):
-            self._validate_min_max_pair(path, filter_data, "min_pooches", "max_pooches", minimum=0)
+        self._validate_min_max_pair(path, filter_data, "min_upgrade_tier", "max_upgrade_tier", minimum=0)
+        self._validate_int_list(path, filter_data, "exclude_upgrade_tier")
+        max_pooches = filter_data.get("max_pooches")
+        if max_pooches is not None:
+            if isinstance(max_pooches, bool) or not isinstance(max_pooches, int):
+                self.error(
+                    f"{path}.max_pooches",
+                    "must be an integer (use negative values like -1 for capacity-relative limits)",
+                )
+            else:
+                self._validate_optional_int(path, filter_data, "min_pooches", minimum=0)
+        elif "min_pooches" in filter_data:
+            self._validate_optional_int(path, filter_data, "min_pooches", minimum=0)
         self._validate_int_list(path, filter_data, "exclude_pooches")
+        self._validate_optional_bool(path, filter_data, "at_capacity")
 
         pooches = filter_data.get("pooches", [])
         if not isinstance(pooches, list):
@@ -927,8 +1029,7 @@ class BaseEventValidator:
         self._validate_int_list(path, filter_data, "exclude_money")
         self._validate_min_max_pair(path, filter_data, "min_bloodskulls", "max_bloodskulls")
         self._validate_int_list(path, filter_data, "exclude_bloodskulls")
-        if isinstance(filter_data.get("max_pooches", 0), int):
-            self._validate_min_max_pair(path, filter_data, "min_pooches", "max_pooches", minimum=0)
+        self._validate_min_max_pair(path, filter_data, "min_pooches", "max_pooches", minimum=0)
         self._validate_int_list(path, filter_data, "exclude_pooches")
         self._validate_min_max_pair(path, filter_data, "min_kennels", "max_kennels", minimum=0)
         self._validate_int_list(path, filter_data, "exclude_kennels")
@@ -1241,18 +1342,6 @@ class BaseEventValidator:
             )
             return None
         return normalized
-
-    def _validate_cooldown_value(self, path: str, value: dict[str, Any], field_name: str) -> None:
-        if field_name not in value:
-            return
-        raw_value = value[field_name]
-        if isinstance(raw_value, str):
-            if raw_value.strip().lower() != "base":
-                self.error(f"{path}.{field_name}", "string value must be 'base'")
-        elif isinstance(raw_value, bool) or not isinstance(raw_value, int):
-            self.error(f"{path}.{field_name}", "must be an integer or 'base'")
-        elif raw_value < 0:
-            self.error(f"{path}.{field_name}", "must be at least 0")
 
     def _validate_save_as_with_targets(self, path: str, parameters: dict[str, Any], valid_targets: set[str]) -> None:
         """

@@ -9,13 +9,12 @@
   },
   "actions": [
     {
-      "action_type": "modify_base_health",
+      "action_type": "injure_pooch",
       "target_type": "server",
       "parameters": {
         "pool": "stray",
         "selector": "all",
-        "min_amount": -3,
-        "max_amount": -1
+        "injury": "Minor"
       }
     }
   ]

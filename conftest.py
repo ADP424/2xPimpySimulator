@@ -80,6 +80,7 @@ def make_pooch(
         mood=mood,
         breeds=[],
         mutations=[],
+        injuries=[],
         parameters={},
     )
     attrs.update(overrides)

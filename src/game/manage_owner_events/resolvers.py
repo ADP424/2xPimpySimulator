@@ -50,7 +50,7 @@ async def get_target_pooch_ids(
         Resolved pooch IDs to act on (may be empty).
     """
     action_filter = parameters.get("filter", {})
-    filter_spec = action_filter if isinstance(action_filter, dict) else {}
+    filter_spec = dict(action_filter) if isinstance(action_filter, dict) else {}
     count_param = parameters.get("count")
     count = int(count_param) if isinstance(count_param, int) and count_param > 0 else None
 

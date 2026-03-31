@@ -4,7 +4,14 @@ from sqlalchemy import delete, select
 
 from src.logger import get_logger
 
-from ...models import Breed, Mutation, StrayEvent, StrayEventAction, StrayEventOutcome
+from ...models import (
+    Breed,
+    Injury,
+    Mutation,
+    StrayEvent,
+    StrayEventAction,
+    StrayEventOutcome,
+)
 from ...session import session_scope
 from .utils import (
     EVENT_SEVERITY_VALUES,
@@ -36,7 +43,8 @@ _OUTCOME_ALLOWED_KEYS = {
 }
 
 _STRAY_ACTION_TYPES = {
-    "modify_pooch_health",
+    "modify_base_health",
+    "injure_pooch",
     "modify_pooch_age",
     "kill_pooch",
     "add_mutation",
@@ -45,7 +53,7 @@ _STRAY_ACTION_TYPES = {
     "create_pooch",
     "clone_pooch",
     "rename_pooch",
-    "set_breeding_cooldown",
+    "modify_breeding_cooldown",
     "breed_pooches",
     "enter_kennel",
     "enter_vendor_stock",
@@ -225,6 +233,7 @@ async def load_stray_events():
         mutation_names = {
             name.strip().lower() for name in (await session.execute(select(Mutation.name))).scalars().all()
         }
+        injury_names = {name.strip().lower() for name in (await session.execute(select(Injury.name))).scalars().all()}
         breed_name_to_id = {
             breed.name.strip().lower(): breed.id for breed in (await session.execute(select(Breed))).scalars().all()
         }
@@ -237,6 +246,7 @@ async def load_stray_events():
             breed_names=breed_names,
             mutation_names=mutation_names,
             event_names=event_names,
+            injury_names=injury_names,
         )
         validator.validate_stray_events_json(stray_events_json)
         validator.raise_if_invalid()

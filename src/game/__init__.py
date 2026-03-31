@@ -74,6 +74,7 @@ from .manage_pooches import (
     get_pooch_family_tree,
     rename_pooch,
     run_hourly_breeding_cooldown_check,
+    run_hourly_injury_persistence_check,
 )
 from .manage_server_events import (
     get_active_server_event,
@@ -162,6 +163,7 @@ __all__ = [
     "get_pooch_family_tree",
     "rename_pooch",
     "run_hourly_breeding_cooldown_check",
+    "run_hourly_injury_persistence_check",
     # Stray event commands
     "run_daily_stray_event_check",
     "trigger_stray_event_by_name",

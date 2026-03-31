@@ -18,9 +18,8 @@ def _make_vendor(id=1, name="Barker Bros"):
     vendor = MagicMock()
     vendor.id = id
     vendor.name = name
-    vendor.desired_mutation_1 = None
-    vendor.desired_mutation_2 = None
-    vendor.desired_mutation_3 = None
+    vendor.desired_mutations = []
+    vendor.desired_breeds = []
     return vendor
 
 
@@ -109,8 +108,8 @@ class TestVendorPageControls:
         view = MagicMock()
         view.add_item = MagicMock()
         controls.attach(view)
-        # mutation_select, pooch_select, info, buy, sell
-        assert view.add_item.call_count == 5
+        # mutation_select, breed_select, pooch_select, info, buy, sell
+        assert view.add_item.call_count == 6
 
     async def test_buy_defers_and_calls_game(self):
         vendor = _make_vendor()
@@ -304,9 +303,7 @@ class TestVendorPageControlsExtended:
         mutation = MagicMock()
         mutation.id = 10
         mutation.name = "Cataracts"
-        vendor.desired_mutation_1 = mutation
-        vendor.desired_mutation_2 = None
-        vendor.desired_mutation_3 = None
+        vendor.desired_mutations = [mutation]
 
         controls = VendorPageControls(
             server_discord_id=200,

@@ -25,6 +25,7 @@ _HEALTH_IMPACT_ORDER = [
 from .models import (
     AuctionBid,
     Breed,
+    Kennel,
     KennelPooch,
     Mutation,
     Pooch,
@@ -98,6 +99,33 @@ async def delete_pooch(pooch_id: int) -> Optional[Pooch]:
         await session.execute(delete(Pooch).where(Pooch.id == pooch_id))
 
     return pooch
+
+
+async def delete_kennel(kennel_id: int) -> Optional[Kennel]:
+    """
+    Delete a kennel from the database (cascade deletes its KennelPooch rows).
+
+    Parameters
+    ----------
+    kennel_id: int
+        The ID of the kennel to delete.
+
+    Returns
+    -------
+    Kennel, optional
+        The deleted Kennel ORM object, or None if not found.
+    """
+
+    async with session_scope() as session:
+        response = await session.execute(select(Kennel).where(Kennel.id == kennel_id))
+        kennel = response.scalar_one_or_none()
+        if kennel is None:
+            return None
+
+        await session.delete(kennel)
+        await session.flush()
+
+    return kennel
 
 
 async def delete_pregnancy(mother_id: int, fetus_id: int) -> Optional[Pooch]:

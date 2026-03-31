@@ -234,8 +234,14 @@ class PoochInfoView(View):
         else:
             mutation_text = "None"
 
+        if self.pooch.injuries:
+            injury_text = ", ".join(injury.name for injury in self.pooch.injuries)
+        else:
+            injury_text = "None"
+
         embed.add_field(name="Breeds", value=breed_text, inline=False)
         embed.add_field(name="Mutations", value=mutation_text, inline=False)
+        embed.add_field(name="Injuries", value=injury_text, inline=False)
 
         if is_dev:
             p = self.pooch

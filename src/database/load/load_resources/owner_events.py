@@ -4,7 +4,15 @@ from sqlalchemy import delete, select
 
 from src.logger import get_logger
 
-from ...models import Breed, Event, EventAction, EventOption, EventOutcome, Mutation
+from ...models import (
+    Breed,
+    Event,
+    EventAction,
+    EventOption,
+    EventOutcome,
+    Injury,
+    Mutation,
+)
 from ...session import session_scope
 from .utils import (
     EVENT_SEVERITY_VALUES,
@@ -210,11 +218,13 @@ async def load_owner_events():
             mutation.name.strip().lower(): mutation.id
             for mutation in (await session.execute(select(Mutation))).scalars().all()
         }
+        injury_names = {name.strip().lower() for name in (await session.execute(select(Injury.name))).scalars().all()}
 
         validator = _OwnerEventValidator(
             breed_names=breed_names,
             mutation_names=mutation_names,
             event_names=event_names,
+            injury_names=injury_names,
         )
         validator.validate_owner_events_json(owner_events_json)
         validator.raise_if_invalid()

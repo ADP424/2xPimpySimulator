@@ -94,32 +94,53 @@ How many more/fewer age cycles before the pooch can breed again. Added to the ba
 A custom message to replace the standard one with when the pooch dies of this mutation.
 - "[pooch]" is replaced by the name of the pooch with the mutation.
 
-### `impact_message` : `string`
-A custom message to replace the standard one with when this mutation impacts another pooch with an `on_death` effect.
-- "[pooch]" is replaced with the name of the pooch with the mutation.
-- "[victim]" is replaced with the name of the pooch affected by the mutation.
+### `on_death_triggers` : `list[object]`
+A list of on-death trigger objects. Each trigger defines an effect that fires when the pooch dies. Multiple triggers are supported; each is evaluated independently. Example:
+```jsonc
+"on_death_triggers": [
+    {
+        "on_death": "kill",
+        "on_death_targets": "all",
+        "impact_message": "[victim] was killed in [pooch]'s explosion."
+    },
+    {
+        "on_death": "send_to_hell",
+        "always_on_death": true,
+        "on_death_chance": 0.5,
+        "impact_message": "[pooch] was dragged to hell."
+    }
+]
+```
 
-### `on_death` : `string`
-An effect the pooch has on its targets when it dies (see `on_death_targets`).
-- `kill`: Causes every target to immediately die.
-- `spread`: Causes every target to immediately inherit this mutation.
-- `spread_all`: Causes every target to immediately inherit ALL mutations the pooch with this mutation has.
+Each trigger object supports the following fields:
 
-### `on_death_chance` : `float`
-The chance, as a float between 0 and 1, inclusive, that the `on_death` effect will happen.
-This chance is rolled individually for each member in the `on_death_targets`.
-The chance is 1.0 (100%) by default.
+#### `on_death` : `string`
+An effect the pooch has when it dies.
+- `kill`: Causes every target to immediately die (see `on_death_targets`).
+- `spread`: Causes every target to immediately inherit this mutation (see `on_death_targets`).
+- `spread_all`: Causes every target to immediately inherit ALL mutations the pooch has (see `on_death_targets`).
+- `send_to_hell`: Sends the dead pooch itself to hell instead of the graveyard.
 
-### `always_on_death` : `bool`
-Whether the `on_death` effect should always trigger or only trigger if the mutation is the one that killed the pooch.
-- `false`: The `on_death` will only trigger if it was this mutation that killed the pooch. This is the default.
-- `true`: The `on_death` will trigger when the pooch dies, no matter what kills it.
-
-### `on_death_targets` : `string`
-If the pooch has an on_death impact, who are the targets?
+#### `on_death_targets` : `string`
+Who the effect targets. Not used by `send_to_hell`.
 - `none`: No targets. This is the default.
 - `all`: Every other pooch in the kennel is a target.
 - `random`: A random pooch in the kennel is a target.
+
+#### `on_death_chance` : `float`
+The chance, as a float between 0 and 1, inclusive, that this trigger fires.
+For target-based effects, the chance is rolled independently per target.
+The chance is 1.0 (100%) by default.
+
+#### `always_on_death` : `bool`
+Whether this trigger fires regardless of what killed the pooch, or only if this mutation was the cause of death.
+- `false`: Only triggers if this mutation killed the pooch. This is the default.
+- `true`: Triggers whenever the pooch dies, no matter what kills it.
+
+#### `impact_message` : `string`
+A custom message when this trigger fires.
+- "[pooch]" is replaced with the name of the pooch with the mutation.
+- "[victim]" is replaced with the name of the target pooch (for target-based effects).
 
 
 ## Heritability

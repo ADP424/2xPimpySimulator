@@ -82,6 +82,13 @@ async def resolve_owner_event_entity_references(
     if context.selected_pooch_id is not None:
         pooch_ids.add(context.selected_pooch_id)
 
+    featured_slot = context.extra_data.get("_featured_pooch_slot")
+    if isinstance(featured_slot, str) and featured_slot:
+        slot = context.extra_data.get(featured_slot, {})
+        for pid in slot.get("pooch_ids", []):
+            if isinstance(pid, int):
+                pooch_ids.add(pid)
+
     breed_ids: set[int] = set()
     mutation_ids: set[int] = set()
 

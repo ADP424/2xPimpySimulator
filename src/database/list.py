@@ -17,6 +17,7 @@ from .models import (
     GraveyardPooch,
     HealthImpactWeight,
     HellPooch,
+    Injury,
     Kennel,
     KennelPooch,
     Mutation,
@@ -24,6 +25,7 @@ from .models import (
     OwnerServer,
     Pooch,
     PoochBreed,
+    PoochInjury,
     PoochMutation,
     PoochParentage,
     PoochPregnancy,
@@ -578,6 +580,19 @@ async def list_pooch_mutations(
         query = query.where(or_(*conditions))
         response = await session.execute(query)
 
+    return list(response.scalars().all())
+
+
+async def list_pooch_injuries(pooch_id: int) -> list[Injury]:
+    """Fetch the list of injuries the given pooch has."""
+    async with session_scope() as session:
+        query = (
+            select(Injury)
+            .join(PoochInjury, PoochInjury.injury_id == Injury.id)
+            .where(PoochInjury.pooch_id == pooch_id)
+            .order_by(Injury.health_impact)
+        )
+        response = await session.execute(query)
     return list(response.scalars().all())
 
 

@@ -5,6 +5,7 @@ from .hell_pooch import HellPooch
 from .kennel_pooch import KennelPooch
 from .owner_server import OwnerServer
 from .pooch_breed import PoochBreed
+from .pooch_injury import PoochInjury
 from .pooch_mutation import PoochMutation
 from .pooch_parentage import PoochParentage
 from .pooch_pregnancy import PoochPregnancy
@@ -25,6 +26,7 @@ __all__ = [
     "KennelPooch",
     "OwnerServer",
     "PoochBreed",
+    "PoochInjury",
     "PoochMutation",
     "PoochParentage",
     "PoochPregnancy",

@@ -127,7 +127,7 @@ class TestHandleModifyAge:
 class TestHandleKillPooch:
     @patch("src.game.action_helpers.pooch_actions.set_pooch_dead", new_callable=AsyncMock)
     async def test_single_kill(self, mock_kill, rng):
-        mock_kill.return_value = SimpleNamespace(id=1)
+        mock_kill.return_value = SimpleNamespace(id=1, owner_discord_id=None)
         result = _make_result()
         await handle_kill_pooch([1], {}, rng, result)
         mock_kill.assert_awaited_once_with(1)
@@ -136,7 +136,7 @@ class TestHandleKillPooch:
 
     @patch("src.game.action_helpers.pooch_actions.set_pooch_dead", new_callable=AsyncMock)
     async def test_multiple_kills(self, mock_kill, rng):
-        mock_kill.return_value = SimpleNamespace(id=1)
+        mock_kill.return_value = SimpleNamespace(id=1, owner_discord_id=None)
         result = _make_result()
         await handle_kill_pooch([1, 2, 3], {}, rng, result)
         assert len(result.pooches_killed) == 3
@@ -435,16 +435,15 @@ class TestHandleModifyBreedingCooldown:
     @patch("src.game.action_helpers.pooch_actions.set_pooch_breeding_cooldown", new_callable=AsyncMock)
     async def test_explicit_cooldown_value(self, mock_set, rng):
         result = _make_result()
-        await handle_modify_breeding_cooldown([1], {"cooldown": 10}, rng, result)
+        await handle_modify_breeding_cooldown([1], {"amount": 10, "mode": "set"}, rng, result)
         mock_set.assert_awaited_once_with(1, 10)
         assert result.pooches_affected == [1]
 
     @patch("src.game.action_helpers.pooch_actions.reset_pooch_breeding_cooldown", new_callable=AsyncMock)
-    @patch("src.game.action_helpers.pooch_actions._get_breeding_cooldown_default", return_value=5)
-    async def test_cooldown_base(self, mock_default, mock_reset, rng):
+    async def test_cooldown_base(self, mock_reset, rng):
         result = _make_result()
-        await handle_modify_breeding_cooldown([1], {"cooldown": "base"}, rng, result)
-        mock_reset.assert_awaited_once_with(1, base_cooldown=5)
+        await handle_modify_breeding_cooldown([1], {"reset": True}, rng, result)
+        mock_reset.assert_awaited_once_with(1)
         assert result.pooches_affected == [1]
 
     @patch("src.game.action_helpers.pooch_actions.modify_pooch_breeding_cooldown", new_callable=AsyncMock)

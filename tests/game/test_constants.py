@@ -34,9 +34,3 @@ def test_event_hourly_trigger_chance_is_in_range():
     from src.game.constants import EVENT_HOURLY_TRIGGER_CHANCE
 
     assert 0.0 <= EVENT_HOURLY_TRIGGER_CHANCE <= 1.0
-
-
-def test_kennel_upgrade_prices_are_ascending():
-    from src.game.constants import KENNEL_UPGRADE_PRICES
-
-    assert KENNEL_UPGRADE_PRICES == sorted(KENNEL_UPGRADE_PRICES)

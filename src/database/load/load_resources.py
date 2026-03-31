@@ -3,6 +3,7 @@ import asyncio
 from src.database.load.load_resources import (
     load_breeds,
     load_dog_names,
+    load_injuries,
     load_mutations,
     load_owner_events,
     load_server_events,
@@ -14,6 +15,7 @@ from src.database.load.load_resources import (
 __all__ = [
     "load_breeds",
     "load_mutations",
+    "load_injuries",
     "load_dog_names",
     "load_vendor_first_names",
     "load_vendor_last_names",

@@ -2,7 +2,7 @@ import random
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from sqlalchemy import and_, bindparam, delete, func, not_, or_, select
+from sqlalchemy import and_, bindparam, delete, func, not_, or_, select, update
 from sqlalchemy.orm import selectinload
 
 from .constants import (
@@ -26,6 +26,7 @@ from .models import (
     EventOccurrence,
     GraveyardPooch,
     HellPooch,
+    Injury,
     Kennel,
     KennelPooch,
     Mutation,
@@ -33,6 +34,7 @@ from .models import (
     OwnerServer,
     Pooch,
     PoochBreed,
+    PoochInjury,
     PoochMutation,
     PoochParentage,
     PoochPregnancy,
@@ -154,34 +156,73 @@ async def add_breed_to_pooch(
         if breed_id is None:
             return None
 
-        existing_pooch_breed = await session.scalar(
-            select(PoochBreed).where(
-                PoochBreed.pooch_id == pooch_id,
-                PoochBreed.breed_id == breed_id,
-            )
-        )
-        if existing_pooch_breed is not None:
-            return existing_pooch_breed
-
         if weight >= 1.0:
             await session.execute(delete(PoochBreed).where(PoochBreed.pooch_id == pooch_id))
-            pooch_breed = PoochBreed(
-                pooch_id=pooch_id,
-                breed_id=breed_id,
-                weight=1,
-            )
+            pooch_breed = PoochBreed(pooch_id=pooch_id, breed_id=breed_id, weight=1)
             session.add(pooch_breed)
             await session.flush()
             return pooch_breed
 
-        query = select(PoochBreed.weight).where(PoochBreed.pooch_id == pooch_id)
+        query = select(PoochBreed.breed_id, PoochBreed.weight).where(PoochBreed.pooch_id == pooch_id)
         response = await session.execute(query)
-        total_weight = sum(response.scalars().all())
-        pooch_breed = PoochBreed(
-            pooch_id=pooch_id, breed_id=breed_id, weight=max(round((weight / (1.0 - weight)) * total_weight), 1)
-        )
-        session.add(pooch_breed)
+        existing = response.tuples().all()  # list of (breed_id, weight)
+        existing_total = sum(w for _, w in existing)
+
+        existing_breed_weight = next((w for bid, w in existing if bid == breed_id), 0)
+        current_fraction = existing_breed_weight / existing_total if existing_total > 0 else 0.0
+        combined_fraction = min(current_fraction + weight, 0.9999)
+
+        others_total = existing_total - existing_breed_weight
+        if others_total == 0:
+            # Pooch only has this breed already; nothing to rescale.
+            pooch_breed = await session.scalar(
+                select(PoochBreed).where(PoochBreed.pooch_id == pooch_id, PoochBreed.breed_id == breed_id)
+            )
+            return pooch_breed
+
+        # combined_fraction = target / (target + others_total)
+        new_weight_raw = (combined_fraction / (1.0 - combined_fraction)) * others_total
+        raw_weights = [(bid, w) for bid, w in existing if bid != breed_id] + [(breed_id, new_weight_raw)]
+        raw_total = sum(w for _, w in raw_weights)
+
+        # Drop any breed (except the one being added) that would be <1% of the total.
+        raw_weights = [(bid, w) for bid, w in raw_weights if bid == breed_id or w / raw_total >= 0.01]
+        min_raw = min(r for _, r in raw_weights)
+        scaled = [(bid, max(round(r / min_raw), 1)) for bid, r in raw_weights]
+
+        # Delete breeds that were pruned below the 1% threshold.
+        surviving_ids = {bid for bid, _ in scaled}
+        pruned_ids = [bid for bid, _ in existing if bid not in surviving_ids]
+        if pruned_ids:
+            await session.execute(
+                delete(PoochBreed).where(PoochBreed.pooch_id == pooch_id, PoochBreed.breed_id.in_(pruned_ids))
+            )
+
+        breed_already_exists = existing_breed_weight > 0
+        for scaled_breed_id, int_weight in scaled:
+            if scaled_breed_id == breed_id:
+                if breed_already_exists:
+                    await session.execute(
+                        update(PoochBreed)
+                        .where(PoochBreed.pooch_id == pooch_id, PoochBreed.breed_id == scaled_breed_id)
+                        .values(weight=int_weight)
+                    )
+                else:
+                    pooch_breed = PoochBreed(pooch_id=pooch_id, breed_id=breed_id, weight=int_weight)
+                    session.add(pooch_breed)
+            else:
+                await session.execute(
+                    update(PoochBreed)
+                    .where(PoochBreed.pooch_id == pooch_id, PoochBreed.breed_id == scaled_breed_id)
+                    .values(weight=int_weight)
+                )
+
         await session.flush()
+
+        if breed_already_exists:
+            pooch_breed = await session.scalar(
+                select(PoochBreed).where(PoochBreed.pooch_id == pooch_id, PoochBreed.breed_id == breed_id)
+            )
 
     return pooch_breed
 
@@ -202,9 +243,9 @@ async def add_mutation_to_pooch(
     """
     Add the mutation with the given ID to the pooch with the given ID.
     If a mutation ID isn't given, choose a random one, with chance based on its rarity.
-    When ``season`` is provided (e.g. ``"spring"``), mutations whose ``parameters.seasons``
+    When `season` is provided (e.g. `"spring"`), mutations whose `parameters.seasons`
     list does not include that season are excluded from random selection (case-insensitive).
-    Mutations with no ``seasons`` key are always eligible.
+    Mutations with no `seasons` key are always eligible.
 
     Parameters
     ----------
@@ -348,6 +389,41 @@ async def add_mutation_to_pooch(
         await session.flush()
 
     return pooch_mutation
+
+
+async def add_injury_to_pooch(pooch_id: int, injury_id: int) -> Optional[PoochInjury]:
+    """
+    Add an injury to the given pooch.
+
+    Parameters
+    ----------
+    pooch_id: int
+        The ID of the pooch to add the injury to.
+    injury_id: int
+        The ID of the injury to add.
+
+    Returns
+    -------
+    PoochInjury, optional
+        The newly created PoochInjury record, or None if the injury was not found.
+    """
+    async with session_scope() as session:
+        injury = await session.get(Injury, injury_id)
+        if injury is None:
+            return None
+        max_duplicates = (injury.parameters or {}).get("max_duplicates")
+        if max_duplicates is not None:
+            count_query = select(func.count()).where(
+                and_(PoochInjury.pooch_id == pooch_id, PoochInjury.injury_id == injury_id)
+            )
+            existing_count = (await session.execute(count_query)).scalar_one()
+            if existing_count >= max_duplicates:
+                return None
+        persistence = (injury.parameters or {}).get("persistence")
+        pooch_injury = PoochInjury(pooch_id=pooch_id, injury_id=injury_id, persistence=persistence)
+        session.add(pooch_injury)
+        await session.flush()
+    return pooch_injury
 
 
 async def add_owner_to_server(server_discord_id: int, owner_discord_id: int) -> OwnerServer:

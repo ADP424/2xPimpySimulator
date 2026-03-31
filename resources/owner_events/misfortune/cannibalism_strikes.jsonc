@@ -9,12 +9,14 @@
         "kennels": [
             {
                 "pooches": [
-                    { 
+                    {
+                        "min_count": 1,
                         "has_all_mutations": ["cannibalism"],
                         "is_alive": true
                     },
-                    { 
+                    {
                         "min_count": 1,
+                        "exclude_mutations": ["cannibalism"],
                         "is_alive": true
                     }
                 ]
@@ -23,23 +25,28 @@
     },
     "actions": [
         {
-            "action_type": "modify_money",
-            "target_type": "owner",
-            "parameters": {
-                "min_amount": 100,
-                "max_amount": 500
-            }
-        },
-        {
-            "action_type": "modify_pooch_health",
+            "action_type": "modify_base_health",
             "target_type": "pooch",
             "parameters": {
                 "selector": "random",
+                "min_amount": 1,
+                "max_amount": 2,
                 "filter":{
-                    
+                    "has_all_mutations": ["cannibalism"]
                 },
-                "count": 1,
-                "amount": -5
+                "save_as": "cannibal",
+                "save_kennel": true
+            }
+        },
+        {
+            "action_type": "kill_pooch",
+            "target_type": "kennel",
+            "parameters": {
+                "use_saved": "cannibal",
+                "pooch_selector": "random",
+                "pooch_filter": {
+                    "exclude_mutations": ["cannibalism"]
+                }
             }
         }
     ]

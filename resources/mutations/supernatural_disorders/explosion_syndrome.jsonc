@@ -6,10 +6,14 @@
     "health_impact": "INSTANT_DEATH",
     "rarity": "EXTRAORDINARY",
     "parameters": {
-        "on_death": "kill",
-        "on_death_targets": "all",
+        "strength_add": 5,
         "death_message": "[pooch] exploded all over the walls.",
-        "impact_message": "[victim] was killed in [pooch]'s explosion.",
-        "strength_add": 5
+        "on_death_triggers": [
+            {
+                "on_death": "kill",
+                "on_death_targets": "all",
+                "impact_message": "[victim] was killed in [pooch]'s explosion."
+            }
+        ]
     }
 }

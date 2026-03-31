@@ -15,7 +15,7 @@
         "pool": "in_hell",
         "selector": "random",
         "count": 1,
-        "destination": "stray",
+        "destination": "town",
         "save_as": "escapee"
       }
     },
@@ -24,7 +24,7 @@
       "target_type": "server",
       "parameters": {
         "pool": "saved",
-        "save_slot": "escapee",
+        "use_saved": "escapee",
         "selector": "all",
         "mutations": ["Mild Possession"]
       }

@@ -4,6 +4,13 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+
+@pytest.fixture(autouse=True)
+def mock_cancel_listing():
+    with patch("src.game.manage_vendors.cancel_listing_for_pooch", new=AsyncMock()):
+        yield
+
+
 from conftest import (
     make_breed,
     make_kennel,
@@ -162,44 +169,50 @@ class TestGetPoochSellPrice:
         price = await get_pooch_sell_price(1)
         assert price == 80
 
-    @patch("src.game.manage_vendors.get_mutation_by_id", new_callable=AsyncMock)
+    @patch("src.game.manage_vendors.list_vendor_desired_breeds", new_callable=AsyncMock)
+    @patch("src.game.manage_vendors.list_pooch_breeds", new_callable=AsyncMock)
+    @patch("src.game.manage_vendors.list_vendor_desired_mutations", new_callable=AsyncMock)
     @patch("src.game.manage_vendors.list_pooch_mutations", new_callable=AsyncMock)
     @patch("src.game.manage_vendors.db_get_vendor_by_id", new_callable=AsyncMock)
     @patch("src.game.manage_vendors._get_pooch_base_price", new_callable=AsyncMock)
-    async def test_sell_price_with_desired_mutation_bonus(self, mock_base, mock_vendor, mock_muts, mock_get_mut):
+    async def test_sell_price_with_desired_mutation_bonus(
+        self, mock_base, mock_vendor, mock_muts, mock_desired, mock_breeds, mock_desired_breeds
+    ):
         """A vendor with desired mutations pays VENDOR_DESIRED_MUTATION_MULT (2x) per match."""
         mock_base.return_value = 100
 
         vendor = make_vendor(vendor_id=1)
-        vendor.desired_mutation_1 = 5
-        vendor.desired_mutation_2 = None
-        vendor.desired_mutation_3 = None
         mock_vendor.return_value = vendor
 
         mut = make_mutation(mutation_id=5)
         mock_muts.return_value = [mut]
-        mock_get_mut.side_effect = lambda mid: mut if mid == 5 else None
+        mock_desired.return_value = [mut]  # vendor desires this mutation
+        mock_breeds.return_value = []
+        mock_desired_breeds.return_value = []
 
         price = await get_pooch_sell_price(1, vendor_id=1)
         # base=100, one desired match => 100 * 2 = 200
         assert price == 200
 
-    @patch("src.game.manage_vendors.get_mutation_by_id", new_callable=AsyncMock)
+    @patch("src.game.manage_vendors.list_vendor_desired_breeds", new_callable=AsyncMock)
+    @patch("src.game.manage_vendors.list_pooch_breeds", new_callable=AsyncMock)
+    @patch("src.game.manage_vendors.list_vendor_desired_mutations", new_callable=AsyncMock)
     @patch("src.game.manage_vendors.list_pooch_mutations", new_callable=AsyncMock)
     @patch("src.game.manage_vendors.db_get_vendor_by_id", new_callable=AsyncMock)
     @patch("src.game.manage_vendors._get_pooch_base_price", new_callable=AsyncMock)
-    async def test_sell_price_no_matching_mutation(self, mock_base, mock_vendor, mock_muts, mock_get_mut):
+    async def test_sell_price_no_matching_mutation(
+        self, mock_base, mock_vendor, mock_muts, mock_desired, mock_breeds, mock_desired_breeds
+    ):
         """No desired mutation matches means base price returned."""
         mock_base.return_value = 100
 
         vendor = make_vendor(vendor_id=1)
-        vendor.desired_mutation_1 = 5
-        vendor.desired_mutation_2 = None
-        vendor.desired_mutation_3 = None
         mock_vendor.return_value = vendor
 
-        mock_muts.return_value = [make_mutation(mutation_id=99)]  # doesn't match 5
-        mock_get_mut.side_effect = lambda mid: make_mutation(mutation_id=mid) if mid is not None else None
+        mock_muts.return_value = [make_mutation(mutation_id=99)]  # doesn't match
+        mock_desired.return_value = [make_mutation(mutation_id=5)]  # vendor wants id=5
+        mock_breeds.return_value = []
+        mock_desired_breeds.return_value = []
 
         price = await get_pooch_sell_price(1, vendor_id=1)
         assert price == 100

@@ -162,16 +162,12 @@ def _format_result_summary(
     )
 
     lines: list[str] = []
+    if selected_outcome is not None:
+        outcome_message = selected_outcome.get("message") or selected_outcome.get("description") or None
+        if outcome_message:
+            lines.append(f"*{outcome_message}*")
     if result.message:
         lines.append(result.message)
-    elif selected_outcome is not None:
-        fallback_message = (
-            selected_outcome.get("message") or selected_outcome.get("description") or selected_outcome.get("label")
-        )
-        if fallback_message:
-            lines.append(str(fallback_message))
-    if selected_outcome and selected_outcome.get("label") and not result.message:
-        lines.append(f"Outcome: {selected_outcome['label']}")
     if result.money_changed:
         lines.append(f"Dollars: {result.money_changed:+d}")
     if result.bloodskulls_changed:
@@ -269,10 +265,33 @@ def _format_result_summary(
     return _truncate("\n".join(lines) if lines else "No recorded outcome.")
 
 
+def _featured_pooch_name(event: TriggeredOwnerEvent) -> str | None:
+    """Return the name of the featured pooch for this event, if any."""
+    extra = event.context.extra_data
+    slot_name = extra.get("_featured_pooch_slot")
+    if not isinstance(slot_name, str) or not slot_name:
+        return None
+    slot = extra.get(slot_name, {})
+    pooch_ids = slot.get("pooch_ids", []) if isinstance(slot, dict) else []
+    if not pooch_ids:
+        return None
+    pooch_id = pooch_ids[0]
+    for ref in event.entity_references.pooches:
+        if ref.id == pooch_id:
+            return ref.label
+    return f"Pooch #{pooch_id}"
+
+
 def build_triggered_event_embed(event: TriggeredOwnerEvent) -> discord.Embed:
+    description_parts = [event.description or "No description provided."]
+    if event.flavor_text:
+        description_parts.append(f"*{event.flavor_text.strip()}*")
+    featured = _featured_pooch_name(event)
+    if featured:
+        description_parts.append(f"**Pooch: {featured}**")
     embed = discord.Embed(
         title=f"🎲 {event.name}",
-        description=event.description or "No description provided.",
+        description="\n".join(description_parts),
         color=_color_for_severity(event.severity),
     )
 
@@ -285,9 +304,6 @@ def build_triggered_event_embed(event: TriggeredOwnerEvent) -> discord.Embed:
             f"**Expires:** {_discord_timestamp(event.expires_at, 'R')} ({_discord_timestamp(event.expires_at)})"
         )
     embed.add_field(name="Details", value="\n".join(details), inline=False)
-
-    if event.flavor_text:
-        embed.add_field(name="Flavor", value=_truncate(event.flavor_text), inline=False)
 
     entity_lines = _entity_reference_lines(event.context, event.entity_references)
     if entity_lines:
@@ -322,9 +338,12 @@ def build_resolved_event_embed(
 
 
 def build_history_embed(record: OwnerEventHistory, page_index: int, page_count: int) -> discord.Embed:
+    history_description_parts = [record.description or "No description provided."]
+    if record.flavor_text:
+        history_description_parts.append(f"*{record.flavor_text.strip()}*")
     embed = discord.Embed(
         title=f"📜 {record.name}",
-        description=record.description or "No description provided.",
+        description="\n".join(history_description_parts),
         color=_color_for_severity(record.severity),
     )
 
@@ -345,9 +364,6 @@ def build_history_embed(record: OwnerEventHistory, page_index: int, page_count: 
         details.append("**Status:** Auto-resolved")
 
     embed.add_field(name="Details", value="\n".join(details), inline=False)
-
-    if record.flavor_text:
-        embed.add_field(name="Flavor", value=_truncate(record.flavor_text), inline=False)
 
     entity_lines = _entity_reference_lines(record.context, record.entity_references)
     if entity_lines:

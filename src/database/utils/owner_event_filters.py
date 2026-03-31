@@ -256,6 +256,12 @@ async def _get_candidate_kennel_ids_for_owner(
         conditions.append(Kennel.pooch_limit <= filter_spec["max_capacity"])
     if filter_spec.get("exclude_capacity"):
         conditions.append(Kennel.pooch_limit.not_in(filter_spec["exclude_capacity"]))
+    if filter_spec.get("min_upgrade_tier") is not None:
+        conditions.append(Kennel.upgrade_tier >= filter_spec["min_upgrade_tier"])
+    if filter_spec.get("max_upgrade_tier") is not None:
+        conditions.append(Kennel.upgrade_tier <= filter_spec["max_upgrade_tier"])
+    if filter_spec.get("exclude_upgrade_tier"):
+        conditions.append(Kennel.upgrade_tier.not_in(filter_spec["exclude_upgrade_tier"]))
 
     query = select(Kennel.id).where(and_(*conditions))
 
@@ -274,13 +280,13 @@ async def _get_candidate_kennel_ids_for_owner(
             )
         )
     if max_pooches is not None:
-        if max_pooches[:8] == "capacity":
-            number = int(max_pooches[max_pooches.index("-") + 1 :].strip()) if "-" in max_pooches else 0
+        if max_pooches < 0:
+            # Negative value means relative to capacity: -1 = capacity - 1, etc.
             query = query.where(
                 Kennel.id.not_in(
                     select(pooch_count_subquery.c.kennel_id)
                     .join(Kennel, Kennel.id == pooch_count_subquery.c.kennel_id)
-                    .where(pooch_count_subquery.c.pooch_count > (Kennel.pooch_limit - number))
+                    .where(pooch_count_subquery.c.pooch_count > (Kennel.pooch_limit + max_pooches))
                 )
             )
         else:
@@ -293,6 +299,23 @@ async def _get_candidate_kennel_ids_for_owner(
         query = query.where(
             Kennel.id.not_in(
                 select(pooch_count_subquery.c.kennel_id).where(pooch_count_subquery.c.pooch_count.in_(exclude_pooches))
+            )
+        )
+    at_capacity = filter_spec.get("at_capacity")
+    if at_capacity is True:
+        query = query.where(
+            Kennel.id.in_(
+                select(pooch_count_subquery.c.kennel_id)
+                .join(Kennel, Kennel.id == pooch_count_subquery.c.kennel_id)
+                .where(pooch_count_subquery.c.pooch_count >= Kennel.pooch_limit)
+            )
+        )
+    elif at_capacity is False:
+        query = query.where(
+            Kennel.id.not_in(
+                select(pooch_count_subquery.c.kennel_id)
+                .join(Kennel, Kennel.id == pooch_count_subquery.c.kennel_id)
+                .where(pooch_count_subquery.c.pooch_count >= Kennel.pooch_limit)
             )
         )
 

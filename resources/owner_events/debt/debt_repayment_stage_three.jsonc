@@ -23,8 +23,9 @@
     "actions": [
         {
             "action_type": "modify_kennel_capacity",
-            "target_type": "owner",
+            "target_type": "kennel",
             "parameters": {
+                "selector": "random",
                 "amount": -5
             }
         },
@@ -32,7 +33,7 @@
             "action_type": "modify_money",
             "target_type": "owner",
             "parameters": {
-                "amount": 100 // TODO: Set to however expensive half a kennel expansion is.
+                "amount": 100
             }
         }
     ]

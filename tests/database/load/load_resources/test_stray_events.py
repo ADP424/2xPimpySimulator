@@ -29,7 +29,7 @@ def test_validate_minimal_stray_event():
     events = {
         "Encounters": {
             "Street Fight": {
-                "actions": [{"action_type": "modify_pooch_health", "parameters": {"selector": "random", "amount": -5}}]
+                "actions": [{"action_type": "modify_base_health", "parameters": {"selector": "random", "amount": -5}}]
             }
         }
     }
@@ -47,7 +47,7 @@ def test_validate_stray_event_with_outcomes():
                     {
                         "chance": 1.0,
                         "actions": [
-                            {"action_type": "modify_pooch_health", "parameters": {"selector": "random", "amount": -3}}
+                            {"action_type": "modify_base_health", "parameters": {"selector": "random", "amount": -3}}
                         ],
                     }
                 ]

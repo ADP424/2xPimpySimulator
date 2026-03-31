@@ -17,9 +17,9 @@ from src.database import rename_kennel as db_rename_kennel
 
 from .constants import (
     KENNEL_BASE_PRICE,
-    KENNEL_UPGRADE_BASE_CAPACITY,
+    KENNEL_MAX_POOCH_LIMIT,
     KENNEL_UPGRADE_CAPACITY_PER_UPGRADE,
-    KENNEL_UPGRADE_PRICES,
+    KENNEL_UPGRADE_PRICE_PER_5,
     MAX_KENNELS,
     MAX_NAME_LENGTH,
 )
@@ -150,7 +150,7 @@ async def get_kennel_buy_price(owner_discord_id: int) -> tuple[int | None, str]:
     if kennel_count >= MAX_KENNELS:
         return None, f"Maximum kennels owned ({kennel_count}/{MAX_KENNELS})"
 
-    price = KENNEL_BASE_PRICE * kennel_count
+    price = max(KENNEL_BASE_PRICE, KENNEL_BASE_PRICE * kennel_count)
     return price, f"Kennel #{kennel_count + 1} — ${price} ({kennel_count}/{MAX_KENNELS} owned)"
 
 
@@ -169,11 +169,10 @@ async def get_kennel_upgrade_price(kennel_id: int) -> tuple[int | None, str]:
     if kennel is None:
         return None, "Kennel not found"
 
-    upgrades_done = (kennel.pooch_limit - KENNEL_UPGRADE_BASE_CAPACITY) // KENNEL_UPGRADE_CAPACITY_PER_UPGRADE
-    if upgrades_done >= len(KENNEL_UPGRADE_PRICES):
-        return None, f"Max kennel upgrade reached (Tier {len(KENNEL_UPGRADE_PRICES)})"
+    if kennel.pooch_limit >= KENNEL_MAX_POOCH_LIMIT:
+        return None, f"Max kennel upgrade reached ({KENNEL_MAX_POOCH_LIMIT} pooches)"
 
-    price = KENNEL_UPGRADE_PRICES[upgrades_done]
+    price = max(KENNEL_UPGRADE_PRICE_PER_5, (kennel.pooch_limit - 5) // 5 * KENNEL_UPGRADE_PRICE_PER_5)
     new_capacity = kennel.pooch_limit + KENNEL_UPGRADE_CAPACITY_PER_UPGRADE
     return price, f"Upgrade to {new_capacity} capacity — ${price}"
 
@@ -201,7 +200,7 @@ async def buy_kennel(owner_discord_id: int) -> tuple[bool, str]:
     if kennel_count >= MAX_KENNELS:
         return False, f"You already have the maximum number of kennels ({MAX_KENNELS})."
 
-    price = KENNEL_BASE_PRICE * kennel_count
+    price = max(KENNEL_BASE_PRICE, KENNEL_BASE_PRICE * kennel_count)
     if owner.dollars < price:
         return False, f"A new kennel costs ${price}, but you only have ${owner.dollars}."
 
@@ -215,7 +214,7 @@ async def upgrade_kennel(owner_discord_id: int, kennel_id: int) -> tuple[bool, s
     """
     Upgrade the capacity of the given kennel by KENNEL_UPGRADE_CAPACITY_PER_UPGRADE.
 
-    Upgrade costs are KENNEL_UPGRADE_PRICES[upgrade_number - 1].
+    Upgrade cost scales with current capacity: $200 per 5 pooches above 5, minimum $200.
     Fails if the kennel is already at max capacity, the owner can't afford it,
     or the kennel doesn't belong to the owner.
 
@@ -235,11 +234,10 @@ async def upgrade_kennel(owner_discord_id: int, kennel_id: int) -> tuple[bool, s
     if kennel.owner_discord_id != owner_discord_id:
         return False, "You don't own that kennel."
 
-    upgrades_done = (kennel.pooch_limit - KENNEL_UPGRADE_BASE_CAPACITY) // KENNEL_UPGRADE_CAPACITY_PER_UPGRADE
-    if upgrades_done >= len(KENNEL_UPGRADE_PRICES):
-        return None, f"Max kennel upgrade reached (Tier {len(KENNEL_UPGRADE_PRICES)})"
+    if kennel.pooch_limit >= KENNEL_MAX_POOCH_LIMIT:
+        return None, f"Max kennel upgrade reached ({KENNEL_MAX_POOCH_LIMIT} pooches)"
 
-    price = KENNEL_UPGRADE_PRICES[upgrades_done]
+    price = max(KENNEL_UPGRADE_PRICE_PER_5, (kennel.pooch_limit - 5) // 5 * KENNEL_UPGRADE_PRICE_PER_5)
 
     if owner.dollars < price:
         return False, f"This upgrade costs ${price}, but you only have ${owner.dollars}."

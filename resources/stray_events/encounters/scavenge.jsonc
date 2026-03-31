@@ -10,7 +10,7 @@
             "chance": 0.5,
             "actions": [
                 {
-                    "action_type": "modify_pooch_health",
+                    "action_type": "modify_base_health",
                     "parameters": {
                         "selector": "random",
                         "min_amount": 1,
@@ -26,11 +26,10 @@
             "chance": 0.2,
             "actions": [
                 {
-                    "action_type": "modify_pooch_health",
+                    "action_type": "injure_pooch",
                     "parameters": {
                         "selector": "random",
-                        "min_amount": -4,
-                        "max_amount": -1
+                        "injury": "Minor"
                     }
                 }
             ]

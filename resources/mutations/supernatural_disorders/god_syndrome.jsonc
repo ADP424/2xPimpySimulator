@@ -6,12 +6,16 @@
     "health_impact": "IMMORTALITY",
     "rarity": "UNIQUE",
     "parameters": {
-        "on_death": "spread",
-        "on_death_targets": "random",
-        "always_on_death": true,
         "strength_mult": 1.33,
         "intelligence_mult": 1.33,
         "dexterity_mult": 1.33,
-        "constitution_mult": 5.0
+        "constitution_mult": 5.0,
+        "on_death_triggers": [
+            {
+                "on_death": "spread",
+                "on_death_targets": "random",
+                "always_on_death": true
+            }
+        ]
     }
 }

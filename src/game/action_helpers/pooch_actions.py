@@ -6,8 +6,10 @@ from typing import Any, Optional
 
 from src.database import (
     add_breed_to_pooch,
+    add_injury_to_pooch,
     add_mutation_to_pooch,
     damn_pooch,
+    get_injury_by_name,
     get_mutation_by_name,
     get_pooch_by_id,
     modify_pooch_age,
@@ -40,6 +42,8 @@ from src.database import (
     set_pooch_intelligence,
     set_pooch_strength,
 )
+from src.database.delete import remove_pooch_from_kennel
+from src.database.set import bury_pooch
 from src.game.constants import (
     FIGHT_ATTACK_AGGRESSIVENESS_WEIGHT,
     FIGHT_ATTACK_DEXTERITY_WEIGHT,
@@ -76,7 +80,7 @@ async def handle_modify_health(
     rng: random.Random,
     result: Any,
 ) -> None:
-    """Handle modify_base_health / modify_pooch_health."""
+    """Handle modify_base_health."""
     pre_rolled, roll_once = resolve_amount(parameters, rng)
     mode = get_mode(parameters)
     for pooch_id in pooch_ids:
@@ -120,10 +124,33 @@ async def handle_kill_pooch(
     for pooch_id in pooch_ids:
         pooch = await set_pooch_dead(pooch_id)
         if pooch:
+            if pooch.owner_discord_id is not None:
+                await remove_pooch_from_kennel(pooch.id)
+                await bury_pooch(pooch.owner_discord_id, pooch.id)
             result.pooches_killed.append(pooch_id)
     if result.pooches_killed:
         count = len(result.pooches_killed)
         result.message = "A pooch has died!" if count == 1 else f"{count} pooches have died!"
+
+
+async def handle_injure_pooch(
+    pooch_ids: list[int],
+    parameters: dict[str, Any],
+    rng: random.Random,
+    result: Any,
+) -> None:
+    """Handle injure_pooch — adds a named injury to each target pooch."""
+    injury_name = parameters.get("injury")
+    if not injury_name:
+        return
+    injury = await get_injury_by_name(str(injury_name))
+    if injury is None:
+        logger.warning("injure_pooch: unknown injury %r", injury_name)
+        return
+    for pooch_id in pooch_ids:
+        added = await add_injury_to_pooch(pooch_id, injury.id)
+        if added:
+            result.pooches_affected.append(pooch_id)
 
 
 async def handle_add_mutation(
@@ -134,12 +161,16 @@ async def handle_add_mutation(
 ) -> None:
     """Handle add_mutation."""
     mutation_id = parameters.get("mutation_id")
+    mutation_ids = parameters.get("mutation_ids")
     min_rarity = parameters.get("min_rarity")
     max_rarity = parameters.get("max_rarity")
     min_health_impact = parameters.get("min_health_impact")
     max_health_impact = parameters.get("max_health_impact")
     for pooch_id in pooch_ids:
-        if mutation_id:
+        if isinstance(mutation_ids, list) and mutation_ids:
+            for mid in mutation_ids:
+                await add_mutation_to_pooch(pooch_id, mid)
+        elif mutation_id:
             await add_mutation_to_pooch(pooch_id, mutation_id)
         else:
             await add_mutation_to_pooch(
@@ -159,15 +190,26 @@ async def handle_add_mutation_by_name(
     rng: random.Random,
     result: Any,
 ) -> None:
-    """Handle add_mutation with name lookup (stray variant)."""
+    """Handle add_mutation with name lookup (stray/server variant)."""
     mutation_name = parameters.get("mutation")
+    mutation_names = parameters.get("mutations")
     mutation_id = parameters.get("mutation_id")
+    mutation_ids = parameters.get("mutation_ids")
     min_rarity = parameters.get("min_rarity")
     max_rarity = parameters.get("max_rarity")
     min_health_impact = parameters.get("min_health_impact")
     max_health_impact = parameters.get("max_health_impact")
     for pooch_id in pooch_ids:
-        if mutation_name:
+        if isinstance(mutation_ids, list) and mutation_ids:
+            # Pre-resolved IDs (from resolve_event_action_parameters) — use directly
+            for mid in mutation_ids:
+                await add_mutation_to_pooch(pooch_id, mid)
+        elif isinstance(mutation_names, list) and mutation_names:
+            for m in mutation_names:
+                mut = await get_mutation_by_name(str(m))
+                if mut:
+                    await add_mutation_to_pooch(pooch_id, mut.id)
+        elif mutation_name:
             mut = await get_mutation_by_name(str(mutation_name))
             if mut:
                 await add_mutation_to_pooch(pooch_id, mut.id)
@@ -386,25 +428,21 @@ async def handle_modify_breeding_cooldown(
     rng: random.Random,
     result: Any,
 ) -> None:
-    """Handle modify_breeding_cooldown / set_breeding_cooldown."""
+    """Handle modify_breeding_cooldown."""
+    if parameters.get("reset"):
+        for pooch_id in pooch_ids:
+            await reset_pooch_breeding_cooldown(pooch_id)
+            result.pooches_affected.append(pooch_id)
+        return
     mode = get_mode(parameters)
-    if "cooldown" in parameters and "amount" not in parameters and "min_amount" not in parameters:
-        cooldown = parameters["cooldown"]
-        for pooch_id in pooch_ids:
-            if isinstance(cooldown, str) and cooldown.strip().lower() == "base":
-                await reset_pooch_breeding_cooldown(pooch_id, base_cooldown=_get_breeding_cooldown_default())
-            else:
-                await set_pooch_breeding_cooldown(pooch_id, int(cooldown))
-            result.pooches_affected.append(pooch_id)
-    else:
-        pre_rolled, roll_once = resolve_amount(parameters, rng)
-        for pooch_id in pooch_ids:
-            amount = pre_rolled if roll_once else get_amount_from_parameters(parameters, rng)
-            if mode == "set":
-                await set_pooch_breeding_cooldown(pooch_id, max(0, amount))
-            else:
-                await modify_pooch_breeding_cooldown(pooch_id, amount)
-            result.pooches_affected.append(pooch_id)
+    pre_rolled, roll_once = resolve_amount(parameters, rng)
+    for pooch_id in pooch_ids:
+        amount = pre_rolled if roll_once else get_amount_from_parameters(parameters, rng)
+        if mode == "set":
+            await set_pooch_breeding_cooldown(pooch_id, max(0, amount))
+        else:
+            await modify_pooch_breeding_cooldown(pooch_id, amount)
+        result.pooches_affected.append(pooch_id)
 
 
 async def handle_select_pooch(

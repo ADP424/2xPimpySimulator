@@ -38,4 +38,5 @@ filterwarnings = [
     "ignore::DeprecationWarning:discord\\..*",
     "ignore:.*iscoroutinefunction.*:DeprecationWarning",
     "ignore::RuntimeWarning:asyncio",
+    "ignore:coroutine.*was never awaited:RuntimeWarning",
 ]

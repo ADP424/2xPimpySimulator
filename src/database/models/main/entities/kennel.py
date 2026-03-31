@@ -21,6 +21,7 @@ class Kennel(Base):
 
     name: Mapped[str] = mapped_column(Text)
     pooch_limit: Mapped[int] = mapped_column(Integer, default=10)
+    upgrade_tier: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=text("now()"))
 
     owner: Mapped[Owner] = relationship("Owner", foreign_keys=[owner_discord_id], back_populates="kennels")

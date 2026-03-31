@@ -285,8 +285,7 @@ class TestBuildTriggeredEventEmbed:
     def test_flavor_text_included(self):
         event = _make_triggered_event(flavor_text="A strange wind blows.")
         embed = build_triggered_event_embed(event)
-        field_names = [f.name for f in embed.fields]
-        assert "Flavor" in field_names
+        assert "A strange wind blows." in embed.description
 
 
 @pytest.mark.contract
@@ -545,6 +544,7 @@ class TestBuildPoochInfoEmbed:
             mood=None,
             breeds=[],
             mutations=[],
+            injuries=[],
         )
         embed = _build_pooch_info_embed(pooch)
         assert embed.title == "Test Pooch"

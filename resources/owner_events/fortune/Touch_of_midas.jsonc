@@ -14,10 +14,24 @@
             }
         ]
     },
+    "actions": [
+        {
+            "action_type": "select_pooch",
+            "target_type": "pooch",
+            "parameters": {
+                "selector": "random",
+                "filter": {
+                    "is_alive": true
+                },
+                "save_as": "touched_pooch",
+                "featured": true
+            }
+        }
+    ],
     "options": [
         {
             "label": "Sell them",
-            "description": "Sell the pooch for 10x the normal value",
+            "description": "Sell the pooch for 10x the normal value.",
             "default": true,
             "visible": true,
             "actions": [
@@ -25,7 +39,7 @@
                     "action_type": "sell_pooch",
                     "target_type": "pooch",
                     "parameters": {
-                        "selector": "random",
+                        "use_saved": "touched_pooch",
                         "value_multiplier": 10.0
                     }
                 }
@@ -33,7 +47,7 @@
         },
         {
             "label": "Try to save them!",
-            "description": "This might save the pooch but will lower its value if failed.",
+            "description": "This might save the pooch, but it will lower its value if failed.",
             "outcomes": [
                 {
                     "chance": 0.8,
@@ -43,7 +57,7 @@
                             "action_type": "sell_pooch",
                             "target_type": "pooch",
                             "parameters": {
-                                "selector": "random",
+                                "use_saved": "touched_pooch",
                                 "value_multiplier": 8.0
                             }
                         }
@@ -57,7 +71,7 @@
         },
         {
             "label": "Try to save them with demonic powers!",
-            "description": "This might save the pooch but will significantly lower its value if failed.",
+            "description": "This might save the pooch, but it will significantly lower its value if failed.",
             "filter": {
                 "min_bloodskulls": 6
             },
@@ -70,7 +84,7 @@
                             "action_type": "sell_pooch",
                             "target_type": "pooch",
                             "parameters": {
-                                "selector": "random",
+                                "use_saved": "touched_pooch",
                                 "value_multiplier": 4.0
                             }
                         },

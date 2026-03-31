@@ -7,7 +7,7 @@ EVENT_ACTION_TYPE = SimpleNamespace(
     enums=[
         "modify_money",
         "modify_bloodskulls",
-        "modify_pooch_health",
+        "injure_pooch",
         "modify_pooch_age",
         "kill_pooch",
         "add_mutation",
@@ -18,8 +18,9 @@ EVENT_ACTION_TYPE = SimpleNamespace(
         "create_pooch",
         "clone_pooch",
         "modify_kennel_capacity",
+        "upgrade_kennel",
+        "delete_kennel",
         "rename_pooch",
-        "set_breeding_cooldown",
         "modify_breeding_cooldown",
         "modify_base_health",
         "set_pooch_age",
@@ -39,5 +40,13 @@ EVENT_ACTION_TYPE = SimpleNamespace(
         "conjure_pooch",
         "sacrifice_pooch",
         "fight_pooches",
+        "modify_strength",
+        "modify_cuteness",
+        "modify_fluffiness",
+        "modify_intelligence",
+        "modify_dexterity",
+        "modify_fertility",
+        "modify_aggressiveness",
+        "modify_constitution",
     ]
 )

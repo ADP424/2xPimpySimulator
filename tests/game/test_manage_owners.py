@@ -7,6 +7,15 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from conftest import make_kennel, make_owner, make_pooch
+
+
+@pytest.fixture(autouse=True)
+def mock_owners_db_calls():
+    """Auto-patch get_current_season so tests never hit the real DB."""
+    with patch("src.game.manage_owners.get_current_season", new=AsyncMock(return_value="spring")):
+        yield
+
+
 from src.game.exceptions import OwnerNotFound
 from src.game.manage_owners import (
     add_money,
@@ -205,6 +214,7 @@ class TestVisitPark:
     @patch("src.game.manage_owners.list_pooches_for_kennel", new_callable=AsyncMock)
     @patch("src.game.manage_owners.list_kennels_for_owner", new_callable=AsyncMock)
     @patch("src.game.manage_owners.transfer_pooch_to_owner", new_callable=AsyncMock)
+    @patch("src.game.manage_owners.cancel_listing_for_pooch", new_callable=AsyncMock)
     @patch("src.game.manage_owners.remove_pooch_from_strays", new_callable=AsyncMock)
     @patch("src.game.manage_owners.count_owners_for_server", new_callable=AsyncMock)
     @patch("src.game.manage_owners.list_strays_for_server", new_callable=AsyncMock)
@@ -219,6 +229,7 @@ class TestVisitPark:
         mock_strays,
         mock_count_owners,
         mock_remove_stray,
+        mock_cancel_listing,
         mock_transfer,
         mock_kennels,
         mock_kennel_pooches,
@@ -288,6 +299,7 @@ class TestSpendBoneAtPark:
     @patch("src.game.manage_owners.list_pooches_for_kennel", new_callable=AsyncMock)
     @patch("src.game.manage_owners.list_kennels_for_owner", new_callable=AsyncMock)
     @patch("src.game.manage_owners.transfer_pooch_to_owner", new_callable=AsyncMock)
+    @patch("src.game.manage_owners.cancel_listing_for_pooch", new_callable=AsyncMock)
     @patch("src.game.manage_owners.remove_pooch_from_strays", new_callable=AsyncMock)
     @patch("src.game.manage_owners.count_owners_for_server", new_callable=AsyncMock)
     @patch("src.game.manage_owners.list_strays_for_server", new_callable=AsyncMock)
@@ -302,6 +314,7 @@ class TestSpendBoneAtPark:
         mock_strays,
         mock_count,
         mock_remove_stray,
+        mock_cancel,
         mock_transfer,
         mock_kennels,
         mock_kennel_pooches,
@@ -330,7 +343,8 @@ class TestSpendBoneAtPark:
 
 class TestCastOutPooch:
     @patch("src.game.manage_owners.add_pooch_to_strays", new_callable=AsyncMock)
-    async def test_cast_out_adds_to_strays(self, mock_add_stray):
+    @patch("src.game.manage_owners.cancel_listing_for_pooch", new_callable=AsyncMock)
+    async def test_cast_out_adds_to_strays(self, mock_cancel, mock_add_stray):
         await cast_out_pooch(1, 200)
         mock_add_stray.assert_awaited_once_with(1, 200)
 

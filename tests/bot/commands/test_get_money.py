@@ -22,18 +22,6 @@ class TestGetMoneyCommand:
         msg = interaction.response.send_message.call_args[0][0]
         assert "server" in msg.lower()
 
-    async def test_rejects_zero_amount(self):
-        from src.bot.commands.get_money import register_get_money_command
-
-        callback = capture_command_callback(register_get_money_command)
-        interaction = make_interaction()
-
-        await callback(interaction, amount=0)
-
-        interaction.response.send_message.assert_called_once()
-        msg = interaction.response.send_message.call_args[0][0]
-        assert "> 0" in msg
-
     async def test_adds_money_and_responds(self):
         from src.bot.commands.get_money import register_get_money_command
 

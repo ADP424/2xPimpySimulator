@@ -1,6 +1,6 @@
 {
     "name": "Escaped Pooch",
-    "description": "One of your pooches has escaped from the kennel!",
+    "description": "One of your pooches has escaped from the kennel and is now lost amongst the strays!",
     "flavor_text": "Quick, what do you do!?",
     "severity": "MAJOR",
     "rarity": "UNCOMMON",
@@ -30,7 +30,7 @@
     "options": [
         {
             "label": "Hire a search party",
-            "description": "Pay $100 to hire professionals to find your pooch.",
+            "description": "Pay $100 to hire professionals to find your pooch. However, if another player already found your pooch as a stray, there's nothing they can do.",
             "filter": {
                 "min_money": 100
             },

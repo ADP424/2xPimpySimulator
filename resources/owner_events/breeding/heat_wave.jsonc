@@ -16,10 +16,11 @@
     },
     "actions": [
         {
-            "action_type": "set_breeding_cooldown",
+            "action_type": "modify_breeding_cooldown",
             "target_type": "pooch",
             "parameters": {
-                "cooldown": 0,
+                "amount": 0,
+                "mode": "set",
                 "selector": "random",
                 "filter": {
                     "is_alive": true,

@@ -215,12 +215,12 @@ async def _resolve_server_pool(
     filter_spec: dict | None,
     rng: random.Random,
     server_context: ServerEventContext | None = None,
-    save_slot: str | None = None,
+    use_saved: str | None = None,
 ) -> list[int]:
     """Resolve a named pool + optional PoochFilterSpec into a list of pooch IDs.
 
     pool values: "stray" | "dead" | "in_hell" | "all_alive" | "all" | "saved"
-    When pool is "saved", save_slot names the server_context.saved_slots key to use.
+    When pool is "saved", use_saved names the server_context.saved_slots key to use.
     """
     from src.database.utils import get_matching_stray_pooch_ids_for_server_filtered
 
@@ -233,8 +233,8 @@ async def _resolve_server_pool(
     base_filter.pop("description", None)
 
     if pool_key == "saved":
-        if server_context is not None and save_slot:
-            return list(server_context.saved_slots.get(save_slot, []))
+        if server_context is not None and use_saved:
+            return list(server_context.saved_slots.get(use_saved, []))
         return []
 
     if pool_key == "stray":
@@ -286,14 +286,14 @@ async def _resolve_server_owner_pool(
     pool: str,
     rng: random.Random,
     server_context: ServerEventContext | None = None,
-    save_slot: str | None = None,
+    use_saved: str | None = None,
     selector: str = "all",
     count: int = 1,
 ) -> list[int]:
     """Resolve a named owner pool into a list of owner discord IDs.
 
     pool values: "owner" | "saved_owner"
-    When pool is "saved_owner", save_slot names the server_context.saved_owner_slots key to use.
+    When pool is "saved_owner", use_saved names the server_context.saved_owner_slots key to use.
     """
     from sqlalchemy import select
 
@@ -302,8 +302,8 @@ async def _resolve_server_owner_pool(
     pool_key = str(pool).strip().lower()
 
     if pool_key == "saved_owner":
-        if server_context is not None and save_slot:
-            return list(server_context.saved_owner_slots.get(save_slot, []))
+        if server_context is not None and use_saved:
+            return list(server_context.saved_owner_slots.get(use_saved, []))
         return []
 
     if pool_key == "owner":
@@ -335,7 +335,7 @@ async def _deliver_server_pooch(
     from src.database import add_pooch_to_strays
 
     dest = destination.strip().lower()
-    if dest == "stray" or dest == "town":
+    if dest == "town":
         await add_pooch_to_strays(pooch_id, server_discord_id)
     elif dest == "kennel":
         from src.game.manage_stray_events import _deliver_stray_to_kennel
@@ -380,6 +380,7 @@ async def _execute_server_actions(
         handle_add_breed,
         handle_add_mutation_by_name,
         handle_damn_pooch,
+        handle_injure_pooch,
         handle_kill_pooch,
         handle_modify_age,
         handle_modify_breeding_cooldown,
@@ -403,7 +404,7 @@ async def _execute_server_actions(
         count = int(parameters.get("count", 1))
         filter_spec = parameters.get("filter") or {}
         save_as = parameters.get("save_as")
-        save_slot = parameters.get("save_slot")
+        use_saved = parameters.get("use_saved")
         destination = str(parameters.get("destination", "stray")).strip().lower()
 
         try:
@@ -413,7 +414,7 @@ async def _execute_server_actions(
             # ----------------------------------------------------------------
             if pool in _owner_pool_keys:
                 owner_ids = await _resolve_server_owner_pool(
-                    server_discord_id, pool, rng, server_context, save_slot, selector, count
+                    server_discord_id, pool, rng, server_context, use_saved, selector, count
                 )
                 if save_as and isinstance(save_as, str):
                     server_context.saved_owner_slots[save_as] = list(owner_ids)
@@ -456,7 +457,7 @@ async def _execute_server_actions(
                 continue
 
             candidate_ids = await _resolve_server_pool(
-                server_discord_id, pool, filter_spec, rng, server_context, save_slot
+                server_discord_id, pool, filter_spec, rng, server_context, use_saved
             )
 
             if selector == "all":
@@ -483,8 +484,11 @@ async def _execute_server_actions(
             # ----------------------------------------------------------------
             # Health, age, stats — delegate to shared pooch_actions helpers
             # ----------------------------------------------------------------
-            if action_type in ("modify_base_health", "modify_pooch_health"):
+            if action_type in ("modify_base_health"):
                 await handle_modify_health(target_ids, parameters, rng, combined)
+
+            elif action_type == "injure_pooch":
+                await handle_injure_pooch(target_ids, parameters, rng, combined)
 
             elif action_type in ("modify_pooch_age", "set_pooch_age"):
                 await handle_modify_age(target_ids, parameters, rng, combined)
@@ -540,7 +544,7 @@ async def _execute_server_actions(
             elif action_type == "rename_pooch":
                 await handle_rename_pooch(target_ids, parameters, rng, combined)
 
-            elif action_type in ("modify_breeding_cooldown", "set_breeding_cooldown"):
+            elif action_type in ("modify_breeding_cooldown"):
                 await handle_modify_breeding_cooldown(target_ids, parameters, rng, combined)
 
             # ----------------------------------------------------------------
@@ -553,10 +557,11 @@ async def _execute_server_actions(
                     combined.pooches_affected.append(pid)
 
             elif action_type == "revive_pooch":
+                revive_destination = str(parameters.get("destination", "kennel")).strip().lower()
                 for pid in target_ids:
                     pooch = await revive_pooch(pid)
                     if pooch:
-                        await _deliver_server_pooch(pid, server_discord_id, destination, rng)
+                        await _deliver_server_pooch(pid, server_discord_id, revive_destination, rng)
                         combined.pooches_affected.append(pid)
 
             elif action_type == "enter_kennel":

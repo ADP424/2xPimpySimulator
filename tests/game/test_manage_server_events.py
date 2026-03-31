@@ -5,7 +5,18 @@ from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
 from conftest import make_kennel, make_server
+
+
+@pytest.fixture(autouse=True)
+def mock_server_events_db_calls():
+    """Auto-patch get_current_season so tests never hit the real DB."""
+    with patch("src.game.manage_server_events.get_current_season", new=AsyncMock(return_value="spring")):
+        yield
+
+
 from src.game.manage_server_events import (
     _aggregate_player_score,
     _build_owner_event_context,
@@ -384,9 +395,9 @@ class TestRunDailyServerEventCycle:
     async def test_resolves_then_triggers(
         self, mock_dt, mock_active, mock_resolve, mock_servers, mock_trigger, mock_advance
     ):
-        # Simulate a Monday so a major event is guaranteed to trigger
+        # Simulate the weekday that triggers major events (weekday() == 2)
         monday = MagicMock()
-        monday.weekday.return_value = 0
+        monday.weekday.return_value = 2
         mock_dt.now.return_value = monday
 
         occ = MagicMock()

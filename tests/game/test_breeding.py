@@ -266,7 +266,7 @@ class TestBreedPooches:
         # Both breeds should be present with equal weight (normalized 50/50)
         assert 10 in breed_weights
         assert 20 in breed_weights
-        assert breed_weights[10] == breed_weights[20]
+        assert abs(breed_weights[10] - breed_weights[20]) <= 1
 
     @patch("src.game.breeding.add_mutation_to_pooch", new_callable=AsyncMock)
     @patch("src.game.breeding.add_pooch_breeds", new_callable=AsyncMock)

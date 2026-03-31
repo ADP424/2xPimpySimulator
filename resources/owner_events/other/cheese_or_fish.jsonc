@@ -52,14 +52,14 @@
             "description": "You don't like the look of him or his questions.",
             "actions": [
                 {
-                    "action_type": "modify_pooch_health",
+                    "action_type": "injure_pooch",
                     "target_type": "pooch",
                     "parameters": {
-                        "amount": -1,
                         "selector": "random",
                         "filter": {
                             "is_alive": true
-                        }
+                        },
+                        "injury": "Minor"
                     }
                 }
             ]
@@ -71,7 +71,7 @@
             "visible": false,
             "actions": [
                 {
-                    "action_type": "modify_pooch_health",
+                    "action_type": "modify_base_health",
                     "target_type": "pooch",
                     "parameters": {
                         "amount": 1,
