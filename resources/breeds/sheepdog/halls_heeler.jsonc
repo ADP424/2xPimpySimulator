@@ -4,8 +4,8 @@
     "description": "The Halls Heeler is the presumed ancestor of two present-day dog breeds, the Australian cattle dog and the Australian stumpy tail cattle dog.",
     "rarity": "REMARKABLE",
     "parameters": {
-        "min_size": 8,
-        "max_size": 17,
         "sold_by_vendors": false
-    }
+    },
+    "min_size": 8,
+    "max_size": 17
 }

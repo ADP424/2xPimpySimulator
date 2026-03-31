@@ -1,4 +1,5 @@
 {
     "name": "Major",
-    "health_impact": "unhealthy"
+    "health_impact": "UNHEALTHY",
+    "severity": "moderate"
 }

@@ -5,6 +5,7 @@
     "heritability": 0.35,
     "health_impact": "SEVERE",
     "rarity": "UNCOMMON",
+    "visible": false,
     "parameters": {
         "constitution_mult": 0.8
     }

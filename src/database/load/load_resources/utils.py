@@ -322,6 +322,7 @@ class BaseEventValidator:
                 "pooch_selector",
                 "pooch_count",
                 "save_as",
+                "save_excluded_as",
                 "use_saved",
             }
             if "use_saved" not in parameters:
@@ -346,6 +347,9 @@ class BaseEventValidator:
                     self.error(params_path, "'pooch_selector' must be 'random', 'random_exclude', or 'all'")
             self._validate_optional_int(params_path, parameters, "pooch_count", minimum=1)
             self._validate_optional_string(params_path, parameters, "save_as", allow_blank=False)
+            self._validate_optional_string(params_path, parameters, "save_excluded_as", allow_blank=False)
+            if "save_excluded_as" in parameters and parameters.get("pooch_selector") != "random_exclude":
+                self.error(params_path, "'save_excluded_as' requires 'pooch_selector': 'random_exclude'")
         elif target_type == "owner":
             # Pooch/kennel actions that target "owner" apply to all pooches/kennels owned.
             # An optional filter narrows which ones are affected; no selector is needed.
@@ -482,14 +486,26 @@ class BaseEventValidator:
             self._validate_target_type(path, action_type, target_type, {"pooch", "kennel", "owner", "server"})
 
         elif action_type == "injure_pooch":
-            self._validate_allowed_keys(params_path, parameters, common_allowed | {"injury"})
-            if "injury" not in parameters:
-                self.error(params_path, "'injure_pooch' requires an 'injury' parameter")
-            elif self.injury_names and str(parameters["injury"]).strip().lower() not in self.injury_names:
-                self.error(
-                    params_path,
-                    f"'injury' must be one of: {', '.join(sorted(self.injury_names))}",
-                )
+            self._validate_allowed_keys(
+                params_path,
+                parameters,
+                common_allowed
+                | {"injury", "min_severity", "max_severity", "min_health_impact", "max_health_impact", "roll_once"},
+            )
+            if "injury" in parameters:
+                if self.injury_names and str(parameters["injury"]).strip().lower() not in self.injury_names:
+                    self.error(
+                        params_path,
+                        f"'injury' must be one of: {', '.join(sorted(self.injury_names))}",
+                    )
+            if "min_severity" in parameters:
+                self._validate_enum_string(params_path, parameters, "min_severity", EVENT_SEVERITY_VALUES)
+            if "max_severity" in parameters:
+                self._validate_enum_string(params_path, parameters, "max_severity", EVENT_SEVERITY_VALUES)
+            if "min_health_impact" in parameters:
+                self._validate_enum_string(params_path, parameters, "min_health_impact", HEALTH_IMPACT_VALUES)
+            if "max_health_impact" in parameters:
+                self._validate_enum_string(params_path, parameters, "max_health_impact", HEALTH_IMPACT_VALUES)
             self._validate_target_type(path, action_type, target_type, {"pooch", "kennel", "owner", "server"})
 
         elif action_type == "kill_pooch":

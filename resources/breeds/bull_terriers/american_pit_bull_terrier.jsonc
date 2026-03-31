@@ -4,12 +4,12 @@
     "description": "It is a medium-sized, short-haired dog, of a solid build, whose early ancestors came from England. When compared with the English Staffordshire Bull Terrier, the American Pit Bull Terrier is larger by margins of 6–8 inches (15–20 cm) in height and 25–35 pounds (11–16 kg) in weight.",
     "rarity": "COMMON",
     "parameters": {
-        "min_size": 8, // 30-60 lbs
-        "max_size": 15,
         "strength_add": 1,
         "dexerity_add": 2,
         "intelligence_add": 1,
         "aggressiveness_add": 2,
         "fluffiness_mult": 0.5
-    }
+    },
+    "min_size": 8,
+    "max_size": 15
 }

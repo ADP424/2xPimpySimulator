@@ -1,6 +1,7 @@
 {
     "name": "Severe Burn",
-    "health_impact": "severe",
+    "health_impact": "SEVERE",
+    "severity": "major",
     "description": "This pooch has severe burns covering much of its body.",
     "parameters": {
         "persistence": 48,

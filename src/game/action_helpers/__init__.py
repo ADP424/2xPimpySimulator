@@ -2,7 +2,6 @@ from .amount import get_amount_from_parameters, get_mode, resolve_amount
 from .pooch_actions import (
     handle_add_breed,
     handle_add_mutation,
-    handle_add_mutation_by_name,
     handle_damn_pooch,
     handle_injure_pooch,
     handle_kill_pooch,
@@ -12,7 +11,6 @@ from .pooch_actions import (
     handle_modify_stat,
     handle_remove_breed,
     handle_remove_mutation,
-    handle_remove_mutation_by_name,
     handle_rename_pooch,
     handle_select_pooch,
 )
@@ -23,7 +21,6 @@ __all__ = [
     "resolve_amount",
     "handle_add_breed",
     "handle_add_mutation",
-    "handle_add_mutation_by_name",
     "handle_damn_pooch",
     "handle_injure_pooch",
     "handle_kill_pooch",
@@ -33,7 +30,6 @@ __all__ = [
     "handle_modify_stat",
     "handle_remove_breed",
     "handle_remove_mutation",
-    "handle_remove_mutation_by_name",
     "handle_rename_pooch",
     "handle_select_pooch",
 ]

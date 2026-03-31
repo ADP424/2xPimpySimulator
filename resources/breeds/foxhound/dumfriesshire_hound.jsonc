@@ -4,9 +4,9 @@
     "description": "Dumfriesshire Black and Tan Foxhounds were a pack of foxhounds kennelled at Glenholm Kennels, Kettleholm, near Lockerbie until they were disbanded in 2001.",
     "rarity": "EXTRAORDINARY",
     "parameters": {
-        "min_size": 16, // 64-76 lbs
-        "max_size": 19,
         "sold_by_vendors": false,
         "dexerity_add": 3
-    }
+    },
+    "min_size": 16,
+    "max_size": 19
 }

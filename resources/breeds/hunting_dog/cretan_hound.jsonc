@@ -4,7 +4,7 @@
     "description": "The Kritikos Lagonikos is a breed of hunting dog from the Greek island of Crete.",
     "rarity": "RARE",
     "parameters": {
-        "min_size": 8, // 31-49 lbs
-        "max_size": 12
-    }
+    },
+    "min_size": 8,
+    "max_size": 12
 }

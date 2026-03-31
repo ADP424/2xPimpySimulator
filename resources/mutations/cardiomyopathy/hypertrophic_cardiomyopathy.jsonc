@@ -4,5 +4,6 @@
     "description": "This pooch has a thicc heart.",
     "heritability": 0.45,
     "health_impact": "UNHEALTHY",
-    "rarity": "UNCOMMON"
+    "rarity": "UNCOMMON",
+    "visible": false
 }

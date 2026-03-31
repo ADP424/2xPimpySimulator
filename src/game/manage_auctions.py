@@ -409,7 +409,7 @@ async def evaluate_bounty_match(bounty_listing_id: int, pooch_id: int) -> Bounty
 
         elif ctype == "mutation":
             mutation_id = criterion["mutation_id"]
-            if any(m.id == mutation_id for m in pooch.mutations):
+            if any(m.mutation.id == mutation_id for m in pooch.mutations):
                 entry["matched"] = True
                 earned = dollar_value
 

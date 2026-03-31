@@ -1,0 +1,14 @@
+{
+    "name": "Minor Scratch",
+    "health_impact": "NEUTRAL",
+    "severity": "trivial",
+    "description": "This pooch has a minor scratch.",
+    "parameters": {
+        "persistence": 6,
+        "cuteness_add": -1
+    },
+    "treated": {
+        "health_impact": "NEUTRAL",
+        "description": "This pooch has a treated minor scratch."
+    }
+}

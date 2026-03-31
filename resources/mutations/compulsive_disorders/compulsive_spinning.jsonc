@@ -5,6 +5,11 @@
     "heritability": 0.05,
     "health_impact": "NEUTRAL",
     "rarity": "UNCOMMON",
+    "visible": false,
+    "invisible_messages": [
+        "This pooch spins around a lot.",
+        "This pooch chases its own tail."
+    ],
     "parameters": {
         "dexterity_add": 1,
         "cuteness_add": 2,

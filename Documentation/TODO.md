@@ -20,10 +20,13 @@
 | Feature                                                                                                                       | Points |
 | ----------------------------------------------------------------------------------------------------------------------------- | ------ |
 | Dog show where you want to match closest to breed, mutations, and stats                                                       | 13     |
+| Change "expires" to "expired" after event has expired in the message UI                                                       | 2      |
+| Update message outcomes in the UI for new features, and also use the same pooch info as everything else                       | 5      |
+| Show outcomes when event expires and default choice is selected (doesn't currently)                                           | 3      |
 
 ## Blood Magic
 | Feature                                                                                                                       | Points |
-| ------------------------------------a----------------------------------------------------------------------------------------- | ------ |
+| ----------------------------------------------------------------------------------------------------------------------------- | ------ |
 | Clone your pooches by spending bloodskulls (better breeds = more expensive)                                                   | 5      |
 | Spend bloodskulls to reset pooch age (but at some EVIL cost)                                                                  | 5      |
 | Spend a LOT of bloodskulls to make your pooch IMMORTAL (but infertile, like a vampire, also can't go out at night)            | 5      |
@@ -52,12 +55,8 @@
 ## Canine Violence
 | Feature                                                                                                                       | Points |
 | ----------------------------------------------------------------------------------------------------------------------------- | ------ |
-| Add tiers of injury beyond just death - pooches can be healed at the vet                                                      | 8      |
 | Add injure on_death as an advanced option to mutations                                                                        | 3      |
 | Add aggressiveness stat that makes dogs have a chance each day to fight another dog (causing injury or DEATH)                 | 8      |
-| Add a strength stat which dictates how well a dog fights (and how likely they are to be injured/injure another in a fight)    | 3      |
-| Add a pooch fight event action type with its own internal logic for determining winners and damage and such                   | 5      |
-| Make constitution involved in dog fights, so later rounds are debuffed depending constitution, like endurance                 | 2      |
 
 ## Breeding
 | Feature                                                                                                                       | Points |

@@ -1330,11 +1330,26 @@ Result data: `extra_data.kennels_deleted` — list of deleted kennel IDs.
 | `roll_once` | bool | no | Roll once for all targets instead of per-target |
 | `mode` | string | no | `"modify"` (default) — add/subtract the amount; `"set"` — set the stat to exactly `amount` |
 | `save_as` | string | no | Save resolved target IDs into a named slot for later actions |
+| `save_excluded_as` | string | no | When `pooch_selector` is `"random_exclude"`: save the **spared** (excluded) pooch IDs into a named slot. Requires `pooch_selector: "random_exclude"`. |
 | `save_kennel` | bool | no | Also save kennel IDs of resolved pooches into the slot (requires `save_as`) |
 | `use_saved` | string | no | Use IDs from a named slot instead of resolving via `selector` (cannot combine with `selector`) |
 
 ```jsonc
-// Kill all pooches in a random kennel except one randomly spared survivor
+// Kill all pooches in a random kennel except one randomly spared survivor,
+// then give that survivor a mutation
+{
+    "action_type": "kill_pooch",
+    "target_type": "kennel",
+    "parameters": {
+        "selector": "random",
+        "pooch_selector": "random_exclude",
+        "pooch_count": 1,
+        "save_excluded_as": "survivor"
+    }
+}
+// { "action_type": "add_mutation", "target_type": "pooch", "parameters": { "use_saved": "survivor", "mutation": "..." } }
+
+// Kill all pooches in a random kennel except one randomly spared survivor (no slot needed)
 {
     "action_type": "kill_pooch",
     "target_type": "kennel",

@@ -1,4 +1,5 @@
 {
     "name": "Mortal",
-    "health_impact": "instant_death"
+    "health_impact": "INSTANT_DEATH",
+    "severity": "critical"
 }

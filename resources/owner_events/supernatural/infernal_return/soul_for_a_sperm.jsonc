@@ -35,6 +35,14 @@
                         "use_saved": "damned_pooch",
                         "mutation": "Infertility"
                     }
+                },
+                {
+                    "action_type": "modify_breeding_cooldown",
+                    "target_type": "pooch",
+                    "parameters": {
+                        "use_saved": "damned_pooch",
+                        "reset": true
+                    }
                 }
             ]
         },

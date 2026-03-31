@@ -75,7 +75,7 @@ BLOODSKULL_PRICE_PER_POOCH_SUMMON_ROLL = 2
 NUM_BREEDS_PER_SUMMON_POOCH_RANGE = (2, 3)
 
 # Event System Constants
-EVENT_HOURLY_TRIGGER_CHANCE = 0.15
+EVENT_HOURLY_TRIGGER_CHANCE = 0.0
 EVENT_MAX_ACTIVE_PER_OWNER = 3
 EVENT_DEFAULT_TIMEOUT_HOURS = 24
 
@@ -106,6 +106,32 @@ FIGHT_DEFENSE_DEXTERITY_WEIGHT = 0.1
 FIGHT_DEFENSE_CONSTITUTION_WEIGHT = 0.2
 FIGHT_RANDOM_MULTIPLIER_RANGE = (0.5, 1.5)
 FIGHT_DEFENDER_STRENGTH_BONUS = 0
+
+# Per-round strength loss due to fatigue.
+# Effective loss = FIGHT_STRENGTH_LOSS_PER_ROUND / (1 + constitution * FIGHT_CONSTITUTION_FATIGUE_REDUCTION)
+# At constitution=10: loss = 2 / (1 + 10*0.05) = 2 / 1.5 ≈ 1.33 → rounds to 1
+# At constitution=20: loss = 2 / (1 + 20*0.05) = 2 / 2.0 = 1 → rounds to 1
+# At constitution=1:  loss = 2 / (1 + 1*0.05)  = 2 / 1.05 ≈ 1.9 → rounds to 2
+FIGHT_STRENGTH_LOSS_PER_ROUND = 2
+FIGHT_CONSTITUTION_FATIGUE_REDUCTION = 0.05
+
+# Damage thresholds for fight injury selection
+FIGHT_SEVERE_BITE_DAMAGE_THRESHOLD = 8
+FIGHT_MODERATE_BITE_DAMAGE_THRESHOLD = 4
+
+# Probability of a bite injury vs scratch injury per fight round
+FIGHT_INJURY_BITE_CHANCE = 0.6
+
+# Vet treatment costs: cost = VET_TREATMENT_BASE_COST + VET_TREATMENT_SEVERITY_COST_PER_LEVEL * severity_level
+VET_TREATMENT_BASE_COST = 10
+VET_TREATMENT_SEVERITY_COST_PER_LEVEL = 5
+
+# How much persistence is reduced per vet treatment
+VET_TREATMENT_PERSISTENCE_REDUCTION = 10
+
+# Vet diagnosis costs (flat fee per procedure)
+VET_DIAGNOSE_INJURIES_COST = 25
+VET_DIAGNOSE_MUTATIONS_COST = 50
 
 # Other
 MAX_NAME_LENGTH = 100

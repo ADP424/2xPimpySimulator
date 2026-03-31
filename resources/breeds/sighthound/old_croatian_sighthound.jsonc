@@ -4,8 +4,8 @@
     "description": "The Old Croatian Sighthound is an extinct breed of sighthound from the countries of Croatia and Bosnia and Herzegovina.",
     "rarity": "REMARKABLE",
     "parameters": {
-        "min_size": 14,
-        "max_size": 22,
         "sold_by_vendors": false
-    }
+    },
+    "min_size": 14,
+    "max_size": 22
 }

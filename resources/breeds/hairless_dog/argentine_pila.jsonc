@@ -3,9 +3,9 @@
     "alt_name": "Perro Pila Argentino",
     "description": "The Argentine Pila or Perro Pila Argentino is an Argentine breed of hairless dog. It was recognised by the Asociación Canina Argentina in 2007.",
     "rarity": "RARE",
-    "parameters": {
-        "min_size": 8, // couldn't find a weight and I can't read spanish
-        "max_size": 12,
+    "parameters": { // couldn't find a weight and I can't read spanish
         "fluffiness_mult": 0.1
-    }
+    },
+    "min_size": 8,
+    "max_size": 12
 }

@@ -352,6 +352,59 @@ async def get_injury_by_name(name: str) -> Optional[Injury]:
     return response.scalar_one_or_none()
 
 
+async def get_random_injury(
+    rng: random.Random,
+    min_severity: Optional[str] = None,
+    max_severity: Optional[str] = None,
+    min_health_impact: Optional[str] = None,
+    max_health_impact: Optional[str] = None,
+) -> Optional[Injury]:
+    """
+    Return a random Injury, optionally filtered by severity and/or health_impact range.
+
+    Severity order: trivial < minor < moderate < major < critical < remarkable < catastrophic
+    Health impact order follows HealthImpactWeight ordering (lower weight = more harmful).
+    """
+    _SEVERITY_ORDER = ["trivial", "minor", "moderate", "major", "critical", "remarkable", "catastrophic"]
+
+    async with session_scope() as session:
+        query = select(Injury)
+
+        if min_severity is not None or max_severity is not None:
+            sev_min_idx = _SEVERITY_ORDER.index(min_severity) if min_severity else 0
+            sev_max_idx = _SEVERITY_ORDER.index(max_severity) if max_severity else len(_SEVERITY_ORDER) - 1
+            allowed_severities = _SEVERITY_ORDER[sev_min_idx : sev_max_idx + 1]
+            query = query.where(Injury.severity.in_(allowed_severities))
+
+        if min_health_impact is not None or max_health_impact is not None:
+            # Join to HealthImpactWeight to filter by numeric range
+            hi_subq_min = (
+                (
+                    select(HealthImpactWeight.weight).where(HealthImpactWeight.health_impact == min_health_impact)
+                ).scalar_subquery()
+                if min_health_impact
+                else None
+            )
+            hi_subq_max = (
+                (
+                    select(HealthImpactWeight.weight).where(HealthImpactWeight.health_impact == max_health_impact)
+                ).scalar_subquery()
+                if max_health_impact
+                else None
+            )
+            query = query.join(HealthImpactWeight, HealthImpactWeight.health_impact == Injury.health_impact)
+            if hi_subq_min is not None:
+                query = query.where(HealthImpactWeight.weight >= hi_subq_min)
+            if hi_subq_max is not None:
+                query = query.where(HealthImpactWeight.weight <= hi_subq_max)
+
+        injuries = list((await session.execute(query)).scalars().all())
+
+    if not injuries:
+        return None
+    return rng.choice(injuries)
+
+
 async def get_mutation_health_impact(mutation_id: int) -> Optional[int]:
     """
     Get the health impact for the mutation with the given ID as an integer.

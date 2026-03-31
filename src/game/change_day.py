@@ -294,6 +294,7 @@ async def run_day_change(
         await update_pooch_mood(pooch.id, new_mood)
 
         if _death_roll(total_health, rng):
+            pooch_kennel_before_death = await get_pooch_kennel(pooch.id)
             pooch = await _kill_pooch(pooch)
             await update_pooch_mood(pooch.id, "dead")
             pooch_mutations = await list_pooch_mutations(pooch.id)
@@ -346,21 +347,19 @@ async def run_day_change(
 
                     target_pooches: list[Pooch] = []
                     if on_death_targets == "all":
-                        pooch_kennel = await get_pooch_kennel(pooch.id)
-                        if pooch_kennel is None:
+                        if pooch_kennel_before_death is None:
                             continue
                         target_pooches = [
                             kennel_pooch
-                            for kennel_pooch in (await list_pooches_for_kennel(pooch_kennel.id))
+                            for kennel_pooch in (await list_pooches_for_kennel(pooch_kennel_before_death.id))
                             if kennel_pooch.alive and kennel_pooch.id != pooch.id
                         ]
                     elif on_death_targets == "random":
-                        pooch_kennel = await get_pooch_kennel(pooch.id)
-                        if pooch_kennel is None:
+                        if pooch_kennel_before_death is None:
                             continue
                         kennel_pooches = [
                             kennel_pooch
-                            for kennel_pooch in (await list_pooches_for_kennel(pooch_kennel.id))
+                            for kennel_pooch in (await list_pooches_for_kennel(pooch_kennel_before_death.id))
                             if kennel_pooch.alive and kennel_pooch.id != pooch.id
                         ]
                         target_pooches = [rng.choice(kennel_pooches)]

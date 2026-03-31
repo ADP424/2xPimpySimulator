@@ -4,8 +4,8 @@
     "description": "The Staghound, sometimes referred to as the English Staghound, is an extinct breed of scent hound from England. A pack hound, the breed was used to hunt red deer and became extinct in the 19th century when the last pack was sold.",
     "rarity": "REMARKABLE",
     "parameters": {
-        "min_size": 16,
-        "max_size": 21,
         "sold_by_vendors": false
-    }
+    },
+    "min_size": 16,
+    "max_size": 21
 }

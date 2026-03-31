@@ -5,6 +5,7 @@
     "heritability": 0.1,
     "health_impact": "HEALTHY",
     "rarity": "REMARKABLE",
+    "visible": false,
     "parameters": {
         "strength_add": 1,
         "aggressiveness_mult": 1.5,

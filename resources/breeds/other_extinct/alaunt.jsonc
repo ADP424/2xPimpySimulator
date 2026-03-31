@@ -4,8 +4,8 @@
     "description": "This type of dog may have been developed by the Alans, and was renowned primarily for its quality as a large-game catch dog, and as a war dog and guard dog.",
     "rarity": "EXTRAORDINARY",
     "parameters": {
-        "min_size": 18,
-        "max_size": 25,
         "sold_by_vendors": false
-    }
+    },
+    "min_size": 18,
+    "max_size": 25
 }

@@ -5,6 +5,11 @@
     "heritability": 0.2,
     "health_impact": "NEUTRAL",
     "rarity": "UNCOMMON",
+    "visible": false,
+    "invisible_messages": [
+        "This pooch rarely responds to your calls.",
+        "This pooch struggles with navigation."
+    ],
     "parameters": {
         "dollar_value_add": -15,
         "incompatible_mutations": [

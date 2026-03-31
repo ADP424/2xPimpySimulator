@@ -3,8 +3,6 @@
     "alt_name": "English Beagle",
     "description": "The Beagle is a breed of scent hound, similar in appearance to the much larger foxhound. The beagle was developed primarily for hunting rabbit or hare, known as beagling. Possessing a great sense of smell and superior tracking instincts, the beagle is the primary breed used as a detection dog for prohibited agricultural imports and foodstuffs in quarantine around the world.",
     "rarity": "COMMON",
-    "parameters": {
-        "min_size": 4,
-        "max_size": 5
-    }
+    "min_size": 4,
+    "max_size": 5
 }

@@ -6,6 +6,7 @@
     "health_impact": "NEUTRAL",
     "rarity": "RARE",
     "affects_males": false,
+    "visible": false,
     "parameters": {
         "breeding_cooldown": 50,
         "dollar_value_mult": 0.2,

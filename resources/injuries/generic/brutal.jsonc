@@ -1,4 +1,5 @@
 {
     "name": "Brutal",
-    "health_impact": "brutal"
+    "health_impact": "BRUTAL",
+    "severity": "major"
 }

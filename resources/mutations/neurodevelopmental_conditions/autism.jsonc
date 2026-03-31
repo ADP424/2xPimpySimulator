@@ -5,6 +5,7 @@
     "heritability": 0.35,
     "health_impact": "NEUTRAL",
     "rarity": "COMMON",
+    "visible": false,
     "parameters": {
         "breeding_cooldown": 2,
         "dollar_value_mult": 0.95,

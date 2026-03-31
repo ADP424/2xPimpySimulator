@@ -9,7 +9,8 @@ from src.database import (
     get_pooch_health,
     get_vendor_by_id,
     list_pooch_breeds,
-    list_pooch_injuries,
+    list_pooch_injury_instances,
+    list_pooch_mutation_instances,
     list_pooch_mutations,
 )
 
@@ -32,6 +33,20 @@ if TYPE_CHECKING:
 class PoochBreedInfo:
     breed: Breed
     relative_weight: float
+
+
+@dataclass(frozen=True)
+class PoochMutationInfo:
+    mutation: Mutation
+    displayed_symptom: Optional[str]
+    visible: bool  # per-instance visibility (may be revealed by diagnosis)
+
+
+@dataclass(frozen=True)
+class PoochInjuryInfo:
+    injury: Injury
+    displayed_symptom: Optional[str]
+    visible: bool  # per-instance visibility (may be revealed by diagnosis)
 
 
 @dataclass(frozen=True)
@@ -72,8 +87,8 @@ class Pooch:
     vendor: Optional[Vendor]
 
     breeds: list[PoochBreedInfo]
-    mutations: list[Mutation]
-    injuries: list[Injury]
+    mutations: list[PoochMutationInfo]
+    injuries: list[PoochInjuryInfo]
 
     @property
     def birthday(self) -> Optional[datetime]:
@@ -90,8 +105,11 @@ class Pooch:
         return "healthy"
 
 
-def _apply_stat_params(base: int, stat: str, mutation_orms: list, breed_pairs: list, injury_orms: list) -> int:
-    """Apply _add and _mult parameters from mutations, breeds, and injuries to a base stat value."""
+def _apply_stat_params(base: int, stat: str, mutation_orms: list, breed_pairs: list, injury_instances: list) -> int:
+    """Apply _add and _mult parameters from mutations, breeds, and injuries to a base stat value.
+
+    injury_instances: list of PoochInjury ORM records (each has .injury and .treated).
+    """
     total = float(base)
 
     # Mutations: flat add then mult
@@ -108,19 +126,29 @@ def _apply_stat_params(base: int, stat: str, mutation_orms: list, breed_pairs: l
         breed_mult = sum(b.parameters.get(f"{stat}_mult", 1.0) * (rel / total_weight) for b, rel in breed_pairs)
         total = (total + breed_add) * breed_mult
 
-    # Injuries: per-instance flat add then mult, then stack effects
-    inj_add = sum(i.parameters.get(f"{stat}_add", 0) for i in injury_orms)
+    # Injuries: per-instance flat add then mult from main parameters
+    # When an instance is treated and has a 'treated' block with stat params, apply those instead of the main ones.
+    inj_add = 0.0
     inj_mult = 1.0
-    for i in injury_orms:
-        inj_mult *= i.parameters.get(f"{stat}_mult", 1.0)
+    for pi in injury_instances:
+        injury = pi.injury
+        params = injury.parameters or {}
+        if pi.treated and injury.treated:
+            treated_params = injury.treated
+            inj_add += treated_params.get(f"{stat}_add", 0)
+            inj_mult *= treated_params.get(f"{stat}_mult", params.get(f"{stat}_mult", 1.0))
+        else:
+            inj_add += params.get(f"{stat}_add", 0)
+            inj_mult *= params.get(f"{stat}_mult", 1.0)
     total = (total + inj_add) * inj_mult
 
     # Stack effects: group injuries by id, apply entries whose count threshold is met
     injury_counts: dict[int, tuple[Any, int]] = {}
-    for i in injury_orms:
-        if i.id not in injury_counts:
-            injury_counts[i.id] = (i, 0)
-        injury_counts[i.id] = (i, injury_counts[i.id][1] + 1)
+    for pi in injury_instances:
+        injury = pi.injury
+        if injury.id not in injury_counts:
+            injury_counts[injury.id] = (injury, 0)
+        injury_counts[injury.id] = (injury, injury_counts[injury.id][1] + 1)
 
     stack_add = 0.0
     stack_mult = 1.0
@@ -155,28 +183,46 @@ async def to_pooch(pooch: PoochORM) -> Pooch:
     breeds = [PoochBreedInfo(breed=(await to_breed(b)), relative_weight=rel) for b, rel in breed_pairs]
 
     mutation_orms = await list_pooch_mutations(pooch.id)
-    mutations = [(await to_mutation(m)) for m in mutation_orms]
+    mutation_instances = await list_pooch_mutation_instances(pooch.id)
+    # Build a map from mutation_id → displayed_symptom for O(1) lookup
+    mutation_symptom_map = {pm.mutation_id: pm.displayed_symptom for pm in mutation_instances}
+    mutations = [
+        PoochMutationInfo(
+            mutation=(await to_mutation(m)),
+            displayed_symptom=mutation_symptom_map.get(m.id),
+            visible=next((pm.visible for pm in mutation_instances if pm.mutation_id == m.id), m.visible),
+        )
+        for m in mutation_orms
+    ]
 
-    injury_orms = await list_pooch_injuries(pooch.id)
+    injury_instances = await list_pooch_injury_instances(pooch.id)
+    injuries = [
+        PoochInjuryInfo(injury=pi.injury, displayed_symptom=pi.displayed_symptom, visible=pi.visible)
+        for pi in injury_instances
+    ]
 
     return Pooch(
         id=pooch.id,
         name=pooch.name,
         age=pooch.age,
         sex=pooch.sex,
-        base_health=_apply_stat_params(pooch.base_health, "base_health", mutation_orms, breed_pairs, injury_orms),
+        base_health=_apply_stat_params(pooch.base_health, "base_health", mutation_orms, breed_pairs, injury_instances),
         health_loss_age=pooch.health_loss_age,
-        strength=_apply_stat_params(pooch.strength, "strength", mutation_orms, breed_pairs, injury_orms),
-        cuteness=_apply_stat_params(pooch.cuteness, "cuteness", mutation_orms, breed_pairs, injury_orms),
-        fluffiness=_apply_stat_params(pooch.fluffiness, "fluffiness", mutation_orms, breed_pairs, injury_orms),
-        intelligence=_apply_stat_params(pooch.intelligence, "intelligence", mutation_orms, breed_pairs, injury_orms),
-        dexterity=_apply_stat_params(pooch.dexterity, "dexterity", mutation_orms, breed_pairs, injury_orms),
-        fertility=_apply_stat_params(pooch.fertility, "fertility", mutation_orms, breed_pairs, injury_orms),
-        aggressiveness=_apply_stat_params(
-            pooch.aggressiveness, "aggressiveness", mutation_orms, breed_pairs, injury_orms
+        strength=_apply_stat_params(pooch.strength, "strength", mutation_orms, breed_pairs, injury_instances),
+        cuteness=_apply_stat_params(pooch.cuteness, "cuteness", mutation_orms, breed_pairs, injury_instances),
+        fluffiness=_apply_stat_params(pooch.fluffiness, "fluffiness", mutation_orms, breed_pairs, injury_instances),
+        intelligence=_apply_stat_params(
+            pooch.intelligence, "intelligence", mutation_orms, breed_pairs, injury_instances
         ),
-        constitution=_apply_stat_params(pooch.constitution, "constitution", mutation_orms, breed_pairs, injury_orms),
-        size=_apply_stat_params(pooch.size, "size", mutation_orms, breed_pairs, injury_orms),
+        dexterity=_apply_stat_params(pooch.dexterity, "dexterity", mutation_orms, breed_pairs, injury_instances),
+        fertility=_apply_stat_params(pooch.fertility, "fertility", mutation_orms, breed_pairs, injury_instances),
+        aggressiveness=_apply_stat_params(
+            pooch.aggressiveness, "aggressiveness", mutation_orms, breed_pairs, injury_instances
+        ),
+        constitution=_apply_stat_params(
+            pooch.constitution, "constitution", mutation_orms, breed_pairs, injury_instances
+        ),
+        size=_apply_stat_params(pooch.size, "size", mutation_orms, breed_pairs, injury_instances),
         breeding_cooldown=pooch.breeding_cooldown,
         alive=pooch.alive,
         virgin=pooch.virgin,
@@ -193,5 +239,5 @@ async def to_pooch(pooch: PoochORM) -> Pooch:
         vendor=(await to_vendor(await get_vendor_by_id(pooch.vendor_id))) if pooch.vendor_id is not None else None,
         breeds=breeds,
         mutations=mutations,
-        injuries=injury_orms,
+        injuries=injuries,
     )

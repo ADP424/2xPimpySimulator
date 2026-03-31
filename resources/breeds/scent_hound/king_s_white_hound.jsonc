@@ -4,8 +4,8 @@
     "description": "The King's White Hound, the Chien Blanc du Roi in French, was a breed of scent hound from France that is now extinct. The breed was said to be the favourite of the French kings from Louis XI to Louis XIV.",
     "rarity": "REMARKABLE",
     "parameters": {
-        "min_size": 16,
-        "max_size": 26,
         "sold_by_vendors": false
-    }
+    },
+    "min_size": 16,
+    "max_size": 26
 }

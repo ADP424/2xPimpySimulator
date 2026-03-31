@@ -5,6 +5,11 @@
     "heritability": 0.2,
     "health_impact": "NEUTRAL",
     "rarity": "NOVEL",
+    "visible": false,
+    "invisible_messages": [
+        "This pooch struggles to see things right in front of itself.",
+        "This pooch struggles with navigation."
+    ],
     "parameters": {
         "dollar_value_add": -25,
         "incompatible_mutations": [

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from src.database.models import Mutation as MutationORM
@@ -25,6 +25,10 @@ class Mutation:
     affects_males: bool
 
     parameters: dict = field(default_factory=dict)
+
+    visible: bool = True
+    invisible_messages: Optional[list[str]] = None
+    reveal_chance: float = 1.0
 
 
 async def to_mutation(mutation: MutationORM) -> Mutation:
@@ -54,4 +58,7 @@ async def to_mutation(mutation: MutationORM) -> Mutation:
         affects_females=mutation.affects_females,
         affects_males=mutation.affects_males,
         parameters=mutation.parameters or {},
+        visible=mutation.visible,
+        invisible_messages=mutation.invisible_messages,
+        reveal_chance=mutation.reveal_chance,
     )

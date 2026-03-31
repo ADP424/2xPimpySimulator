@@ -47,7 +47,7 @@ from src.database import (
 
 from .action_helpers.pooch_actions import (
     handle_add_breed,
-    handle_add_mutation_by_name,
+    handle_add_mutation,
     handle_damn_pooch,
     handle_injure_pooch,
     handle_kill_pooch,
@@ -56,7 +56,7 @@ from .action_helpers.pooch_actions import (
     handle_modify_health,
     handle_modify_stat,
     handle_remove_breed,
-    handle_remove_mutation_by_name,
+    handle_remove_mutation,
     handle_rename_pooch,
 )
 from .breeding import breed_pooches as _breed_pooches
@@ -216,11 +216,11 @@ async def _execute_single_stray_action(
 
         elif action_type == "add_mutation":
             pooch_ids = await _resolve_stray_target_ids(context, selector, parameters, rng)
-            await handle_add_mutation_by_name(pooch_ids, parameters, rng, result)
+            await handle_add_mutation(pooch_ids, parameters, rng, result)
 
         elif action_type == "remove_mutation":
             pooch_ids = await _resolve_stray_target_ids(context, selector, parameters, rng)
-            await handle_remove_mutation_by_name(pooch_ids, parameters, rng, result)
+            await handle_remove_mutation(pooch_ids, parameters, rng, result)
 
         elif action_type == "add_breed":
             pooch_ids = await _resolve_stray_target_ids(context, selector, parameters, rng)

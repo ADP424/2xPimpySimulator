@@ -378,7 +378,7 @@ async def _execute_server_actions(
     from src.game.action_helpers.amount import get_amount_from_parameters as _get_amount
     from src.game.action_helpers.pooch_actions import (
         handle_add_breed,
-        handle_add_mutation_by_name,
+        handle_add_mutation,
         handle_damn_pooch,
         handle_injure_pooch,
         handle_kill_pooch,
@@ -387,7 +387,7 @@ async def _execute_server_actions(
         handle_modify_health,
         handle_modify_stat,
         handle_remove_breed,
-        handle_remove_mutation_by_name,
+        handle_remove_mutation,
         handle_rename_pooch,
     )
     from src.game.breeding import breed_pooches as _breed_pooches
@@ -525,15 +525,15 @@ async def _execute_server_actions(
                     mutation_names_raw = [mutation_names_raw]
                 if not mutation_names_raw:
                     # Random mutation — delegate directly
-                    await handle_add_mutation_by_name(target_ids, parameters, rng, combined)
+                    await handle_add_mutation(target_ids, parameters, rng, combined)
                 else:
                     for mut_name in mutation_names_raw:
                         params_with_name = dict(parameters)
                         params_with_name["mutation"] = mut_name
-                        await handle_add_mutation_by_name(target_ids, params_with_name, rng, combined)
+                        await handle_add_mutation(target_ids, params_with_name, rng, combined)
 
             elif action_type == "remove_mutation":
-                await handle_remove_mutation_by_name(target_ids, parameters, rng, combined)
+                await handle_remove_mutation(target_ids, parameters, rng, combined)
 
             elif action_type == "add_breed":
                 await handle_add_breed(target_ids, parameters, rng, combined)

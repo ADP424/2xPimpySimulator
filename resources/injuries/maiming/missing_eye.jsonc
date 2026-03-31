@@ -1,6 +1,7 @@
 {
-    "name": "missing eye",
-    "health_impact": "harmful",
+    "name": "Missing Eye",
+    "health_impact": "HARMFUL",
+    "severity": "major",
     "description": "This pooch is missing an eye.",
     "parameters": {
         "max_duplicates": 2,
@@ -13,5 +14,9 @@
                 "dexterity_mult": 0.5
             }
         ]
+    },
+    "treated": {
+        "health_impact": "NEUTRAL",
+        "description": "This pooch is missing an eye but has received medical treatment."
     }
 }

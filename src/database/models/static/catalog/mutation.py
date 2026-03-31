@@ -1,5 +1,7 @@
+from typing import Optional
+
 from sqlalchemy import BigInteger, Boolean, CheckConstraint, Numeric, Text, text
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ... import Base
@@ -29,4 +31,10 @@ class Mutation(Base):
 
     parameters: Mapped[dict[str, str | int | float | list[str]]] = mapped_column(
         JSONB, nullable=False, server_default=text("'{}'::jsonb")
+    )
+
+    visible: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
+    invisible_messages: Mapped[Optional[list[str]]] = mapped_column(ARRAY(Text), nullable=True)
+    reveal_chance: Mapped[float] = mapped_column(
+        Numeric(4, 3, asdecimal=False), nullable=False, server_default=text("1.0")
     )

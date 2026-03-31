@@ -93,7 +93,7 @@ def serialize_pooch(pooch: Any, include_relations: bool = True) -> dict:
 
     if include_relations:
         data["breeds"] = [serialize_pooch_breed_info(b) for b in pooch.breeds]
-        data["mutations"] = [serialize_mutation(m) for m in pooch.mutations]
+        data["mutations"] = [serialize_mutation(pm.mutation) for pm in pooch.mutations if pm.visible]
         if pooch.owner is not None:
             data["owner"] = serialize_owner(pooch.owner)
 

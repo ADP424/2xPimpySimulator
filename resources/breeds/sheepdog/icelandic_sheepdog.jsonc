@@ -3,8 +3,6 @@
     "alt_name": "Íslenskur Fjárhundur",
     "description": "It is an Icelandic breed of dog of Nordic Spitz type. It derives from dogs brought to Iceland by Viking settlers in the ninth century; it is both similar and closely related to the Buhund of Norway and the Vallhund and Norrbottenpets of Sweden, which derive from the same ancestral stock.",
     "rarity": "NOVEL",
-    "parameters": {
-        "min_size": 5,
-        "max_size": 8
-    }
+    "min_size": 5,
+    "max_size": 8
 }

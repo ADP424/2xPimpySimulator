@@ -197,7 +197,18 @@ class AuctionBrowsePageSource(PageSource):
 def _build_sale_listing_embed(listing: AuctionSaleListing) -> discord.Embed:
     p = listing.pooch
     top_breed = max(p.breeds, key=lambda b: b.relative_weight).breed.name if p.breeds else "Unknown"
-    mutations = ", ".join(m.name for m in p.mutations) if p.mutations else "None"
+    mutations = (
+        (
+            ", ".join(
+                pm.mutation.name if pm.visible else (pm.displayed_symptom or "")
+                for pm in p.mutations
+                if pm.visible or pm.displayed_symptom
+            )
+            or "None"
+        )
+        if p.mutations
+        else "None"
+    )
 
     high_str = f"${listing.highest_bid}" if listing.highest_bid is not None else f"${listing.minimum_bid} (min)"
     expires_str = f"<t:{int(listing.expires_at.timestamp())}:R>" if listing.expires_at else "No expiry (manual close)"

@@ -40,7 +40,7 @@ from .events import (
 from .kennel import Kennel, to_kennel
 from .mutation import Mutation, to_mutation
 from .owner import Owner, to_owner
-from .pooch import Pooch, PoochBreedInfo, to_pooch
+from .pooch import Pooch, PoochBreedInfo, PoochInjuryInfo, PoochMutationInfo, to_pooch
 from .server import Server, to_server
 from .vendor import Vendor, to_vendor
 
@@ -89,6 +89,8 @@ __all__ = [
     "to_owner",
     "Pooch",
     "PoochBreedInfo",
+    "PoochInjuryInfo",
+    "PoochMutationInfo",
     "to_pooch",
     "Server",
     "to_server",

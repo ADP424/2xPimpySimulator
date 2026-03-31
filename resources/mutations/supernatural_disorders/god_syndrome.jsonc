@@ -5,6 +5,11 @@
     "heritability": 0.0,
     "health_impact": "IMMORTALITY",
     "rarity": "UNIQUE",
+    "visible": false,
+    "invisible_messages": [
+        "This pooch has a divine aura."
+    ],
+    "reveal_chance": 0.0,
     "parameters": {
         "strength_mult": 1.33,
         "intelligence_mult": 1.33,

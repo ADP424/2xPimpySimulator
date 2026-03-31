@@ -5,6 +5,10 @@
     "heritability": 0.4,
     "health_impact": "HARMFUL",
     "rarity": "RARE",
+    "visible": false,
+    "invisible_messages": [
+        "This pooch seems panicky."
+    ],
     "parameters": {
         "incompatible_mutations": [
             "Total Blindness"

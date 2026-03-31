@@ -4,8 +4,8 @@
     "description": "The Jonangi is an indigenous dog breed from India. Primarily found in Andhra Pradesh, parts of Karnataka, and along the eastern coast from West Bengal to Tamil Nadu.",
     "rarity": "NOVEL",
     "parameters": {
-        "min_size": 11, // 45-85 lbs
-        "max_size": 21,
         "fluffiness_mult": 0.1
-    }
+    },
+    "min_size": 11,
+    "max_size": 21
 }

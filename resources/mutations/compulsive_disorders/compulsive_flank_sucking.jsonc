@@ -4,5 +4,11 @@
     "description": "This pooch can't stop sucking its own ass.",
     "heritability": 0.05,
     "health_impact": "HARMFUL",
-    "rarity": "UNCOMMON"
+    "rarity": "UNCOMMON",
+    "visible": false,
+    "invisible_messages": [
+        "This pooch frequently licks itself.",
+        "This pooch frequently bites itself.",
+        "This pooch frequently sucks its behind."
+    ]
 }

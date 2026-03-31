@@ -5,6 +5,10 @@
     "heritability": 1.0,
     "health_impact": "INSTANT_DEATH",
     "rarity": "EXTRAORDINARY",
+    "visible": false,
+    "invisible_messages": [
+        "This pooch has a ticking noise coming from its stomach..."
+    ],
     "parameters": {
         "strength_add": 5,
         "death_message": "[pooch] exploded all over the walls.",

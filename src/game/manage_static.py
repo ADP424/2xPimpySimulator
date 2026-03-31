@@ -5,7 +5,9 @@ from typing import TYPE_CHECKING, Optional
 from src.database import get_breed_by_id as db_get_breed_by_id
 from src.database import get_mutation_by_id as db_get_mutation_by_id
 from src.database import list_all_breeds as db_list_all_breeds
+from src.database import list_all_injuries as db_list_all_injuries
 from src.database import list_all_mutations as db_list_all_mutations
+from src.database.models import Injury
 
 from .models import to_breed, to_mutation
 
@@ -81,3 +83,16 @@ async def list_all_mutations() -> list[Mutation]:
 
     mutations = await db_list_all_mutations()
     return [(await to_mutation(mutation)) for mutation in mutations]
+
+
+async def list_all_injuries() -> list[Injury]:
+    """
+    Fetches a list of all possible injuries a pooch can get.
+
+    Returns
+    -------
+    list[Injury]
+        The list of every injury in the game.
+    """
+
+    return await db_list_all_injuries()

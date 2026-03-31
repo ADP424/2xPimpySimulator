@@ -58,6 +58,8 @@ async def get_target_pooch_ids(
     exclude_ids_raw = parameters.get("_exclude_ids", [])
     exclude_ids: set[int] = set(exclude_ids_raw) if isinstance(exclude_ids_raw, list) else set()
 
+    excluded_pooch_ids: list[int] = []
+
     # use_saved: pull IDs from a named slot
     use_saved = parameters.get("use_saved")
     if isinstance(use_saved, str) and use_saved:
@@ -159,10 +161,16 @@ async def get_target_pooch_ids(
                 n = pooch_count if pooch_count is not None else 1
                 if n < len(kennel_pooches):
                     excluded = set(rng.sample(kennel_pooches, n))
+                    excluded_pooch_ids.extend(excluded)
                     pooch_ids.extend(pid for pid in kennel_pooches if pid not in excluded)
                 # if count >= len, nothing survives the exclusion — pooch_ids stays empty for this kennel
             else:
                 pooch_ids.extend(kennel_pooches)
+
+    # save_excluded_as: store the excluded pooch IDs into a named slot (random_exclude only)
+    save_excluded_as = parameters.get("save_excluded_as")
+    if isinstance(save_excluded_as, str) and save_excluded_as and excluded_pooch_ids:
+        context.extra_data[save_excluded_as] = {"pooch_ids": excluded_pooch_ids}
 
     # save_as: store resolved IDs (and optionally kennel/owner IDs) into a named slot
     save_as = parameters.get("save_as")

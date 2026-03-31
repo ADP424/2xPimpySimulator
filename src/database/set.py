@@ -384,7 +384,15 @@ async def add_mutation_to_pooch(
             if new_name in incompatible_mutations:
                 return None
 
-        pooch_mutation = PoochMutation(pooch_id=pooch_id, mutation_id=mutation_id)
+        displayed_symptom = None
+        if not new_mutation.visible and new_mutation.invisible_messages:
+            displayed_symptom = rng.choice(new_mutation.invisible_messages)
+        pooch_mutation = PoochMutation(
+            pooch_id=pooch_id,
+            mutation_id=mutation_id,
+            displayed_symptom=displayed_symptom,
+            visible=new_mutation.visible,
+        )
         session.add(pooch_mutation)
         await session.flush()
 
@@ -420,7 +428,16 @@ async def add_injury_to_pooch(pooch_id: int, injury_id: int) -> Optional[PoochIn
             if existing_count >= max_duplicates:
                 return None
         persistence = (injury.parameters or {}).get("persistence")
-        pooch_injury = PoochInjury(pooch_id=pooch_id, injury_id=injury_id, persistence=persistence)
+        displayed_symptom = None
+        if not injury.visible and injury.invisible_messages:
+            displayed_symptom = random.choice(injury.invisible_messages)
+        pooch_injury = PoochInjury(
+            pooch_id=pooch_id,
+            injury_id=injury_id,
+            persistence=persistence,
+            displayed_symptom=displayed_symptom,
+            visible=injury.visible,
+        )
         session.add(pooch_injury)
         await session.flush()
     return pooch_injury

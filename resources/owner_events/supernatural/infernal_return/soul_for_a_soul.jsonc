@@ -24,7 +24,10 @@
                     "action_type": "damn_pooch",
                     "target_type": "pooch",
                     "parameters": {
-                        "selector": "random"
+                        "selector": "random",
+                        "filter": {
+                            "is_alive": true
+                        }
                     }
                 },
                 {

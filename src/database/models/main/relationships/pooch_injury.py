@@ -1,6 +1,7 @@
-from typing import TYPE_CHECKING
+from datetime import datetime
+from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import BigInteger, ForeignKey, Integer
+from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.database.models import Base
@@ -15,7 +16,11 @@ class PoochInjury(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     pooch_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("pooches.id", ondelete="CASCADE"), nullable=False)
     injury_id: Mapped[int] = mapped_column(Integer, ForeignKey("injuries.id", ondelete="RESTRICT"), nullable=False)
-    persistence: Mapped[int] = mapped_column(Integer, nullable=True)
+    persistence: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    treated: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    last_treated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    displayed_symptom: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    visible: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
 
     injury: Mapped[Injury] = relationship("Injury")
     pooch: Mapped[Pooch] = relationship("Pooch", back_populates="pooch_injuries")

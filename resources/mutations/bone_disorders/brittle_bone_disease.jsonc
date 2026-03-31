@@ -5,6 +5,11 @@
     "heritability": 0.2,
     "health_impact": "SEVERE",
     "rarity": "NOVEL",
+    "visible": false,
+    "invisible_messages": [
+        "This pooch appears weak.",
+        "This pooch appears thin."
+    ],
     "parameters": {
         "aggressiveness_add": -1,
         "strength_add": -3,

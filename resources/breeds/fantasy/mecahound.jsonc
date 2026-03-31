@@ -4,8 +4,6 @@
     "description": "This dog is built out of steel and titanium.",
     "rarity": "EXTRAORDINARY",
     "parameters": {
-        "min_size": 20,
-        "max_size": 50,
         "strength_add": 8,
         "intelligence_add": 8,
         "constitution_add": 2,
@@ -14,5 +12,7 @@
         "cuteness_mult": 0.33,
         "dexerity_add": -1,
         "fertility_mult": 0.33
-    }
+    },
+    "min_size": 20,
+    "max_size": 50
 }

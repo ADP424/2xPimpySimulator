@@ -10,6 +10,7 @@ from src.game import (
     get_breed_by_id,
     get_event_history,
     get_mutation_by_id,
+    get_pending_event,
     get_pooch_by_id,
     respond_to_event,
 )
@@ -412,7 +413,13 @@ def _build_pooch_info_embed(pooch: Pooch) -> discord.Embed:
         breed_text = "None"
 
     if pooch.mutations:
-        mutation_text = ", ".join(mutation.name for mutation in pooch.mutations)
+        mutation_parts = []
+        for pm in pooch.mutations:
+            if pm.visible:
+                mutation_parts.append(pm.mutation.name)
+            elif pm.displayed_symptom:
+                mutation_parts.append(pm.displayed_symptom)
+        mutation_text = ", ".join(mutation_parts) or "None"
     else:
         mutation_text = "None"
 
@@ -575,6 +582,10 @@ class EventResponseSelect(discord.ui.Select):
             )
             next_view = EventMessageView(self.owner_discord_id, self.event, response_enabled=False)
             await interaction.response.edit_message(embed=embed, view=next_view)
+            for entry in (result.extra_data or {}).get("started_events", []):
+                followup = await get_pending_event(self.owner_discord_id, entry.get("active_owner_event_id"))
+                if followup is not None:
+                    await send_triggered_event_dm(interaction.client, self.owner_discord_id, followup)
             return
 
         terminal_messages = {

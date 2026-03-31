@@ -69,12 +69,19 @@ from .manage_owners import (
     visit_park,
 )
 from .manage_pooches import (
+    diagnose_injuries,
+    diagnose_mutations,
+    get_diagnose_injuries_cost,
+    get_diagnose_mutations_cost,
     get_pooch_by_id,
     get_pooch_family,
     get_pooch_family_tree,
+    get_pooch_injury_instances,
+    get_treatment_cost,
     rename_pooch,
     run_hourly_breeding_cooldown_check,
     run_hourly_injury_persistence_check,
+    treat_injury,
 )
 from .manage_server_events import (
     get_active_server_event,
@@ -94,6 +101,7 @@ from .manage_static import (
     get_breed_by_id,
     get_mutation_by_id,
     list_all_breeds,
+    list_all_injuries,
     list_all_mutations,
 )
 from .manage_stray_events import (
@@ -158,9 +166,16 @@ __all__ = [
     "update_owner_names",
     "visit_park",
     # Pooch commands
+    "diagnose_injuries",
+    "diagnose_mutations",
+    "get_diagnose_injuries_cost",
+    "get_diagnose_mutations_cost",
     "get_pooch_by_id",
     "get_pooch_family",
     "get_pooch_family_tree",
+    "get_pooch_injury_instances",
+    "get_treatment_cost",
+    "treat_injury",
     "rename_pooch",
     "run_hourly_breeding_cooldown_check",
     "run_hourly_injury_persistence_check",
@@ -182,6 +197,7 @@ __all__ = [
     "get_breed_by_id",
     "get_mutation_by_id",
     "list_all_breeds",
+    "list_all_injuries",
     "list_all_mutations",
     # Auction house commands
     "cancel_bounty_listing",

@@ -10,6 +10,8 @@ Injuries are structured within resources/injuries/**/*.jsonc, like:
     "name": "string",
     "health_impact": "string",
     "description": "string",
+    "visible": "bool",
+    "invisible_messages": ["string", "..."],
     "parameters": {
         "[option]": "int/float"
     }
@@ -37,6 +39,16 @@ The positive/negative severity of the health impact the injury has on the pooch 
 
 #### Description
 A brief description of the injury, framed like it's describing the pooch with it. For example, "This pooch is missing an eye."
+
+#### Visible
+Whether this injury is shown to the player on the pooch info screen. Defaults to `true`.
+- `true`: The injury name appears in the pooch's injury list and is accessible via the dropdown. This is the default.
+- `false`: The injury is hidden. Its name is never shown to the player. If `invisible_messages` is provided, one message is randomly chosen when the injury is applied and shown in the injury list in place of the name (the same message is always shown for that instance). If no `invisible_messages` are provided, the injury is entirely silent — the player sees nothing.
+
+#### Invisible Messages
+A list of possible symptom messages to display for this injury when it is invisible (`"visible": false`). Formatted the same as the description — written as if describing the pooch (e.g. `"This pooch is limping."`). One message is chosen at random when the injury is applied to a pooch and is shown persistently for that instance. Only used when `"visible": false`; has no effect on visible injuries.
+- If omitted (or `"visible"` is `true`), nothing special happens. This is the default.
+- Example: `"invisible_messages": ["This pooch is limping.", "This pooch favors its left side."]`
 
 #### Parameters
 An object representing more complex options for the injury (more information in "Parameters Guide").

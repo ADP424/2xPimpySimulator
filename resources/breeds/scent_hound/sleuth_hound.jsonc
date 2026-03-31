@@ -4,8 +4,8 @@
     "description": "The sleuth hound was a breed of dog. Broadly, it was a Scottish term for what in England was called the Bloodhound, although it seems that there were slight differences between them.",
     "rarity": "REMARKABLE",
     "parameters": {
-        "min_size": 10,
-        "max_size": 14,
         "sold_by_vendors": false
-    }
+    },
+    "min_size": 10,
+    "max_size": 14
 }

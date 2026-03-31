@@ -4,5 +4,6 @@
     "description": "This pooch has a big heart.",
     "heritability": 0.25,
     "health_impact": "UNHEALTHY",
-    "rarity": "COMMON"
+    "rarity": "COMMON",
+    "visible": false
 }

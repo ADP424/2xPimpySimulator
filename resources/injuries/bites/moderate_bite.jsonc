@@ -1,0 +1,15 @@
+{
+    "name": "Moderate Bite",
+    "health_impact": "UNHEALTHY",
+    "severity": "moderate",
+    "description": "This pooch has a painful bite wound.",
+    "parameters": {
+        "persistence": 24,
+        "strength_add": -2,
+        "dexterity_add": -1
+    },
+    "treated": {
+        "health_impact": "HARMFUL",
+        "description": "This pooch has a treated moderate bite wound."
+    }
+}

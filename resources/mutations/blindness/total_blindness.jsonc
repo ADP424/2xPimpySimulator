@@ -5,6 +5,10 @@
     "heritability": 0.25,
     "health_impact": "NEUTRAL",
     "rarity": "RARE",
+    "visible": false,
+    "invisible_messages": [
+        "This pooch cannot see."
+    ],
     "parameters": {
         "dollar_value_add": -50,
         "incompatible_mutations": [

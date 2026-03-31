@@ -1,28 +1,41 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Optional
 
 from src.database import (
+    get_owner_by_discord_id,
     get_parentage_maps,
 )
 from src.database import get_pooch_by_id as db_get_pooch_by_id
 from src.database import (
     get_pooch_parents,
+    give_money_to_owner,
     list_pooch_children,
     list_pooch_siblings,
     list_pooches_with_health,
+    reduce_pooch_injury_persistence,
 )
 from src.database import rename_pooch as db_rename_pooch
 from src.database import (
+    reveal_pooch_injury,
+    reveal_pooch_mutation,
     tick_hourly_breeding_cooldowns,
     tick_hourly_injury_persistence,
+    treat_pooch_injury,
 )
+from src.database.models import PoochInjury
 from src.logger import get_logger
 
 from .constants import (
     BREEDING_COOLDOWN_HOURLY_FERTILITY_DIVISOR,
     INJURY_PERSISTENCE_HOURLY_CONSTITUTION_DIVISOR,
     MAX_NAME_LENGTH,
+    VET_DIAGNOSE_INJURIES_COST,
+    VET_DIAGNOSE_MUTATIONS_COST,
+    VET_TREATMENT_BASE_COST,
+    VET_TREATMENT_PERSISTENCE_REDUCTION,
+    VET_TREATMENT_SEVERITY_COST_PER_LEVEL,
 )
 from .exceptions import PoochNotFound
 from .models import to_pooch
@@ -296,6 +309,216 @@ async def run_hourly_injury_persistence_check(rng_seed: Optional[int] = None) ->
     )
     logger.info("Hourly injury persistence tick: %d injury instance(s) decremented.", decremented)
     return decremented
+
+
+_SEVERITY_LEVEL: dict[str, int] = {
+    "trivial": 1,
+    "minor": 2,
+    "moderate": 3,
+    "major": 4,
+    "critical": 5,
+    "remarkable": 6,
+    "catastrophic": 7,
+}
+
+
+def get_treatment_cost(severity: str) -> int:
+    """Return the cost in dollars to treat one persistence point off an injury."""
+    level = _SEVERITY_LEVEL.get(severity.lower(), 2)
+    return VET_TREATMENT_BASE_COST + VET_TREATMENT_SEVERITY_COST_PER_LEVEL * level
+
+
+async def get_pooch_injury_instances(pooch_id: int) -> list[PoochInjury]:
+    """
+    Return the PoochInjury join records for the given pooch (including treatment state).
+    The .injury relationship is eagerly loaded.
+    """
+    from src.database import list_pooch_injury_instances
+
+    return await list_pooch_injury_instances(pooch_id)
+
+
+def get_diagnose_injuries_cost() -> int:
+    return VET_DIAGNOSE_INJURIES_COST
+
+
+def get_diagnose_mutations_cost() -> int:
+    return VET_DIAGNOSE_MUTATIONS_COST
+
+
+async def treat_injury(
+    owner_discord_id: int,
+    pooch_injury_id: int,
+) -> tuple[bool, str, int]:
+    """
+    Treat a PoochInjury. Charges the owner and applies treatment effects.
+
+    Returns
+    -------
+    tuple[bool, str, int]
+        (success, message, cost_charged)
+    """
+    # Load the specific instance with eager injury relationship
+    from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
+
+    from src.database.models import PoochInjury as PoochInjuryORM
+    from src.database.session import session_scope
+
+    injury_severity = None
+    persistence = None
+    last_treated_at = None
+
+    async with session_scope() as session:
+        query = (
+            select(PoochInjuryORM)
+            .options(selectinload(PoochInjuryORM.injury))
+            .where(PoochInjuryORM.id == pooch_injury_id)
+        )
+        result = await session.execute(query)
+        pi = result.scalar_one_or_none()
+        if pi is None:
+            return False, "Injury not found.", 0
+        injury_severity = pi.injury.severity
+        persistence = pi.persistence
+        last_treated_at = pi.last_treated_at
+
+    owner = await get_owner_by_discord_id(owner_discord_id)
+    if owner is None:
+        return False, "Owner not found.", 0
+
+    cost = get_treatment_cost(injury_severity)
+
+    # Check if already treated today
+    if last_treated_at is not None:
+        now = datetime.now(timezone.utc)
+        last = last_treated_at
+        if last.tzinfo is None:
+            last = last.replace(tzinfo=timezone.utc)
+        if last.date() == now.date():
+            return False, "This injury has already been treated today.", 0
+
+    if owner.dollars < cost:
+        return False, f"Not enough money. Treatment costs **${cost}**.", 0
+
+    await give_money_to_owner(owner_discord_id, -cost)
+    await treat_pooch_injury(pooch_injury_id)
+    if persistence is not None:
+        await reduce_pooch_injury_persistence(pooch_injury_id, VET_TREATMENT_PERSISTENCE_REDUCTION)
+
+    return True, f"Treatment successful. Charged **${cost}**.", cost
+
+
+async def diagnose_injuries(
+    owner_discord_id: int,
+    pooch_id: int,
+    rng_seed: Optional[int] = None,
+) -> tuple[bool, str, list[str]]:
+    """
+    Attempt to reveal all invisible injuries on a pooch. Charges the owner $VET_DIAGNOSE_INJURIES_COST.
+
+    Each invisible injury is revealed with probability equal to its ``reveal_chance``. Injuries that
+    are already visible are skipped.
+
+    Returns
+    -------
+    tuple[bool, str, list[str]]
+        (success, error_message_if_failed, list_of_revealed_injury_names)
+        On failure success is False and the message explains why. On success success is True,
+        message is empty, and revealed_names lists every injury that was newly made visible.
+    """
+    import random as _random
+
+    from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
+
+    from src.database.models import PoochInjury as PoochInjuryORM
+    from src.database.session import session_scope
+
+    owner = await get_owner_by_discord_id(owner_discord_id)
+    if owner is None:
+        return False, "Owner not found.", []
+
+    if owner.dollars < VET_DIAGNOSE_INJURIES_COST:
+        return False, f"Not enough money. Diagnosis costs **${VET_DIAGNOSE_INJURIES_COST}**.", []
+
+    rng = _random.Random(rng_seed)
+
+    async with session_scope() as session:
+        query = (
+            select(PoochInjuryORM)
+            .options(selectinload(PoochInjuryORM.injury))
+            .where(PoochInjuryORM.pooch_id == pooch_id, PoochInjuryORM.visible.is_(False))
+        )
+        result = await session.execute(query)
+        invisible_instances = list(result.scalars().all())
+
+    await give_money_to_owner(owner_discord_id, -VET_DIAGNOSE_INJURIES_COST)
+
+    revealed: list[str] = []
+    for pi in invisible_instances:
+        reveal_chance = float(getattr(pi.injury, "reveal_chance", 1.0))
+        if rng.random() < reveal_chance:
+            await reveal_pooch_injury(pi.id)
+            revealed.append(pi.injury.name)
+
+    return True, "", revealed
+
+
+async def diagnose_mutations(
+    owner_discord_id: int,
+    pooch_id: int,
+    rng_seed: Optional[int] = None,
+) -> tuple[bool, str, list[str]]:
+    """
+    Attempt to reveal all invisible mutations on a pooch. Charges the owner $VET_DIAGNOSE_MUTATIONS_COST.
+
+    Each invisible mutation is revealed with probability equal to its ``reveal_chance``. Mutations that
+    are already visible are skipped.
+
+    Returns
+    -------
+    tuple[bool, str, list[str]]
+        (success, error_message_if_failed, list_of_revealed_mutation_names)
+        On failure success is False and the message explains why. On success success is True,
+        message is empty, and revealed_names lists every mutation that was newly made visible.
+    """
+    import random as _random
+
+    from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
+
+    from src.database.models import PoochMutation as PoochMutationORM
+    from src.database.session import session_scope
+
+    owner = await get_owner_by_discord_id(owner_discord_id)
+    if owner is None:
+        return False, "Owner not found.", []
+
+    if owner.dollars < VET_DIAGNOSE_MUTATIONS_COST:
+        return False, f"Not enough money. Diagnosis costs **${VET_DIAGNOSE_MUTATIONS_COST}**.", []
+
+    rng = _random.Random(rng_seed)
+
+    async with session_scope() as session:
+        query = (
+            select(PoochMutationORM)
+            .options(selectinload(PoochMutationORM.mutation))
+            .where(PoochMutationORM.pooch_id == pooch_id, PoochMutationORM.visible.is_(False))
+        )
+        result = await session.execute(query)
+        invisible_instances = list(result.scalars().all())
+
+    await give_money_to_owner(owner_discord_id, -VET_DIAGNOSE_MUTATIONS_COST)
+
+    revealed: list[str] = []
+    for pm in invisible_instances:
+        reveal_chance = float(getattr(pm.mutation, "reveal_chance", 1.0))
+        if rng.random() < reveal_chance:
+            await reveal_pooch_mutation(pm.pooch_id, pm.mutation_id)
+            revealed.append(pm.mutation.name)
+
+    return True, "", revealed
 
 
 async def rename_pooch(pooch_id: int, name: str) -> bool:

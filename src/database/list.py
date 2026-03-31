@@ -110,6 +110,22 @@ async def list_all_breeds() -> list[Breed]:
     return list(response.scalars().all())
 
 
+async def list_all_injuries() -> list[Injury]:
+    """
+    Fetch every injury in alphabetical order by name.
+
+    Returns
+    -------
+    list[Injury]
+        Every ORM Injury object in the static injury table.
+    """
+
+    async with session_scope() as session:
+        response = await session.execute(select(Injury).order_by(Injury.name.asc()))
+
+    return list(response.scalars().all())
+
+
 async def list_all_owner_events() -> list[Event]:
     """
     List all owner_events.
@@ -591,6 +607,35 @@ async def list_pooch_injuries(pooch_id: int) -> list[Injury]:
             .join(PoochInjury, PoochInjury.injury_id == Injury.id)
             .where(PoochInjury.pooch_id == pooch_id)
             .order_by(Injury.health_impact)
+        )
+        response = await session.execute(query)
+    return list(response.scalars().all())
+
+
+async def list_pooch_injury_instances(pooch_id: int) -> list[PoochInjury]:
+    """Fetch the PoochInjury join records for the given pooch, with the injury relationship eagerly loaded."""
+    from sqlalchemy.orm import selectinload
+
+    async with session_scope() as session:
+        query = (
+            select(PoochInjury)
+            .options(selectinload(PoochInjury.injury))
+            .where(PoochInjury.pooch_id == pooch_id)
+            .order_by(PoochInjury.id)
+        )
+        response = await session.execute(query)
+    return list(response.scalars().all())
+
+
+async def list_pooch_mutation_instances(pooch_id: int) -> list[PoochMutation]:
+    """Fetch the PoochMutation join records for the given pooch, with the mutation relationship eagerly loaded."""
+    from sqlalchemy.orm import selectinload
+
+    async with session_scope() as session:
+        query = (
+            select(PoochMutation)
+            .options(selectinload(PoochMutation.mutation))
+            .where(PoochMutation.pooch_id == pooch_id)
         )
         response = await session.execute(query)
     return list(response.scalars().all())

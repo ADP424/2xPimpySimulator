@@ -4,8 +4,8 @@
     "description": "The cur, also called the drover's dog, was a distinct breed of dog used by cattle drovers; they are now extinct.",
     "rarity": "REMARKABLE",
     "parameters": {
-        "min_size": 10,
-        "max_size": 19,
         "sold_by_vendors": false
-    }
+    },
+    "min_size": 10,
+    "max_size": 19
 }

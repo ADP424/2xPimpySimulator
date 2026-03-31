@@ -1451,3 +1451,64 @@ async def fulfill_auction_bounty_listing(
         listing.fulfilled_pooch_id = fulfilled_pooch_id
         await session.flush()
         return listing
+
+
+async def treat_pooch_injury(pooch_injury_id: int) -> Optional[PoochInjury]:
+    """
+    Mark a PoochInjury as treated and record the timestamp.
+
+    Returns the updated PoochInjury, or None if not found.
+    """
+    async with session_scope() as session:
+        pi = await session.get(PoochInjury, pooch_injury_id)
+        if pi is None:
+            return None
+        pi.treated = True
+        pi.last_treated_at = datetime.now(timezone.utc)
+        await session.flush()
+    return pi
+
+
+async def reduce_pooch_injury_persistence(pooch_injury_id: int, amount: int = 10) -> Optional[PoochInjury]:
+    """
+    Reduce the persistence of a PoochInjury by the given amount, removing it if it hits 0.
+
+    Returns the updated (or deleted) PoochInjury, or None if not found.
+    """
+    async with session_scope() as session:
+        pi = await session.get(PoochInjury, pooch_injury_id)
+        if pi is None:
+            return None
+        if pi.persistence is not None:
+            pi.persistence = max(0, pi.persistence - amount)
+            if pi.persistence <= 0:
+                await session.delete(pi)
+                return None
+        await session.flush()
+    return pi
+
+
+async def reveal_pooch_mutation(pooch_id: int, mutation_id: int) -> bool:
+    """
+    Mark a PoochMutation as visible. Returns True if the row was found and updated.
+    """
+    async with session_scope() as session:
+        pm = await session.get(PoochMutation, (pooch_id, mutation_id))
+        if pm is None:
+            return False
+        pm.visible = True
+        await session.flush()
+    return True
+
+
+async def reveal_pooch_injury(pooch_injury_id: int) -> bool:
+    """
+    Mark a PoochInjury instance as visible. Returns True if the row was found and updated.
+    """
+    async with session_scope() as session:
+        pi = await session.get(PoochInjury, pooch_injury_id)
+        if pi is None:
+            return False
+        pi.visible = True
+        await session.flush()
+    return True

@@ -5,6 +5,10 @@
     "heritability": 0.2,
     "health_impact": "SEVERE",
     "rarity": "RARE",
+    "visible": false,
+    "invisible_messages": [
+        "This pooch is often sick."
+    ],
     "parameters": {
         "constitution_mult": 0.5
     }

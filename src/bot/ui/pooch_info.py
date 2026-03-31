@@ -12,7 +12,11 @@ from src.bot.ui.util import (
 from src.game import get_pooch_family
 from src.game.models import Mutation, PoochBreedInfo
 
-from .components import build_breed_info_embed, build_mutation_info_embed
+from .components import (
+    build_breed_info_embed,
+    build_injury_info_embed,
+    build_mutation_info_embed,
+)
 
 if TYPE_CHECKING:
     from src.game.models import Owner, Pooch, Server
@@ -142,6 +146,42 @@ class _MutationSelect(Select):
         await r.reply(embed=embed)
 
 
+class _InjurySelect(Select):
+    def __init__(self, injuries: Sequence, placeholder: str, empty_label: str):
+        if not injuries:
+            options = [discord.SelectOption(label=empty_label, value="__none__")]
+        else:
+            options = [discord.SelectOption(label=injury.name, value=str(injury.id)) for injury in injuries]
+
+        super().__init__(
+            placeholder=placeholder,
+            options=options,
+            disabled=(not bool(injuries)),
+            min_values=1,
+            max_values=1,
+        )
+        self._injuries = list(injuries)
+
+    async def callback(self, interaction: discord.Interaction):
+        r = InteractionResponder(interaction)
+        value = self.values[0]
+        for option in self.options:
+            option.default = option.value == value
+
+        await r.edit(view=self.view)
+
+        if value == "__none__":
+            return
+
+        injury_id = int(value)
+        selected = next((injury for injury in self._injuries if injury.id == injury_id), None)
+        if selected is None:
+            return
+
+        embed = build_injury_info_embed(selected)
+        await r.reply(embed=embed)
+
+
 class PoochInfoView(View):
     def __init__(self, *, server: Server, pooch: Pooch, owner: Optional[Owner], timeout: float = VIEW_TIMEOUT):
         super().__init__(timeout=timeout)
@@ -229,15 +269,21 @@ class PoochInfoView(View):
         else:
             breed_text = "None"
 
-        if self.pooch.mutations:
-            mutation_text = ", ".join(mutation.name for mutation in self.pooch.mutations) or "None"
-        else:
-            mutation_text = "None"
+        mutation_display_parts = []
+        for pm in self.pooch.mutations:
+            if pm.visible:
+                mutation_display_parts.append(pm.mutation.name)
+            elif pm.displayed_symptom:
+                mutation_display_parts.append(pm.displayed_symptom)
+        mutation_text = ", ".join(mutation_display_parts) or "None"
 
-        if self.pooch.injuries:
-            injury_text = ", ".join(injury.name for injury in self.pooch.injuries)
-        else:
-            injury_text = "None"
+        injury_display_parts = []
+        for pi in self.pooch.injuries:
+            if pi.visible:
+                injury_display_parts.append(pi.injury.name)
+            elif pi.displayed_symptom:
+                injury_display_parts.append(pi.displayed_symptom)
+        injury_text = ", ".join(injury_display_parts) or "None"
 
         embed.add_field(name="Breeds", value=breed_text, inline=False)
         embed.add_field(name="Mutations", value=mutation_text, inline=False)
@@ -291,9 +337,17 @@ class PoochInfoView(View):
             row += 1
             self.add_item(breed_select)
 
-        if self.pooch.mutations:
-            mutation_select = _MutationSelect(self.pooch.mutations, placeholder="Mutations", empty_label="No mutations")
+        visible_mutations = [pm.mutation for pm in self.pooch.mutations if pm.visible]
+        if visible_mutations:
+            mutation_select = _MutationSelect(visible_mutations, placeholder="Mutations", empty_label="No mutations")
             mutation_select.row = row
+            row += 1
             self.add_item(mutation_select)
+
+        visible_injuries = [pi.injury for pi in self.pooch.injuries if pi.visible]
+        if visible_injuries and row < 5:
+            injury_select = _InjurySelect(visible_injuries, placeholder="Injuries", empty_label="No injuries")
+            injury_select.row = row
+            self.add_item(injury_select)
 
         return embed

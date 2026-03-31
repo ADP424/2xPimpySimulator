@@ -42,6 +42,9 @@ def _validate_mutations_json(mutations_json: dict[str, dict[str, dict[str, Any]]
         "affects_males",
         "affects_females",
         "parameters",
+        "visible",
+        "invisible_messages",
+        "reveal_chance",
     }
     if not isinstance(mutations_json, dict):
         raise ResourceValidationError("Invalid mutation resources: root value must be an object keyed by category")
@@ -79,6 +82,23 @@ def _validate_mutations_json(mutations_json: dict[str, dict[str, dict[str, Any]]
                 field_value = attributes.get(field_name)
                 if field_value is not None and not isinstance(field_value, bool):
                     errors.append(f"{path}.{field_name}: must be a boolean")
+            visible = attributes.get("visible")
+            if visible is not None and not isinstance(visible, bool):
+                errors.append(f"{path}.visible: must be a boolean")
+            invisible_messages = attributes.get("invisible_messages")
+            if invisible_messages is not None:
+                if not isinstance(invisible_messages, list):
+                    errors.append(f"{path}.invisible_messages: must be a list of strings")
+                else:
+                    for i, msg in enumerate(invisible_messages):
+                        if not isinstance(msg, str):
+                            errors.append(f"{path}.invisible_messages[{i}]: must be a string")
+            reveal_chance = attributes.get("reveal_chance")
+            if reveal_chance is not None:
+                if not isinstance(reveal_chance, (int, float)):
+                    errors.append(f"{path}.reveal_chance: must be a number")
+                elif not (0.0 <= float(reveal_chance) <= 1.0):
+                    errors.append(f"{path}.reveal_chance: must be between 0.0 and 1.0")
             parameters = attributes.get("parameters")
             if parameters is not None and not isinstance(parameters, dict):
                 errors.append(f"{path}.parameters: must be an object")
@@ -152,6 +172,7 @@ async def load_mutations():
 
         for mutation_category, mutations in mutations_json.items():
             for mutation, attributes in mutations.items():
+                invisible_messages = attributes.get("invisible_messages")
                 session.add(
                     Mutation(
                         name=str(mutation),
@@ -166,6 +187,9 @@ async def load_mutations():
                         affects_males=bool(attributes.get("affects_males", True)),
                         affects_females=bool(attributes.get("affects_females", True)),
                         parameters=attributes.get("parameters", {}),
+                        visible=bool(attributes.get("visible", True)),
+                        invisible_messages=invisible_messages if isinstance(invisible_messages, list) else None,
+                        reveal_chance=float(attributes.get("reveal_chance", 1.0)),
                     )
                 )
 

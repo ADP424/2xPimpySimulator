@@ -4,8 +4,8 @@
     "description": "The Talbot (also known as the St. Hubert Hound) was a type of hunting hound common in England during the Middle Ages. It is depicted in art of the period as small to medium-sized, white in colour, with short legs, large powerful feet, a deep chest with a slender waist, long drooping ears, and a very long curled tail.",
     "rarity": "REMARKABLE",
     "parameters": {
-        "sold_by_vendors": false,
-        "min_size": 10,
-        "max_size": 18
-    }
+        "sold_by_vendors": false
+    },
+    "min_size": 10,
+    "max_size": 18
 }

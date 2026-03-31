@@ -4,8 +4,8 @@
     "description": "The Chien-gris is an extinct breed of dog which originated in Medieval times. It was a scent hound, and formed part of the royal packs of France, which were composed, from about 1250 till 1470, exclusively of hounds of this type.",
     "rarity": "REMARKABLE",
     "parameters": {
-        "min_size": 22,
-        "max_size": 30,
         "sold_by_vendors": false
-    }
+    },
+    "min_size": 22,
+    "max_size": 30
 }

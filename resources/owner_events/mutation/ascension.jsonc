@@ -22,16 +22,16 @@
                 "filter": {
                     "min_pooches": 5
                 },
-                "save_as": "god_kennel",
+                "save_excluded_as": "god_pooch",
                 "pooch_selector": "random_exclude",
                 "pooch_count": 1
             }
         },
         {
             "action_type": "add_mutation",
-            "target_type": "kennel",
+            "target_type": "pooch",
             "parameters": {
-                "use_saved": "god_kennel",
+                "use_saved": "god_pooch",
                 "mutation": "God Syndrome"
             }
         }

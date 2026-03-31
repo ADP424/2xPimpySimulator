@@ -13,6 +13,9 @@ Mutations are structured within resources/mutations/**/*.jsonc, like:
         "heritability": "float",
         "health_impact": "string",
         "rarity": "string",
+        "visible": "bool",
+        "invisible_messages": ["string", "..."],
+        "reveal_chance": "float",
         "parameters": {
             "[option]": "string/float/int/list"
         }
@@ -58,6 +61,22 @@ How relatively likely/unlikely it is for a pooch to develop this mutation. There
 - `REMARKABLE` (10)
 - `EXTRAORDINARY` (5)
 - `UNIQUE` (1)
+
+#### Visible
+Whether this mutation is shown to the player on the pooch info screen. Defaults to `true`.
+- `true`: The mutation name appears in the pooch's mutation list and is accessible via the dropdown. This is the default.
+- `false`: The mutation is hidden. Its name is never shown to the player. If `invisible_messages` is provided, one message is randomly chosen when the mutation is applied and shown in the mutation list in place of the name (the same message is always shown for that pooch). If no `invisible_messages` are provided, the mutation is entirely silent — the player sees nothing. An invisible mutation can be permanently revealed via the vet clinic's "Diagnose Mutations" procedure.
+
+#### Invisible Messages
+A list of possible symptom messages to display for this mutation when it is invisible (`"visible": false`). Formatted the same as the description — written as if describing the pooch (e.g. `"This pooch seems sluggish."`). One message is chosen at random when the mutation is applied to a pooch and is shown persistently for that pooch. Only used when `"visible": false`; has no effect on visible mutations.
+- If omitted (or `"visible"` is `true`), nothing special happens. This is the default.
+- Example: `"invisible_messages": ["This pooch seems sluggish.", "This pooch tires easily."]`
+
+#### Reveal Chance
+The probability (0.0–1.0) that the vet clinic's "Diagnose Mutations" procedure successfully reveals this mutation. Defaults to `1.0` (always revealed). Only has an effect when `"visible": false`.
+- `1.0`: The mutation is always revealed when diagnosed. This is the default.
+- `0.5`: There is a 50% chance the diagnosis reveals this mutation.
+- `0.0`: The mutation can never be revealed by diagnosis.
 
 #### Parameters
 An object representing more complex options for the mutatation (more information in "Parameters Guide").

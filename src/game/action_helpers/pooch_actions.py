@@ -9,9 +9,11 @@ from src.database import (
     add_injury_to_pooch,
     add_mutation_to_pooch,
     damn_pooch,
+    get_breed_by_name,
     get_injury_by_name,
     get_mutation_by_name,
     get_pooch_by_id,
+    get_random_injury,
     modify_pooch_age,
     modify_pooch_aggressiveness,
     modify_pooch_base_health,
@@ -49,12 +51,17 @@ from src.game.constants import (
     FIGHT_ATTACK_DEXTERITY_WEIGHT,
     FIGHT_ATTACK_SIZE_STENGTH_WEIGHT,
     FIGHT_ATTACK_STRENGTH_WEIGHT,
+    FIGHT_CONSTITUTION_FATIGUE_REDUCTION,
     FIGHT_DEFENDER_STRENGTH_BONUS,
     FIGHT_DEFENSE_CONSTITUTION_WEIGHT,
     FIGHT_DEFENSE_DEXTERITY_WEIGHT,
     FIGHT_DEFENSE_STRENGTH_WEIGHT,
+    FIGHT_INJURY_BITE_CHANCE,
+    FIGHT_MODERATE_BITE_DAMAGE_THRESHOLD,
     FIGHT_RANDOM_MULTIPLIER_RANGE,
     FIGHT_ROUNDS,
+    FIGHT_SEVERE_BITE_DAMAGE_THRESHOLD,
+    FIGHT_STRENGTH_LOSS_PER_ROUND,
 )
 
 from .amount import get_amount_from_parameters, get_mode, resolve_amount
@@ -139,18 +146,58 @@ async def handle_injure_pooch(
     rng: random.Random,
     result: Any,
 ) -> None:
-    """Handle injure_pooch — adds a named injury to each target pooch."""
+    """Handle injure_pooch — adds a named or random injury to each target pooch.
+
+    If "injury" is specified, use that injury by name.
+    Otherwise pick a random injury, optionally filtered by:
+      - min_severity / max_severity: severity range (trivial/minor/moderate/major/critical/remarkable/catastrophic)
+      - min_health_impact / max_health_impact: health impact range
+    """
     injury_name = parameters.get("injury")
-    if not injury_name:
-        return
-    injury = await get_injury_by_name(str(injury_name))
-    if injury is None:
-        logger.warning("injure_pooch: unknown injury %r", injury_name)
-        return
-    for pooch_id in pooch_ids:
-        added = await add_injury_to_pooch(pooch_id, injury.id)
-        if added:
-            result.pooches_affected.append(pooch_id)
+    if injury_name:
+        injury = await get_injury_by_name(str(injury_name))
+        if injury is None:
+            logger.warning("injure_pooch: unknown injury %r", injury_name)
+            return
+        for pooch_id in pooch_ids:
+            added = await add_injury_to_pooch(pooch_id, injury.id)
+            if added:
+                result.pooches_affected.append(pooch_id)
+    else:
+        min_severity = parameters.get("min_severity")
+        max_severity = parameters.get("max_severity")
+        min_health_impact = parameters.get("min_health_impact")
+        max_health_impact = parameters.get("max_health_impact")
+        roll_once = parameters.get("roll_once", False)
+
+        if roll_once:
+            injury = await get_random_injury(
+                rng,
+                min_severity=str(min_severity) if min_severity else None,
+                max_severity=str(max_severity) if max_severity else None,
+                min_health_impact=str(min_health_impact) if min_health_impact else None,
+                max_health_impact=str(max_health_impact) if max_health_impact else None,
+            )
+            if injury is None:
+                return
+            for pooch_id in pooch_ids:
+                added = await add_injury_to_pooch(pooch_id, injury.id)
+                if added:
+                    result.pooches_affected.append(pooch_id)
+        else:
+            for pooch_id in pooch_ids:
+                injury = await get_random_injury(
+                    rng,
+                    min_severity=str(min_severity) if min_severity else None,
+                    max_severity=str(max_severity) if max_severity else None,
+                    min_health_impact=str(min_health_impact) if min_health_impact else None,
+                    max_health_impact=str(max_health_impact) if max_health_impact else None,
+                )
+                if injury is None:
+                    continue
+                added = await add_injury_to_pooch(pooch_id, injury.id)
+                if added:
+                    result.pooches_affected.append(pooch_id)
 
 
 async def handle_add_mutation(
@@ -159,52 +206,15 @@ async def handle_add_mutation(
     rng: random.Random,
     result: Any,
 ) -> None:
-    """Handle add_mutation."""
-    mutation_id = parameters.get("mutation_id")
-    mutation_ids = parameters.get("mutation_ids")
-    min_rarity = parameters.get("min_rarity")
-    max_rarity = parameters.get("max_rarity")
-    min_health_impact = parameters.get("min_health_impact")
-    max_health_impact = parameters.get("max_health_impact")
-    for pooch_id in pooch_ids:
-        if isinstance(mutation_ids, list) and mutation_ids:
-            for mid in mutation_ids:
-                await add_mutation_to_pooch(pooch_id, mid)
-        elif mutation_id:
-            await add_mutation_to_pooch(pooch_id, mutation_id)
-        else:
-            await add_mutation_to_pooch(
-                pooch_id,
-                rng=rng,
-                min_rarity=min_rarity if isinstance(min_rarity, str) else None,
-                max_rarity=max_rarity if isinstance(max_rarity, str) else None,
-                min_health_impact=min_health_impact if isinstance(min_health_impact, str) else None,
-                max_health_impact=max_health_impact if isinstance(max_health_impact, str) else None,
-            )
-        result.pooches_affected.append(pooch_id)
-
-
-async def handle_add_mutation_by_name(
-    pooch_ids: list[int],
-    parameters: dict[str, Any],
-    rng: random.Random,
-    result: Any,
-) -> None:
-    """Handle add_mutation with name lookup (stray/server variant)."""
+    """Handle add_mutation by name or random selection."""
     mutation_name = parameters.get("mutation")
     mutation_names = parameters.get("mutations")
-    mutation_id = parameters.get("mutation_id")
-    mutation_ids = parameters.get("mutation_ids")
     min_rarity = parameters.get("min_rarity")
     max_rarity = parameters.get("max_rarity")
     min_health_impact = parameters.get("min_health_impact")
     max_health_impact = parameters.get("max_health_impact")
     for pooch_id in pooch_ids:
-        if isinstance(mutation_ids, list) and mutation_ids:
-            # Pre-resolved IDs (from resolve_event_action_parameters) — use directly
-            for mid in mutation_ids:
-                await add_mutation_to_pooch(pooch_id, mid)
-        elif isinstance(mutation_names, list) and mutation_names:
+        if isinstance(mutation_names, list) and mutation_names:
             for m in mutation_names:
                 mut = await get_mutation_by_name(str(m))
                 if mut:
@@ -213,8 +223,6 @@ async def handle_add_mutation_by_name(
             mut = await get_mutation_by_name(str(mutation_name))
             if mut:
                 await add_mutation_to_pooch(pooch_id, mut.id)
-        elif mutation_id:
-            await add_mutation_to_pooch(pooch_id, mutation_id)
         else:
             await add_mutation_to_pooch(
                 pooch_id,
@@ -233,38 +241,8 @@ async def handle_remove_mutation(
     rng: random.Random,
     result: Any,
 ) -> None:
-    """Handle remove_mutation."""
-    mutation_id = parameters.get("mutation_id")
-    min_rarity = parameters.get("min_rarity")
-    max_rarity = parameters.get("max_rarity")
-    min_health_impact = parameters.get("min_health_impact")
-    max_health_impact = parameters.get("max_health_impact")
-    for pooch_id in pooch_ids:
-        if mutation_id:
-            removed = await remove_mutation_from_pooch(pooch_id, mutation_id)
-        else:
-            removed = await remove_random_mutation_from_pooch(
-                pooch_id,
-                rng=rng,
-                min_rarity=min_rarity if isinstance(min_rarity, str) else None,
-                max_rarity=max_rarity if isinstance(max_rarity, str) else None,
-                min_health_impact=min_health_impact if isinstance(min_health_impact, str) else None,
-                max_health_impact=max_health_impact if isinstance(max_health_impact, str) else None,
-            )
-        if removed:
-            result.mutations_removed.append((pooch_id, removed.mutation_id))
-            result.pooches_affected.append(pooch_id)
-
-
-async def handle_remove_mutation_by_name(
-    pooch_ids: list[int],
-    parameters: dict[str, Any],
-    rng: random.Random,
-    result: Any,
-) -> None:
-    """Handle remove_mutation with name lookup (stray variant)."""
+    """Handle remove_mutation by name or random selection."""
     mutation_name = parameters.get("mutation")
-    mutation_id = parameters.get("mutation_id")
     min_rarity = parameters.get("min_rarity")
     max_rarity = parameters.get("max_rarity")
     min_health_impact = parameters.get("min_health_impact")
@@ -276,8 +254,6 @@ async def handle_remove_mutation_by_name(
                 removed = await remove_mutation_from_pooch(pooch_id, mut.id)
             else:
                 removed = False
-        elif mutation_id:
-            removed = await remove_mutation_from_pooch(pooch_id, mutation_id)
         else:
             removed = await remove_random_mutation_from_pooch(
                 pooch_id,
@@ -288,6 +264,7 @@ async def handle_remove_mutation_by_name(
                 max_health_impact=max_health_impact,
             )
         if removed:
+            result.mutations_removed.append((pooch_id, removed.mutation_id))
             result.pooches_affected.append(pooch_id)
 
 
@@ -297,14 +274,16 @@ async def handle_add_breed(
     rng: random.Random,
     result: Any,
 ) -> None:
-    """Handle add_breed."""
-    breed_id = parameters.get("breed_id")
+    """Handle add_breed by name or random selection."""
+    breed_name = parameters.get("breed")
     weight = parameters.get("weight", 0.5)
     min_rarity = parameters.get("min_rarity")
     max_rarity = parameters.get("max_rarity")
     for pooch_id in pooch_ids:
-        if breed_id:
-            await add_breed_to_pooch(pooch_id, breed_id, weight=weight)
+        if breed_name:
+            breed = await get_breed_by_name(str(breed_name))
+            if breed:
+                await add_breed_to_pooch(pooch_id, breed.id, weight=weight)
         else:
             await add_breed_to_pooch(
                 pooch_id,
@@ -322,13 +301,17 @@ async def handle_remove_breed(
     rng: random.Random,
     result: Any,
 ) -> None:
-    """Handle remove_breed."""
-    breed_id = parameters.get("breed_id")
+    """Handle remove_breed by name or random selection."""
+    breed_name = parameters.get("breed")
     min_rarity = parameters.get("min_rarity")
     max_rarity = parameters.get("max_rarity")
     for pooch_id in pooch_ids:
-        if breed_id:
-            removed = await remove_breed_from_pooch(pooch_id, breed_id)
+        if breed_name:
+            breed = await get_breed_by_name(str(breed_name))
+            if breed:
+                removed = await remove_breed_from_pooch(pooch_id, breed.id)
+            else:
+                removed = None
         else:
             removed = await remove_random_breed_from_pooch(
                 pooch_id,
@@ -461,18 +444,33 @@ async def handle_select_pooch(
 # ---------------------------------------------------------------------------
 
 # Damage formula per round:
-#   raw_attack   = (ATTACK_STRENGTH_WEIGHT * strength + ATTACK_AGGRESSIVENESS_WEIGHT * aggressiveness)
+#   raw_attack   = (ATTACK_STRENGTH_WEIGHT * strength * SIZE_WEIGHT * size
+#                   + ATTACK_DEXTERITY_WEIGHT * dexterity
+#                   + ATTACK_AGGRESSIVENESS_WEIGHT * aggressiveness)
 #                  * uniform(RANDOM_MULTIPLIER_RANGE)
-#   prevention   = (DEFENSE_STRENGTH_WEIGHT * strength + DEFENSE_SIZE_WEIGHT * size)
+#   prevention   = (DEFENSE_STRENGTH_WEIGHT * strength * SIZE_WEIGHT * size
+#                   + DEFENSE_DEXTERITY_WEIGHT * dexterity
+#                   + DEFENSE_CONSTITUTION_WEIGHT * constitution)
 #                  * uniform(RANDOM_MULTIPLIER_RANGE)
 #   damage_dealt = max(1, int(raw_attack - prevention))
 #
 # Defender advantage: the defending pooch's effective strength for mitigation
 # is increased by defender_strength_bonus (default: FIGHT_DEFENDER_STRENGTH_BONUS).
 #
+# Per-round fatigue: each round after the first, both pooches lose effective strength.
+#   strength_loss_per_round = FIGHT_STRENGTH_LOSS_PER_ROUND / (1 + constitution * FIGHT_CONSTITUTION_FATIGUE_REDUCTION)
+# Constitution reduces this loss — higher constitution = less fatigued per round.
+#
 # The fight runs for a fixed number of rounds.  Each round, both pooches
 # simultaneously deal damage to one another.  The fight ends early if either
-# pooch's health reaches 0 or below.
+# pooch's cumulative damage exceeds their base_health.
+#
+# Instead of applying direct health damage, each round of fighting applies
+# injuries to the pooches:
+#   - High damage dealt → Severe/Moderate Bite (to the defender)
+#   - Medium damage dealt → Moderate/Minor Bite (to the defender)
+#   - Any damage dealt → Minor/Moderate Scratch (to the defender)
+# A pooch that would die from health loss instead takes a Fatal injury and dies.
 #
 # Outcome:
 #   - If both alive: winner is the one with less total damage taken.
@@ -480,24 +478,29 @@ async def handle_select_pooch(
 #   - If both die in the same round: draw.
 #   - If total_damage_taken is equal and both survive: draw.
 #
-# The action applies the damage directly to base_health via modify_pooch_base_health.
-# It does NOT determine the event winner — that is up to the caller.
+# The action does NOT determine the event winner — that is up to the caller.
+
+# Injury names assigned per damage threshold.
+_FIGHT_INJURY_SEVERE_BITE = "Severe Bite"
+_FIGHT_INJURY_MODERATE_BITE = "Moderate Bite"
+_FIGHT_INJURY_MINOR_BITE = "Minor Bite"
+_FIGHT_INJURY_SEVERE_SCRATCH = "Severe Scratch"
+_FIGHT_INJURY_MODERATE_SCRATCH = "Moderate Scratch"
+_FIGHT_INJURY_MINOR_SCRATCH = "Minor Scratch"
 
 
 def _compute_damage(
-    attacker_strength: int,
+    attacker_strength: float,
     attacker_size: int,
     attacker_dexterity: int,
     attacker_aggressiveness: int,
-    defender_strength: int,
+    defender_strength: float,
     defender_dexterity: int,
     defender_constitution: int,
     defender_size: int,
     rng: random.Random,
 ) -> int:
-    """
-    Return integer damage dealt in one round.
-    """
+    """Return integer damage dealt in one round."""
 
     attack_mult = rng.uniform(*FIGHT_RANDOM_MULTIPLIER_RANGE)
     defense_mult = rng.uniform(*FIGHT_RANDOM_MULTIPLIER_RANGE)
@@ -514,6 +517,30 @@ def _compute_damage(
     return max(1, int(raw_attack - prevention))
 
 
+def _strength_loss_for_round(constitution: int) -> int:
+    """Return how much effective strength a pooch loses per round due to fatigue."""
+    loss = FIGHT_STRENGTH_LOSS_PER_ROUND / (1 + max(0, constitution) * FIGHT_CONSTITUTION_FATIGUE_REDUCTION)
+    return max(1, round(loss))
+
+
+async def _apply_fight_injury(pooch_id: int, damage: int, rng: random.Random) -> None:
+    """Give a fight-appropriate injury to a pooch based on the damage they took in a round."""
+    if damage >= FIGHT_SEVERE_BITE_DAMAGE_THRESHOLD:
+        bite_name = _FIGHT_INJURY_SEVERE_BITE
+        scratch_name = _FIGHT_INJURY_MODERATE_SCRATCH
+    elif damage >= FIGHT_MODERATE_BITE_DAMAGE_THRESHOLD:
+        bite_name = _FIGHT_INJURY_MODERATE_BITE
+        scratch_name = _FIGHT_INJURY_MINOR_SCRATCH
+    else:
+        bite_name = _FIGHT_INJURY_MINOR_BITE
+        scratch_name = _FIGHT_INJURY_MINOR_SCRATCH
+
+    injury_name = bite_name if rng.random() < FIGHT_INJURY_BITE_CHANCE else scratch_name
+    injury = await get_injury_by_name(injury_name)
+    if injury is not None:
+        await add_injury_to_pooch(pooch_id, injury.id)
+
+
 async def handle_fight_pooches(
     attacker_id: int,
     defender_id: int,
@@ -522,7 +549,7 @@ async def handle_fight_pooches(
     rng: random.Random | None = None,
 ) -> dict[str, Any]:
     """
-    Simulate a fight between two pooches and apply the resulting health loss.
+    Simulate a fight between two pooches, applying injuries each round.
 
     Args:
         rounds:                  number of fight rounds
@@ -561,17 +588,20 @@ async def handle_fight_pooches(
             "error": "one or both pooches unavailable",
         }
 
-    att_str = max(1, attacker.strength)
+    # Mutable effective strength — reduced each round by fatigue
+    att_str: float = max(1, attacker.strength)
     att_dex = max(1, attacker.dexterity)
     att_con = max(1, attacker.constitution)
     att_agg = max(1, attacker.aggressiveness)
     att_siz = max(1, attacker.size)
-    def_str_raw = max(1, defender.strength)
-    def_str_boosted = def_str_raw + defender_strength_bonus  # only for defender's mitigation
+    def_str_raw: float = max(1, defender.strength)
     def_dex = max(1, defender.dexterity)
     def_con = max(1, defender.constitution)
     def_agg = max(1, defender.aggressiveness)
     def_siz = max(1, defender.size)
+
+    att_fatigue = _strength_loss_for_round(att_con)
+    def_fatigue = _strength_loss_for_round(def_con)
 
     attacker_total_damage = 0
     defender_total_damage = 0
@@ -580,12 +610,42 @@ async def handle_fight_pooches(
     for _ in range(rounds):
         rounds_fought += 1
 
+        def_str_boosted = def_str_raw + defender_strength_bonus
+
         # Simultaneous damage — each pooch attacks and defends in the same round
-        dmg_to_defender = _compute_damage(att_str, att_dex, att_agg, def_str_boosted, def_dex, def_con, def_siz, rng)
-        dmg_to_attacker = _compute_damage(def_str_raw, def_dex, def_agg, att_str, att_dex, att_con, att_siz, rng)
+        dmg_to_defender = _compute_damage(
+            att_str,
+            att_siz,
+            att_dex,
+            att_agg,
+            def_str_boosted,
+            def_dex,
+            def_con,
+            def_siz,
+            rng,
+        )
+        dmg_to_attacker = _compute_damage(
+            def_str_raw,
+            def_siz,
+            def_dex,
+            def_agg,
+            att_str,
+            att_dex,
+            att_con,
+            att_siz,
+            rng,
+        )
 
         attacker_total_damage += dmg_to_attacker
         defender_total_damage += dmg_to_defender
+
+        # Apply per-round fight injuries
+        await _apply_fight_injury(defender_id, dmg_to_defender, rng)
+        await _apply_fight_injury(attacker_id, dmg_to_attacker, rng)
+
+        # Apply fatigue (strength loss) for next round — minimum of 1
+        att_str = max(1.0, att_str - att_fatigue)
+        def_str_raw = max(1.0, def_str_raw - def_fatigue)
 
         # Check for early death after this round
         att_health_remaining = attacker.base_health - attacker_total_damage
@@ -622,8 +682,6 @@ async def handle_fight_pooches(
         winner_id = None
         draw = True
     elif defender_total_damage > attacker_total_damage:
-        # Attacker took less damage → attacker wins (defender dealt more damage, attacker dealt more)
-        # Defender took more damage → defender is worse off
         winner_id = attacker_id
         draw = False
     else:

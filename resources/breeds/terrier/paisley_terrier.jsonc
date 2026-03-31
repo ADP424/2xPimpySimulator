@@ -4,8 +4,8 @@
     "description": "The Paisley Terrier was a breed of terrier-type dog that is now extinct. Originating in Scotland, the Paisley Terrier was bred primarily as a pet and showdog version of the Skye Terrier, and was the progenitor of today's Yorkshire Terrier.",
     "rarity": "REMARKABLE",
     "parameters": {
-        "min_size": 3,
-        "max_size": 5,
         "sold_by_vendors": false
-    }
+    },
+    "min_size": 3,
+    "max_size": 5
 }

@@ -164,7 +164,7 @@ def _normalize_detail_entries(value: Any, *, id_key: str, value_key: str) -> lis
         rows: list[dict[str, Any]] = []
         for raw_id, raw_value in value.items():
             try:
-                rows.append({id_key: raw_id, value_key: raw_value})
+                rows.append({id_key: int(raw_id), value_key: raw_value})
             except TypeError, ValueError:
                 continue
         return rows
