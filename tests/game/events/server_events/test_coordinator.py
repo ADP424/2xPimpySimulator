@@ -230,6 +230,7 @@ async def test_run_daily_no_servers():
     """
 
     with (
+        patch(f"{MOD}.list_active_server_event_occurrences", new=AsyncMock(return_value=[])),
         patch(f"{MOD}.list_servers", new=AsyncMock(return_value=[])),
         patch(f"{MOD}.get_current_season", new=AsyncMock(return_value="spring")),
     ):

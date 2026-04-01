@@ -226,10 +226,7 @@ async def test_resolve_matchups_no_listed_returns_none(rng):
     ctx = SrvCtx(server_discord_id=100)
     ctx.extra_data["arena"] = {"listed": [], "matchups": [], "fight_wins": {}}
 
-    with (
-        patch(f"{MOD}.update_server_event_occurrence_context", new=AsyncMock()),
-        patch(f"{MOD}.get_current_season", new=AsyncMock(return_value="spring")),
-    ):
+    with patch(f"{MOD}.update_server_event_occurrence_context", new=AsyncMock()):
         result = await resolve_arena_matchups(1, ctx, {}, rng)
 
     # No listed pooches → no matchups created, returns None or empty

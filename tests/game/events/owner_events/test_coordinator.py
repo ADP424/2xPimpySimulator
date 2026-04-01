@@ -490,8 +490,10 @@ class TestCreateAndExecuteEvent:
         with (
             patch(f"{MOD}.create_event_context", new=AsyncMock(return_value=OwnerEventContext(owner_discord_id=1))),
             patch(f"{MOD}.create_active_owner_event", new=AsyncMock(return_value=active_event)),
+            patch(f"{MOD}.get_current_season", new=AsyncMock(return_value="spring")),
             patch(f"{MOD}.execute_event_actions", new=AsyncMock(return_value=OwnerEventResult())),
             patch(f"{MOD}.update_active_event_result", new=AsyncMock()),
+            patch(f"{MOD}.archive_active_event", new=AsyncMock()),
             patch(f"{MOD}.to_triggered_owner_event", new=AsyncMock(return_value=mock_triggered)),
         ):
             triggered = await create_and_execute_event(1, event, rng)

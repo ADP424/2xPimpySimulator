@@ -489,14 +489,17 @@ async def test_add_pooch_to_vendor_stock_success():
 
 
 async def test_add_breed_to_pooch_returns_existing_when_already_present():
-    """If the breed is already on the pooch, return the existing PoochBreed."""
+    """If the breed is already on the pooch (sole breed), return via scalar lookup."""
     existing = SimpleNamespace(pooch_id=1, breed_id=5)
 
     mock_session = AsyncMock()
-    # execute for breed_query not called since breed_id is given
-    # scalar returns existing relationship
+    # scalar returns existing relationship (others_total == 0 path)
     mock_session.scalar = AsyncMock(return_value=existing)
-    mock_session.execute = AsyncMock()
+
+    # response.tuples().all() returns [(breed_id=5, weight=4)] — only this breed
+    existing_response = MagicMock()
+    existing_response.tuples.return_value.all.return_value = [(5, 4)]
+    mock_session.execute = AsyncMock(return_value=existing_response)
     mock_session.flush = AsyncMock()
 
     class _FakeScope:
@@ -546,9 +549,9 @@ async def test_add_breed_to_pooch_partial_weight():
     mock_session = AsyncMock()
     mock_session.scalar = AsyncMock(return_value=None)
 
-    # execute for existing breeds weight query
+    # execute for existing breeds weight query; response.tuples().all() returns [(breed_id, weight), ...]
     weight_response = MagicMock()
-    weight_response.scalars.return_value.all.return_value = [4]  # total existing weight = 4
+    weight_response.tuples.return_value.all.return_value = [(3, 4)]  # one other breed with weight=4
     mock_session.execute = AsyncMock(return_value=weight_response)
     mock_session.flush = AsyncMock()
 
@@ -673,7 +676,9 @@ async def test_add_mutation_to_pooch_returns_none_when_incompatible():
 
 async def test_add_mutation_to_pooch_success():
     """Compatible mutation should be added and returned."""
-    new_mutation = SimpleNamespace(id=5, name="Berserker", parameters={"incompatible_mutations": []})
+    new_mutation = SimpleNamespace(
+        id=5, name="Berserker", parameters={"incompatible_mutations": []}, visible=True, invisible_messages=None
+    )
 
     mock_session = AsyncMock()
     mock_session.scalar = AsyncMock(side_effect=[None, new_mutation])

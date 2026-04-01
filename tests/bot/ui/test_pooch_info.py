@@ -215,7 +215,10 @@ class TestPoochInfoView:
         mutation.id = 1
         mutation.name = "Cataracts"
 
-        pooch = _make_pooch(mutations=[mutation])
+        from types import SimpleNamespace
+
+        mutation_info = SimpleNamespace(mutation=mutation, visible=True, displayed_symptom=None)
+        pooch = _make_pooch(mutations=[mutation_info])
 
         with patch(
             "src.bot.ui.pooch_info.get_pooch_family",

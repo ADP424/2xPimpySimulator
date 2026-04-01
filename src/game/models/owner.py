@@ -14,8 +14,8 @@ class Owner:
     dollars: int
     bloodskulls: int
     bones: int
-    begged_today: bool
-    visited_park_today: bool
+    begged_today: bool = False
+    visited_park_today: bool = False
 
 
 async def to_owner(owner: OwnerORM) -> Owner:

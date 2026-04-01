@@ -60,12 +60,13 @@ _injury_id_counter = 0
 
 
 def _make_injury_orm(parameters: dict, injury_id: int = None) -> SimpleNamespace:
-    """A minimal mock injury ORM with a .parameters dict and unique id."""
+    """A minimal mock PoochInjury ORM row with an embedded injury catalog object."""
     global _injury_id_counter
     if injury_id is None:
         _injury_id_counter += 1
         injury_id = _injury_id_counter
-    return SimpleNamespace(parameters=parameters, id=injury_id)
+    injury_catalog = SimpleNamespace(parameters=parameters, id=injury_id, treated=parameters.get("treated"))
+    return SimpleNamespace(injury=injury_catalog, treated=False, displayed_symptom=None, visible=True)
 
 
 # ===========================================================================

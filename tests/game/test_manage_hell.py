@@ -11,6 +11,10 @@ from src.game import (
     get_summon_pooch_price,
     sacrifice_pooch,
 )
+from src.game.constants import (
+    BASE_POOCH_SUMMON_PRICE,
+    BLOODSKULL_PRICE_PER_POOCH_SUMMON_ROLL,
+)
 from src.game.exceptions import PoochNotFound
 from tests.conftest import (
     make_breed,
@@ -35,18 +39,17 @@ def mock_hell_db_calls():
 
 class TestGetConjurePoochPrice:
     def test_one_roll(self):
-        # BASE_POOCH_SUMMON_PRICE (10) + BLOODSKULL_PRICE_PER_POOCH_SUMMON_ROLL (2) * 1 = 12
-        assert get_conjure_pooch_price(1) == 12
+        assert get_conjure_pooch_price(1) == BASE_POOCH_SUMMON_PRICE + BLOODSKULL_PRICE_PER_POOCH_SUMMON_ROLL * 1
 
     def test_five_rolls(self):
-        assert get_conjure_pooch_price(5) == 10 + 2 * 5
+        assert get_conjure_pooch_price(5) == BASE_POOCH_SUMMON_PRICE + BLOODSKULL_PRICE_PER_POOCH_SUMMON_ROLL * 5
 
     def test_minimum_one_roll(self):
         """Passing 0 rolls is clamped to max(0, 1) = 1."""
-        assert get_conjure_pooch_price(0) == 10 + 2 * 1
+        assert get_conjure_pooch_price(0) == BASE_POOCH_SUMMON_PRICE + BLOODSKULL_PRICE_PER_POOCH_SUMMON_ROLL * 1
 
     def test_negative_rolls_clamped(self):
-        assert get_conjure_pooch_price(-5) == 10 + 2 * 1
+        assert get_conjure_pooch_price(-5) == BASE_POOCH_SUMMON_PRICE + BLOODSKULL_PRICE_PER_POOCH_SUMMON_ROLL * 1
 
     def test_alias(self):
         """get_summon_pooch_price is an alias for get_conjure_pooch_price."""
@@ -144,6 +147,7 @@ class TestGetPoochBloodskullValue:
 class TestSacrificePooch:
     @patch("src.game.manage_hell.damn_pooch", new_callable=AsyncMock)
     @patch("src.game.manage_hell.remove_pooch_from_kennel", new_callable=AsyncMock)
+    @patch("src.game.manage_hell.update_pooch_mood", new_callable=AsyncMock)
     @patch("src.game.manage_hell.set_pooch_dead", new_callable=AsyncMock)
     @patch("src.game.manage_hell.give_bones_to_owner", new_callable=AsyncMock)
     @patch("src.game.manage_hell.give_bloodskulls_to_owner", new_callable=AsyncMock)
@@ -158,6 +162,7 @@ class TestSacrificePooch:
         mock_bloodskulls,
         mock_bones,
         mock_kill,
+        mock_mood,
         mock_remove,
         mock_damn,
     ):
@@ -252,7 +257,8 @@ class TestConjurePooch:
 
         assert success is True
         assert "Hellhound" in msg
-        mock_bloodskulls.assert_awaited_once_with(100, -12)  # price = 10 + 2*1 = 12
+        expected_price = BASE_POOCH_SUMMON_PRICE + BLOODSKULL_PRICE_PER_POOCH_SUMMON_ROLL * 1
+        mock_bloodskulls.assert_awaited_once_with(100, -expected_price)
         mock_add_mut.assert_awaited_once_with(99, mutation_id=666)
 
     @patch("src.game.manage_hell.get_owner_by_discord_id", new_callable=AsyncMock)
