@@ -10,7 +10,7 @@ from tests.bot.commands.conftest import capture_command_callback, make_interacti
 @pytest.mark.contract
 class TestIncrementDayCommand:
     async def test_queues_day_change(self):
-        from src.bot.commands.increment_day import register_increment_day_command
+        from src.bot.commands import register_increment_day_command
 
         callback = capture_command_callback(register_increment_day_command)
         interaction = make_interaction()

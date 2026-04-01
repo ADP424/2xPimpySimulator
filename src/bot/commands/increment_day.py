@@ -5,6 +5,20 @@ from src.bot.day_change_loop import trigger_manual_day_change
 
 
 def register_increment_day_command(tree: app_commands.CommandTree):
+    """
+    Register increment day command.
+
+    Parameters
+    ----------
+    tree: Any
+        The `tree` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `register_increment_day_command`.
+    """
+
     @tree.command(name="increment_day", description="(DEV) Manually run the day change once", guilds=GUILDS)
     async def increment_day(interaction: Interaction):
         bot = interaction.client

@@ -240,6 +240,35 @@ def make_status_view(
     title: str,
     description: str,
 ) -> PublicPaginatorView:
+    """
+    Make status view.
+
+    Parameters
+    ----------
+    server: Any
+        The `server` value.
+
+    births: Any
+        The `births` value.
+
+    deaths: Any
+        The `deaths` value.
+
+    other_events: Any
+        The `other_events` value.
+
+    title: Any
+        The `title` value.
+
+    description: Any
+        The `description` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `make_status_view`.
+    """
+
     source = DayChangeStatusPageSource(
         server=server, births=births, deaths=deaths, other_events=other_events, title=title, description=description
     )

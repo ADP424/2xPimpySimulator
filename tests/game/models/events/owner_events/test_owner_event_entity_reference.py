@@ -3,14 +3,14 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from src.game.models.events.owner_events.owner_event_context import OwnerEventContext
-from src.game.models.events.owner_events.owner_event_entity_reference import (
+from src.game.models.events.owner_events import (
     OwnerEventEntityReference,
     OwnerEventEntityReferences,
-    _iter_dict_entries,
-    _normalize_detail_entries,
+    iter_dict_entries,
+    normalize_detail_entries,
     resolve_owner_event_entity_references,
 )
+from src.game.models.events.owner_events.owner_event_context import OwnerEventContext
 from src.game.models.events.owner_events.owner_event_result import OwnerEventResult
 
 
@@ -127,18 +127,18 @@ class TestOwnerEventEntityReferencesHasItems:
 class TestNormalizeDetailEntries:
     def test_list_of_dicts_passed_through(self):
         entries = [{"pooch_id": 1, "amount": 5}, {"pooch_id": 2, "amount": 3}]
-        result = _normalize_detail_entries(entries, id_key="pooch_id", value_key="amount")
+        result = normalize_detail_entries(entries, id_key="pooch_id", value_key="amount")
         assert result == entries
 
     def test_list_with_non_dict_entries_filtered(self):
         entries = [{"pooch_id": 1, "amount": 5}, "not_a_dict", 42]
-        result = _normalize_detail_entries(entries, id_key="pooch_id", value_key="amount")
+        result = normalize_detail_entries(entries, id_key="pooch_id", value_key="amount")
         assert len(result) == 1
         assert result[0]["pooch_id"] == 1
 
     def test_dict_converted_to_list(self):
         data = {1: 5, 2: 10}
-        result = _normalize_detail_entries(data, id_key="pooch_id", value_key="amount")
+        result = normalize_detail_entries(data, id_key="pooch_id", value_key="amount")
         assert len(result) == 2
         ids = {entry["pooch_id"] for entry in result}
         amounts = {entry["amount"] for entry in result}
@@ -146,42 +146,42 @@ class TestNormalizeDetailEntries:
         assert amounts == {5, 10}
 
     def test_none_returns_empty(self):
-        result = _normalize_detail_entries(None, id_key="pooch_id", value_key="amount")
+        result = normalize_detail_entries(None, id_key="pooch_id", value_key="amount")
         assert result == []
 
     def test_empty_list_returns_empty(self):
-        result = _normalize_detail_entries([], id_key="pooch_id", value_key="amount")
+        result = normalize_detail_entries([], id_key="pooch_id", value_key="amount")
         assert result == []
 
     def test_empty_dict_returns_empty(self):
-        result = _normalize_detail_entries({}, id_key="pooch_id", value_key="amount")
+        result = normalize_detail_entries({}, id_key="pooch_id", value_key="amount")
         assert result == []
 
     def test_non_iterable_returns_empty(self):
-        result = _normalize_detail_entries(42, id_key="pooch_id", value_key="amount")
+        result = normalize_detail_entries(42, id_key="pooch_id", value_key="amount")
         assert result == []
 
     def test_string_returns_empty(self):
-        result = _normalize_detail_entries("not valid", id_key="pooch_id", value_key="amount")
+        result = normalize_detail_entries("not valid", id_key="pooch_id", value_key="amount")
         assert result == []
 
 
 class TestIterDictEntries:
     def test_list_of_dicts(self):
-        result = _iter_dict_entries([{"a": 1}, {"b": 2}])
+        result = iter_dict_entries([{"a": 1}, {"b": 2}])
         assert result == [{"a": 1}, {"b": 2}]
 
     def test_list_filters_non_dicts(self):
-        result = _iter_dict_entries([{"a": 1}, "nope", 42, {"b": 2}])
+        result = iter_dict_entries([{"a": 1}, "nope", 42, {"b": 2}])
         assert result == [{"a": 1}, {"b": 2}]
 
     def test_none_returns_empty(self):
-        assert _iter_dict_entries(None) == []
+        assert iter_dict_entries(None) == []
 
     def test_non_list_returns_empty(self):
-        assert _iter_dict_entries(42) == []
-        assert _iter_dict_entries("str") == []
-        assert _iter_dict_entries({}) == []
+        assert iter_dict_entries(42) == []
+        assert iter_dict_entries("str") == []
+        assert iter_dict_entries({}) == []
 
 
 class TestResolveOwnerEventEntityReferences:

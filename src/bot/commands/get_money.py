@@ -5,6 +5,20 @@ from src.game import add_money
 
 
 def register_get_money_command(tree: app_commands.CommandTree):
+    """
+    Register get money command.
+
+    Parameters
+    ----------
+    tree: Any
+        The `tree` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `register_get_money_command`.
+    """
+
     @tree.command(name="get_money", description="(DEV) Give yourself money", guilds=GUILDS)
     @app_commands.describe(amount="How many dollars to add")
     async def get_money(interaction: Interaction, amount: int):

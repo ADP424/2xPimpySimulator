@@ -5,6 +5,23 @@ T = TypeVar("T")
 
 
 def weighted_choice(rng: random.Random, items: list[tuple[T, int]]) -> Optional[T]:
+    """
+    Weighted choice.
+
+    Parameters
+    ----------
+    rng: Any
+        The `rng` value.
+
+    items: Any
+        The `items` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `weighted_choice`.
+    """
+
     if len(items) == 0:
         return None
 

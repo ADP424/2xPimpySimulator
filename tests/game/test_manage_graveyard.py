@@ -4,8 +4,8 @@ from datetime import datetime, timezone
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
-from conftest import make_pooch
-from src.game.manage_graveyard import list_graveyard_pooches
+from src.game import list_graveyard_pooches
+from tests.conftest import make_pooch
 
 # ---------------------------------------------------------------------------
 # list_graveyard_pooches

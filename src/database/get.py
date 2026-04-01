@@ -846,6 +846,23 @@ async def get_random_eligible_owner_event_for_owner(
 
 
 async def check_owner_event_filter_for_owner(owner_discord_id: int, filter_spec: dict | None) -> bool:
+    """
+    Check owner event filter for owner.
+
+    Parameters
+    ----------
+    owner_discord_id: Any
+        The `owner_discord_id` value.
+
+    filter_spec: Any
+        The `filter_spec` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `check_owner_event_filter_for_owner`.
+    """
+
     async with session_scope() as session:
         return await check_owner_event_filter(session, owner_discord_id, filter_spec or {})
 
@@ -855,6 +872,26 @@ async def get_random_matching_pooch_id(
     filter_spec: dict | None,
     rng: random.Random,
 ) -> Optional[int]:
+    """
+    Get random matching pooch id.
+
+    Parameters
+    ----------
+    owner_discord_id: Any
+        The `owner_discord_id` value.
+
+    filter_spec: Any
+        The `filter_spec` value.
+
+    rng: Any
+        The `rng` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `get_random_matching_pooch_id`.
+    """
+
     from .utils import get_random_matching_pooch_id_for_owner
 
     async with session_scope() as session:
@@ -866,6 +903,26 @@ async def get_random_matching_kennel_id(
     filter_spec: dict | None,
     rng: random.Random,
 ) -> Optional[int]:
+    """
+    Get random matching kennel id.
+
+    Parameters
+    ----------
+    owner_discord_id: Any
+        The `owner_discord_id` value.
+
+    filter_spec: Any
+        The `filter_spec` value.
+
+    rng: Any
+        The `rng` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `get_random_matching_kennel_id`.
+    """
+
     from .utils import get_random_matching_kennel_id_for_owner
 
     async with session_scope() as session:
@@ -949,6 +1006,20 @@ def _server_event_load_options():
 
 
 async def get_server_event_by_id(server_event_id: int) -> Optional[ServerEvent]:
+    """
+    Get server event by id.
+
+    Parameters
+    ----------
+    server_event_id: Any
+        The `server_event_id` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `get_server_event_by_id`.
+    """
+
     async with session_scope() as session:
         query = select(ServerEvent).where(ServerEvent.id == server_event_id).options(*_server_event_load_options())
         response = await session.execute(query)
@@ -957,6 +1028,20 @@ async def get_server_event_by_id(server_event_id: int) -> Optional[ServerEvent]:
 
 
 async def get_server_event_menu_option_by_id(option_id: int) -> Optional[ServerEventMenuOption]:
+    """
+    Get server event menu option by id.
+
+    Parameters
+    ----------
+    option_id: Any
+        The `option_id` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `get_server_event_menu_option_by_id`.
+    """
+
     async with session_scope() as session:
         query = (
             select(ServerEventMenuOption)
@@ -972,6 +1057,20 @@ async def get_server_event_menu_option_by_id(option_id: int) -> Optional[ServerE
 
 
 async def get_server_event_occurrence_by_id(occurrence_id: int) -> Optional[ServerEventOccurrence]:
+    """
+    Get server event occurrence by id.
+
+    Parameters
+    ----------
+    occurrence_id: Any
+        The `occurrence_id` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `get_server_event_occurrence_by_id`.
+    """
+
     async with session_scope() as session:
         query = (
             select(ServerEventOccurrence)
@@ -987,6 +1086,20 @@ async def get_server_event_occurrence_by_id(occurrence_id: int) -> Optional[Serv
 
 
 async def get_active_server_event_occurrence(server_discord_id: int) -> Optional[ServerEventOccurrence]:
+    """
+    Get active server event occurrence.
+
+    Parameters
+    ----------
+    server_discord_id: Any
+        The `server_discord_id` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `get_active_server_event_occurrence`.
+    """
+
     async with session_scope() as session:
         query = (
             select(ServerEventOccurrence)
@@ -1032,6 +1145,23 @@ async def get_active_server_event_occurrence_by_tier(
 async def get_server_event_participation(
     occurrence_id: int, owner_discord_id: int
 ) -> Optional[ServerEventParticipation]:
+    """
+    Get server event participation.
+
+    Parameters
+    ----------
+    occurrence_id: Any
+        The `occurrence_id` value.
+
+    owner_discord_id: Any
+        The `owner_discord_id` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `get_server_event_participation`.
+    """
+
     async with session_scope() as session:
         query = select(ServerEventParticipation).where(
             ServerEventParticipation.occurrence_id == occurrence_id,
@@ -1084,6 +1214,20 @@ def _stray_event_load_options():
 
 
 async def get_stray_event_by_id(stray_event_id: int) -> Optional[StrayEvent]:
+    """
+    Get stray event by id.
+
+    Parameters
+    ----------
+    stray_event_id: Any
+        The `stray_event_id` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `get_stray_event_by_id`.
+    """
+
     async with session_scope() as session:
         query = select(StrayEvent).where(StrayEvent.id == stray_event_id).options(*_stray_event_load_options())
         response = await session.execute(query)
@@ -1091,6 +1235,20 @@ async def get_stray_event_by_id(stray_event_id: int) -> Optional[StrayEvent]:
 
 
 async def get_stray_event_by_name(name: str) -> Optional[StrayEvent]:
+    """
+    Get stray event by name.
+
+    Parameters
+    ----------
+    name: Any
+        The `name` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `get_stray_event_by_name`.
+    """
+
     async with session_scope() as session:
         query = select(StrayEvent).where(StrayEvent.name == name).options(*_stray_event_load_options())
         response = await session.execute(query)

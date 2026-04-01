@@ -5,9 +5,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from conftest import make_kennel, make_owner, make_pooch
-from src.game.exceptions import KennelNotFound, PoochNotFound
-from src.game.manage_kennels import (
+from src.game import (
     add_pooch_to_kennel,
     buy_kennel,
     get_kennel_buy_price,
@@ -16,6 +14,8 @@ from src.game.manage_kennels import (
     rename_kennel,
     upgrade_kennel,
 )
+from src.game.exceptions import KennelNotFound, PoochNotFound
+from tests.conftest import make_kennel, make_owner, make_pooch
 
 # ---------------------------------------------------------------------------
 # add_pooch_to_kennel

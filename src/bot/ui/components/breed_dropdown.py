@@ -6,13 +6,27 @@ from typing import TYPE_CHECKING, Optional
 import discord
 from discord.ui import Button, Select, View
 
-from src.bot.ui import edit_interaction, reply_to_interacted_message
+from src.bot.ui.util import edit_interaction, reply_to_interacted_message
 
 if TYPE_CHECKING:
     from src.game.models import Breed
 
 
 def build_breed_info_embed(breed: Breed) -> discord.Embed:
+    """
+    Build breed info embed.
+
+    Parameters
+    ----------
+    breed: Any
+        The `breed` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `build_breed_info_embed`.
+    """
+
     embed = discord.Embed(title=breed.name, description=breed.description)
     embed.add_field(name="Also Known As", value=breed.alt_name or "—", inline=True)
     embed.add_field(name="Category", value=breed.category or "—", inline=True)

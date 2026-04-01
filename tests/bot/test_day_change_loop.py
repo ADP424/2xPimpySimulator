@@ -6,9 +6,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import discord
 import pytest
 
-from src.bot.day_change_loop import (
-    _ensure_controls,
-    _fetch_and_update_names,
+from src.bot import (
+    ensure_controls,
+    fetch_and_update_names,
     is_day_change_paused,
     post_day_change_summaries,
     post_server_event_notifications,
@@ -22,7 +22,7 @@ from src.bot.day_change_loop import (
 def _make_bot():
     """Create a mock bot with no pre-existing control attributes."""
     bot = MagicMock()
-    # Remove any auto-created attributes so _ensure_controls creates fresh ones
+    # Remove any auto-created attributes so ensure_controls creates fresh ones
     for attr in ("_day_change_paused_event", "_day_change_manual_queue", "_day_change_run_lock"):
         if hasattr(bot, attr):
             delattr(bot, attr)
@@ -37,7 +37,7 @@ def _make_bot():
 class TestEnsureControls:
     def test_creates_event_queue_and_lock(self):
         bot = _make_bot()
-        paused_event, manual_queue, run_lock = _ensure_controls(bot)
+        paused_event, manual_queue, run_lock = ensure_controls(bot)
         assert isinstance(paused_event, asyncio.Event)
         assert isinstance(manual_queue, asyncio.Queue)
         assert isinstance(run_lock, asyncio.Lock)
@@ -45,13 +45,13 @@ class TestEnsureControls:
     def test_paused_event_starts_set(self):
         """Paused event should start in 'set' state (not paused)."""
         bot = _make_bot()
-        paused_event, _, _ = _ensure_controls(bot)
+        paused_event, _, _ = ensure_controls(bot)
         assert paused_event.is_set()
 
     def test_reuses_existing_controls(self):
         bot = _make_bot()
-        paused1, queue1, lock1 = _ensure_controls(bot)
-        paused2, queue2, lock2 = _ensure_controls(bot)
+        paused1, queue1, lock1 = ensure_controls(bot)
+        paused2, queue2, lock2 = ensure_controls(bot)
         assert paused1 is paused2
         assert queue1 is queue2
         assert lock1 is lock2
@@ -91,7 +91,7 @@ class TestSetDayChangePaused:
 class TestTriggerManualDayChange:
     async def test_puts_item_in_queue(self):
         bot = _make_bot()
-        _, manual_queue, _ = _ensure_controls(bot)
+        _, manual_queue, _ = ensure_controls(bot)
         assert manual_queue.empty()
 
         await trigger_manual_day_change(bot)
@@ -101,7 +101,7 @@ class TestTriggerManualDayChange:
 
     async def test_multiple_triggers_queue_multiple(self):
         bot = _make_bot()
-        _, manual_queue, _ = _ensure_controls(bot)
+        _, manual_queue, _ = ensure_controls(bot)
 
         await trigger_manual_day_change(bot)
         await trigger_manual_day_change(bot)
@@ -128,7 +128,7 @@ class TestFetchAndUpdateNames:
             patch("src.bot.day_change_loop.list_all_owners", new_callable=AsyncMock, return_value=owners),
             patch("src.bot.day_change_loop.update_owner_names", new_callable=AsyncMock) as mock_update,
         ):
-            await _fetch_and_update_names(bot)
+            await fetch_and_update_names(bot)
             mock_update.assert_called_once_with({111: "CoolUser", 222: "CoolUser"})
 
     async def test_skips_not_found_users(self):
@@ -142,7 +142,7 @@ class TestFetchAndUpdateNames:
             patch("src.bot.day_change_loop.list_all_owners", new_callable=AsyncMock, return_value=owners),
             patch("src.bot.day_change_loop.update_owner_names", new_callable=AsyncMock) as mock_update,
         ):
-            await _fetch_and_update_names(bot)
+            await fetch_and_update_names(bot)
             # Should still call update, but with empty dict since the user wasn't found
             mock_update.assert_called_once_with({})
 
@@ -157,7 +157,7 @@ class TestFetchAndUpdateNames:
             patch("src.bot.day_change_loop.list_all_owners", new_callable=AsyncMock, return_value=owners),
             patch("src.bot.day_change_loop.update_owner_names", new_callable=AsyncMock) as mock_update,
         ):
-            await _fetch_and_update_names(bot)
+            await fetch_and_update_names(bot)
             mock_update.assert_called_once_with({})
 
     async def test_uses_get_user_first(self):
@@ -173,7 +173,7 @@ class TestFetchAndUpdateNames:
             patch("src.bot.day_change_loop.list_all_owners", new_callable=AsyncMock, return_value=owners),
             patch("src.bot.day_change_loop.update_owner_names", new_callable=AsyncMock),
         ):
-            await _fetch_and_update_names(bot)
+            await fetch_and_update_names(bot)
             bot.fetch_user.assert_not_called()
 
 

@@ -2,6 +2,7 @@ from typing import Any
 
 from sqlalchemy import delete, select
 
+from src.database.session import session_scope
 from src.logger import get_logger
 
 from ...models import (
@@ -12,7 +13,6 @@ from ...models import (
     StrayEventAction,
     StrayEventOutcome,
 )
-from ...session import session_scope
 from .utils import (
     EVENT_SEVERITY_VALUES,
     RARITY_VALUES,
@@ -219,6 +219,15 @@ class _StrayEventValidator(BaseEventValidator):
 
 
 async def load_stray_events():
+    """
+    Load stray events.
+
+    Returns
+    -------
+    Any
+        The result of calling `load_stray_events`.
+    """
+
     logger.info("Loading stray events from stray event resources into the database...")
 
     stray_events_json = load_categorized_resource_objects(STRAY_EVENTS_ROOT, "stray event")

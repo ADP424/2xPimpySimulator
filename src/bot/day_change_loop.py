@@ -7,21 +7,22 @@ from zoneinfo import ZoneInfo
 
 import discord
 
-from src.game import (
-    get_event_channel,
-    run_daily_server_event_cycle,
-    run_day_change,
-    set_server_event_message_id,
-)
-from src.game.manage_owners import list_all_owners, update_owner_names
-from src.logger import get_logger
-
-from .ui.day_change_status import make_status_view
-from .ui.server_events import (
+from src.bot.ui import (
     ServerEventParticipationView,
     build_server_event_embed,
     build_server_event_resolution_embed,
+    make_status_view,
 )
+from src.game import (
+    get_event_channel,
+    list_all_owners,
+    run_daily_server_event_cycle,
+    run_day_change,
+    set_server_event_message_id,
+    update_owner_names,
+)
+from src.logger import get_logger
+
 from .webhooks import post_day_change_webhooks
 
 if TYPE_CHECKING:
@@ -31,7 +32,21 @@ if TYPE_CHECKING:
 logger = get_logger("bot/day_change_loop")
 
 
-def _ensure_controls(bot: discord.Client):
+def ensure_controls(bot: discord.Client):
+    """
+    Ensure controls.
+
+    Parameters
+    ----------
+    bot: Any
+        The `bot` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `ensure_controls`.
+    """
+
     paused_event = getattr(bot, "_day_change_paused_event", None)
     if not isinstance(paused_event, asyncio.Event):
         paused_event = asyncio.Event()
@@ -52,13 +67,27 @@ def _ensure_controls(bot: discord.Client):
 
 
 def is_day_change_paused(bot: discord.Client) -> bool:
-    paused_event, _, _ = _ensure_controls(bot)
+    """
+    Is day change paused.
+
+    Parameters
+    ----------
+    bot: Any
+        The `bot` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `is_day_change_paused`.
+    """
+
+    paused_event, _, _ = ensure_controls(bot)
     return not paused_event.is_set()
 
 
 async def set_day_change_paused(bot: discord.Client, paused: bool) -> bool:
     """Set pause state. Returns the new paused state."""
-    paused_event, _, _ = _ensure_controls(bot)
+    paused_event, _, _ = ensure_controls(bot)
     if paused:
         paused_event.clear()
     else:
@@ -68,11 +97,11 @@ async def set_day_change_paused(bot: discord.Client, paused: bool) -> bool:
 
 async def trigger_manual_day_change(bot: discord.Client):
     """Trigger one immediate day change (even if paused)."""
-    _, manual_queue, _ = _ensure_controls(bot)
+    _, manual_queue, _ = ensure_controls(bot)
     manual_queue.put_nowait(1)
 
 
-async def _fetch_and_update_names(bot: discord.Client):
+async def fetch_and_update_names(bot: discord.Client):
     """Resolve Discord display names for all owners and pass them to the game layer."""
     owners = await list_all_owners()
     names: dict[int, str] = {}
@@ -88,6 +117,23 @@ async def _fetch_and_update_names(bot: discord.Client):
 
 
 async def post_day_change_summaries(bot: discord.Client, summaries: dict[int, DayChangeSummary]):
+    """
+    Post day change summaries.
+
+    Parameters
+    ----------
+    bot: Any
+        The `bot` value.
+
+    summaries: Any
+        The `summaries` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `post_day_change_summaries`.
+    """
+
     for server_discord_id, summary in summaries.items():
         channel_id = await get_event_channel(server_discord_id)
         if not channel_id:
@@ -131,6 +177,23 @@ async def post_day_change_summaries(bot: discord.Client, summaries: dict[int, Da
 
 
 async def post_server_event_notifications(bot: discord.Client, owner_events: dict[int, object]):
+    """
+    Post server event notifications.
+
+    Parameters
+    ----------
+    bot: Any
+        The `bot` value.
+
+    owner_events: Any
+        The `owner_events` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `post_server_event_notifications`.
+    """
+
     for server_discord_id, event in owner_events.items():
         channel_id = await get_event_channel(server_discord_id)
         if not channel_id:
@@ -156,6 +219,23 @@ async def post_server_event_notifications(bot: discord.Client, owner_events: dic
 
 
 async def post_server_event_resolutions(bot: discord.Client, resolutions: list[object]):
+    """
+    Post server event resolutions.
+
+    Parameters
+    ----------
+    bot: Any
+        The `bot` value.
+
+    resolutions: Any
+        The `resolutions` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `post_server_event_resolutions`.
+    """
+
     for resolution in resolutions:
         channel_id = await get_event_channel(resolution.server_discord_id)
         if not channel_id:
@@ -237,8 +317,31 @@ async def post_stray_event_summaries(
 async def day_change_runner(
     bot: discord.Client, stage: str, tz: str = "America/New_York", skip_startup_day_change: bool = False
 ):
+    """
+    Day change runner.
+
+    Parameters
+    ----------
+    bot: Any
+        The `bot` value.
+
+    stage: Any
+        The `stage` value.
+
+    tz: Any
+        The `tz` value.
+
+    skip_startup_day_change: Any
+        The `skip_startup_day_change` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `day_change_runner`.
+    """
+
     zone = ZoneInfo(tz)
-    paused_event, manual_queue, run_lock = _ensure_controls(bot)
+    paused_event, manual_queue, run_lock = ensure_controls(bot)
 
     async def run_once():
         logger.info("Changing day...")
@@ -248,7 +351,7 @@ async def day_change_runner(
         if stage == "dev":
             await post_stray_event_summaries(bot, stray_results)
         try:
-            await _fetch_and_update_names(bot)
+            await fetch_and_update_names(bot)
         except Exception:
             logger.exception("Failed to update owner display names")
 

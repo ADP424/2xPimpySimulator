@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import discord
 import pytest
 
-from src.bot.ui.components.mutation_dropdown import (
+from src.bot.ui.components import (
     MutationDropdownControls,
     MutationOption,
     build_mutation_info_embed,

@@ -61,10 +61,10 @@ from .constants import (
     VENDOR_POOCH_AGE_RANGE,
     VENDOR_POOCH_STOCK_COUNT_RANGE,
 )
+from .events.stray_events import run_daily_stray_event_check
 from .manage_auctions import process_expired_sale_listings
 from .manage_kennels import add_pooch_to_kennel
 from .manage_pooches import get_pooch_by_id
-from .manage_stray_events import run_daily_stray_event_check
 from .models import (
     BirthEvent,
     DayChangeSummary,
@@ -156,7 +156,7 @@ async def refresh_moods(rng_seed: Optional[int] = None) -> int:
     return count
 
 
-def _death_roll(total_health: int, rng: random.Random) -> bool:
+def death_roll(total_health: int, rng: random.Random) -> bool:
     """
     Randomly determine whether a Pooch should die or not, based on its health.
     """
@@ -293,7 +293,7 @@ async def run_day_change(
         new_mood = _pick_mood(total_health, pooch.age, rng)
         await update_pooch_mood(pooch.id, new_mood)
 
-        if _death_roll(total_health, rng):
+        if death_roll(total_health, rng):
             pooch_kennel_before_death = await get_pooch_kennel(pooch.id)
             pooch = await _kill_pooch(pooch)
             await update_pooch_mood(pooch.id, "dead")

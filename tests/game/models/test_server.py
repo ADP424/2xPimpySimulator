@@ -2,7 +2,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from src.game.models.server import Server, to_server
+from src.game.models import Server, to_server
 
 
 class TestServerCreation:

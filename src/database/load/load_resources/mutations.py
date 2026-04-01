@@ -2,10 +2,10 @@ from typing import Any
 
 from sqlalchemy import delete
 
+from src.database.session import session_scope
 from src.logger import get_logger
 
 from ...models import Mutation
-from ...session import session_scope
 from .utils import (
     HEALTH_IMPACT_VALUES,
     RARITY_VALUES,
@@ -31,7 +31,16 @@ _VALID_ON_DEATH_TRIGGER_KEYS = {
 }
 
 
-def _validate_mutations_json(mutations_json: dict[str, dict[str, dict[str, Any]]]) -> None:
+def validate_mutations_json(mutations_json: dict[str, dict[str, dict[str, Any]]]) -> None:
+    """
+    Validate mutations json.
+
+    Parameters
+    ----------
+    mutations_json: Any
+        The `mutations_json` value.
+    """
+
     errors: list[str] = []
     allowed_keys = {
         "alt_name",
@@ -162,10 +171,19 @@ def _validate_mutations_json(mutations_json: dict[str, dict[str, dict[str, Any]]
 
 
 async def load_mutations():
+    """
+    Load mutations.
+
+    Returns
+    -------
+    Any
+        The result of calling `load_mutations`.
+    """
+
     logger.info("Loading mutations from 'resources/mutations/**/*.jsonc' into the database...")
 
     mutations_json = load_categorized_resource_objects(_MUTATIONS_ROOT, "mutation")
-    _validate_mutations_json(mutations_json)
+    validate_mutations_json(mutations_json)
 
     async with session_scope() as session:
         await session.execute(delete(Mutation))

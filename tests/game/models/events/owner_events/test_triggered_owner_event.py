@@ -3,13 +3,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from src.game.models.events.owner_events import (
+    TriggeredOwnerEvent,
+    to_triggered_owner_event,
+)
 from src.game.models.events.owner_events.owner_event_context import OwnerEventContext
 from src.game.models.events.owner_events.owner_event_entity_reference import (
     OwnerEventEntityReferences,
-)
-from src.game.models.events.owner_events.triggered_owner_event import (
-    TriggeredOwnerEvent,
-    to_triggered_owner_event,
 )
 
 

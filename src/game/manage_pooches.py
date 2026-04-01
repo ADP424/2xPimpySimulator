@@ -339,10 +339,28 @@ async def get_pooch_injury_instances(pooch_id: int) -> list[PoochInjury]:
 
 
 def get_diagnose_injuries_cost() -> int:
+    """
+    Get diagnose injuries cost.
+
+    Returns
+    -------
+    Any
+        The result of calling `get_diagnose_injuries_cost`.
+    """
+
     return VET_DIAGNOSE_INJURIES_COST
 
 
 def get_diagnose_mutations_cost() -> int:
+    """
+    Get diagnose mutations cost.
+
+    Returns
+    -------
+    Any
+        The result of calling `get_diagnose_mutations_cost`.
+    """
+
     return VET_DIAGNOSE_MUTATIONS_COST
 
 
@@ -362,8 +380,8 @@ async def treat_injury(
     from sqlalchemy import select
     from sqlalchemy.orm import selectinload
 
+    from src.database import session_scope
     from src.database.models import PoochInjury as PoochInjuryORM
-    from src.database.session import session_scope
 
     injury_severity = None
     persistence = None
@@ -432,8 +450,8 @@ async def diagnose_injuries(
     from sqlalchemy import select
     from sqlalchemy.orm import selectinload
 
+    from src.database import session_scope
     from src.database.models import PoochInjury as PoochInjuryORM
-    from src.database.session import session_scope
 
     owner = await get_owner_by_discord_id(owner_discord_id)
     if owner is None:
@@ -488,8 +506,8 @@ async def diagnose_mutations(
     from sqlalchemy import select
     from sqlalchemy.orm import selectinload
 
+    from src.database import session_scope
     from src.database.models import PoochMutation as PoochMutationORM
-    from src.database.session import session_scope
 
     owner = await get_owner_by_discord_id(owner_discord_id)
     if owner is None:

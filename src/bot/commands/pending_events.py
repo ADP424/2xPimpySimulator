@@ -1,10 +1,24 @@
 from discord import Interaction, app_commands
 
-from src.bot.ui.events import send_all_pending_event_dms
+from src.bot.ui import send_all_pending_event_dms
 from src.game import get_active_events_for_owner
 
 
 def register_pending_events_command(tree: app_commands.CommandTree):
+    """
+    Register pending events command.
+
+    Parameters
+    ----------
+    tree: Any
+        The `tree` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `register_pending_events_command`.
+    """
+
     @tree.command(name="pending_events", description="DM yourself the events that still need a response")
     async def pending_events(interaction: Interaction):
         events = await get_active_events_for_owner(interaction.user.id, pending_only=True)

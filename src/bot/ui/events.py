@@ -14,7 +14,6 @@ from src.game import (
     get_pooch_by_id,
     respond_to_event,
 )
-from src.game.models import Pooch
 from src.game.models.events import (
     OwnerEventContext,
     OwnerEventEntityReferences,
@@ -26,6 +25,7 @@ from src.game.models.events import (
 )
 
 from .components import PaginatorView, build_breed_info_embed, build_mutation_info_embed
+from .pooch_info import PoochInfoView
 from .util import InteractionResponder, edit_interaction
 
 SEVERITY_COLORS: dict[str, discord.Color] = {
@@ -43,18 +43,66 @@ ENTITY_KINDS: tuple[tuple[str, str], ...] = (
 )
 
 
-def _color_for_severity(severity: str) -> discord.Color:
+def color_for_severity(severity: str) -> discord.Color:
+    """
+    Color for severity.
+
+    Parameters
+    ----------
+    severity: Any
+        The `severity` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `color_for_severity`.
+    """
+
     return SEVERITY_COLORS.get(severity.lower(), discord.Color.blurple())
 
 
-def _truncate(text: str, limit: int = 1024) -> str:
+def truncate(text: str, limit: int = 1024) -> str:
+    """
+    Truncate.
+
+    Parameters
+    ----------
+    text: Any
+        The `text` value.
+
+    limit: Any
+        The `limit` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `truncate`.
+    """
+
     text = text.strip()
     if len(text) <= limit:
         return text
     return text[: max(limit - 1, 0)].rstrip() + "..."
 
 
-def _discord_timestamp(value: datetime | str | None, style: str = "f") -> str:
+def discord_timestamp(value: datetime | str | None, style: str = "f") -> str:
+    """
+    Discord timestamp.
+
+    Parameters
+    ----------
+    value: Any
+        The `value` value.
+
+    style: Any
+        The `style` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `discord_timestamp`.
+    """
+
     if value is None:
         return "—"
     if isinstance(value, str):
@@ -64,7 +112,21 @@ def _discord_timestamp(value: datetime | str | None, style: str = "f") -> str:
     return f"<t:{int(value.timestamp())}:{style}>"
 
 
-def _format_option_line(option: OwnerEventOption) -> str:
+def format_option_line(option: OwnerEventOption) -> str:
+    """
+    Format option line.
+
+    Parameters
+    ----------
+    option: Any
+        The `option` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `format_option_line`.
+    """
+
     requirements: list[str] = []
     if option.min_money > 0:
         requirements.append(f"${option.min_money}")
@@ -80,7 +142,21 @@ def _format_option_line(option: OwnerEventOption) -> str:
     return line
 
 
-def _format_option_select_description(option: OwnerEventOption) -> str:
+def format_option_select_description(option: OwnerEventOption) -> str:
+    """
+    Format option select description.
+
+    Parameters
+    ----------
+    option: Any
+        The `option` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `format_option_select_description`.
+    """
+
     lines: list[str] = []
     if option.description:
         lines.append(option.description)
@@ -91,10 +167,30 @@ def _format_option_select_description(option: OwnerEventOption) -> str:
         costs.append(f"{option.min_bloodskulls} skulls")
     if costs:
         lines.append("Req: " + ", ".join(costs))
-    return _truncate("\n".join(lines) if lines else "No description.")
+    return truncate("\n".join(lines) if lines else "No description.")
 
 
-def _detail_entries(bucket: Any, *, id_key: str, value_key: str) -> list[dict[str, Any]]:
+def detail_entries(bucket: Any, *, id_key: str, value_key: str) -> list[dict[str, Any]]:
+    """
+    Detail entries.
+
+    Parameters
+    ----------
+    bucket: Any
+        The `bucket` value.
+
+    id_key: Any
+        The `id_key` value.
+
+    value_key: Any
+        The `value_key` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `detail_entries`.
+    """
+
     if isinstance(bucket, list):
         return [entry for entry in bucket if isinstance(entry, dict)]
     if isinstance(bucket, dict):
@@ -108,11 +204,42 @@ def _detail_entries(bucket: Any, *, id_key: str, value_key: str) -> list[dict[st
     return []
 
 
-def _signed(value: int) -> str:
+def signed(value: int) -> str:
+    """
+    Signed.
+
+    Parameters
+    ----------
+    value: Any
+        The `value` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `signed`.
+    """
+
     return f"{value:+d}"
 
 
-def _entity_reference_lines(context: OwnerEventContext, entity_references: OwnerEventEntityReferences) -> list[str]:
+def entity_reference_lines(context: OwnerEventContext, entity_references: OwnerEventEntityReferences) -> list[str]:
+    """
+    Entity reference lines.
+
+    Parameters
+    ----------
+    context: Any
+        The `context` value.
+
+    entity_references: Any
+        The `entity_references` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `entity_reference_lines`.
+    """
+
     lines: list[str] = []
 
     for kind, title in ENTITY_KINDS:
@@ -142,10 +269,27 @@ def _entity_reference_lines(context: OwnerEventContext, entity_references: Owner
     return lines
 
 
-def _format_result_summary(
+def format_result_summary(
     result: Optional[OwnerEventResult],
     entity_references: Optional[OwnerEventEntityReferences] = None,
 ) -> str:
+    """
+    Format result summary.
+
+    Parameters
+    ----------
+    result: Any
+        The `result` value.
+
+    entity_references: Any
+        The `entity_references` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `format_result_summary`.
+    """
+
     if result is None:
         return "No recorded outcome."
 
@@ -174,6 +318,7 @@ def _format_result_summary(
     if result.bloodskulls_changed:
         lines.append(f"Bloodskulls: {result.bloodskulls_changed:+d}")
 
+    # Pooch creation (generic: create_pooch, clone_pooch, receive_stray, conjure_pooch)
     for entry in extra_data.get("created_pooches", []):
         if not isinstance(entry, dict):
             continue
@@ -192,32 +337,88 @@ def _format_result_summary(
         if extras:
             text += f" ({', '.join(extras)})"
         lines.append(text)
-    if result.pooches_created and not extra_data.get("created_pooches"):
+    # bought_pooches shows richer info than created_pooches for buy_pooch
+    for entry in extra_data.get("bought_pooches", []):
+        if not isinstance(entry, dict):
+            continue
+        name = entry.get("pooch_name") or _pooch_name(entry.get("pooch_id", "?"))
+        price = entry.get("price")
+        kennel = entry.get("kennel_name")
+        detail_parts: list[str] = []
+        if price is not None:
+            detail_parts.append(f"${price}")
+        if kennel:
+            detail_parts.append(f"in {kennel}")
+        suffix = f" ({', '.join(detail_parts)})" if detail_parts else ""
+        lines.append(f"Bought: {name}{suffix}")
+    if result.pooches_created and not extra_data.get("created_pooches") and not extra_data.get("bought_pooches"):
         lines.append(f"Pooches created: {len(result.pooches_created)}")
 
-    for entry in _detail_entries(extra_data.get("health_changes"), id_key="pooch_id", value_key="amount"):
+    # Killed/lost pooches (kill_pooch, damn_pooch, sacrifice_pooch, fight_pooches)
+    for entry in extra_data.get("killed_pooches", []):
+        if not isinstance(entry, dict):
+            continue
+        lines.append(f"Lost pooch: {entry.get('pooch_name') or _pooch_name(entry.get('pooch_id', '?'))}")
+    if result.pooches_killed and not extra_data.get("killed_pooches"):
+        lines.append(f"Pooches lost: {len(result.pooches_killed)}")
+
+    # Sold pooches
+    for entry in extra_data.get("sold_pooches", []):
+        if not isinstance(entry, dict):
+            continue
+        name = entry.get("pooch_name") or _pooch_name(entry.get("pooch_id", "?"))
+        price = entry.get("price")
+        price_str = f" (${price})" if price is not None else ""
+        lines.append(f"Sold: {name}{price_str}")
+
+    # Released strays
+    for entry in extra_data.get("released_strays", []):
+        if not isinstance(entry, dict):
+            continue
+        name = entry.get("pooch_name") or _pooch_name(entry.get("pooch_id", "?"))
+        lines.append(f"Released as stray: {name}")
+
+    # Stat changes
+    for entry in extra_data.get("stat_changes", []):
+        if not isinstance(entry, dict):
+            continue
+        name = entry.get("pooch_name") or _pooch_name(entry.get("pooch_id", "?"))
+        stat = str(entry.get("stat", "stat")).capitalize()
+        amount = entry.get("amount", 0)
+        mode = entry.get("mode", "add")
+        if mode == "set":
+            lines.append(f"{stat}: {name} set to {amount}")
+        else:
+            lines.append(f"{stat}: {name} {signed(amount)}")
+
+    # Health changes
+    for entry in detail_entries(extra_data.get("health_changes"), id_key="pooch_id", value_key="amount"):
         name = entry.get("pooch_name") or _pooch_name(entry.get("pooch_id", "?"))
         amount = entry.get("amount", 0)
         suffix = f" (base now {entry['new_base_health']})" if entry.get("new_base_health") is not None else ""
-        lines.append(f"Health: {name} {_signed(amount)}{suffix}")
+        lines.append(f"Health: {name} {signed(amount)}{suffix}")
 
-    for entry in _detail_entries(extra_data.get("age_changes"), id_key="pooch_id", value_key="amount"):
+    # Age changes
+    for entry in detail_entries(extra_data.get("age_changes"), id_key="pooch_id", value_key="amount"):
         name = entry.get("pooch_name") or _pooch_name(entry.get("pooch_id", "?"))
         amount = entry.get("amount", 0)
         suffix = f" (now age {entry['new_age']})" if entry.get("new_age") is not None else ""
-        lines.append(f"Age: {name} {_signed(amount)}{suffix}")
+        lines.append(f"Age: {name} {signed(amount)}{suffix}")
 
+    # Breeding cooldown changes
     for entry in extra_data.get("breeding_cooldown_changes", []):
         if not isinstance(entry, dict):
             continue
         name = entry.get("pooch_name") or _pooch_name(entry.get("pooch_id", "?"))
         lines.append(f"Breeding cooldown: {name} set to {entry.get('cooldown', 0)}")
 
+    # Renames
     for entry in extra_data.get("renamed_pooches", []):
         if not isinstance(entry, dict):
             continue
         lines.append(f"Renamed: {entry.get('old_name', 'Unknown')} → {entry.get('new_name', 'Unknown')}")
 
+    # Transfers
     for entry in extra_data.get("transferred_pooches", []):
         if not isinstance(entry, dict):
             continue
@@ -225,6 +426,7 @@ def _format_result_summary(
         destination = entry.get("destination") or "new owner"
         lines.append(f"Transferred: {name} → {destination}")
 
+    # Mutations added
     for entry in extra_data.get("mutations_added_details", []):
         if not isinstance(entry, dict):
             continue
@@ -232,6 +434,7 @@ def _format_result_summary(
     if result.mutations_added and not extra_data.get("mutations_added_details"):
         lines.append(f"Mutations added: {len(result.mutations_added)}")
 
+    # Mutations removed
     for entry in extra_data.get("mutations_removed_details", []):
         if not isinstance(entry, dict):
             continue
@@ -241,6 +444,7 @@ def _format_result_summary(
     if result.mutations_removed and not extra_data.get("mutations_removed_details"):
         lines.append(f"Mutations removed: {len(result.mutations_removed)}")
 
+    # Breeds added
     for entry in extra_data.get("breeds_added", []):
         if not isinstance(entry, dict):
             continue
@@ -250,20 +454,65 @@ def _format_result_summary(
             f"Breed added: {entry.get('pooch_name', 'Unknown')} → {entry.get('breed_name', 'Unknown')}{suffix}"
         )
 
-    for entry in extra_data.get("killed_pooches", []):
+    # Breeds removed
+    for entry in extra_data.get("breeds_removed", []):
         if not isinstance(entry, dict):
             continue
-        lines.append(f"Lost pooch: {entry.get('pooch_name', 'Unknown')}")
-    if result.pooches_killed and not extra_data.get("killed_pooches"):
-        lines.append(f"Pooches lost: {len(result.pooches_killed)}")
+        name = entry.get("pooch_name") or _pooch_name(entry.get("pooch_id", "?"))
+        breed_name = entry.get("breed_name") or "Unknown breed"
+        lines.append(f"Breed removed: {name} → {breed_name}")
 
-    for entry in _detail_entries(extra_data.get("kennel_capacity_changes"), id_key="kennel_id", value_key="amount"):
+    # Injuries
+    for entry in extra_data.get("injuries_added", []):
+        if not isinstance(entry, dict):
+            continue
+        name = entry.get("pooch_name") or _pooch_name(entry.get("pooch_id", "?"))
+        injury_name = entry.get("injury_name") or "Unknown injury"
+        lines.append(f"Injured: {name} ({injury_name})")
+
+    # Kennel capacity changes
+    for entry in detail_entries(extra_data.get("kennel_capacity_changes"), id_key="kennel_id", value_key="amount"):
         name = entry.get("kennel_name") or f"Kennel #{entry.get('kennel_id', '?')}"
         amount = entry.get("amount", 0)
         suffix = f" (limit {entry['new_limit']})" if entry.get("new_limit") is not None else ""
-        lines.append(f"Kennel capacity: {name} {_signed(amount)}{suffix}")
+        lines.append(f"Kennel capacity: {name} {signed(amount)}{suffix}")
 
-    return _truncate("\n".join(lines) if lines else "No recorded outcome.")
+    # Kennel upgrades
+    for kennel_id, amount in (extra_data.get("kennel_upgrade_tier_changes") or {}).items():
+        name = f"Kennel #{kennel_id}"
+        lines.append(f"Kennel upgraded: {name} {signed(amount)} tier(s)")
+
+    # Kennel deletions
+    for kennel_id in extra_data.get("kennels_deleted") or []:
+        lines.append(f"Kennel deleted: Kennel #{kennel_id}")
+
+    # Fight result
+    fight_result = extra_data.get("fight_result")
+    if isinstance(fight_result, dict):
+        attacker_id = fight_result.get("attacker_id")
+        defender_id = fight_result.get("defender_id")
+        winner_id = fight_result.get("winner_id")
+        draw = fight_result.get("draw", False)
+        rounds = fight_result.get("rounds_fought", 0)
+        att_name = _pooch_name(attacker_id) if attacker_id is not None else "Attacker"
+        def_name = _pooch_name(defender_id) if defender_id is not None else "Defender"
+        if draw:
+            lines.append(f"Fight: {att_name} vs {def_name} — Draw ({rounds} rounds)")
+        elif winner_id == attacker_id:
+            lines.append(f"Fight: {att_name} defeated {def_name} ({rounds} rounds)")
+        elif winner_id == defender_id:
+            lines.append(f"Fight: {def_name} defeated {att_name} ({rounds} rounds)")
+        else:
+            lines.append(f"Fight: {att_name} vs {def_name} ({rounds} rounds)")
+
+    # Started events (chain events)
+    for entry in extra_data.get("started_events") or []:
+        if not isinstance(entry, dict):
+            continue
+        event_name = entry.get("name") or "Unknown event"
+        lines.append(f"Started event: {event_name}")
+
+    return truncate("\n".join(lines) if lines else "No recorded outcome.")
 
 
 def _featured_pooch_name(event: TriggeredOwnerEvent) -> str | None:
@@ -284,6 +533,20 @@ def _featured_pooch_name(event: TriggeredOwnerEvent) -> str | None:
 
 
 def build_triggered_event_embed(event: TriggeredOwnerEvent) -> discord.Embed:
+    """
+    Build triggered event embed.
+
+    Parameters
+    ----------
+    event: Any
+        The `event` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `build_triggered_event_embed`.
+    """
+
     description_parts = [event.description or "No description provided."]
     if event.flavor_text:
         description_parts.append(f"*{event.flavor_text.strip()}*")
@@ -293,7 +556,7 @@ def build_triggered_event_embed(event: TriggeredOwnerEvent) -> discord.Embed:
     embed = discord.Embed(
         title=f"🎲 {event.name}",
         description="\n".join(description_parts),
-        color=_color_for_severity(event.severity),
+        color=color_for_severity(event.severity),
     )
 
     details = [
@@ -302,21 +565,21 @@ def build_triggered_event_embed(event: TriggeredOwnerEvent) -> discord.Embed:
     ]
     if event.requires_response and event.expires_at is not None:
         details.append(
-            f"**Expires:** {_discord_timestamp(event.expires_at, 'R')} ({_discord_timestamp(event.expires_at)})"
+            f"**Expires:** {discord_timestamp(event.expires_at, 'R')} ({discord_timestamp(event.expires_at)})"
         )
     embed.add_field(name="Details", value="\n".join(details), inline=False)
 
-    entity_lines = _entity_reference_lines(event.context, event.entity_references)
+    entity_lines = entity_reference_lines(event.context, event.entity_references)
     if entity_lines:
-        embed.add_field(name="Related", value=_truncate("\n".join(entity_lines)), inline=False)
+        embed.add_field(name="Related", value=truncate("\n".join(entity_lines)), inline=False)
 
     if event.requires_response and event.options:
-        options_value = "\n".join(_format_option_line(option) for option in event.options)
-        embed.add_field(name="Response Options", value=_truncate(options_value), inline=False)
+        options_value = "\n".join(format_option_line(option) for option in event.options)
+        embed.add_field(name="Response Options", value=truncate(options_value), inline=False)
         embed.set_footer(text="Choose an option from the menu below.")
     elif event.result is not None:
         embed.add_field(
-            name="Outcome", value=_format_result_summary(event.result, event.entity_references), inline=False
+            name="Outcome", value=format_result_summary(event.result, event.entity_references), inline=False
         )
         embed.set_footer(text="This event resolved automatically.")
 
@@ -330,32 +593,75 @@ def build_resolved_event_embed(
     selected_option_label: Optional[str] = None,
     status_text: str = "Resolved",
 ) -> discord.Embed:
+    """
+    Build resolved event embed.
+
+    Parameters
+    ----------
+    event: Any
+        The `event` value.
+
+    result: Any
+        The `result` value.
+
+    selected_option_label: Any
+        The `selected_option_label` value.
+
+    status_text: Any
+        The `status_text` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `build_resolved_event_embed`.
+    """
+
     embed = build_triggered_event_embed(event)
     if selected_option_label:
         embed.add_field(name="Selected Option", value=selected_option_label, inline=False)
-    embed.add_field(name="Outcome", value=_format_result_summary(result, event.entity_references), inline=False)
+    embed.add_field(name="Outcome", value=format_result_summary(result, event.entity_references), inline=False)
     embed.set_footer(text=status_text)
     return embed
 
 
 def build_history_embed(record: OwnerEventHistory, page_index: int, page_count: int) -> discord.Embed:
+    """
+    Build history embed.
+
+    Parameters
+    ----------
+    record: Any
+        The `record` value.
+
+    page_index: Any
+        The `page_index` value.
+
+    page_count: Any
+        The `page_count` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `build_history_embed`.
+    """
+
     history_description_parts = [record.description or "No description provided."]
     if record.flavor_text:
         history_description_parts.append(f"*{record.flavor_text.strip()}*")
     embed = discord.Embed(
         title=f"📜 {record.name}",
         description="\n".join(history_description_parts),
-        color=_color_for_severity(record.severity),
+        color=color_for_severity(record.severity),
     )
 
     details = [
         f"**Category:** {record.category.title()}",
         f"**Severity:** {record.severity.title()}",
-        f"**Triggered:** {_discord_timestamp(record.triggered_at)}",
+        f"**Triggered:** {discord_timestamp(record.triggered_at)}",
     ]
     completed_at = record.completed_at
     if completed_at:
-        details.append(f"**Completed:** {_discord_timestamp(completed_at)}")
+        details.append(f"**Completed:** {discord_timestamp(completed_at)}")
 
     if record.timed_out:
         details.append("**Status:** Timed out")
@@ -366,66 +672,31 @@ def build_history_embed(record: OwnerEventHistory, page_index: int, page_count: 
 
     embed.add_field(name="Details", value="\n".join(details), inline=False)
 
-    entity_lines = _entity_reference_lines(record.context, record.entity_references)
+    entity_lines = entity_reference_lines(record.context, record.entity_references)
     if entity_lines:
-        embed.add_field(name="Related", value=_truncate("\n".join(entity_lines)), inline=False)
+        embed.add_field(name="Related", value=truncate("\n".join(entity_lines)), inline=False)
 
     embed.add_field(
-        name="Outcome", value=_format_result_summary(record.result_summary, record.entity_references), inline=False
+        name="Outcome", value=format_result_summary(record.result_summary, record.entity_references), inline=False
     )
     embed.set_footer(text=f"History entry {page_index + 1}/{page_count}")
     return embed
 
 
-async def _build_pooch_embed_from_id(pooch_id: int, fallback_label: str) -> discord.Embed:
+async def _build_pooch_embed_from_id(
+    pooch_id: int, fallback_label: str
+) -> tuple[discord.Embed, Optional[PoochInfoView]]:
     try:
         pooch = await get_pooch_by_id(pooch_id)
     except Exception:
         pooch = None
 
     if pooch is None:
-        return discord.Embed(title=fallback_label, description="That pooch could not be found.")
+        return discord.Embed(title=fallback_label, description="That pooch could not be found."), None
 
-    return _build_pooch_info_embed(pooch)
-
-
-def _build_pooch_info_embed(pooch: Pooch) -> discord.Embed:
-    embed = discord.Embed(title=pooch.name)
-    embed.add_field(name="Age", value=str(pooch.age), inline=True)
-    embed.add_field(name="Sex", value=pooch.sex.capitalize(), inline=True)
-    embed.add_field(name="Health", value=str(pooch.health), inline=True)
-    embed.add_field(name="Status", value=pooch.status.capitalize(), inline=True)
-    owner_text = (
-        f"<@{pooch.owner_discord_id}>"
-        if pooch.owner_discord_id is not None
-        else (pooch.vendor.name if pooch.vendor is not None else "Nobody")
-    )
-    embed.add_field(name="Owner", value=owner_text, inline=True)
-    embed.add_field(
-        name="Birthday", value=str(pooch.birthday.date()) if pooch.birthday is not None else "—", inline=True
-    )
-
-    if pooch.breeds:
-        breed_text = ", ".join(
-            f"{pooch_breed.breed.name} ({round(100 * pooch_breed.relative_weight)}%)" for pooch_breed in pooch.breeds
-        )
-    else:
-        breed_text = "None"
-
-    if pooch.mutations:
-        mutation_parts = []
-        for pm in pooch.mutations:
-            if pm.visible:
-                mutation_parts.append(pm.mutation.name)
-            elif pm.displayed_symptom:
-                mutation_parts.append(pm.displayed_symptom)
-        mutation_text = ", ".join(mutation_parts) or "None"
-    else:
-        mutation_text = "None"
-
-    embed.add_field(name="Breeds", value=_truncate(breed_text), inline=False)
-    embed.add_field(name="Mutations", value=_truncate(mutation_text), inline=False)
-    return embed
+    view = PoochInfoView(server=None, pooch=pooch, owner=None)
+    embed = await view.build_embed()
+    return embed, view
 
 
 class EventEntityControls:
@@ -447,7 +718,7 @@ class EventEntityControls:
                 placeholder=f"Select {title.lower()}",
                 options=[
                     discord.SelectOption(
-                        label=_truncate(item.label, 100),
+                        label=truncate(item.label, 100),
                         value=str(item.id),
                     )
                     for item in items[:25]
@@ -494,9 +765,13 @@ class EventEntityControls:
             return
 
         if self.selected_kind == "pooches":
-            embed = await _build_pooch_embed_from_id(
+            embed, pooch_view = await _build_pooch_embed_from_id(
                 self.selected_id, self.selected_label or f"Pooch #{self.selected_id}"
             )
+            if pooch_view is not None:
+                await r.reply(embed=embed, view=pooch_view)
+            else:
+                await r.reply(embed=embed)
         elif self.selected_kind == "breeds":
             breed = await get_breed_by_id(self.selected_id)
             if breed is None:
@@ -506,6 +781,7 @@ class EventEntityControls:
                 )
             else:
                 embed = build_breed_info_embed(breed)
+            await r.reply(embed=embed)
         else:
             mutation = await get_mutation_by_id(self.selected_id)
             if mutation is None:
@@ -515,8 +791,7 @@ class EventEntityControls:
                 )
             else:
                 embed = build_mutation_info_embed(mutation)
-
-        await r.reply(embed=embed)
+            await r.reply(embed=embed)
 
 
 class EventHistoryPageSource:
@@ -546,9 +821,9 @@ class EventResponseSelect(discord.ui.Select):
     def __init__(self, owner_discord_id: int, event: TriggeredOwnerEvent):
         options = [
             discord.SelectOption(
-                label=_truncate(option.label, 100),
+                label=truncate(option.label, 100),
                 value=str(option.id),
-                description=_format_option_select_description(option),
+                description=format_option_select_description(option),
             )
             for option in event.options[:25]
         ]
@@ -650,7 +925,24 @@ class EventMessageView(discord.ui.View):
             return
 
 
-async def _get_dm_channel(bot: discord.Client, user_id: int) -> Optional[discord.DMChannel]:
+async def get_dm_channel(bot: discord.Client, user_id: int) -> Optional[discord.DMChannel]:
+    """
+    Get dm channel.
+
+    Parameters
+    ----------
+    bot: Any
+        The `bot` value.
+
+    user_id: Any
+        The `user_id` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `get_dm_channel`.
+    """
+
     user = bot.get_user(user_id)
     if user is None:
         try:
@@ -669,7 +961,27 @@ async def _get_dm_channel(bot: discord.Client, user_id: int) -> Optional[discord
 
 
 async def send_triggered_event_dm(bot: discord.Client, owner_discord_id: int, event: TriggeredOwnerEvent) -> bool:
-    dm_channel = await _get_dm_channel(bot, owner_discord_id)
+    """
+    Send triggered event dm.
+
+    Parameters
+    ----------
+    bot: Any
+        The `bot` value.
+
+    owner_discord_id: Any
+        The `owner_discord_id` value.
+
+    event: Any
+        The `event` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `send_triggered_event_dm`.
+    """
+
+    dm_channel = await get_dm_channel(bot, owner_discord_id)
     if dm_channel is None:
         return False
 
@@ -694,6 +1006,26 @@ async def send_triggered_event_dm(bot: discord.Client, owner_discord_id: int, ev
 async def send_all_pending_event_dms(
     bot: discord.Client, owner_discord_id: int, events: list[TriggeredOwnerEvent]
 ) -> tuple[int, int]:
+    """
+    Send all pending event dms.
+
+    Parameters
+    ----------
+    bot: Any
+        The `bot` value.
+
+    owner_discord_id: Any
+        The `owner_discord_id` value.
+
+    events: Any
+        The `events` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `send_all_pending_event_dms`.
+    """
+
     sent = 0
     failed = 0
     for event in events:
@@ -705,11 +1037,31 @@ async def send_all_pending_event_dms(
 
 
 async def send_event_history_dm(bot: discord.Client, owner_discord_id: int, limit: int = 25) -> bool:
+    """
+    Send event history dm.
+
+    Parameters
+    ----------
+    bot: Any
+        The `bot` value.
+
+    owner_discord_id: Any
+        The `owner_discord_id` value.
+
+    limit: Any
+        The `limit` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `send_event_history_dm`.
+    """
+
     records = await get_event_history(owner_discord_id, limit=limit)
     if not records:
         return False
 
-    dm_channel = await _get_dm_channel(bot, owner_discord_id)
+    dm_channel = await get_dm_channel(bot, owner_discord_id)
     if dm_channel is None:
         return False
 

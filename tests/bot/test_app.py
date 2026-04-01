@@ -13,7 +13,7 @@ def test_missing_token_raises():
         patch.dict("os.environ", {"DISCORD_TOKEN": ""}, clear=False),
         patch("src.bot.app.os.getenv", side_effect=lambda k, d=None: {"STAGE": "dev", "TZ": "UTC"}.get(k, d)),
     ):
-        from src.bot.app import run
+        from src.bot import run
 
         with pytest.raises(RuntimeError, match="DISCORD_TOKEN not set"):
             run()
@@ -45,7 +45,7 @@ def test_dev_stage_registers_dev_commands():
         patch("src.bot.app.register_increment_day_command") as mock_inc_day,
         patch("src.bot.app.register_trigger_event_command") as mock_trigger,
     ):
-        from src.bot.app import run
+        from src.bot import run
 
         run()
 
@@ -89,7 +89,7 @@ def test_prod_stage_does_not_register_dev_commands():
         patch("src.bot.app.register_increment_day_command") as mock_inc_day,
         patch("src.bot.app.register_trigger_event_command") as mock_trigger,
     ):
-        from src.bot.app import run
+        from src.bot import run
 
         run()
 

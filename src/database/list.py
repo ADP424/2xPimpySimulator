@@ -976,6 +976,15 @@ async def list_vendor_desired_breeds(vendor_id: int) -> list[Breed]:
 
 
 async def list_active_server_event_occurrences() -> list[ServerEventOccurrence]:
+    """
+    List active server event occurrences.
+
+    Returns
+    -------
+    Any
+        The result of calling `list_active_server_event_occurrences`.
+    """
+
     async with session_scope() as session:
         query = (
             select(ServerEventOccurrence)
@@ -999,6 +1008,20 @@ async def list_active_server_event_occurrences() -> list[ServerEventOccurrence]:
 
 
 async def list_server_event_participations(occurrence_id: int) -> list[ServerEventParticipation]:
+    """
+    List server event participations.
+
+    Parameters
+    ----------
+    occurrence_id: Any
+        The `occurrence_id` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `list_server_event_participations`.
+    """
+
     async with session_scope() as session:
         query = (
             select(ServerEventParticipation)
@@ -1011,6 +1034,23 @@ async def list_server_event_participations(occurrence_id: int) -> list[ServerEve
 
 
 async def list_server_event_history(server_discord_id: int, limit: int = 20) -> list[ServerEventOccurrence]:
+    """
+    List server event history.
+
+    Parameters
+    ----------
+    server_discord_id: Any
+        The `server_discord_id` value.
+
+    limit: Any
+        The `limit` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `list_server_event_history`.
+    """
+
     async with session_scope() as session:
         query = (
             select(ServerEventOccurrence)
@@ -1037,6 +1077,23 @@ async def list_server_event_history(server_discord_id: int, limit: int = 20) -> 
 
 
 async def list_matching_pooch_ids(owner_discord_id: int, filter_spec: dict | None) -> list[int]:
+    """
+    List matching pooch ids.
+
+    Parameters
+    ----------
+    owner_discord_id: Any
+        The `owner_discord_id` value.
+
+    filter_spec: Any
+        The `filter_spec` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `list_matching_pooch_ids`.
+    """
+
     async with session_scope() as session:
         return await get_matching_pooch_ids_for_owner(session, owner_discord_id, filter_spec or {})
 
@@ -1044,16 +1101,62 @@ async def list_matching_pooch_ids(owner_discord_id: int, filter_spec: dict | Non
 async def list_matching_pooch_ids_in_kennel(
     owner_discord_id: int, kennel_id: int, filter_spec: dict | None
 ) -> list[int]:
+    """
+    List matching pooch ids in kennel.
+
+    Parameters
+    ----------
+    owner_discord_id: Any
+        The `owner_discord_id` value.
+
+    kennel_id: Any
+        The `kennel_id` value.
+
+    filter_spec: Any
+        The `filter_spec` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `list_matching_pooch_ids_in_kennel`.
+    """
+
     async with session_scope() as session:
         return await get_matching_pooch_ids_for_owner(session, owner_discord_id, filter_spec or {}, kennel_id=kennel_id)
 
 
 async def list_matching_kennel_ids(owner_discord_id: int, filter_spec: dict | None) -> list[int]:
+    """
+    List matching kennel ids.
+
+    Parameters
+    ----------
+    owner_discord_id: Any
+        The `owner_discord_id` value.
+
+    filter_spec: Any
+        The `filter_spec` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `list_matching_kennel_ids`.
+    """
+
     async with session_scope() as session:
         return await get_matching_kennel_ids_for_owner(session, owner_discord_id, filter_spec or {})
 
 
 async def list_all_stray_events() -> list[StrayEvent]:
+    """
+    List all stray events.
+
+    Returns
+    -------
+    Any
+        The result of calling `list_all_stray_events`.
+    """
+
     from sqlalchemy.orm import selectinload
 
     async with session_scope() as session:

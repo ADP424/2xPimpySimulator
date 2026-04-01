@@ -16,11 +16,42 @@ from src.logger import get_logger
 logger = get_logger("bot/webhooks")
 
 
-def _build_signature(secret: str, body: bytes) -> str:
+def build_signature(secret: str, body: bytes) -> str:
+    """
+    Build signature.
+
+    Parameters
+    ----------
+    secret: Any
+        The `secret` value.
+
+    body: Any
+        The `body` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `build_signature`.
+    """
+
     return hmac.new(secret.encode("utf-8"), body, hashlib.sha256).hexdigest()
 
 
-def _serialize_pooch(pooch: Pooch) -> dict[str, Any]:
+def serialize_pooch(pooch: Pooch) -> dict[str, Any]:
+    """
+    Serialize pooch.
+
+    Parameters
+    ----------
+    pooch: Any
+        The `pooch` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `serialize_pooch`.
+    """
+
     return {
         "id": pooch.id,
         "name": pooch.name,
@@ -30,27 +61,69 @@ def _serialize_pooch(pooch: Pooch) -> dict[str, Any]:
     }
 
 
-def _serialize_birth(event: BirthEvent) -> dict[str, Any]:
+def serialize_birth(event: BirthEvent) -> dict[str, Any]:
+    """
+    Serialize birth.
+
+    Parameters
+    ----------
+    event: Any
+        The `event` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `serialize_birth`.
+    """
+
     return {
         "type": "birth",
-        "mother": _serialize_pooch(event.mother),
-        "child": _serialize_pooch(event.child),
+        "mother": serialize_pooch(event.mother),
+        "child": serialize_pooch(event.child),
         "message": event.message,
     }
 
 
-def _serialize_death(event: DeathEvent) -> dict[str, Any]:
+def serialize_death(event: DeathEvent) -> dict[str, Any]:
+    """
+    Serialize death.
+
+    Parameters
+    ----------
+    event: Any
+        The `event` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `serialize_death`.
+    """
+
     return {
         "type": "death",
-        "pooch": _serialize_pooch(event.pooch),
+        "pooch": serialize_pooch(event.pooch),
         "message": event.message,
     }
 
 
-def _serialize_other(event: OtherEvent) -> dict[str, Any]:
+def serialize_other(event: OtherEvent) -> dict[str, Any]:
+    """
+    Serialize other.
+
+    Parameters
+    ----------
+    event: Any
+        The `event` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `serialize_other`.
+    """
+
     return {
         "type": "other",
-        "pooch": _serialize_pooch(event.pooch),
+        "pooch": serialize_pooch(event.pooch),
         "message": event.message,
     }
 
@@ -60,15 +133,30 @@ def serialize_day_change_summary(summary: DayChangeSummary) -> dict[str, Any]:
 
     return {
         "server_discord_id": summary.server.discord_id,
-        "births": [_serialize_birth(e) for e in summary.births],
-        "deaths": [_serialize_death(e) for e in summary.deaths],
-        "other_events": [_serialize_other(e) for e in summary.other_events],
+        "births": [serialize_birth(e) for e in summary.births],
+        "deaths": [serialize_death(e) for e in summary.deaths],
+        "other_events": [serialize_other(e) for e in summary.other_events],
     }
 
 
-def _post_json(url: str, secret: str, payload: dict[str, Any]) -> None:
+def post_json(url: str, secret: str, payload: dict[str, Any]) -> None:
+    """
+    Post json.
+
+    Parameters
+    ----------
+    url: Any
+        The `url` value.
+
+    secret: Any
+        The `secret` value.
+
+    payload: Any
+        The `payload` value.
+    """
+
     body = json.dumps(payload).encode("utf-8")
-    signature = _build_signature(secret, body)
+    signature = build_signature(secret, body)
 
     req = urllib.request.Request(
         url,
@@ -104,7 +192,7 @@ async def post_day_change_webhooks(summaries: dict[int, DayChangeSummary]) -> No
             "event": "day_change",
             "data": serialize_day_change_summary(summary),
         }
-        tasks.append(asyncio.to_thread(_post_json, url, secret, payload))
+        tasks.append(asyncio.to_thread(post_json, url, secret, payload))
 
     if tasks:
         await asyncio.gather(*tasks, return_exceptions=True)

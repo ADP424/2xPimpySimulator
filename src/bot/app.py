@@ -5,28 +5,47 @@ import discord
 from discord import app_commands
 from dotenv import load_dotenv
 
+from src.bot.commands import (
+    register_event_history_command,
+    register_get_money_command,
+    register_home_command,
+    register_increment_day_command,
+    register_pause_day_loop_command,
+    register_pending_events_command,
+    register_server_event_command,
+    register_set_event_channel_command,
+    register_town_command,
+    register_trigger_event_command,
+)
+from src.bot.ui import register_active_server_event_views
 from src.game import get_or_create_server
 from src.logger import get_logger
 
-from .commands.event_history import register_event_history_command
-from .commands.get_money import register_get_money_command
-from .commands.home import register_home_command
-from .commands.increment_day import register_increment_day_command
-from .commands.pause_day_loop import register_pause_day_loop_command
-from .commands.pending_events import register_pending_events_command
-from .commands.server_event import register_server_event_command
-from .commands.set_event_channel import register_set_event_channel_command
-from .commands.town import register_town_command
-from .commands.trigger_event import register_trigger_event_command
 from .constants import GUILDS
-from .day_change_loop import _fetch_and_update_names, day_change_runner
+from .day_change_loop import day_change_runner, fetch_and_update_names
 from .event_loop import hourly_event_runner
-from .ui.server_events import register_active_server_event_views
 
 logger = get_logger("bot/app")
 
 
 def run(update_names_only: bool = False, skip_startup_day_change: bool = False):
+    """
+    Run.
+
+    Parameters
+    ----------
+    update_names_only: Any
+        The `update_names_only` value.
+
+    skip_startup_day_change: Any
+        The `skip_startup_day_change` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `run`.
+    """
+
     load_dotenv()
     token = os.getenv("DISCORD_TOKEN")
     stage = os.getenv("STAGE", "dev").lower()
@@ -76,7 +95,7 @@ def run(update_names_only: bool = False, skip_startup_day_change: bool = False):
         logger.info(f"Bot ready as {bot.user} ({stage})")
 
         if update_names_only:
-            await _fetch_and_update_names(bot)
+            await fetch_and_update_names(bot)
             await bot.close()
             return
 

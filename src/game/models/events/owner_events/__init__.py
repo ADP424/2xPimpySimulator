@@ -4,6 +4,8 @@ from .owner_event_entity_reference import (
     OwnerEventEntityKind,
     OwnerEventEntityReference,
     OwnerEventEntityReferences,
+    iter_dict_entries,
+    normalize_detail_entries,
     resolve_owner_event_entity_references,
 )
 from .owner_event_history import OwnerEventHistory, to_owner_event_history
@@ -26,4 +28,6 @@ __all__ = [
     "OwnerEventResult",
     "TriggeredOwnerEvent",
     "to_triggered_owner_event",
+    "iter_dict_entries",
+    "normalize_detail_entries",
 ]

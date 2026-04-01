@@ -6,15 +6,15 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.bot.webhooks import (
-    _build_signature,
-    _post_json,
-    _serialize_birth,
-    _serialize_death,
-    _serialize_other,
-    _serialize_pooch,
+from src.bot import (
+    build_signature,
     post_day_change_webhooks,
+    post_json,
+    serialize_birth,
     serialize_day_change_summary,
+    serialize_death,
+    serialize_other,
+    serialize_pooch,
 )
 
 
@@ -39,14 +39,14 @@ class TestBuildSignature:
     def test_produces_hmac_sha256(self):
         secret = "my-secret"
         body = b'{"test": true}'
-        result = _build_signature(secret, body)
+        result = build_signature(secret, body)
         expected = hmac.new(secret.encode("utf-8"), body, hashlib.sha256).hexdigest()
         assert result == expected
 
     def test_different_secrets_produce_different_signatures(self):
         body = b'{"data": 1}'
-        sig_a = _build_signature("secret-a", body)
-        sig_b = _build_signature("secret-b", body)
+        sig_a = build_signature("secret-a", body)
+        sig_b = build_signature("secret-b", body)
         assert sig_a != sig_b
 
 
@@ -54,7 +54,7 @@ class TestBuildSignature:
 class TestSerializePooch:
     def test_basic_serialization(self):
         pooch = _make_pooch(id=42, name="Buddy", sex="male", alive=True, status="healthy")
-        result = _serialize_pooch(pooch)
+        result = serialize_pooch(pooch)
         assert result == {
             "id": 42,
             "name": "Buddy",
@@ -73,7 +73,7 @@ class TestSerializeBirth:
         event.mother = mother
         event.child = child
         event.message = "A puppy was born!"
-        result = _serialize_birth(event)
+        result = serialize_birth(event)
         assert result["type"] == "birth"
         assert result["mother"]["name"] == "Mama"
         assert result["child"]["name"] == "Puppy"
@@ -87,7 +87,7 @@ class TestSerializeDeath:
         event = MagicMock()
         event.pooch = pooch
         event.message = "OldBoy has passed away."
-        result = _serialize_death(event)
+        result = serialize_death(event)
         assert result["type"] == "death"
         assert result["pooch"]["name"] == "OldBoy"
         assert result["message"] == "OldBoy has passed away."
@@ -100,7 +100,7 @@ class TestSerializeOther:
         event = MagicMock()
         event.pooch = pooch
         event.message = "Something happened."
-        result = _serialize_other(event)
+        result = serialize_other(event)
         assert result["type"] == "other"
         assert result["pooch"]["name"] == "Spark"
         assert result["message"] == "Something happened."
@@ -161,7 +161,7 @@ class TestPostJson:
             mock_response.read = MagicMock(return_value=b"")
             mock_urlopen.return_value = mock_response
 
-            _post_json("https://example.com/webhook", "my-secret", {"test": True})
+            post_json("https://example.com/webhook", "my-secret", {"test": True})
 
             call_args = mock_urlopen.call_args
             request = call_args[0][0]
@@ -178,11 +178,11 @@ class TestPostJson:
             mock_urlopen.return_value = mock_response
 
             payload = {"key": "value"}
-            _post_json("https://example.com/webhook", "secret123", payload)
+            post_json("https://example.com/webhook", "secret123", payload)
 
             request = mock_urlopen.call_args[0][0]
             body = request.data
-            expected_sig = _build_signature("secret123", body)
+            expected_sig = build_signature("secret123", body)
             assert request.get_header("X-pimpy-signature") == expected_sig
 
 
@@ -212,9 +212,9 @@ class TestPostDayChangeWebhooks:
 
         with (
             patch.dict("os.environ", {"WEBHOOK_URL": "http://example.com", "WEBHOOK_SECRET": "secret"}),
-            patch("src.bot.webhooks._post_json"),
+            patch("src.bot.webhooks.post_json"),
         ):
             await post_day_change_webhooks({100: summary})
-            # _post_json is called via asyncio.to_thread, so we verify it was scheduled
-            # The gather with to_thread means _post_json would be called in a thread
+            # post_json is called via asyncio.to_thread, so we verify it was scheduled
+            # The gather with to_thread means post_json would be called in a thread
             # We can't easily assert on to_thread calls, so let's just ensure no errors

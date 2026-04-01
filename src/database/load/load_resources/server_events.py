@@ -5,6 +5,7 @@ from typing import Any
 import json5
 from sqlalchemy import delete, select
 
+from src.database.session import session_scope
 from src.logger import get_logger
 
 from ...models import (
@@ -18,13 +19,12 @@ from ...models import (
     ServerEventMenuOption,
     ServerEventOutcome,
 )
-from ...session import session_scope
 from .utils import (
     EVENT_SEVERITY_VALUES,
     RARITY_VALUES,
     RESOURCE_ROOT,
     BaseEventValidator,
-    _iter_files,
+    iter_files,
     resolve_event_action_parameters,
 )
 
@@ -51,7 +51,7 @@ def _load_server_event_objects(root: Path) -> dict[str, dict[str, dict[str, Any]
     resources: dict[str, dict[str, dict[str, Any]]] = defaultdict(lambda: defaultdict(dict))
     seen_names: dict[str, Path] = {}
 
-    for path in _iter_files(root, _JSONC_SUFFIXES):
+    for path in iter_files(root, _JSONC_SUFFIXES):
         relative = path.relative_to(root)
         if len(relative.parts) < 3:
             raise ValueError(
@@ -439,6 +439,15 @@ class _ServerEventValidator(BaseEventValidator):
 
 
 async def load_server_events():
+    """
+    Load server events.
+
+    Returns
+    -------
+    Any
+        The result of calling `load_server_events`.
+    """
+
     logger.info("Loading server events from 'resources/server_events/**/*.jsonc' into the database...")
 
     server_events_json = _load_server_event_objects(SERVER_EVENTS_ROOT)

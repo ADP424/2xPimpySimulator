@@ -1343,6 +1343,23 @@ async def update_active_event_context(active_owner_event_id: int, context: dict[
 async def set_server_event_occurrence_message_discord_id(
     occurrence_id: int, message_discord_id: int | None
 ) -> Optional[ServerEventOccurrence]:
+    """
+    Set server event occurrence message discord id.
+
+    Parameters
+    ----------
+    occurrence_id: Any
+        The `occurrence_id` value.
+
+    message_discord_id: Any
+        The `message_discord_id` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `set_server_event_occurrence_message_discord_id`.
+    """
+
     async with session_scope() as session:
         query = select(ServerEventOccurrence).where(ServerEventOccurrence.id == occurrence_id)
         occurrence = (await session.execute(query)).scalar_one_or_none()
@@ -1375,6 +1392,23 @@ async def update_server_event_occurrence_context(
 async def resolve_server_event_occurrence(
     occurrence_id: int, result_summary: dict[str, Any] | None = None
 ) -> Optional[ServerEventOccurrence]:
+    """
+    Resolve server event occurrence.
+
+    Parameters
+    ----------
+    occurrence_id: Any
+        The `occurrence_id` value.
+
+    result_summary: Any
+        The `result_summary` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `resolve_server_event_occurrence`.
+    """
+
     async with session_scope() as session:
         query = select(ServerEventOccurrence).where(ServerEventOccurrence.id == occurrence_id)
         occurrence = (await session.execute(query)).scalar_one_or_none()
@@ -1393,6 +1427,29 @@ async def finalize_server_event_participation(
     score: float | None = None,
     rank: int | None = None,
 ) -> Optional[ServerEventParticipation]:
+    """
+    Finalize server event participation.
+
+    Parameters
+    ----------
+    participation_id: Any
+        The `participation_id` value.
+
+    resolution_result: Any
+        The `resolution_result` value.
+
+    score: Any
+        The `score` value.
+
+    rank: Any
+        The `rank` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `finalize_server_event_participation`.
+    """
+
     async with session_scope() as session:
         query = select(ServerEventParticipation).where(ServerEventParticipation.id == participation_id)
         participation = (await session.execute(query)).scalar_one_or_none()

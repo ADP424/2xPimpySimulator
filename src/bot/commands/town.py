@@ -13,6 +13,20 @@ _SEASON_EMOJIS = {
 
 
 def register_town_command(tree: app_commands.CommandTree):
+    """
+    Register town command.
+
+    Parameters
+    ----------
+    tree: Any
+        The `tree` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `register_town_command`.
+    """
+
     @tree.command(name="town", description="Head straight to town.")
     async def town(interaction: Interaction):
         if interaction.guild_id is None or interaction.channel_id is None:

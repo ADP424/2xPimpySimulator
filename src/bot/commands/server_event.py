@@ -1,11 +1,24 @@
 from discord import Interaction, app_commands
 
+from src.bot.ui import ServerEventParticipationView, build_server_event_embed
 from src.game import get_active_server_event
-
-from ..ui.server_events import ServerEventParticipationView, build_server_event_embed
 
 
 def register_server_event_command(tree: app_commands.CommandTree):
+    """
+    Register server event command.
+
+    Parameters
+    ----------
+    tree: Any
+        The `tree` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `register_server_event_command`.
+    """
+
     @tree.command(name="server_event", description="Show the current server-wide event")
     async def server_event(interaction: Interaction):
         if interaction.guild_id is None:

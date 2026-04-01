@@ -4,12 +4,12 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 from src.database.models import ServerEventParticipation as ServerEventParticipationORM
-
-from ..owner_events.owner_event_context import OwnerEventContext
-from ..owner_events.owner_event_entity_reference import (
+from src.game.models.events.owner_events import (
     OwnerEventEntityReferences,
     resolve_owner_event_entity_references,
 )
+
+from ..owner_events.owner_event_context import OwnerEventContext
 from ..owner_events.owner_event_result import OwnerEventResult
 
 
@@ -30,6 +30,20 @@ class ServerEventParticipationSummary:
 async def to_server_event_participation_summary(
     participation: ServerEventParticipationORM,
 ) -> ServerEventParticipationSummary:
+    """
+    To server event participation summary.
+
+    Parameters
+    ----------
+    participation: Any
+        The `participation` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `to_server_event_participation_summary`.
+    """
+
     context = OwnerEventContext.from_dict(participation.context or {})
     immediate_result = (
         OwnerEventResult.from_dict(participation.immediate_result or {}) if participation.immediate_result else None

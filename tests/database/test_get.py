@@ -52,7 +52,7 @@ async def test_get_pooch_by_id_returns_pooch():
     scope_cls, _ = _mock_session_scope(scalar_result=fake_pooch)
 
     with patch("src.database.get.session_scope", return_value=scope_cls()):
-        from src.database.get import get_pooch_by_id
+        from src.database import get_pooch_by_id
 
         result = await get_pooch_by_id(1)
 
@@ -64,7 +64,7 @@ async def test_get_pooch_by_id_returns_none():
     scope_cls, _ = _mock_session_scope(scalar_result=None)
 
     with patch("src.database.get.session_scope", return_value=scope_cls()):
-        from src.database.get import get_pooch_by_id
+        from src.database import get_pooch_by_id
 
         result = await get_pooch_by_id(999)
 
@@ -82,7 +82,7 @@ async def test_get_owner_by_discord_id_returns_owner():
     scope_cls, _ = _mock_session_scope(scalar_result=fake_owner)
 
     with patch("src.database.get.session_scope", return_value=scope_cls()):
-        from src.database.get import get_owner_by_discord_id
+        from src.database import get_owner_by_discord_id
 
         result = await get_owner_by_discord_id(123)
 
@@ -94,7 +94,7 @@ async def test_get_owner_by_discord_id_returns_none_when_missing():
     scope_cls, _ = _mock_session_scope(scalar_result=None)
 
     with patch("src.database.get.session_scope", return_value=scope_cls()):
-        from src.database.get import get_owner_by_discord_id
+        from src.database import get_owner_by_discord_id
 
         result = await get_owner_by_discord_id(999)
 
@@ -107,11 +107,20 @@ async def test_get_owner_by_discord_id_returns_none_when_missing():
 
 
 async def test_get_breed_by_id_returns_breed():
+    """
+    Test get breed by id returns breed.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_get_breed_by_id_returns_breed`.
+    """
+
     fake_breed = SimpleNamespace(id=5, name="Poodle")
     scope_cls, _ = _mock_session_scope(scalar_result=fake_breed)
 
     with patch("src.database.get.session_scope", return_value=scope_cls()):
-        from src.database.get import get_breed_by_id
+        from src.database import get_breed_by_id
 
         result = await get_breed_by_id(5)
 
@@ -119,10 +128,19 @@ async def test_get_breed_by_id_returns_breed():
 
 
 async def test_get_breed_by_name_returns_none_when_missing():
+    """
+    Test get breed by name returns none when missing.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_get_breed_by_name_returns_none_when_missing`.
+    """
+
     scope_cls, _ = _mock_session_scope(scalar_result=None)
 
     with patch("src.database.get.session_scope", return_value=scope_cls()):
-        from src.database.get import get_breed_by_name
+        from src.database import get_breed_by_name
 
         result = await get_breed_by_name("nonexistent")
 
@@ -135,11 +153,20 @@ async def test_get_breed_by_name_returns_none_when_missing():
 
 
 async def test_get_mutation_by_id_returns_mutation():
+    """
+    Test get mutation by id returns mutation.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_get_mutation_by_id_returns_mutation`.
+    """
+
     fake_mutation = SimpleNamespace(id=3, name="Cataracts")
     scope_cls, _ = _mock_session_scope(scalar_result=fake_mutation)
 
     with patch("src.database.get.session_scope", return_value=scope_cls()):
-        from src.database.get import get_mutation_by_id
+        from src.database import get_mutation_by_id
 
         result = await get_mutation_by_id(3)
 
@@ -152,11 +179,20 @@ async def test_get_mutation_by_id_returns_mutation():
 
 
 async def test_get_kennel_by_id_returns_kennel():
+    """
+    Test get kennel by id returns kennel.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_get_kennel_by_id_returns_kennel`.
+    """
+
     fake_kennel = SimpleNamespace(id=10, name="Main Kennel")
     scope_cls, _ = _mock_session_scope(scalar_result=fake_kennel)
 
     with patch("src.database.get.session_scope", return_value=scope_cls()):
-        from src.database.get import get_kennel_by_id
+        from src.database import get_kennel_by_id
 
         result = await get_kennel_by_id(10)
 
@@ -164,10 +200,19 @@ async def test_get_kennel_by_id_returns_kennel():
 
 
 async def test_get_kennel_by_id_returns_none():
+    """
+    Test get kennel by id returns none.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_get_kennel_by_id_returns_none`.
+    """
+
     scope_cls, _ = _mock_session_scope(scalar_result=None)
 
     with patch("src.database.get.session_scope", return_value=scope_cls()):
-        from src.database.get import get_kennel_by_id
+        from src.database import get_kennel_by_id
 
         result = await get_kennel_by_id(999)
 
@@ -181,7 +226,7 @@ async def test_get_kennel_by_id_returns_none():
 
 async def test_get_random_breed_ids_returns_empty_for_zero():
     """Requesting 0 breed IDs should return an empty list without hitting the DB."""
-    from src.database.get import get_random_breed_ids
+    from src.database import get_random_breed_ids
 
     result = await get_random_breed_ids(0)
     assert result == []
@@ -189,7 +234,7 @@ async def test_get_random_breed_ids_returns_empty_for_zero():
 
 async def test_get_random_breed_ids_returns_empty_for_negative():
     """Requesting negative breed IDs should return an empty list."""
-    from src.database.get import get_random_breed_ids
+    from src.database import get_random_breed_ids
 
     result = await get_random_breed_ids(-1)
     assert result == []
@@ -201,11 +246,20 @@ async def test_get_random_breed_ids_returns_empty_for_negative():
 
 
 async def test_get_vendor_by_id_returns_vendor():
+    """
+    Test get vendor by id returns vendor.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_get_vendor_by_id_returns_vendor`.
+    """
+
     fake_vendor = SimpleNamespace(id=7, name="Bob")
     scope_cls, _ = _mock_session_scope(scalar_result=fake_vendor)
 
     with patch("src.database.get.session_scope", return_value=scope_cls()):
-        from src.database.get import get_vendor_by_id
+        from src.database import get_vendor_by_id
 
         result = await get_vendor_by_id(7)
 
@@ -218,10 +272,19 @@ async def test_get_vendor_by_id_returns_vendor():
 
 
 async def test_get_pooch_virginity_status_returns_bool():
+    """
+    Test get pooch virginity status returns bool.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_get_pooch_virginity_status_returns_bool`.
+    """
+
     scope_cls, _ = _mock_session_scope(scalar_result=True)
 
     with patch("src.database.get.session_scope", return_value=scope_cls()):
-        from src.database.get import get_pooch_virginity_status
+        from src.database import get_pooch_virginity_status
 
         result = await get_pooch_virginity_status(1)
 
@@ -229,10 +292,19 @@ async def test_get_pooch_virginity_status_returns_bool():
 
 
 async def test_get_pooch_virginity_status_returns_none_when_missing():
+    """
+    Test get pooch virginity status returns none when missing.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_get_pooch_virginity_status_returns_none_when_missing`.
+    """
+
     scope_cls, _ = _mock_session_scope(scalar_result=None)
 
     with patch("src.database.get.session_scope", return_value=scope_cls()):
-        from src.database.get import get_pooch_virginity_status
+        from src.database import get_pooch_virginity_status
 
         result = await get_pooch_virginity_status(999)
 

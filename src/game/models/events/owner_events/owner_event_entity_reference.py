@@ -101,23 +101,23 @@ async def resolve_owner_event_entity_references(
 
         extra = result.extra_data or {}
 
-        for entry in _normalize_detail_entries(extra.get("health_changes"), id_key="pooch_id", value_key="amount"):
+        for entry in normalize_detail_entries(extra.get("health_changes"), id_key="pooch_id", value_key="amount"):
             if entry.get("pooch_id") is not None:
                 pooch_ids.add(entry["pooch_id"])
 
-        for entry in _normalize_detail_entries(extra.get("age_changes"), id_key="pooch_id", value_key="amount"):
+        for entry in normalize_detail_entries(extra.get("age_changes"), id_key="pooch_id", value_key="amount"):
             if entry.get("pooch_id") is not None:
                 pooch_ids.add(entry["pooch_id"])
 
         for key in ("created_pooches", "killed_pooches", "renamed_pooches", "transferred_pooches", "breeds_added"):
-            for entry in _iter_dict_entries(extra.get(key)):
+            for entry in iter_dict_entries(extra.get(key)):
                 if entry.get("pooch_id") is not None:
                     pooch_ids.add(entry["pooch_id"])
                 if entry.get("breed_id") is not None:
                     breed_ids.add(entry["breed_id"])
 
         for key in ("mutations_added_details", "mutations_removed_details"):
-            for entry in _iter_dict_entries(extra.get(key)):
+            for entry in iter_dict_entries(extra.get(key)):
                 if entry.get("pooch_id") is not None:
                     pooch_ids.add(entry["pooch_id"])
                 if entry.get("mutation_id") is not None:
@@ -150,13 +150,47 @@ async def resolve_owner_event_entity_references(
     return references
 
 
-def _iter_dict_entries(value: Any) -> list[dict[str, Any]]:
+def iter_dict_entries(value: Any) -> list[dict[str, Any]]:
+    """
+    Iter dict entries.
+
+    Parameters
+    ----------
+    value: Any
+        The `value` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `iter_dict_entries`.
+    """
+
     if isinstance(value, list):
         return [entry for entry in value if isinstance(entry, dict)]
     return []
 
 
-def _normalize_detail_entries(value: Any, *, id_key: str, value_key: str) -> list[dict[str, Any]]:
+def normalize_detail_entries(value: Any, *, id_key: str, value_key: str) -> list[dict[str, Any]]:
+    """
+    Normalize detail entries.
+
+    Parameters
+    ----------
+    value: Any
+        The `value` value.
+
+    id_key: Any
+        The `id_key` value.
+
+    value_key: Any
+        The `value_key` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `normalize_detail_entries`.
+    """
+
     if isinstance(value, list):
         return [entry for entry in value if isinstance(entry, dict)]
 

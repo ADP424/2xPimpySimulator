@@ -110,6 +110,23 @@ class ResourceValidationError(ValueError):
 
 
 def validate_name_list(resource_name: str, names: list[str]) -> list[str]:
+    """
+    Validate name list.
+
+    Parameters
+    ----------
+    resource_name: Any
+        The `resource_name` value.
+
+    names: Any
+        The `names` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `validate_name_list`.
+    """
+
     seen: dict[str, str] = {}
     errors: list[str] = []
     validated: list[str] = []
@@ -133,15 +150,46 @@ def validate_name_list(resource_name: str, names: list[str]) -> list[str]:
     return validated
 
 
-def _iter_files(root: Path, suffixes: set[str]) -> list[Path]:
+def iter_files(root: Path, suffixes: set[str]) -> list[Path]:
+    """
+    Iter files.
+
+    Parameters
+    ----------
+    root: Any
+        The `root` value.
+
+    suffixes: Any
+        The `suffixes` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `iter_files`.
+    """
+
     if not root.exists():
         return []
     return sorted(path for path in root.rglob("*") if path.is_file() and path.suffix.lower() in suffixes)
 
 
 def load_names_from_root(root: Path) -> list[str]:
+    """
+    Load names from root.
+
+    Parameters
+    ----------
+    root: Any
+        The `root` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `load_names_from_root`.
+    """
+
     names: list[str] = []
-    for path in _iter_files(root, {".txt"}):
+    for path in iter_files(root, {".txt"}):
         for raw_name in path.read_text(encoding="utf8").splitlines():
             name = raw_name.strip()
             if name:
@@ -150,6 +198,22 @@ def load_names_from_root(root: Path) -> list[str]:
 
 
 def load_categorized_resource_objects(root: Path, label: str) -> dict[str, dict[str, dict[str, Any]]]:
+    """
+    Load categorized resource objects.
+
+    Parameters
+    ----------
+    root: Any
+        The `root` value.
+
+    label: Any
+        The `label` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `load_categorized_resource_objects`.
+    """
 
     def _titleize_slug(value: str) -> str:
         normalized = value.replace("-", "_").strip("_")
@@ -165,7 +229,7 @@ def load_categorized_resource_objects(root: Path, label: str) -> dict[str, dict[
     resources: dict[str, dict[str, dict[str, Any]]] = defaultdict(dict)
     seen_names: dict[str, Path] = {}
 
-    for path in _iter_files(root, _JSONC_SUFFIXES):
+    for path in iter_files(root, _JSONC_SUFFIXES):
         relative = path.relative_to(root)
         if len(relative.parts) < 2:
             raise ValueError(f"{label} file must live inside a category folder: {path}")
@@ -192,6 +256,26 @@ def resolve_event_action_parameters(
     breed_name_to_id: dict[str, int],
     mutation_name_to_id: dict[str, int],
 ) -> dict[str, Any]:
+    """
+    Resolve event action parameters.
+
+    Parameters
+    ----------
+    parameters: Any
+        The `parameters` value.
+
+    breed_name_to_id: Any
+        The `breed_name_to_id` value.
+
+    mutation_name_to_id: Any
+        The `mutation_name_to_id` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `resolve_event_action_parameters`.
+    """
+
     resolved = dict(parameters)
 
     mutation_name = resolved.get("mutation")

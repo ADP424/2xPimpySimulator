@@ -43,7 +43,7 @@ async def test_delete_pooch_returns_deleted_pooch():
     scope_cls, mock_session = _mock_session_scope(entity=fake_pooch)
 
     with patch("src.database.delete.session_scope", return_value=scope_cls()):
-        from src.database.delete import delete_pooch
+        from src.database import delete_pooch
 
         result = await delete_pooch(1)
 
@@ -57,7 +57,7 @@ async def test_delete_pooch_returns_none_when_missing():
     scope_cls, _ = _mock_session_scope(entity=None)
 
     with patch("src.database.delete.session_scope", return_value=scope_cls()):
-        from src.database.delete import delete_pooch
+        from src.database import delete_pooch
 
         result = await delete_pooch(999)
 
@@ -75,7 +75,7 @@ async def test_remove_pooch_from_kennel_returns_pooch():
     scope_cls, mock_session = _mock_session_scope(entity=fake_pooch)
 
     with patch("src.database.delete.session_scope", return_value=scope_cls()):
-        from src.database.delete import remove_pooch_from_kennel
+        from src.database import remove_pooch_from_kennel
 
         result = await remove_pooch_from_kennel(1)
 
@@ -87,7 +87,7 @@ async def test_remove_pooch_from_kennel_returns_none_when_not_in_kennel():
     scope_cls, _ = _mock_session_scope(entity=None)
 
     with patch("src.database.delete.session_scope", return_value=scope_cls()):
-        from src.database.delete import remove_pooch_from_kennel
+        from src.database import remove_pooch_from_kennel
 
         result = await remove_pooch_from_kennel(999)
 
@@ -105,7 +105,7 @@ async def test_remove_mutation_from_pooch_returns_removed():
     scope_cls, mock_session = _mock_session_scope(entity=fake_pm)
 
     with patch("src.database.delete.session_scope", return_value=scope_cls()):
-        from src.database.delete import remove_mutation_from_pooch
+        from src.database import remove_mutation_from_pooch
 
         result = await remove_mutation_from_pooch(1, 2)
 
@@ -118,7 +118,7 @@ async def test_remove_mutation_from_pooch_returns_none_when_not_present():
     scope_cls, mock_session = _mock_session_scope(entity=None)
 
     with patch("src.database.delete.session_scope", return_value=scope_cls()):
-        from src.database.delete import remove_mutation_from_pooch
+        from src.database import remove_mutation_from_pooch
 
         result = await remove_mutation_from_pooch(1, 999)
 
@@ -137,7 +137,7 @@ async def test_delete_pregnancy_returns_fetus():
     scope_cls, mock_session = _mock_session_scope(entity=fake_fetus)
 
     with patch("src.database.delete.session_scope", return_value=scope_cls()):
-        from src.database.delete import delete_pregnancy
+        from src.database import delete_pregnancy
 
         result = await delete_pregnancy(mother_id=10, fetus_id=20)
 
@@ -145,10 +145,19 @@ async def test_delete_pregnancy_returns_fetus():
 
 
 async def test_delete_pregnancy_returns_none_when_fetus_missing():
+    """
+    Test delete pregnancy returns none when fetus missing.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_delete_pregnancy_returns_none_when_fetus_missing`.
+    """
+
     scope_cls, _ = _mock_session_scope(entity=None)
 
     with patch("src.database.delete.session_scope", return_value=scope_cls()):
-        from src.database.delete import delete_pregnancy
+        from src.database import delete_pregnancy
 
         result = await delete_pregnancy(mother_id=10, fetus_id=999)
 
@@ -161,11 +170,20 @@ async def test_delete_pregnancy_returns_none_when_fetus_missing():
 
 
 async def test_clear_vendor_pooch_stock_returns_vendor():
+    """
+    Test clear vendor pooch stock returns vendor.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_clear_vendor_pooch_stock_returns_vendor`.
+    """
+
     fake_vendor = SimpleNamespace(id=1, name="Bob")
     scope_cls, mock_session = _mock_session_scope(entity=fake_vendor)
 
     with patch("src.database.delete.session_scope", return_value=scope_cls()):
-        from src.database.delete import clear_vendor_pooch_stock
+        from src.database import clear_vendor_pooch_stock
 
         result = await clear_vendor_pooch_stock(1)
 
@@ -173,10 +191,19 @@ async def test_clear_vendor_pooch_stock_returns_vendor():
 
 
 async def test_clear_vendor_pooch_stock_returns_none_when_vendor_missing():
+    """
+    Test clear vendor pooch stock returns none when vendor missing.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_clear_vendor_pooch_stock_returns_none_when_vendor_missing`.
+    """
+
     scope_cls, _ = _mock_session_scope(entity=None)
 
     with patch("src.database.delete.session_scope", return_value=scope_cls()):
-        from src.database.delete import clear_vendor_pooch_stock
+        from src.database import clear_vendor_pooch_stock
 
         result = await clear_vendor_pooch_stock(999)
 
@@ -189,11 +216,20 @@ async def test_clear_vendor_pooch_stock_returns_none_when_vendor_missing():
 
 
 async def test_remove_pooch_from_strays_returns_stray():
+    """
+    Test remove pooch from strays returns stray.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_remove_pooch_from_strays_returns_stray`.
+    """
+
     fake_stray = SimpleNamespace(pooch_id=5, server_discord_id=111)
     scope_cls, mock_session = _mock_session_scope(entity=fake_stray)
 
     with patch("src.database.delete.session_scope", return_value=scope_cls()):
-        from src.database.delete import remove_pooch_from_strays
+        from src.database import remove_pooch_from_strays
 
         result = await remove_pooch_from_strays(5)
 
@@ -202,6 +238,15 @@ async def test_remove_pooch_from_strays_returns_stray():
 
 
 async def test_remove_pooch_from_strays_returns_none_when_not_stray():
+    """
+    Test remove pooch from strays returns none when not stray.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_remove_pooch_from_strays_returns_none_when_not_stray`.
+    """
+
     mock_session = AsyncMock()
     mock_session.get = AsyncMock(return_value=None)
 
@@ -213,7 +258,7 @@ async def test_remove_pooch_from_strays_returns_none_when_not_stray():
             pass
 
     with patch("src.database.delete.session_scope", return_value=_FakeScope()):
-        from src.database.delete import remove_pooch_from_strays
+        from src.database import remove_pooch_from_strays
 
         result = await remove_pooch_from_strays(999)
 
@@ -226,11 +271,20 @@ async def test_remove_pooch_from_strays_returns_none_when_not_stray():
 
 
 async def test_remove_breed_from_pooch_returns_removed():
+    """
+    Test remove breed from pooch returns removed.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_remove_breed_from_pooch_returns_removed`.
+    """
+
     fake_row = SimpleNamespace(pooch_id=1, breed_id=3)
     scope_cls, mock_session = _mock_session_scope(entity=fake_row)
 
     with patch("src.database.delete.session_scope", return_value=scope_cls()):
-        from src.database.delete import remove_breed_from_pooch
+        from src.database import remove_breed_from_pooch
 
         result = await remove_breed_from_pooch(1, 3)
 
@@ -239,10 +293,19 @@ async def test_remove_breed_from_pooch_returns_removed():
 
 
 async def test_remove_breed_from_pooch_returns_none():
+    """
+    Test remove breed from pooch returns none.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_remove_breed_from_pooch_returns_none`.
+    """
+
     scope_cls, mock_session = _mock_session_scope(entity=None)
 
     with patch("src.database.delete.session_scope", return_value=scope_cls()):
-        from src.database.delete import remove_breed_from_pooch
+        from src.database import remove_breed_from_pooch
 
         result = await remove_breed_from_pooch(1, 999)
 

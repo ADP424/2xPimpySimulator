@@ -2,7 +2,7 @@
 
 import random
 
-from src.database.utils.randomization import weighted_choice
+from src.database.utils import weighted_choice
 
 # ---------------------------------------------------------------------------
 # weighted_choice

@@ -6,8 +6,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from conftest import make_kennel, make_mutation, make_pooch, make_server, make_vendor
-from src.game.change_day import _death_roll, run_day_change
+from src.game import death_roll, run_day_change
+from tests.conftest import (
+    make_kennel,
+    make_mutation,
+    make_pooch,
+    make_server,
+    make_vendor,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -30,7 +36,7 @@ def mock_change_day_db_calls():
 
 
 # ---------------------------------------------------------------------------
-# _death_roll
+# death_roll
 # ---------------------------------------------------------------------------
 
 
@@ -39,24 +45,24 @@ class TestDeathRoll:
         """Health >= MIN_HEALTH_FOR_DEATH_CHANCE (5) always returns False."""
         rng = random.Random(0)
         for health in (5, 6, 10, 100):
-            assert _death_roll(health, rng) is False
+            assert death_roll(health, rng) is False
 
     def test_health_zero_always_dies(self):
         """Health 0 gives chance = min(0.2 * 5, 1.0) = 1.0, so always dies."""
         rng = random.Random(42)
-        assert _death_roll(0, rng) is True
+        assert death_roll(0, rng) is True
 
     def test_negative_health_always_dies(self):
         """Negative health is clamped to 0, so deficit = 5, chance = 1.0."""
         rng = random.Random(99)
-        assert _death_roll(-10, rng) is True
+        assert death_roll(-10, rng) is True
 
     def test_health_4_deterministic_death(self):
         """Health 4 gives deficit=1, chance=0.2. Deterministic with seed."""
         rng = random.Random(42)
         roll = rng.random()  # Check what 42 produces
         rng = random.Random(42)
-        result = _death_roll(4, rng)
+        result = death_roll(4, rng)
         # chance = 0.2, result depends on whether roll < 0.2
         assert result == (roll < 0.2)
 
@@ -65,7 +71,7 @@ class TestDeathRoll:
         rng = random.Random(42)
         roll = rng.random()
         rng = random.Random(42)
-        result = _death_roll(3, rng)
+        result = death_roll(3, rng)
         assert result == (roll < 0.4)
 
     def test_health_1_high_chance(self):
@@ -73,13 +79,13 @@ class TestDeathRoll:
         rng = random.Random(42)
         roll = rng.random()
         rng = random.Random(42)
-        result = _death_roll(1, rng)
+        result = death_roll(1, rng)
         assert result == (roll < 0.8)
 
     def test_deterministic_with_seed(self):
         """Same seed gives same result."""
-        result1 = _death_roll(3, random.Random(42))
-        result2 = _death_roll(3, random.Random(42))
+        result1 = death_roll(3, random.Random(42))
+        result2 = death_roll(3, random.Random(42))
         assert result1 == result2
 
 

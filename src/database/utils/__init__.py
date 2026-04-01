@@ -4,12 +4,18 @@ from .owner_event_filters import (
     check_stray_event_filter,
     count_matching_kennels_for_owner,
     count_matching_pooches_for_owner,
+    count_matching_stray_pooches_for_server,
+    get_matching_dead_pooch_ids_for_server,
+    get_matching_hell_pooch_ids_for_server,
     get_matching_kennel_ids_for_owner,
     get_matching_pooch_ids_for_owner,
     get_matching_stray_pooch_ids_for_server,
     get_matching_stray_pooch_ids_for_server_filtered,
     get_random_matching_kennel_id_for_owner,
     get_random_matching_pooch_id_for_owner,
+    is_excluded,
+    normalize_name,
+    strip_requirement_metadata,
 )
 from .randomization import weighted_choice
 
@@ -26,4 +32,10 @@ __all__ = [
     "get_random_matching_kennel_id_for_owner",
     "get_random_matching_pooch_id_for_owner",
     "weighted_choice",
+    "is_excluded",
+    "normalize_name",
+    "strip_requirement_metadata",
+    "count_matching_stray_pooches_for_server",
+    "get_matching_dead_pooch_ids_for_server",
+    "get_matching_hell_pooch_ids_for_server",
 ]

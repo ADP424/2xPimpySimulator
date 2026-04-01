@@ -109,7 +109,21 @@ async def buy_pooch(owner_discord_id: int, vendor_id: int, pooch_id: int) -> tup
     return (True, f"You purchased {pooch.name} for ${price}!")
 
 
-async def _get_pooch_base_price(pooch_id: int) -> int:
+async def get_pooch_base_price(pooch_id: int) -> int:
+    """
+    Get pooch base price.
+
+    Parameters
+    ----------
+    pooch_id: Any
+        The `pooch_id` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `get_pooch_base_price`.
+    """
+
     pooch = await db_get_pooch_by_id(pooch_id)
     if pooch is None:
         raise PoochNotFound(pooch_id)
@@ -170,7 +184,7 @@ async def get_pooch_buy_price(pooch_id: int, vendor_id: Optional[int] = None) ->
         The value of the pooch in dollars, optionally augmented by the given vendor.
     """
 
-    price = await _get_pooch_base_price(pooch_id)
+    price = await get_pooch_base_price(pooch_id)
 
     if vendor_id is not None:
         vendor = await db_get_vendor_by_id(vendor_id)
@@ -200,7 +214,7 @@ async def get_pooch_sell_price(pooch_id: int, vendor_id: Optional[int] = None) -
         The value of the pooch in dollars, optionally augmented by the given vendor.
     """
 
-    price = await _get_pooch_base_price(pooch_id)
+    price = await get_pooch_base_price(pooch_id)
 
     if vendor_id is not None:
 

@@ -21,6 +21,20 @@ class ColorFormatter(logging.Formatter):
 
 
 def get_logger(name: str):
+    """
+    Get logger.
+
+    Parameters
+    ----------
+    name: Any
+        The `name` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `get_logger`.
+    """
+
     logger = logging.getLogger(name)
     if not logger.handlers:
         logger.setLevel(logging.DEBUG)

@@ -6,9 +6,9 @@ import discord
 import pytest
 from discord.utils import MISSING
 
-from src.bot.ui.util import (
+from src.bot.ui import (
     InteractionResponder,
-    _build_kwargs,
+    build_kwargs,
     defer_interaction,
     edit_interaction,
     mention,
@@ -45,17 +45,17 @@ class TestMention:
 @pytest.mark.contract
 class TestBuildKwargs:
     def test_includes_set_values(self):
-        result = _build_kwargs("hello", MISSING, MISSING)
+        result = build_kwargs("hello", MISSING, MISSING)
         assert result == {"content": "hello"}
 
     def test_excludes_missing(self):
-        result = _build_kwargs(MISSING, MISSING, MISSING)
+        result = build_kwargs(MISSING, MISSING, MISSING)
         assert result == {}
 
     def test_all_set(self):
         embed = MagicMock()
         view = MagicMock()
-        result = _build_kwargs("text", embed, view)
+        result = build_kwargs("text", embed, view)
         assert "content" in result
         assert "embed" in result
         assert "view" in result

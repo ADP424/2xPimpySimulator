@@ -33,7 +33,24 @@ from .constants import (
 from .exceptions import PoochNotFound
 
 
-def _combine_puppy_name(father_name: str, mother_name: str) -> str:
+def combine_puppy_name(father_name: str, mother_name: str) -> str:
+    """
+    Combine puppy name.
+
+    Parameters
+    ----------
+    father_name: Any
+        The `father_name` value.
+
+    mother_name: Any
+        The `mother_name` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `combine_puppy_name`.
+    """
+
     father_name = father_name
     mother_name = mother_name
     left = father_name[: max(len(father_name) // 2, 1)]
@@ -124,7 +141,7 @@ async def breed_pooches(
         return max(0, rng.randint(lo - 1, hi + 1))
 
     for _ in range(litter_size):
-        puppy_name = _combine_puppy_name(father.name, mother.name)
+        puppy_name = combine_puppy_name(father.name, mother.name)
         inherited_base_health = _inherit_stat(father.base_health, mother.base_health)
         inherited_stats = {stat: _inherit_stat(getattr(father, stat), getattr(mother, stat)) for stat in POOCH_STATS}
         inherited_size = _inherit_stat(father.size, mother.size)
@@ -208,6 +225,26 @@ async def breed_pooches(
 
 
 async def calculate_incest_level(first_pooch_id: int, second_pooch_id: int, max_depth: int = 8) -> float:
+    """
+    Calculate incest level.
+
+    Parameters
+    ----------
+    first_pooch_id: Any
+        The `first_pooch_id` value.
+
+    second_pooch_id: Any
+        The `second_pooch_id` value.
+
+    max_depth: Any
+        The `max_depth` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `calculate_incest_level`.
+    """
+
     if first_pooch_id == second_pooch_id:
         return 1.0
 

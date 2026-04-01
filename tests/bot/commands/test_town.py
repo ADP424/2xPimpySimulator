@@ -8,7 +8,7 @@ from tests.bot.commands.conftest import capture_command_callback, make_interacti
 @pytest.mark.contract
 class TestTownCommand:
     async def test_town_requires_guild(self):
-        from src.bot.commands.town import register_town_command
+        from src.bot.commands import register_town_command
 
         callback = capture_command_callback(register_town_command)
         interaction = make_interaction()
@@ -22,7 +22,7 @@ class TestTownCommand:
         assert "server" in msg.lower()
 
     async def test_town_sends_view(self):
-        from src.bot.commands.town import register_town_command
+        from src.bot.commands import register_town_command
 
         callback = capture_command_callback(register_town_command)
         interaction = make_interaction()

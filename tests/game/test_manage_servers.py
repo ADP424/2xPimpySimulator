@@ -3,12 +3,12 @@
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
-from conftest import make_server
-from src.game.manage_servers import (
+from src.game import (
     get_event_channel,
     get_or_create_server,
     set_event_channel,
 )
+from tests.conftest import make_server
 
 # ---------------------------------------------------------------------------
 # get_or_create_server

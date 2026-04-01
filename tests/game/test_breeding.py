@@ -4,44 +4,44 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from conftest import make_mutation, make_pooch
-from src.game.breeding import _combine_puppy_name, breed_pooches, calculate_incest_level
+from src.game import breed_pooches, calculate_incest_level, combine_puppy_name
 from src.game.exceptions import PoochNotFound
+from tests.conftest import make_mutation, make_pooch
 
 # ---------------------------------------------------------------------------
-# _combine_puppy_name
+# combine_puppy_name
 # ---------------------------------------------------------------------------
 
 
 class TestCombinePuppyName:
     def test_even_length_names(self):
         # "Fido" -> left = "Fi", "Luna" -> right = "na"
-        assert _combine_puppy_name("Fido", "Luna") == "Fina"
+        assert combine_puppy_name("Fido", "Luna") == "Fina"
 
     def test_odd_length_names(self):
         # "Rex" -> left = "R" (3//2=1), "Molly" -> right = "lly" (5//2=2, slice from 2)
-        assert _combine_puppy_name("Rex", "Molly") == "Rlly"
+        assert combine_puppy_name("Rex", "Molly") == "Rlly"
 
     def test_single_char_names(self):
         # "A" -> left = "A" (max(0,1)=1), "B" -> right = "B" (1//2=0, slice from 0)
-        assert _combine_puppy_name("A", "B") == "AB"
+        assert combine_puppy_name("A", "B") == "AB"
 
     def test_two_char_names(self):
         # "Ab" -> left = "A" (2//2=1), "Cd" -> right = "d" (2//2=1, slice from 1)
-        assert _combine_puppy_name("Ab", "Cd") == "Ad"
+        assert combine_puppy_name("Ab", "Cd") == "Ad"
 
     def test_long_names(self):
         # "Alexander" -> left = "Alex" (9//2=4), "Elizabeth" -> right = "abeth" (9//2=4, slice from 4)
-        assert _combine_puppy_name("Alexander", "Elizabeth") == "Alexabeth"
+        assert combine_puppy_name("Alexander", "Elizabeth") == "Alexabeth"
 
     def test_names_with_spaces(self):
-        result = _combine_puppy_name("Sir Barks", "Lady Woof")
+        result = combine_puppy_name("Sir Barks", "Lady Woof")
         # "Sir Barks" -> left = "Sir " (9//2=4), "Lady Woof" -> right = " Woof" (9//2=4, slice from 4)
         assert result == "Sir  Woof"
 
     def test_asymmetric_lengths(self):
         # "Bo" -> left = "B" (2//2=1), "Clementine" -> right = "ntine" (10//2=5, slice from 5)
-        assert _combine_puppy_name("Bo", "Clementine") == "Bntine"
+        assert combine_puppy_name("Bo", "Clementine") == "Bntine"
 
 
 # ---------------------------------------------------------------------------

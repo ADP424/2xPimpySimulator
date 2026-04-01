@@ -33,24 +33,69 @@ if TYPE_CHECKING:
 _FILTER_META_KEYS = {"min_count", "max_count", "description"}
 
 
-def _is_excluded(value: int | float, exclude_list: list | None) -> bool:
+def is_excluded(value: int | float, exclude_list: list | None) -> bool:
+    """
+    Is excluded.
+
+    Parameters
+    ----------
+    value: Any
+        The `value` value.
+
+    exclude_list: Any
+        The `exclude_list` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `is_excluded`.
+    """
+
     if not exclude_list:
         return False
     return int(value) in exclude_list
 
 
-def _normalize_name(value: str) -> str:
+def normalize_name(value: str) -> str:
+    """
+    Normalize name.
+
+    Parameters
+    ----------
+    value: Any
+        The `value` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `normalize_name`.
+    """
+
     return value.strip().lower()
 
 
-def _strip_requirement_metadata(
+def strip_requirement_metadata(
     filter_spec: OwnerEventFilterSpec | PoochFilterSpec | KennelFilterSpec,
 ) -> OwnerEventFilterSpec | PoochFilterSpec | KennelFilterSpec:
+    """
+    Strip requirement metadata.
+
+    Parameters
+    ----------
+    filter_spec: Any
+        The `filter_spec` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `strip_requirement_metadata`.
+    """
+
     return {key: value for key, value in filter_spec.items() if key not in _FILTER_META_KEYS}
 
 
 async def _get_breed_ids_by_names(session: AsyncSession, names: list[str]) -> list[int]:
-    normalized = [_normalize_name(name) for name in names if isinstance(name, str) and name.strip()]
+    normalized = [normalize_name(name) for name in names if isinstance(name, str) and name.strip()]
     if not normalized:
         return []
 
@@ -59,7 +104,7 @@ async def _get_breed_ids_by_names(session: AsyncSession, names: list[str]) -> li
 
 
 async def _get_mutation_ids_by_names(session: AsyncSession, names: list[str]) -> list[int]:
-    normalized = [_normalize_name(name) for name in names if isinstance(name, str) and name.strip()]
+    normalized = [normalize_name(name) for name in names if isinstance(name, str) and name.strip()]
     if not normalized:
         return []
 
@@ -204,6 +249,29 @@ async def count_matching_pooches_for_owner(
     filter_spec: PoochFilterSpec | None,
     kennel_id: Optional[int] = None,
 ) -> int:
+    """
+    Count matching pooches for owner.
+
+    Parameters
+    ----------
+    session: Any
+        The `session` value.
+
+    owner_discord_id: Any
+        The `owner_discord_id` value.
+
+    filter_spec: Any
+        The `filter_spec` value.
+
+    kennel_id: Any
+        The `kennel_id` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `count_matching_pooches_for_owner`.
+    """
+
     query = await _build_pooch_query(session, filter_spec, owner_discord_id=owner_discord_id, kennel_id=kennel_id)
     count_query = select(func.count()).select_from(query.subquery())
     result = await session.scalar(count_query)
@@ -216,6 +284,29 @@ async def get_matching_pooch_ids_for_owner(
     filter_spec: PoochFilterSpec | None,
     kennel_id: Optional[int] = None,
 ) -> list[int]:
+    """
+    Get matching pooch ids for owner.
+
+    Parameters
+    ----------
+    session: Any
+        The `session` value.
+
+    owner_discord_id: Any
+        The `owner_discord_id` value.
+
+    filter_spec: Any
+        The `filter_spec` value.
+
+    kennel_id: Any
+        The `kennel_id` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `get_matching_pooch_ids_for_owner`.
+    """
+
     query = await _build_pooch_query(session, filter_spec, owner_discord_id=owner_discord_id, kennel_id=kennel_id)
     result = await session.execute(query.with_only_columns(Pooch.id))
     return [pooch_id for pooch_id in result.scalars().all()]
@@ -228,6 +319,32 @@ async def get_random_matching_pooch_id_for_owner(
     rng: random.Random,
     kennel_id: Optional[int] = None,
 ) -> Optional[int]:
+    """
+    Get random matching pooch id for owner.
+
+    Parameters
+    ----------
+    session: Any
+        The `session` value.
+
+    owner_discord_id: Any
+        The `owner_discord_id` value.
+
+    filter_spec: Any
+        The `filter_spec` value.
+
+    rng: Any
+        The `rng` value.
+
+    kennel_id: Any
+        The `kennel_id` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `get_random_matching_pooch_id_for_owner`.
+    """
+
     pooch_ids = await get_matching_pooch_ids_for_owner(
         session,
         owner_discord_id,
@@ -328,6 +445,26 @@ async def get_matching_kennel_ids_for_owner(
     owner_discord_id: int,
     filter_spec: KennelFilterSpec | None,
 ) -> list[int]:
+    """
+    Get matching kennel ids for owner.
+
+    Parameters
+    ----------
+    session: Any
+        The `session` value.
+
+    owner_discord_id: Any
+        The `owner_discord_id` value.
+
+    filter_spec: Any
+        The `filter_spec` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `get_matching_kennel_ids_for_owner`.
+    """
+
     filter_spec = dict(filter_spec or {})
     nested_pooch_filters = list(filter_spec.get("pooches", []))
     kennel_ids = await _get_candidate_kennel_ids_for_owner(session, owner_discord_id, filter_spec)
@@ -343,7 +480,7 @@ async def get_matching_kennel_ids_for_owner(
             count = await count_matching_pooches_for_owner(
                 session,
                 owner_discord_id,
-                _strip_requirement_metadata(pooch_filter),
+                strip_requirement_metadata(pooch_filter),
                 kennel_id=kennel_id,
             )
             if count < min_count:
@@ -363,6 +500,26 @@ async def count_matching_kennels_for_owner(
     owner_discord_id: int,
     filter_spec: KennelFilterSpec | None,
 ) -> int:
+    """
+    Count matching kennels for owner.
+
+    Parameters
+    ----------
+    session: Any
+        The `session` value.
+
+    owner_discord_id: Any
+        The `owner_discord_id` value.
+
+    filter_spec: Any
+        The `filter_spec` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `count_matching_kennels_for_owner`.
+    """
+
     return len(await get_matching_kennel_ids_for_owner(session, owner_discord_id, filter_spec))
 
 
@@ -372,6 +529,29 @@ async def get_random_matching_kennel_id_for_owner(
     filter_spec: KennelFilterSpec | None,
     rng: random.Random,
 ) -> Optional[int]:
+    """
+    Get random matching kennel id for owner.
+
+    Parameters
+    ----------
+    session: Any
+        The `session` value.
+
+    owner_discord_id: Any
+        The `owner_discord_id` value.
+
+    filter_spec: Any
+        The `filter_spec` value.
+
+    rng: Any
+        The `rng` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `get_random_matching_kennel_id_for_owner`.
+    """
+
     kennel_ids = await get_matching_kennel_ids_for_owner(session, owner_discord_id, filter_spec)
     if not kennel_ids:
         return None
@@ -426,6 +606,29 @@ async def check_owner_event_filter(
     filter_spec: OwnerEventFilterSpec | None,
     season: Optional[str] = None,
 ) -> bool:
+    """
+    Check owner event filter.
+
+    Parameters
+    ----------
+    session: Any
+        The `session` value.
+
+    owner_discord_id: Any
+        The `owner_discord_id` value.
+
+    filter_spec: Any
+        The `filter_spec` value.
+
+    season: Any
+        The `season` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `check_owner_event_filter`.
+    """
+
     if not filter_spec:
         owner_exists = await session.scalar(select(Owner.discord_id).where(Owner.discord_id == owner_discord_id))
         return owner_exists is not None
@@ -443,26 +646,26 @@ async def check_owner_event_filter(
         return False
     if filter_spec.get("max_money") is not None and owner.dollars > filter_spec["max_money"]:
         return False
-    if _is_excluded(owner.dollars, filter_spec.get("exclude_money")):
+    if is_excluded(owner.dollars, filter_spec.get("exclude_money")):
         return False
     if filter_spec.get("min_bloodskulls") is not None and owner.bloodskulls < filter_spec["min_bloodskulls"]:
         return False
     if filter_spec.get("max_bloodskulls") is not None and owner.bloodskulls > filter_spec["max_bloodskulls"]:
         return False
-    if _is_excluded(owner.bloodskulls, filter_spec.get("exclude_bloodskulls")):
+    if is_excluded(owner.bloodskulls, filter_spec.get("exclude_bloodskulls")):
         return False
 
     if filter_spec.get("min_pooches") is not None and pooch_count < filter_spec["min_pooches"]:
         return False
     if filter_spec.get("max_pooches") is not None and pooch_count > filter_spec["max_pooches"]:
         return False
-    if _is_excluded(pooch_count, filter_spec.get("exclude_pooches")):
+    if is_excluded(pooch_count, filter_spec.get("exclude_pooches")):
         return False
     if filter_spec.get("min_kennels") is not None and kennel_count < filter_spec["min_kennels"]:
         return False
     if filter_spec.get("max_kennels") is not None and kennel_count > filter_spec["max_kennels"]:
         return False
-    if _is_excluded(kennel_count, filter_spec.get("exclude_kennels")):
+    if is_excluded(kennel_count, filter_spec.get("exclude_kennels")):
         return False
 
     for kennel_filter in list(filter_spec.get("kennels", [])):
@@ -471,7 +674,7 @@ async def check_owner_event_filter(
         count = await count_matching_kennels_for_owner(
             session,
             owner_discord_id,
-            _strip_requirement_metadata(kennel_filter),
+            strip_requirement_metadata(kennel_filter),
         )
         if count < min_count:
             return False
@@ -484,7 +687,7 @@ async def check_owner_event_filter(
         count = await count_matching_pooches_for_owner(
             session,
             owner_discord_id,
-            _strip_requirement_metadata(pooch_filter),
+            strip_requirement_metadata(pooch_filter),
         )
         if count < min_count:
             return False
@@ -530,6 +733,26 @@ async def count_matching_stray_pooches_for_server(
     server_discord_id: int,
     filter_spec: "PoochFilterSpec | None",
 ) -> int:
+    """
+    Count matching stray pooches for server.
+
+    Parameters
+    ----------
+    session: Any
+        The `session` value.
+
+    server_discord_id: Any
+        The `server_discord_id` value.
+
+    filter_spec: Any
+        The `filter_spec` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `count_matching_stray_pooches_for_server`.
+    """
+
     ids = await get_matching_stray_pooch_ids_for_server(session, server_discord_id, filter_spec)
     return len(ids)
 
@@ -562,7 +785,7 @@ async def check_stray_event_filter(
         count = await count_matching_stray_pooches_for_server(
             session,
             server_discord_id,
-            _strip_requirement_metadata(pooch_filter),
+            strip_requirement_metadata(pooch_filter),
         )
         if count < min_count:
             return False
@@ -603,9 +826,29 @@ async def _count_hell_pooches_for_server(session: AsyncSession, server_discord_i
     return count or 0
 
 
-async def _get_matching_dead_pooch_ids_for_server(
+async def get_matching_dead_pooch_ids_for_server(
     session: AsyncSession, server_discord_id: int, filter_spec: "PoochFilterSpec | None"
 ) -> list[int]:
+    """
+    Get matching dead pooch ids for server.
+
+    Parameters
+    ----------
+    session: Any
+        The `session` value.
+
+    server_discord_id: Any
+        The `server_discord_id` value.
+
+    filter_spec: Any
+        The `filter_spec` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `get_matching_dead_pooch_ids_for_server`.
+    """
+
     from ..models import OwnerServer as OwnerServerModel
 
     base_filter = dict(filter_spec or {})
@@ -627,9 +870,29 @@ async def _get_matching_dead_pooch_ids_for_server(
     return list(result.scalars().all())
 
 
-async def _get_matching_hell_pooch_ids_for_server(
+async def get_matching_hell_pooch_ids_for_server(
     session: AsyncSession, server_discord_id: int, filter_spec: "PoochFilterSpec | None"
 ) -> list[int]:
+    """
+    Get matching hell pooch ids for server.
+
+    Parameters
+    ----------
+    session: Any
+        The `session` value.
+
+    server_discord_id: Any
+        The `server_discord_id` value.
+
+    filter_spec: Any
+        The `filter_spec` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `get_matching_hell_pooch_ids_for_server`.
+    """
+
     from ..models import OwnerServer as OwnerServerModel
 
     base_filter = dict(filter_spec or {})
@@ -738,7 +1001,7 @@ async def check_server_event_filter(
     for pooch_filter in list(filter_spec.get("dead_pooches", [])):
         min_count = pooch_filter.get("min_count", 1)
         max_count = pooch_filter.get("max_count")
-        count = len(await _get_matching_dead_pooch_ids_for_server(session, server_discord_id, pooch_filter))
+        count = len(await get_matching_dead_pooch_ids_for_server(session, server_discord_id, pooch_filter))
         if count < min_count:
             return False
         if max_count is not None and count > max_count:
@@ -748,7 +1011,7 @@ async def check_server_event_filter(
     for pooch_filter in list(filter_spec.get("hell_pooches", [])):
         min_count = pooch_filter.get("min_count", 1)
         max_count = pooch_filter.get("max_count")
-        count = len(await _get_matching_hell_pooch_ids_for_server(session, server_discord_id, pooch_filter))
+        count = len(await get_matching_hell_pooch_ids_for_server(session, server_discord_id, pooch_filter))
         if count < min_count:
             return False
         if max_count is not None and count > max_count:

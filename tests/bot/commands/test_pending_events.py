@@ -10,7 +10,7 @@ from tests.bot.commands.conftest import capture_command_callback, make_interacti
 @pytest.mark.contract
 class TestPendingEventsCommand:
     async def test_no_pending(self):
-        from src.bot.commands.pending_events import register_pending_events_command
+        from src.bot.commands import register_pending_events_command
 
         callback = capture_command_callback(register_pending_events_command)
         interaction = make_interaction()
@@ -25,7 +25,7 @@ class TestPendingEventsCommand:
         assert "no pending" in msg.lower()
 
     async def test_sends_pending_events(self):
-        from src.bot.commands.pending_events import register_pending_events_command
+        from src.bot.commands import register_pending_events_command
 
         callback = capture_command_callback(register_pending_events_command)
         interaction = make_interaction()

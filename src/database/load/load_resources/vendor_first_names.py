@@ -1,9 +1,9 @@
 from sqlalchemy import delete
 
+from src.database.session import session_scope
 from src.logger import get_logger
 
 from ...models import VendorFirstName
-from ...session import session_scope
 from .utils import (
     VENDOR_NAMES_ROOT,
     load_names_from_root,
@@ -16,6 +16,15 @@ VENDOR_FIRST_NAMES_ROOT = VENDOR_NAMES_ROOT / "first"
 
 
 async def load_vendor_first_names():
+    """
+    Load vendor first names.
+
+    Returns
+    -------
+    Any
+        The result of calling `load_vendor_first_names`.
+    """
+
     logger.info("Loading vendor first names from 'resources/vendor_names/first/**/*.txt' into the database...")
 
     vendor_first_names = validate_name_list("vendor_first_names", load_names_from_root(VENDOR_FIRST_NAMES_ROOT))

@@ -2,10 +2,10 @@ from typing import Any
 
 from sqlalchemy import delete
 
+from src.database.session import session_scope
 from src.logger import get_logger
 
 from ...models import Breed
-from ...session import session_scope
 from .utils import (
     RARITY_VALUES,
     RESOURCE_ROOT,
@@ -21,7 +21,16 @@ _BREEDS_ROOT = RESOURCE_ROOT / "breeds"
 _VALID_SEASONS = {"spring", "summer", "autumn", "winter"}
 
 
-def _validate_breeds_json(breeds_json: dict[str, dict[str, dict[str, Any]]]) -> None:
+def validate_breeds_json(breeds_json: dict[str, dict[str, dict[str, Any]]]) -> None:
+    """
+    Validate breeds json.
+
+    Parameters
+    ----------
+    breeds_json: Any
+        The `breeds_json` value.
+    """
+
     errors: list[str] = []
     allowed_keys = {"alt_name", "description", "rarity", "min_size", "max_size", "parameters"}
     if not isinstance(breeds_json, dict):
@@ -77,10 +86,19 @@ def _validate_breeds_json(breeds_json: dict[str, dict[str, dict[str, Any]]]) -> 
 
 
 async def load_breeds():
+    """
+    Load breeds.
+
+    Returns
+    -------
+    Any
+        The result of calling `load_breeds`.
+    """
+
     logger.info("Loading breeds from 'resources/breeds/**/*.jsonc' into the database...")
 
     breeds_json = load_categorized_resource_objects(_BREEDS_ROOT, "breed")
-    _validate_breeds_json(breeds_json)
+    validate_breeds_json(breeds_json)
 
     async with session_scope() as session:
         await session.execute(delete(Breed))

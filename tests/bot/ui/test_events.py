@@ -6,28 +6,27 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import discord
 import pytest
 
-from src.bot.ui.events import (
+from src.bot.ui import (
     EventEntityControls,
     EventHistoryPageSource,
     EventMessageView,
     EventResponseSelect,
-    _build_pooch_info_embed,
-    _color_for_severity,
-    _detail_entries,
-    _discord_timestamp,
-    _entity_reference_lines,
-    _format_option_line,
-    _format_option_select_description,
-    _format_result_summary,
-    _get_dm_channel,
-    _signed,
-    _truncate,
     build_history_embed,
     build_resolved_event_embed,
     build_triggered_event_embed,
+    color_for_severity,
+    detail_entries,
+    discord_timestamp,
+    entity_reference_lines,
+    format_option_line,
+    format_option_select_description,
+    format_result_summary,
+    get_dm_channel,
     send_all_pending_event_dms,
     send_event_history_dm,
     send_triggered_event_dm,
+    signed,
+    truncate,
 )
 from src.game.models.events import (
     OwnerEventContext,
@@ -86,66 +85,66 @@ def _make_triggered_event(
 @pytest.mark.contract
 class TestColorForSeverity:
     def test_trivial(self):
-        assert _color_for_severity("trivial") == discord.Color.light_grey()
+        assert color_for_severity("trivial") == discord.Color.light_grey()
 
     def test_moderate(self):
-        assert _color_for_severity("moderate") == discord.Color.blurple()
+        assert color_for_severity("moderate") == discord.Color.blurple()
 
     def test_major(self):
-        assert _color_for_severity("major") == discord.Color.orange()
+        assert color_for_severity("major") == discord.Color.orange()
 
     def test_critical(self):
-        assert _color_for_severity("critical") == discord.Color.red()
+        assert color_for_severity("critical") == discord.Color.red()
 
     def test_unknown_defaults_to_blurple(self):
-        assert _color_for_severity("unknown") == discord.Color.blurple()
+        assert color_for_severity("unknown") == discord.Color.blurple()
 
     def test_case_insensitive(self):
-        assert _color_for_severity("CRITICAL") == discord.Color.red()
-        assert _color_for_severity("Trivial") == discord.Color.light_grey()
+        assert color_for_severity("CRITICAL") == discord.Color.red()
+        assert color_for_severity("Trivial") == discord.Color.light_grey()
 
 
 @pytest.mark.contract
 class TestTruncate:
     def test_short_text_unchanged(self):
-        assert _truncate("hello") == "hello"
+        assert truncate("hello") == "hello"
 
     def test_long_text_truncated(self):
-        result = _truncate("x" * 2000, limit=10)
+        result = truncate("x" * 2000, limit=10)
         # Implementation: text[:max(limit-1, 0)] + "..." so truncated body is 9 chars + "..."
         assert result.endswith("...")
         assert len(result) < 2000  # significantly shorter than input
 
     def test_exact_limit_unchanged(self):
         text = "a" * 100
-        assert _truncate(text, limit=100) == text
+        assert truncate(text, limit=100) == text
 
     def test_strips_whitespace(self):
-        assert _truncate("  hello  ") == "hello"
+        assert truncate("  hello  ") == "hello"
 
     def test_empty_string(self):
-        assert _truncate("") == ""
+        assert truncate("") == ""
 
 
 @pytest.mark.contract
 class TestDiscordTimestamp:
     def test_none_returns_dash(self):
-        assert _discord_timestamp(None) == "\u2014"
+        assert discord_timestamp(None) == "\u2014"
 
     def test_datetime_object(self):
         dt = datetime(2024, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
-        result = _discord_timestamp(dt, "f")
+        result = discord_timestamp(dt, "f")
         assert result.startswith("<t:")
         assert result.endswith(":f>")
 
     def test_iso_string(self):
-        result = _discord_timestamp("2024-01-15T12:00:00+00:00", "R")
+        result = discord_timestamp("2024-01-15T12:00:00+00:00", "R")
         assert result.startswith("<t:")
         assert result.endswith(":R>")
 
     def test_naive_datetime_gets_utc(self):
         dt = datetime(2024, 1, 15, 12, 0, 0)
-        result = _discord_timestamp(dt, "f")
+        result = discord_timestamp(dt, "f")
         assert "<t:" in result
 
 
@@ -153,62 +152,62 @@ class TestDiscordTimestamp:
 class TestFormatOptionLine:
     def test_basic_option(self):
         option = _make_option(label="Run Away", description="Flee the scene")
-        result = _format_option_line(option)
+        result = format_option_line(option)
         assert "**Run Away**" in result
         assert "Flee the scene" in result
 
     def test_option_with_money_requirement(self):
         option = _make_option(label="Buy", description="Purchase it", min_money=100)
-        result = _format_option_line(option)
+        result = format_option_line(option)
         assert "$100" in result
         assert "requires" in result.lower()
 
     def test_option_with_bloodskull_requirement(self):
         option = _make_option(label="Sacrifice", description="Dark arts", min_bloodskulls=5)
-        result = _format_option_line(option)
+        result = format_option_line(option)
         assert "5 bloodskulls" in result
 
     def test_option_with_both_requirements(self):
         option = _make_option(label="Both", description="Costly", min_money=50, min_bloodskulls=3)
-        result = _format_option_line(option)
+        result = format_option_line(option)
         assert "$50" in result
         assert "3 bloodskulls" in result
 
     def test_option_no_description(self):
         option = _make_option(label="Simple", description="")
-        result = _format_option_line(option)
+        result = format_option_line(option)
         assert "**Simple**" in result
 
 
 @pytest.mark.contract
 class TestFormatResultSummary:
     def test_none_result(self):
-        result = _format_result_summary(None)
+        result = format_result_summary(None)
         assert result == "No recorded outcome."
 
     def test_result_with_message(self):
         r = OwnerEventResult(message="You found gold!")
-        result = _format_result_summary(r)
+        result = format_result_summary(r)
         assert "You found gold!" in result
 
     def test_result_with_money_change(self):
         r = OwnerEventResult(money_changed=100)
-        result = _format_result_summary(r)
+        result = format_result_summary(r)
         assert "Dollars: +100" in result
 
     def test_result_with_negative_money(self):
         r = OwnerEventResult(money_changed=-50)
-        result = _format_result_summary(r)
+        result = format_result_summary(r)
         assert "Dollars: -50" in result
 
     def test_result_with_bloodskulls(self):
         r = OwnerEventResult(bloodskulls_changed=3)
-        result = _format_result_summary(r)
+        result = format_result_summary(r)
         assert "Bloodskulls: +3" in result
 
     def test_result_with_created_pooches_extra_data(self):
         r = OwnerEventResult(extra_data={"created_pooches": [{"pooch_name": "Fido", "sex": "male", "age": 0}]})
-        result = _format_result_summary(r)
+        result = format_result_summary(r)
         assert "Created pooch: Fido" in result
         assert "Male" in result
 
@@ -217,19 +216,19 @@ class TestFormatResultSummary:
             pooches_killed=[1],
             extra_data={"killed_pooches": [{"pooch_name": "Rex"}]},
         )
-        result = _format_result_summary(r)
+        result = format_result_summary(r)
         assert "Lost pooch: Rex" in result
 
     def test_result_with_health_changes(self):
         r = OwnerEventResult(extra_data={"health_changes": [{"pooch_id": 1, "pooch_name": "Buddy", "amount": -5}]})
-        result = _format_result_summary(r)
+        result = format_result_summary(r)
         assert "Health: Buddy -5" in result
 
     def test_result_with_age_changes(self):
         r = OwnerEventResult(
             extra_data={"age_changes": [{"pooch_id": 1, "pooch_name": "Oldie", "amount": 2, "new_age": 14}]}
         )
-        result = _format_result_summary(r)
+        result = format_result_summary(r)
         assert "Age: Oldie +2" in result
         assert "now age 14" in result
 
@@ -238,17 +237,17 @@ class TestFormatResultSummary:
             mutations_added=[(1, 2)],
             extra_data={"mutations_added_details": [{"pooch_name": "Spot", "mutation_name": "Cataracts"}]},
         )
-        result = _format_result_summary(r)
+        result = format_result_summary(r)
         assert "Mutation gained: Spot" in result
 
     def test_result_with_renamed_pooches(self):
         r = OwnerEventResult(extra_data={"renamed_pooches": [{"old_name": "Dog", "new_name": "Super Dog"}]})
-        result = _format_result_summary(r)
+        result = format_result_summary(r)
         assert "Dog" in result and "Super Dog" in result
 
     def test_empty_result(self):
         r = OwnerEventResult()
-        result = _format_result_summary(r)
+        result = format_result_summary(r)
         assert result == "No recorded outcome."
 
 
@@ -442,51 +441,51 @@ class TestSendEventHistoryDm:
 @pytest.mark.contract
 class TestSigned:
     def test_positive(self):
-        assert _signed(5) == "+5"
+        assert signed(5) == "+5"
 
     def test_negative(self):
-        assert _signed(-3) == "-3"
+        assert signed(-3) == "-3"
 
     def test_zero(self):
-        assert _signed(0) == "+0"
+        assert signed(0) == "+0"
 
 
 @pytest.mark.contract
 class TestDetailEntries:
     def test_list_input(self):
         data = [{"pooch_id": 1, "amount": 5}]
-        result = _detail_entries(data, id_key="pooch_id", value_key="amount")
+        result = detail_entries(data, id_key="pooch_id", value_key="amount")
         assert len(result) == 1
         assert result[0]["pooch_id"] == 1
 
     def test_dict_input(self):
         data = {"1": 10, "2": 20}
-        result = _detail_entries(data, id_key="pooch_id", value_key="amount")
+        result = detail_entries(data, id_key="pooch_id", value_key="amount")
         assert len(result) == 2
 
     def test_empty_list(self):
-        assert _detail_entries([], id_key="pooch_id", value_key="amount") == []
+        assert detail_entries([], id_key="pooch_id", value_key="amount") == []
 
     def test_non_list_non_dict(self):
-        assert _detail_entries("not a list", id_key="k", value_key="v") == []
+        assert detail_entries("not a list", id_key="k", value_key="v") == []
 
 
 @pytest.mark.contract
 class TestFormatOptionSelectDescription:
     def test_with_description(self):
         option = _make_option(label="Join", description="Join the event", min_money=0)
-        result = _format_option_select_description(option)
+        result = format_option_select_description(option)
         assert "Join the event" in result
 
     def test_with_costs(self):
         option = _make_option(label="Pay", description="", min_money=50, min_bloodskulls=2)
-        result = _format_option_select_description(option)
+        result = format_option_select_description(option)
         assert "$50" in result
         assert "2 skulls" in result
 
     def test_no_description_no_costs(self):
         option = _make_option(label="Simple", description="")
-        result = _format_option_select_description(option)
+        result = format_option_select_description(option)
         assert "No description" in result
 
 
@@ -495,64 +494,20 @@ class TestEntityReferenceLines:
     def test_empty_references(self):
         context = OwnerEventContext(owner_discord_id=100)
         refs = OwnerEventEntityReferences()
-        lines = _entity_reference_lines(context, refs)
+        lines = entity_reference_lines(context, refs)
         assert lines == []
 
     def test_with_kennel_id(self):
         context = OwnerEventContext(owner_discord_id=100, selected_kennel_id=5)
         refs = OwnerEventEntityReferences()
-        lines = _entity_reference_lines(context, refs)
+        lines = entity_reference_lines(context, refs)
         assert any("Kennel #5" in line for line in lines)
 
     def test_with_affected_kennels(self):
         context = OwnerEventContext(owner_discord_id=100, affected_kennel_ids=[3, 7])
         refs = OwnerEventEntityReferences()
-        lines = _entity_reference_lines(context, refs)
+        lines = entity_reference_lines(context, refs)
         assert any("Kennel #3" in line for line in lines)
-
-
-@pytest.mark.contract
-class TestBuildPoochInfoEmbed:
-    def test_basic_fields(self):
-        from src.game.models.pooch import Pooch
-
-        pooch = Pooch(
-            id=1,
-            name="Test Pooch",
-            age=3,
-            sex="male",
-            base_health=100,
-            health_loss_age=5,
-            strength=10,
-            cuteness=10,
-            fluffiness=10,
-            intelligence=10,
-            dexterity=10,
-            fertility=10,
-            aggressiveness=5,
-            constitution=10,
-            breeding_cooldown=0,
-            alive=True,
-            virgin=True,
-            owner_discord_id=100,
-            vendor_id=None,
-            created_at=datetime(2024, 1, 1, tzinfo=timezone.utc),
-            size=50,
-            health=95,
-            owner=None,
-            vendor=None,
-            mood=None,
-            breeds=[],
-            mutations=[],
-            injuries=[],
-        )
-        embed = _build_pooch_info_embed(pooch)
-        assert embed.title == "Test Pooch"
-        field_names = [f.name for f in embed.fields]
-        assert "Age" in field_names
-        assert "Sex" in field_names
-        assert "Breeds" in field_names
-        assert "Mutations" in field_names
 
 
 @pytest.mark.contract
@@ -561,7 +516,7 @@ class TestGetDmChannel:
         bot = MagicMock()
         bot.get_user = MagicMock(return_value=None)
         bot.fetch_user = AsyncMock(side_effect=Exception("not found"))
-        result = await _get_dm_channel(bot, 999)
+        result = await get_dm_channel(bot, 999)
         assert result is None
 
     async def test_returns_dm_channel(self):
@@ -571,7 +526,7 @@ class TestGetDmChannel:
         user.dm_channel = dm_channel
         bot.get_user = MagicMock(return_value=user)
 
-        result = await _get_dm_channel(bot, 100)
+        result = await get_dm_channel(bot, 100)
         assert result is dm_channel
 
     async def test_creates_dm_if_none(self):
@@ -582,7 +537,7 @@ class TestGetDmChannel:
         user.create_dm = AsyncMock(return_value=dm_channel)
         bot.get_user = MagicMock(return_value=user)
 
-        result = await _get_dm_channel(bot, 100)
+        result = await get_dm_channel(bot, 100)
         assert result is dm_channel
         user.create_dm.assert_called_once()
 
@@ -719,7 +674,7 @@ class TestFormatResultSummaryExtended:
         r = OwnerEventResult(
             extra_data={"breeding_cooldown_changes": [{"pooch_name": "Max", "pooch_id": 1, "cooldown": 3}]}
         )
-        result = _format_result_summary(r)
+        result = format_result_summary(r)
         assert "Max" in result
         assert "cooldown" in result.lower()
 
@@ -727,14 +682,14 @@ class TestFormatResultSummaryExtended:
         r = OwnerEventResult(
             extra_data={"transferred_pooches": [{"pooch_name": "Spot", "pooch_id": 1, "destination": "new owner"}]}
         )
-        result = _format_result_summary(r)
+        result = format_result_summary(r)
         assert "Transferred: Spot" in result
 
     def test_result_with_breeds_added(self):
         r = OwnerEventResult(
             extra_data={"breeds_added": [{"pooch_name": "Rex", "breed_name": "Labrador", "weight": 0.5}]}
         )
-        result = _format_result_summary(r)
+        result = format_result_summary(r)
         assert "Breed added: Rex" in result
         assert "Labrador" in result
 
@@ -743,7 +698,7 @@ class TestFormatResultSummaryExtended:
             mutations_removed=[(1, 2)],
             extra_data={"mutations_removed_details": [{"pooch_name": "Spot", "mutation_name": "Blindness"}]},
         )
-        result = _format_result_summary(r)
+        result = format_result_summary(r)
         assert "Mutation removed: Spot" in result
 
     def test_result_with_kennel_capacity_changes(self):
@@ -752,6 +707,6 @@ class TestFormatResultSummaryExtended:
                 "kennel_capacity_changes": [{"kennel_id": 1, "kennel_name": "The Barn", "amount": 2, "new_limit": 7}]
             }
         )
-        result = _format_result_summary(r)
+        result = format_result_summary(r)
         assert "Kennel capacity: The Barn" in result
         assert "+2" in result

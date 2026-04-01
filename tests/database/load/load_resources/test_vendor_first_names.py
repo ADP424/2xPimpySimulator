@@ -27,7 +27,7 @@ async def test_load_vendor_first_names_loads_names():
         ),
         patch("src.database.load.load_resources.vendor_first_names.session_scope", return_value=_FakeScope()),
     ):
-        from src.database.load.load_resources.vendor_first_names import (
+        from src.database.load.load_resources import (
             load_vendor_first_names,
         )
 
@@ -38,6 +38,15 @@ async def test_load_vendor_first_names_loads_names():
 
 
 async def test_load_vendor_first_names_empty():
+    """
+    Test load vendor first names empty.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_load_vendor_first_names_empty`.
+    """
+
     mock_session = AsyncMock()
     mock_session.execute = AsyncMock()
     mock_session.add = MagicMock()
@@ -54,7 +63,7 @@ async def test_load_vendor_first_names_empty():
         patch("src.database.load.load_resources.vendor_first_names.validate_name_list", return_value=[]),
         patch("src.database.load.load_resources.vendor_first_names.session_scope", return_value=_FakeScope()),
     ):
-        from src.database.load.load_resources.vendor_first_names import (
+        from src.database.load.load_resources import (
             load_vendor_first_names,
         )
 

@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Optional
 from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from src.database.models import Base
+from src.database.models.base import Base
 
 if TYPE_CHECKING:
     from ...static import Injury

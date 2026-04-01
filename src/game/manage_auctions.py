@@ -29,15 +29,14 @@ from src.database import (
     remove_pooch_from_kennel,
     transfer_pooch_to_owner,
 )
-
-from .models.auction import (
+from src.game.models import (
     AuctionBountyListing,
     AuctionSaleListing,
     BountyMatchResult,
     to_auction_bounty_listing,
     to_auction_sale_listing,
+    to_pooch,
 )
-from .models.pooch import to_pooch
 
 _RARITY_ORDER = [
     "common",

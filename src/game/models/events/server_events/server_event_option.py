@@ -28,6 +28,20 @@ class ServerEventMenu:
 
 
 async def to_server_event_menu_option(option: ServerEventMenuOptionORM) -> ServerEventMenuOption:
+    """
+    To server event menu option.
+
+    Parameters
+    ----------
+    option: Any
+        The `option` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `to_server_event_menu_option`.
+    """
+
     return ServerEventMenuOption(
         id=option.id,
         label=option.label,
@@ -39,6 +53,20 @@ async def to_server_event_menu_option(option: ServerEventMenuOptionORM) -> Serve
 
 
 async def to_server_event_menu(menu: ServerEventMenuORM) -> ServerEventMenu:
+    """
+    To server event menu.
+
+    Parameters
+    ----------
+    menu: Any
+        The `menu` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `to_server_event_menu`.
+    """
+
     return ServerEventMenu(
         id=menu.id,
         name=menu.name,

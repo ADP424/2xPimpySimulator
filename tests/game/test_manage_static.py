@@ -3,13 +3,13 @@
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
-from conftest import make_breed, make_mutation
-from src.game.manage_static import (
+from src.game import (
     get_breed_by_id,
     get_mutation_by_id,
     list_all_breeds,
     list_all_mutations,
 )
+from tests.conftest import make_breed, make_mutation
 
 # ---------------------------------------------------------------------------
 # get_breed_by_id

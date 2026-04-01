@@ -4,6 +4,20 @@ from src.game import set_event_channel
 
 
 def register_set_event_channel_command(tree: app_commands.CommandTree):
+    """
+    Register set event channel command.
+
+    Parameters
+    ----------
+    tree: Any
+        The `tree` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `register_set_event_channel_command`.
+    """
+
     @tree.command(name="set_event_channel", description="Set this channel as the server's day-change event channel")
     async def event_channel(interaction: Interaction):
         if interaction.guild_id is None or interaction.channel_id is None:

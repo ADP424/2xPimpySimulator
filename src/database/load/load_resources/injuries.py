@@ -2,10 +2,10 @@ from typing import Any
 
 from sqlalchemy import delete
 
+from src.database.session import session_scope
 from src.logger import get_logger
 
 from ...models import Injury
-from ...session import session_scope
 from .utils import (
     EVENT_SEVERITY_VALUES,
     HEALTH_IMPACT_VALUES,
@@ -160,6 +160,15 @@ def _validate_injuries_json(injuries_json: dict[str, dict[str, dict[str, Any]]])
 
 
 async def load_injuries():
+    """
+    Load injuries.
+
+    Returns
+    -------
+    Any
+        The result of calling `load_injuries`.
+    """
+
     logger.info("Loading injuries from resources into the database...")
 
     injuries_json = load_categorized_resource_objects(_INJURIES_ROOT, "injury")

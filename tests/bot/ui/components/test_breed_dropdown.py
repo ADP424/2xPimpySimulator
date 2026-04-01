@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import discord
 import pytest
 
-from src.bot.ui.components.breed_dropdown import (
+from src.bot.ui.components import (
     BreedDropdownControls,
     BreedOption,
     build_breed_info_embed,

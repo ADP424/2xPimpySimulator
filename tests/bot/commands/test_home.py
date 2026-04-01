@@ -11,7 +11,7 @@ from tests.bot.commands.conftest import capture_command_callback, make_interacti
 class TestHomeCommand:
     async def test_home_requires_guild(self):
         """Home command should reject DM usage."""
-        from src.bot.commands.home import register_home_command
+        from src.bot.commands import register_home_command
 
         callback = capture_command_callback(register_home_command)
         assert callback is not None
@@ -28,7 +28,7 @@ class TestHomeCommand:
 
     async def test_home_sends_content_and_view(self):
         """Home command should send home content with a HomeView."""
-        from src.bot.commands.home import register_home_command
+        from src.bot.commands import register_home_command
 
         callback = capture_command_callback(register_home_command)
         interaction = make_interaction()

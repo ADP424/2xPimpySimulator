@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from src.database.load.load_resources.utils import (
+from src.database.load.load_resources import (
     BaseEventValidator,
     EventValidationError,
     ResourceValidationError,
@@ -28,27 +28,72 @@ def test_validate_name_list_valid():
 
 
 def test_validate_name_list_strips_whitespace():
+    """
+    Test validate name list strips whitespace.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_validate_name_list_strips_whitespace`.
+    """
+
     names = ["  Alice  ", "Bob"]
     result = validate_name_list("test", names)
     assert result == ["Alice", "Bob"]
 
 
 def test_validate_name_list_blank_raises():
+    """
+    Test validate name list blank raises.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_validate_name_list_blank_raises`.
+    """
+
     with pytest.raises(ResourceValidationError, match="must not be blank"):
         validate_name_list("test", ["Alice", "", "Bob"])
 
 
 def test_validate_name_list_non_string_raises():
+    """
+    Test validate name list non string raises.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_validate_name_list_non_string_raises`.
+    """
+
     with pytest.raises(ResourceValidationError, match="must be a string"):
         validate_name_list("test", ["Alice", 123])
 
 
 def test_validate_name_list_duplicate_raises():
+    """
+    Test validate name list duplicate raises.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_validate_name_list_duplicate_raises`.
+    """
+
     with pytest.raises(ResourceValidationError, match="duplicate name"):
         validate_name_list("test", ["Alice", "alice"])
 
 
 def test_validate_name_list_empty_is_valid():
+    """
+    Test validate name list empty is valid.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_validate_name_list_empty_is_valid`.
+    """
+
     result = validate_name_list("test", [])
     assert result == []
 
@@ -126,6 +171,15 @@ def test_base_event_validator_multiple_errors():
 
 
 def test_validate_optional_int_valid():
+    """
+    Test validate optional int valid.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_validate_optional_int_valid`.
+    """
+
     v = BaseEventValidator(set(), set(), set())
     result = v._validate_optional_int("test", {"count": 5}, "count")
     assert result == 5
@@ -133,6 +187,15 @@ def test_validate_optional_int_valid():
 
 
 def test_validate_optional_int_missing_returns_none():
+    """
+    Test validate optional int missing returns none.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_validate_optional_int_missing_returns_none`.
+    """
+
     v = BaseEventValidator(set(), set(), set())
     result = v._validate_optional_int("test", {}, "count")
     assert result is None
@@ -149,6 +212,15 @@ def test_validate_optional_int_boolean_rejected():
 
 
 def test_validate_optional_int_below_minimum():
+    """
+    Test validate optional int below minimum.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_validate_optional_int_below_minimum`.
+    """
+
     v = BaseEventValidator(set(), set(), set())
     result = v._validate_optional_int("test", {"count": -1}, "count", minimum=0)
     assert result is None
@@ -156,6 +228,15 @@ def test_validate_optional_int_below_minimum():
 
 
 def test_validate_optional_bool_valid():
+    """
+    Test validate optional bool valid.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_validate_optional_bool_valid`.
+    """
+
     v = BaseEventValidator(set(), set(), set())
     result = v._validate_optional_bool("test", {"flag": True}, "flag")
     assert result is True
@@ -163,6 +244,15 @@ def test_validate_optional_bool_valid():
 
 
 def test_validate_optional_bool_string_rejected():
+    """
+    Test validate optional bool string rejected.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_validate_optional_bool_string_rejected`.
+    """
+
     v = BaseEventValidator(set(), set(), set())
     result = v._validate_optional_bool("test", {"flag": "true"}, "flag")
     assert result is None
@@ -170,6 +260,15 @@ def test_validate_optional_bool_string_rejected():
 
 
 def test_validate_optional_string_valid():
+    """
+    Test validate optional string valid.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_validate_optional_string_valid`.
+    """
+
     v = BaseEventValidator(set(), set(), set())
     result = v._validate_optional_string("test", {"name": "hello"}, "name")
     assert result == "hello"
@@ -177,6 +276,15 @@ def test_validate_optional_string_valid():
 
 
 def test_validate_optional_string_blank_rejected():
+    """
+    Test validate optional string blank rejected.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_validate_optional_string_blank_rejected`.
+    """
+
     v = BaseEventValidator(set(), set(), set())
     result = v._validate_optional_string("test", {"name": "  "}, "name", allow_blank=False)
     assert result is None
@@ -184,6 +292,15 @@ def test_validate_optional_string_blank_rejected():
 
 
 def test_validate_enum_string_valid():
+    """
+    Test validate enum string valid.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_validate_enum_string_valid`.
+    """
+
     v = BaseEventValidator(set(), set(), set())
     result = v._validate_enum_string("test", {"rarity": "common"}, "rarity", {"common", "rare"})
     assert result == "common"
@@ -191,6 +308,15 @@ def test_validate_enum_string_valid():
 
 
 def test_validate_enum_string_invalid():
+    """
+    Test validate enum string invalid.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_validate_enum_string_invalid`.
+    """
+
     v = BaseEventValidator(set(), set(), set())
     result = v._validate_enum_string("test", {"rarity": "mythic"}, "rarity", {"common", "rare"})
     assert result is None
@@ -198,6 +324,15 @@ def test_validate_enum_string_invalid():
 
 
 def test_validate_name_list_unknown_name():
+    """
+    Test validate name list unknown name.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_validate_name_list_unknown_name`.
+    """
+
     v = BaseEventValidator(breed_names={"poodle", "labrador"}, mutation_names=set(), event_names=set())
     v._validate_name_list("test", {"breeds": ["poodle", "unknown"]}, "breeds", v.breed_names)
     assert len(v.errors) == 1
@@ -205,6 +340,15 @@ def test_validate_name_list_unknown_name():
 
 
 def test_validate_int_list_valid():
+    """
+    Test validate int list valid.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_validate_int_list_valid`.
+    """
+
     v = BaseEventValidator(set(), set(), set())
     result = v._validate_int_list("test", {"ages": [1, 2, 3]}, "ages")
     assert result == [1, 2, 3]
@@ -212,6 +356,15 @@ def test_validate_int_list_valid():
 
 
 def test_validate_int_list_not_a_list():
+    """
+    Test validate int list not a list.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_validate_int_list_not_a_list`.
+    """
+
     v = BaseEventValidator(set(), set(), set())
     result = v._validate_int_list("test", {"ages": "bad"}, "ages")
     assert result is None

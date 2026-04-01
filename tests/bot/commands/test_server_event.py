@@ -10,7 +10,7 @@ from tests.bot.commands.conftest import capture_command_callback, make_interacti
 @pytest.mark.contract
 class TestServerEventCommand:
     async def test_requires_guild(self):
-        from src.bot.commands.server_event import register_server_event_command
+        from src.bot.commands import register_server_event_command
 
         callback = capture_command_callback(register_server_event_command)
         interaction = make_interaction()
@@ -23,7 +23,7 @@ class TestServerEventCommand:
         assert "server" in msg.lower()
 
     async def test_no_active_event(self):
-        from src.bot.commands.server_event import register_server_event_command
+        from src.bot.commands import register_server_event_command
 
         callback = capture_command_callback(register_server_event_command)
         interaction = make_interaction()
@@ -36,7 +36,7 @@ class TestServerEventCommand:
         assert "no active" in msg.lower()
 
     async def test_shows_active_event(self):
-        from src.bot.commands.server_event import register_server_event_command
+        from src.bot.commands import register_server_event_command
 
         callback = capture_command_callback(register_server_event_command)
         interaction = make_interaction()

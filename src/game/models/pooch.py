@@ -105,7 +105,7 @@ class Pooch:
         return "healthy"
 
 
-def _apply_stat_params(base: int, stat: str, mutation_orms: list, breed_pairs: list, injury_instances: list) -> int:
+def apply_stat_params(base: int, stat: str, mutation_orms: list, breed_pairs: list, injury_instances: list) -> int:
     """Apply _add and _mult parameters from mutations, breeds, and injuries to a base stat value.
 
     injury_instances: list of PoochInjury ORM records (each has .injury and .treated).
@@ -206,23 +206,23 @@ async def to_pooch(pooch: PoochORM) -> Pooch:
         name=pooch.name,
         age=pooch.age,
         sex=pooch.sex,
-        base_health=_apply_stat_params(pooch.base_health, "base_health", mutation_orms, breed_pairs, injury_instances),
+        base_health=apply_stat_params(pooch.base_health, "base_health", mutation_orms, breed_pairs, injury_instances),
         health_loss_age=pooch.health_loss_age,
-        strength=_apply_stat_params(pooch.strength, "strength", mutation_orms, breed_pairs, injury_instances),
-        cuteness=_apply_stat_params(pooch.cuteness, "cuteness", mutation_orms, breed_pairs, injury_instances),
-        fluffiness=_apply_stat_params(pooch.fluffiness, "fluffiness", mutation_orms, breed_pairs, injury_instances),
-        intelligence=_apply_stat_params(
+        strength=apply_stat_params(pooch.strength, "strength", mutation_orms, breed_pairs, injury_instances),
+        cuteness=apply_stat_params(pooch.cuteness, "cuteness", mutation_orms, breed_pairs, injury_instances),
+        fluffiness=apply_stat_params(pooch.fluffiness, "fluffiness", mutation_orms, breed_pairs, injury_instances),
+        intelligence=apply_stat_params(
             pooch.intelligence, "intelligence", mutation_orms, breed_pairs, injury_instances
         ),
-        dexterity=_apply_stat_params(pooch.dexterity, "dexterity", mutation_orms, breed_pairs, injury_instances),
-        fertility=_apply_stat_params(pooch.fertility, "fertility", mutation_orms, breed_pairs, injury_instances),
-        aggressiveness=_apply_stat_params(
+        dexterity=apply_stat_params(pooch.dexterity, "dexterity", mutation_orms, breed_pairs, injury_instances),
+        fertility=apply_stat_params(pooch.fertility, "fertility", mutation_orms, breed_pairs, injury_instances),
+        aggressiveness=apply_stat_params(
             pooch.aggressiveness, "aggressiveness", mutation_orms, breed_pairs, injury_instances
         ),
-        constitution=_apply_stat_params(
+        constitution=apply_stat_params(
             pooch.constitution, "constitution", mutation_orms, breed_pairs, injury_instances
         ),
-        size=_apply_stat_params(pooch.size, "size", mutation_orms, breed_pairs, injury_instances),
+        size=apply_stat_params(pooch.size, "size", mutation_orms, breed_pairs, injury_instances),
         breeding_cooldown=pooch.breeding_cooldown,
         alive=pooch.alive,
         virgin=pooch.virgin,

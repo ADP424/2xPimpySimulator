@@ -361,5 +361,17 @@ async def spend_bone_at_park(
 
 
 async def cast_out_pooch(pooch_id: int, server_discord_id: int) -> None:
+    """
+    Cast out pooch.
+
+    Parameters
+    ----------
+    pooch_id: Any
+        The `pooch_id` value.
+
+    server_discord_id: Any
+        The `server_discord_id` value.
+    """
+
     await cancel_listing_for_pooch(pooch_id)
     await add_pooch_to_strays(pooch_id, server_discord_id)

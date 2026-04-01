@@ -1,9 +1,37 @@
 from .breeding import (
     breed_pooches,
     calculate_incest_level,
+    combine_puppy_name,
 )
 from .change_day import (
+    death_roll,
+    refresh_moods,
     run_day_change,
+)
+from .events.owner_events import (
+    get_active_events_for_owner,
+    get_event_history,
+    get_pending_event,
+    list_all_owner_events,
+    process_expired_events,
+    respond_to_event,
+    run_hourly_event_check,
+    trigger_event_by_name,
+    trigger_random_event,
+    trigger_specific_event,
+)
+from .events.server_events import (
+    get_active_server_event,
+    list_active_server_events,
+    participate_in_server_event,
+    run_daily_server_event_cycle,
+    set_server_event_message_id,
+    trigger_daily_server_event,
+    trigger_server_event_by_name,
+)
+from .events.stray_events import (
+    run_daily_stray_event_check,
+    trigger_stray_event_by_name,
 )
 from .manage_auctions import (
     cancel_bounty_listing,
@@ -38,24 +66,13 @@ from .manage_hell import (
     summon_pooch,
 )
 from .manage_kennels import (
+    add_pooch_to_kennel,
     buy_kennel,
     get_kennel_buy_price,
     get_kennel_upgrade_price,
     list_kennel_pooches,
     rename_kennel,
     upgrade_kennel,
-)
-from .manage_owner_events import (
-    get_active_events_for_owner,
-    get_event_history,
-    get_pending_event,
-    list_all_owner_events,
-    process_expired_events,
-    respond_to_event,
-    run_hourly_event_check,
-    trigger_event_by_name,
-    trigger_random_event,
-    trigger_specific_event,
 )
 from .manage_owners import (
     add_money,
@@ -83,15 +100,6 @@ from .manage_pooches import (
     run_hourly_injury_persistence_check,
     treat_injury,
 )
-from .manage_server_events import (
-    get_active_server_event,
-    list_active_server_events,
-    participate_in_server_event,
-    run_daily_server_event_cycle,
-    set_server_event_message_id,
-    trigger_daily_server_event,
-    trigger_server_event_by_name,
-)
 from .manage_servers import (
     get_event_channel,
     get_or_create_server,
@@ -104,12 +112,9 @@ from .manage_static import (
     list_all_injuries,
     list_all_mutations,
 )
-from .manage_stray_events import (
-    run_daily_stray_event_check,
-    trigger_stray_event_by_name,
-)
 from .manage_vendors import (
     buy_pooch,
+    get_pooch_base_price,
     get_pooch_buy_price,
     get_pooch_sell_price,
     get_vendor_by_id,
@@ -222,4 +227,9 @@ __all__ = [
     "list_server_vendors",
     "list_vendor_pooches",
     "sell_pooch",
+    "refresh_moods",
+    "combine_puppy_name",
+    "death_roll",
+    "add_pooch_to_kennel",
+    "get_pooch_base_price",
 ]

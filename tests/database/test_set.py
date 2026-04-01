@@ -41,7 +41,7 @@ async def test_create_owner_adds_owner_to_session():
     scope_cls, mock_session = _mock_session_scope()
 
     with patch("src.database.set.session_scope", return_value=scope_cls()):
-        from src.database.set import create_owner
+        from src.database import create_owner
 
         result = await create_owner(12345)
 
@@ -56,10 +56,19 @@ async def test_create_owner_adds_owner_to_session():
 
 
 async def test_create_server_adds_server_to_session():
+    """
+    Test create server adds server to session.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_create_server_adds_server_to_session`.
+    """
+
     scope_cls, mock_session = _mock_session_scope()
 
     with patch("src.database.set.session_scope", return_value=scope_cls()):
-        from src.database.set import create_server
+        from src.database import create_server
 
         result = await create_server(67890)
 
@@ -76,7 +85,7 @@ async def test_create_server_adds_server_to_session():
 async def test_create_kennel_returns_none_when_owner_missing():
     """create_kennel should return None when the owner doesn't exist."""
     with patch("src.database.set.get_owner_by_discord_id", new=AsyncMock(return_value=None)):
-        from src.database.set import create_kennel
+        from src.database import create_kennel
 
         result = await create_kennel(999)
 
@@ -92,7 +101,7 @@ async def test_create_kennel_creates_with_defaults():
         patch("src.database.set.get_owner_by_discord_id", new=AsyncMock(return_value=fake_owner)),
         patch("src.database.set.session_scope", return_value=scope_cls()),
     ):
-        from src.database.set import create_kennel
+        from src.database import create_kennel
 
         result = await create_kennel(123)
 
@@ -111,7 +120,7 @@ async def test_create_kennel_with_custom_name_and_limit():
         patch("src.database.set.get_owner_by_discord_id", new=AsyncMock(return_value=fake_owner)),
         patch("src.database.set.session_scope", return_value=scope_cls()),
     ):
-        from src.database.set import create_kennel
+        from src.database import create_kennel
 
         result = await create_kennel(123, name="My Kennel", pooch_limit=20)
 
@@ -137,7 +146,7 @@ async def test_create_pooch_with_explicit_values():
         patch("src.database.set.get_vendor_by_id", new=AsyncMock(return_value=None)),
         patch("src.database.set.session_scope", return_value=scope_cls()),
     ):
-        from src.database.set import create_pooch
+        from src.database import create_pooch
 
         result = await create_pooch(
             name="TestDog",
@@ -185,7 +194,7 @@ async def test_create_pooch_vendor_clears_when_owner_given():
         patch("src.database.set.get_vendor_by_id", new=AsyncMock(return_value=fake_vendor)),
         patch("src.database.set.session_scope", return_value=scope_cls()),
     ):
-        from src.database.set import create_pooch
+        from src.database import create_pooch
 
         result = await create_pooch(
             owner_discord_id=1,
@@ -205,10 +214,19 @@ async def test_create_pooch_vendor_clears_when_owner_given():
 
 
 async def test_add_owner_to_server():
+    """
+    Test add owner to server.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_add_owner_to_server`.
+    """
+
     scope_cls, mock_session = _mock_session_scope()
 
     with patch("src.database.set.session_scope", return_value=scope_cls()):
-        from src.database.set import add_owner_to_server
+        from src.database import add_owner_to_server
 
         result = await add_owner_to_server(server_discord_id=111, owner_discord_id=222)
 
@@ -223,10 +241,19 @@ async def test_add_owner_to_server():
 
 
 async def test_add_pooch_to_kennel():
+    """
+    Test add pooch to kennel.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_add_pooch_to_kennel`.
+    """
+
     scope_cls, mock_session = _mock_session_scope()
 
     with patch("src.database.set.session_scope", return_value=scope_cls()):
-        from src.database.set import add_pooch_to_kennel
+        from src.database import add_pooch_to_kennel
 
         result = await add_pooch_to_kennel(kennel_id=1, pooch_id=2)
 
@@ -240,10 +267,19 @@ async def test_add_pooch_to_kennel():
 
 
 async def test_create_pooch_pregnancy():
+    """
+    Test create pooch pregnancy.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_create_pooch_pregnancy`.
+    """
+
     scope_cls, mock_session = _mock_session_scope()
 
     with patch("src.database.set.session_scope", return_value=scope_cls()):
-        from src.database.set import create_pooch_pregnancy
+        from src.database import create_pooch_pregnancy
 
         result = await create_pooch_pregnancy(mother_id=10, fetus_id=20)
 
@@ -257,11 +293,20 @@ async def test_create_pooch_pregnancy():
 
 
 async def test_bury_pooch_returns_none_when_owner_missing():
+    """
+    Test bury pooch returns none when owner missing.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_bury_pooch_returns_none_when_owner_missing`.
+    """
+
     with (
         patch("src.database.set.get_owner_by_discord_id", new=AsyncMock(return_value=None)),
         patch("src.database.set.get_pooch_by_id", new=AsyncMock(return_value=SimpleNamespace(id=1))),
     ):
-        from src.database.set import bury_pooch
+        from src.database import bury_pooch
 
         result = await bury_pooch(999, 1)
 
@@ -269,11 +314,20 @@ async def test_bury_pooch_returns_none_when_owner_missing():
 
 
 async def test_bury_pooch_returns_none_when_pooch_missing():
+    """
+    Test bury pooch returns none when pooch missing.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_bury_pooch_returns_none_when_pooch_missing`.
+    """
+
     with (
         patch("src.database.set.get_owner_by_discord_id", new=AsyncMock(return_value=SimpleNamespace(discord_id=1))),
         patch("src.database.set.get_pooch_by_id", new=AsyncMock(return_value=None)),
     ):
-        from src.database.set import bury_pooch
+        from src.database import bury_pooch
 
         result = await bury_pooch(1, 999)
 
@@ -281,6 +335,15 @@ async def test_bury_pooch_returns_none_when_pooch_missing():
 
 
 async def test_bury_pooch_success():
+    """
+    Test bury pooch success.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_bury_pooch_success`.
+    """
+
     fake_owner = SimpleNamespace(discord_id=1)
     fake_pooch = SimpleNamespace(id=10)
     scope_cls, mock_session = _mock_session_scope()
@@ -290,7 +353,7 @@ async def test_bury_pooch_success():
         patch("src.database.set.get_pooch_by_id", new=AsyncMock(return_value=fake_pooch)),
         patch("src.database.set.session_scope", return_value=scope_cls()),
     ):
-        from src.database.set import bury_pooch
+        from src.database import bury_pooch
 
         result = await bury_pooch(1, 10)
 
@@ -304,10 +367,19 @@ async def test_bury_pooch_success():
 
 
 async def test_add_pooch_breeds_ignores_non_positive_weights():
+    """
+    Test add pooch breeds ignores non positive weights.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_add_pooch_breeds_ignores_non_positive_weights`.
+    """
+
     scope_cls, mock_session = _mock_session_scope()
 
     with patch("src.database.set.session_scope", return_value=scope_cls()):
-        from src.database.set import add_pooch_breeds
+        from src.database import add_pooch_breeds
 
         result = await add_pooch_breeds(1, {10: 2, 11: 0, 12: -1})
 
@@ -318,10 +390,19 @@ async def test_add_pooch_breeds_ignores_non_positive_weights():
 
 
 async def test_add_pooch_breeds_empty():
+    """
+    Test add pooch breeds empty.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_add_pooch_breeds_empty`.
+    """
+
     scope_cls, mock_session = _mock_session_scope()
 
     with patch("src.database.set.session_scope", return_value=scope_cls()):
-        from src.database.set import add_pooch_breeds
+        from src.database import add_pooch_breeds
 
         result = await add_pooch_breeds(1, {})
 
@@ -334,11 +415,20 @@ async def test_add_pooch_breeds_empty():
 
 
 async def test_add_pooch_to_vendor_stock_returns_none_when_vendor_missing():
+    """
+    Test add pooch to vendor stock returns none when vendor missing.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_add_pooch_to_vendor_stock_returns_none_when_vendor_missing`.
+    """
+
     with (
         patch("src.database.set.get_vendor_by_id", new=AsyncMock(return_value=None)),
         patch("src.database.set.get_pooch_by_id", new=AsyncMock(return_value=SimpleNamespace(id=1))),
     ):
-        from src.database.set import add_pooch_to_vendor_stock
+        from src.database import add_pooch_to_vendor_stock
 
         result = await add_pooch_to_vendor_stock(999, 1)
 
@@ -346,11 +436,20 @@ async def test_add_pooch_to_vendor_stock_returns_none_when_vendor_missing():
 
 
 async def test_add_pooch_to_vendor_stock_returns_none_when_pooch_missing():
+    """
+    Test add pooch to vendor stock returns none when pooch missing.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_add_pooch_to_vendor_stock_returns_none_when_pooch_missing`.
+    """
+
     with (
         patch("src.database.set.get_vendor_by_id", new=AsyncMock(return_value=SimpleNamespace(id=1))),
         patch("src.database.set.get_pooch_by_id", new=AsyncMock(return_value=None)),
     ):
-        from src.database.set import add_pooch_to_vendor_stock
+        from src.database import add_pooch_to_vendor_stock
 
         result = await add_pooch_to_vendor_stock(1, 999)
 
@@ -358,6 +457,15 @@ async def test_add_pooch_to_vendor_stock_returns_none_when_pooch_missing():
 
 
 async def test_add_pooch_to_vendor_stock_success():
+    """
+    Test add pooch to vendor stock success.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_add_pooch_to_vendor_stock_success`.
+    """
+
     fake_vendor = SimpleNamespace(id=1)
     fake_pooch = SimpleNamespace(id=10)
     scope_cls, mock_session = _mock_session_scope()
@@ -367,7 +475,7 @@ async def test_add_pooch_to_vendor_stock_success():
         patch("src.database.set.get_pooch_by_id", new=AsyncMock(return_value=fake_pooch)),
         patch("src.database.set.session_scope", return_value=scope_cls()),
     ):
-        from src.database.set import add_pooch_to_vendor_stock
+        from src.database import add_pooch_to_vendor_stock
 
         result = await add_pooch_to_vendor_stock(1, 10)
 
@@ -399,7 +507,7 @@ async def test_add_breed_to_pooch_returns_existing_when_already_present():
             pass
 
     with patch("src.database.set.session_scope", return_value=_FakeScope()):
-        from src.database.set import add_breed_to_pooch
+        from src.database import add_breed_to_pooch
 
         result = await add_breed_to_pooch(pooch_id=1, breed_id=5)
 
@@ -424,7 +532,7 @@ async def test_add_breed_to_pooch_full_weight_replaces_existing():
             pass
 
     with patch("src.database.set.session_scope", return_value=_FakeScope()):
-        from src.database.set import add_breed_to_pooch
+        from src.database import add_breed_to_pooch
 
         result = await add_breed_to_pooch(pooch_id=1, breed_id=5, weight=1.0)
 
@@ -456,7 +564,7 @@ async def test_add_breed_to_pooch_partial_weight():
 
     # weight=0.5 means new breed = 50% of total. relative = 0.5/0.5 * 4 = 4
     with patch("src.database.set.session_scope", return_value=_FakeScope()):
-        from src.database.set import add_breed_to_pooch
+        from src.database import add_breed_to_pooch
 
         result = await add_breed_to_pooch(pooch_id=1, breed_id=5, weight=0.5)
 
@@ -471,6 +579,15 @@ async def test_add_breed_to_pooch_partial_weight():
 
 
 async def test_add_mutation_to_pooch_returns_existing_when_already_present():
+    """
+    Test add mutation to pooch returns existing when already present.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_add_mutation_to_pooch_returns_existing_when_already_present`.
+    """
+
     existing = SimpleNamespace(pooch_id=1, mutation_id=3)
 
     mock_session = AsyncMock()
@@ -486,7 +603,7 @@ async def test_add_mutation_to_pooch_returns_existing_when_already_present():
             pass
 
     with patch("src.database.set.session_scope", return_value=_FakeScope()):
-        from src.database.set import add_mutation_to_pooch
+        from src.database import add_mutation_to_pooch
 
         result = await add_mutation_to_pooch(pooch_id=1, mutation_id=3)
 
@@ -494,6 +611,15 @@ async def test_add_mutation_to_pooch_returns_existing_when_already_present():
 
 
 async def test_add_mutation_to_pooch_returns_none_when_mutation_not_found():
+    """
+    Test add mutation to pooch returns none when mutation not found.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_add_mutation_to_pooch_returns_none_when_mutation_not_found`.
+    """
+
     mock_session = AsyncMock()
     # First scalar: no existing PoochMutation; second scalar: Mutation not found
     mock_session.scalar = AsyncMock(side_effect=[None, None])
@@ -510,7 +636,7 @@ async def test_add_mutation_to_pooch_returns_none_when_mutation_not_found():
             pass
 
     with patch("src.database.set.session_scope", return_value=_FakeScope()):
-        from src.database.set import add_mutation_to_pooch
+        from src.database import add_mutation_to_pooch
 
         result = await add_mutation_to_pooch(pooch_id=1, mutation_id=99)
 
@@ -538,7 +664,7 @@ async def test_add_mutation_to_pooch_returns_none_when_incompatible():
             pass
 
     with patch("src.database.set.session_scope", return_value=_FakeScope()):
-        from src.database.set import add_mutation_to_pooch
+        from src.database import add_mutation_to_pooch
 
         result = await add_mutation_to_pooch(pooch_id=1, mutation_id=5)
 
@@ -568,7 +694,7 @@ async def test_add_mutation_to_pooch_success():
             pass
 
     with patch("src.database.set.session_scope", return_value=_FakeScope()):
-        from src.database.set import add_mutation_to_pooch
+        from src.database import add_mutation_to_pooch
 
         result = await add_mutation_to_pooch(pooch_id=1, mutation_id=5)
 
@@ -583,6 +709,15 @@ async def test_add_mutation_to_pooch_success():
 
 
 async def test_create_active_owner_event():
+    """
+    Test create active owner event.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_create_active_owner_event`.
+    """
+
     fake_event = SimpleNamespace(id=100, event_id=1, owner_discord_id=42)
 
     mock_session = AsyncMock()
@@ -602,7 +737,7 @@ async def test_create_active_owner_event():
             pass
 
     with patch("src.database.set.session_scope", return_value=_FakeScope()):
-        from src.database.set import create_active_owner_event
+        from src.database import create_active_owner_event
 
         result = await create_active_owner_event(event_id=1, owner_discord_id=42)
 
@@ -617,14 +752,32 @@ async def test_create_active_owner_event():
 
 
 async def test_damn_pooch_returns_none_when_pooch_missing():
+    """
+    Test damn pooch returns none when pooch missing.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_damn_pooch_returns_none_when_pooch_missing`.
+    """
+
     with patch("src.database.set.get_pooch_by_id", new=AsyncMock(return_value=None)):
-        from src.database.set import damn_pooch
+        from src.database import damn_pooch
 
         result = await damn_pooch(999)
     assert result is None
 
 
 async def test_damn_pooch_adds_to_hell():
+    """
+    Test damn pooch adds to hell.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_damn_pooch_adds_to_hell`.
+    """
+
     fake_pooch = SimpleNamespace(id=10)
     scope_cls, mock_session = _mock_session_scope()
 
@@ -646,7 +799,7 @@ async def test_damn_pooch_adds_to_hell():
         patch("src.database.set.get_pooch_by_id", new=AsyncMock(return_value=fake_pooch)),
         patch("src.database.set.session_scope", return_value=scope_cls()),
     ):
-        from src.database.set import damn_pooch
+        from src.database import damn_pooch
 
         result = await damn_pooch(10)
 
@@ -660,6 +813,15 @@ async def test_damn_pooch_adds_to_hell():
 
 
 async def test_revive_pooch_returns_none_when_missing():
+    """
+    Test revive pooch returns none when missing.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_revive_pooch_returns_none_when_missing`.
+    """
+
     scope_cls, mock_session = _mock_session_scope()
     mock_response = MagicMock()
     mock_response.scalar_one_or_none.return_value = None
@@ -667,13 +829,22 @@ async def test_revive_pooch_returns_none_when_missing():
     mock_session.get = AsyncMock(return_value=None)
 
     with patch("src.database.set.session_scope", return_value=scope_cls()):
-        from src.database.set import revive_pooch
+        from src.database import revive_pooch
 
         result = await revive_pooch(999)
     assert result is None
 
 
 async def test_revive_pooch_sets_alive():
+    """
+    Test revive pooch sets alive.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_revive_pooch_sets_alive`.
+    """
+
     fake_pooch = SimpleNamespace(id=5, alive=False)
     scope_cls, mock_session = _mock_session_scope()
 
@@ -686,7 +857,7 @@ async def test_revive_pooch_sets_alive():
     mock_session.flush = AsyncMock()
 
     with patch("src.database.set.session_scope", return_value=scope_cls()):
-        from src.database.set import revive_pooch
+        from src.database import revive_pooch
 
         result = await revive_pooch(5)
     assert result.alive is True
@@ -698,6 +869,15 @@ async def test_revive_pooch_sets_alive():
 
 
 async def test_set_pooch_parentage():
+    """
+    Test set pooch parentage.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_set_pooch_parentage`.
+    """
+
     scope_cls, mock_session = _mock_session_scope()
 
     added_objects = []
@@ -705,7 +885,7 @@ async def test_set_pooch_parentage():
     mock_session.flush = AsyncMock()
 
     with patch("src.database.set.session_scope", return_value=scope_cls()):
-        from src.database.set import set_pooch_parentage
+        from src.database import set_pooch_parentage
 
         result = await set_pooch_parentage(child_id=3, father_id=1, mother_id=2)
 
@@ -720,6 +900,15 @@ async def test_set_pooch_parentage():
 
 
 async def test_create_server_event_occurrence():
+    """
+    Test create server event occurrence.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_create_server_event_occurrence`.
+    """
+
     from datetime import datetime, timezone
 
     scope_cls, mock_session = _mock_session_scope()
@@ -732,7 +921,7 @@ async def test_create_server_event_occurrence():
     expires = datetime.now(timezone.utc)
 
     with patch("src.database.set.session_scope", return_value=scope_cls()):
-        from src.database.set import create_server_event_occurrence
+        from src.database import create_server_event_occurrence
 
         result = await create_server_event_occurrence(200, 10, {}, expires)
 
@@ -746,6 +935,15 @@ async def test_create_server_event_occurrence():
 
 
 async def test_create_server_event_participation():
+    """
+    Test create server event participation.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_create_server_event_participation`.
+    """
+
     scope_cls, mock_session = _mock_session_scope()
 
     added_objects = []
@@ -754,7 +952,7 @@ async def test_create_server_event_participation():
     mock_session.refresh = AsyncMock(side_effect=lambda obj: None)
 
     with patch("src.database.set.session_scope", return_value=scope_cls()):
-        from src.database.set import create_server_event_participation
+        from src.database import create_server_event_participation
 
         result = await create_server_event_participation(5, 100, {}, {"answer": "yes"}, {"coins": 10})
 

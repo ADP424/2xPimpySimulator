@@ -1,10 +1,24 @@
 from discord import Interaction, app_commands
 
-from src.bot.ui.events import send_event_history_dm
+from src.bot.ui import send_event_history_dm
 from src.game import get_event_history
 
 
 def register_event_history_command(tree: app_commands.CommandTree):
+    """
+    Register event history command.
+
+    Parameters
+    ----------
+    tree: Any
+        The `tree` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `register_event_history_command`.
+    """
+
     @tree.command(name="event_history", description="DM yourself your recent event history")
     @app_commands.describe(limit="How many recent history entries to include")
     async def event_history(interaction: Interaction, limit: app_commands.Range[int, 1, 50] = 25):

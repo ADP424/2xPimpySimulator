@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.bot.event_loop import hourly_event_runner, post_hourly_event_notifications
+from src.bot import hourly_event_runner, post_hourly_event_notifications
 
 
 def _make_bot():

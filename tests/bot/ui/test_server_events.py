@@ -6,19 +6,19 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import discord
 import pytest
 
-from src.bot.ui.server_events import (
+from src.bot.ui import (
     ServerEventParticipationView,
     ServerEventPoochSelect,
-    _color_for_severity,
-    _discord_timestamp,
-    _format_participation_status,
-    _list_owner_living_pooches,
-    _menu_is_available,
-    _truncate,
     build_server_event_embed,
     build_server_event_resolution_embed,
+    color_for_severity,
+    discord_timestamp,
+    format_participation_status,
+    list_owner_living_pooches,
+    menu_is_available,
     refresh_public_server_event_message,
     register_active_server_event_views,
+    truncate,
 )
 from src.game.models.events.server_events import ServerEventMenu, ServerEventMenuOption
 
@@ -87,37 +87,37 @@ def _make_triggered_server_event(
 @pytest.mark.contract
 class TestServerEventColorForSeverity:
     def test_known_severities(self):
-        assert _color_for_severity("trivial") == discord.Color.light_grey()
-        assert _color_for_severity("moderate") == discord.Color.blurple()
-        assert _color_for_severity("major") == discord.Color.orange()
-        assert _color_for_severity("critical") == discord.Color.red()
+        assert color_for_severity("trivial") == discord.Color.light_grey()
+        assert color_for_severity("moderate") == discord.Color.blurple()
+        assert color_for_severity("major") == discord.Color.orange()
+        assert color_for_severity("critical") == discord.Color.red()
 
     def test_unknown_defaults_to_blurple(self):
-        assert _color_for_severity("legendary") == discord.Color.blurple()
+        assert color_for_severity("legendary") == discord.Color.blurple()
 
 
 @pytest.mark.contract
 class TestServerEventTruncate:
     def test_short_text(self):
-        assert _truncate("hello") == "hello"
+        assert truncate("hello") == "hello"
 
     def test_long_text(self):
-        result = _truncate("x" * 2000, limit=10)
+        result = truncate("x" * 2000, limit=10)
         assert result.endswith("...")
         assert len(result) < 2000
 
     def test_none_input(self):
-        assert _truncate(None) == ""
+        assert truncate(None) == ""
 
 
 @pytest.mark.contract
 class TestServerEventDiscordTimestamp:
     def test_none_returns_dash(self):
-        assert _discord_timestamp(None) == "\u2014"
+        assert discord_timestamp(None) == "\u2014"
 
     def test_datetime_formats(self):
         dt = datetime(2024, 6, 15, 12, 0, 0, tzinfo=timezone.utc)
-        result = _discord_timestamp(dt, "R")
+        result = discord_timestamp(dt, "R")
         assert result.startswith("<t:")
         assert result.endswith(":R>")
 
@@ -126,23 +126,23 @@ class TestServerEventDiscordTimestamp:
 class TestMenuIsAvailable:
     def test_available_when_no_deps(self):
         menu = _make_menu(max_uses_per_player=1)
-        assert _menu_is_available(menu, set(), {}) is True
+        assert menu_is_available(menu, set(), {}) is True
 
     def test_locked_when_dep_not_used(self):
         menu = _make_menu(depends_on=["enter"])
-        assert _menu_is_available(menu, set(), {}) is False
+        assert menu_is_available(menu, set(), {}) is False
 
     def test_available_when_dep_used(self):
         menu = _make_menu(name="boost", depends_on=["enter"])
-        assert _menu_is_available(menu, {"enter"}, {}) is True
+        assert menu_is_available(menu, {"enter"}, {}) is True
 
     def test_exhausted_max_uses(self):
         menu = _make_menu(max_uses_per_player=1)
-        assert _menu_is_available(menu, set(), {"enter": 1}) is False
+        assert menu_is_available(menu, set(), {"enter": 1}) is False
 
     def test_unlimited_never_exhausted(self):
         menu = _make_menu(max_uses_per_player=-1)
-        assert _menu_is_available(menu, set(), {"enter": 999}) is True
+        assert menu_is_available(menu, set(), {"enter": 999}) is True
 
 
 @pytest.mark.contract
@@ -247,7 +247,7 @@ class TestRegisterActiveServerEventViews:
 class TestFormatParticipationStatus:
     def test_no_participation(self):
         event = _make_triggered_server_event(viewer_participation=None)
-        result = _format_participation_status(event)
+        result = format_participation_status(event)
         assert "not participated" in result.lower()
 
     def test_with_submission_shows_menu_and_option(self):
@@ -261,7 +261,7 @@ class TestFormatParticipationStatus:
         participation.entity_references.pooches = []
 
         event = _make_triggered_server_event(viewer_participation=participation)
-        result = _format_participation_status(event)
+        result = format_participation_status(event)
         assert "enter" in result
         assert "Buy a ticket" in result
 
@@ -276,7 +276,7 @@ class TestFormatParticipationStatus:
         participation.entity_references.pooches = []
 
         event = _make_triggered_server_event(viewer_participation=participation)
-        result = _format_participation_status(event)
+        result = format_participation_status(event)
         assert "2" in result
 
 
@@ -300,7 +300,7 @@ class TestListOwnerLivingPooches:
                 return_value=[alive_pooch, dead_pooch],
             ),
         ):
-            result = await _list_owner_living_pooches(server_discord_id=200, owner_discord_id=100)
+            result = await list_owner_living_pooches(server_discord_id=200, owner_discord_id=100)
             assert len(result) == 1
             assert result[0].alive is True
 
@@ -309,7 +309,7 @@ class TestListOwnerLivingPooches:
             patch("src.bot.ui.server_events.get_or_create_owner", new_callable=AsyncMock),
             patch("src.bot.ui.server_events.list_owner_kennels", new_callable=AsyncMock, return_value=[]),
         ):
-            result = await _list_owner_living_pooches(server_discord_id=200, owner_discord_id=100)
+            result = await list_owner_living_pooches(server_discord_id=200, owner_discord_id=100)
             assert result == []
 
 

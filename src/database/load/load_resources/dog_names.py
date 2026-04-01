@@ -1,9 +1,9 @@
 from sqlalchemy import delete
 
+from src.database.session import session_scope
 from src.logger import get_logger
 
 from ...models import DogName
-from ...session import session_scope
 from .utils import (
     RESOURCE_ROOT,
     load_names_from_root,
@@ -16,6 +16,15 @@ _DOG_NAMES_ROOT = RESOURCE_ROOT / "dog_names"
 
 
 async def load_dog_names():
+    """
+    Load dog names.
+
+    Returns
+    -------
+    Any
+        The result of calling `load_dog_names`.
+    """
+
     logger.info(f"Loading dog names from '{_DOG_NAMES_ROOT}/**/*.txt' into the database...")
 
     dog_names = validate_name_list("dog_names", load_names_from_root(_DOG_NAMES_ROOT))

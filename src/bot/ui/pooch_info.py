@@ -183,7 +183,9 @@ class _InjurySelect(Select):
 
 
 class PoochInfoView(View):
-    def __init__(self, *, server: Server, pooch: Pooch, owner: Optional[Owner], timeout: float = VIEW_TIMEOUT):
+    def __init__(
+        self, *, server: Optional[Server], pooch: Pooch, owner: Optional[Owner], timeout: float = VIEW_TIMEOUT
+    ):
         super().__init__(timeout=timeout)
         self.server = server
         self.pooch = pooch

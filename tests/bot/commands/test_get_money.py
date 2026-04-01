@@ -10,7 +10,7 @@ from tests.bot.commands.conftest import capture_command_callback, make_interacti
 @pytest.mark.contract
 class TestGetMoneyCommand:
     async def test_requires_guild(self):
-        from src.bot.commands.get_money import register_get_money_command
+        from src.bot.commands import register_get_money_command
 
         callback = capture_command_callback(register_get_money_command)
         interaction = make_interaction()
@@ -23,7 +23,7 @@ class TestGetMoneyCommand:
         assert "server" in msg.lower()
 
     async def test_adds_money_and_responds(self):
-        from src.bot.commands.get_money import register_get_money_command
+        from src.bot.commands import register_get_money_command
 
         callback = capture_command_callback(register_get_money_command)
         interaction = make_interaction()

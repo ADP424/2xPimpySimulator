@@ -52,6 +52,29 @@ async def to_auction_sale_listing(
     highest_bidder_discord_id: Optional[int] = None,
     bid_count: int = 0,
 ) -> AuctionSaleListing:
+    """
+    To auction sale listing.
+
+    Parameters
+    ----------
+    orm: Any
+        The `orm` value.
+
+    highest_bid: Any
+        The `highest_bid` value.
+
+    highest_bidder_discord_id: Any
+        The `highest_bidder_discord_id` value.
+
+    bid_count: Any
+        The `bid_count` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `to_auction_sale_listing`.
+    """
+
     from src.database import get_pooch_by_id
 
     from .pooch import to_pooch
@@ -74,6 +97,20 @@ async def to_auction_sale_listing(
 
 
 def to_auction_bounty_listing(orm: "AuctionBountyListingORM") -> AuctionBountyListing:
+    """
+    To auction bounty listing.
+
+    Parameters
+    ----------
+    orm: Any
+        The `orm` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `to_auction_bounty_listing`.
+    """
+
     return AuctionBountyListing(
         id=orm.id,
         buyer_discord_id=orm.buyer_discord_id,

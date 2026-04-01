@@ -6,13 +6,27 @@ from typing import TYPE_CHECKING, Optional
 import discord
 from discord.ui import Button, Select, View
 
-from src.bot.ui import edit_interaction, reply_to_interacted_message
+from src.bot.ui.util import edit_interaction, reply_to_interacted_message
 
 if TYPE_CHECKING:
     from src.database.models import Injury
 
 
 def build_injury_info_embed(injury: Injury) -> discord.Embed:
+    """
+    Build injury info embed.
+
+    Parameters
+    ----------
+    injury: Any
+        The `injury` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `build_injury_info_embed`.
+    """
+
     embed = discord.Embed(title=injury.name, description=injury.description or "No description.")
     embed.add_field(
         name="Health Impact",

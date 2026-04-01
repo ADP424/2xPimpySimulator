@@ -4,14 +4,20 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from conftest import make_breed, make_kennel, make_mutation, make_owner, make_pooch
-from src.game.exceptions import PoochNotFound
-from src.game.manage_hell import (
+from src.game import (
     conjure_pooch,
     get_conjure_pooch_price,
     get_pooch_bloodskull_value,
     get_summon_pooch_price,
     sacrifice_pooch,
+)
+from src.game.exceptions import PoochNotFound
+from tests.conftest import (
+    make_breed,
+    make_kennel,
+    make_mutation,
+    make_owner,
+    make_pooch,
 )
 
 

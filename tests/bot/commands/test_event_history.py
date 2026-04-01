@@ -10,7 +10,7 @@ from tests.bot.commands.conftest import capture_command_callback, make_interacti
 @pytest.mark.contract
 class TestEventHistoryCommand:
     async def test_no_history(self):
-        from src.bot.commands.event_history import register_event_history_command
+        from src.bot.commands import register_event_history_command
 
         callback = capture_command_callback(register_event_history_command)
         interaction = make_interaction()
@@ -23,7 +23,7 @@ class TestEventHistoryCommand:
         assert "not" in msg.lower() or "no" in msg.lower()
 
     async def test_sends_dm_on_success(self):
-        from src.bot.commands.event_history import register_event_history_command
+        from src.bot.commands import register_event_history_command
 
         callback = capture_command_callback(register_event_history_command)
         interaction = make_interaction()

@@ -5,6 +5,20 @@ from src.bot.day_change_loop import is_day_change_paused, set_day_change_paused
 
 
 def register_pause_day_loop_command(tree: app_commands.CommandTree):
+    """
+    Register pause day loop command.
+
+    Parameters
+    ----------
+    tree: Any
+        The `tree` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `register_pause_day_loop_command`.
+    """
+
     @tree.command(name="pause_day_loop", description="(DEV) Pause/resume the day change loop", guilds=GUILDS)
     async def pause_day_loop(interaction: Interaction):
         bot = interaction.client

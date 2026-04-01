@@ -5,13 +5,13 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from conftest import make_pooch
-from src.game.exceptions import PoochNotFound
-from src.game.manage_pooches import (
+from src.game import (
     get_pooch_by_id,
     rename_pooch,
     run_hourly_breeding_cooldown_check,
 )
+from src.game.exceptions import PoochNotFound
+from tests.conftest import make_pooch
 
 # ---------------------------------------------------------------------------
 # get_pooch_by_id

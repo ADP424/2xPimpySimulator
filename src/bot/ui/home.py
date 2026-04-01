@@ -14,6 +14,23 @@ from .kennels import KennelsPageSource
 
 
 async def build_home_content(guild_id: int, user_id: int) -> str:
+    """
+    Build home content.
+
+    Parameters
+    ----------
+    guild_id: Any
+        The `guild_id` value.
+
+    user_id: Any
+        The `user_id` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `build_home_content`.
+    """
+
     owner = await get_or_create_owner(guild_id, user_id)
     return (
         f"**{mention(owner.discord_id)}'s Home**\n"
@@ -24,6 +41,20 @@ async def build_home_content(guild_id: int, user_id: int) -> str:
 
 
 async def send_home_menu(interaction: discord.Interaction):
+    """
+    Send home menu.
+
+    Parameters
+    ----------
+    interaction: Any
+        The `interaction` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `send_home_menu`.
+    """
+
     r = InteractionResponder(interaction, ephemeral=False)
     if interaction.guild_id is None:
         await r.reply(content="This must be used in a server.")

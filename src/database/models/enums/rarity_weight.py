@@ -1,7 +1,7 @@
 from sqlalchemy import Integer
 from sqlalchemy.orm import Mapped, mapped_column
 
-from src.database.models import Base
+from src.database.models.base import Base
 from src.database.models.enums.rarity import RARITY
 
 

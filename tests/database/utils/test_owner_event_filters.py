@@ -7,58 +7,121 @@ query results to test the filtering logic in isolation.
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
-from src.database.utils.owner_event_filters import (
-    _is_excluded,
-    _normalize_name,
-    _strip_requirement_metadata,
+from src.database.utils import (
     check_owner_event_filter,
+    is_excluded,
+    normalize_name,
+    strip_requirement_metadata,
 )
 
 # ---------------------------------------------------------------------------
-# _is_excluded
+# is_excluded
 # ---------------------------------------------------------------------------
 
 
 def test_is_excluded_returns_false_for_none():
-    assert _is_excluded(5, None) is False
+    """
+    Test is excluded returns false for none.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_is_excluded_returns_false_for_none`.
+    """
+
+    assert is_excluded(5, None) is False
 
 
 def test_is_excluded_returns_false_for_empty_list():
-    assert _is_excluded(5, []) is False
+    """
+    Test is excluded returns false for empty list.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_is_excluded_returns_false_for_empty_list`.
+    """
+
+    assert is_excluded(5, []) is False
 
 
 def test_is_excluded_returns_true_when_present():
-    assert _is_excluded(5, [3, 5, 7]) is True
+    """
+    Test is excluded returns true when present.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_is_excluded_returns_true_when_present`.
+    """
+
+    assert is_excluded(5, [3, 5, 7]) is True
 
 
 def test_is_excluded_returns_false_when_absent():
-    assert _is_excluded(5, [3, 7, 9]) is False
+    """
+    Test is excluded returns false when absent.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_is_excluded_returns_false_when_absent`.
+    """
+
+    assert is_excluded(5, [3, 7, 9]) is False
 
 
 def test_is_excluded_converts_float_to_int():
     """The value should be converted to int before checking."""
-    assert _is_excluded(5.0, [5]) is True
+    assert is_excluded(5.0, [5]) is True
 
 
 # ---------------------------------------------------------------------------
-# _normalize_name
+# normalize_name
 # ---------------------------------------------------------------------------
 
 
 def test_normalize_name_strips_and_lowercases():
-    assert _normalize_name("  Golden Retriever  ") == "golden retriever"
+    """
+    Test normalize name strips and lowercases.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_normalize_name_strips_and_lowercases`.
+    """
+
+    assert normalize_name("  Golden Retriever  ") == "golden retriever"
 
 
 def test_normalize_name_empty_string():
-    assert _normalize_name("") == ""
+    """
+    Test normalize name empty string.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_normalize_name_empty_string`.
+    """
+
+    assert normalize_name("") == ""
 
 
 # ---------------------------------------------------------------------------
-# _strip_requirement_metadata
+# strip_requirement_metadata
 # ---------------------------------------------------------------------------
 
 
 def test_strip_requirement_metadata_removes_meta_keys():
+    """
+    Test strip requirement metadata removes meta keys.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_strip_requirement_metadata_removes_meta_keys`.
+    """
+
     filter_spec = {
         "min_count": 1,
         "max_count": 5,
@@ -66,7 +129,7 @@ def test_strip_requirement_metadata_removes_meta_keys():
         "min_age": 2,
         "sex": "male",
     }
-    result = _strip_requirement_metadata(filter_spec)
+    result = strip_requirement_metadata(filter_spec)
     assert "min_count" not in result
     assert "max_count" not in result
     assert "description" not in result
@@ -75,12 +138,30 @@ def test_strip_requirement_metadata_removes_meta_keys():
 
 
 def test_strip_requirement_metadata_empty_dict():
-    assert _strip_requirement_metadata({}) == {}
+    """
+    Test strip requirement metadata empty dict.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_strip_requirement_metadata_empty_dict`.
+    """
+
+    assert strip_requirement_metadata({}) == {}
 
 
 def test_strip_requirement_metadata_no_meta_keys():
+    """
+    Test strip requirement metadata no meta keys.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_strip_requirement_metadata_no_meta_keys`.
+    """
+
     filter_spec = {"min_age": 1, "max_age": 10}
-    result = _strip_requirement_metadata(filter_spec)
+    result = strip_requirement_metadata(filter_spec)
     assert result == filter_spec
 
 
@@ -286,7 +367,7 @@ async def test_check_owner_event_filter_passes_all_checks():
 
 import random as _random
 
-from src.database.utils.owner_event_filters import (
+from src.database.utils import (
     check_server_event_filter,
     check_stray_event_filter,
     count_matching_kennels_for_owner,
@@ -301,6 +382,15 @@ from src.database.utils.owner_event_filters import (
 
 
 async def test_count_matching_pooches_for_owner():
+    """
+    Test count matching pooches for owner.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_count_matching_pooches_for_owner`.
+    """
+
     mock_session = AsyncMock()
     query_result = MagicMock()
     query_result.scalars.return_value.all.return_value = []
@@ -313,6 +403,15 @@ async def test_count_matching_pooches_for_owner():
 
 
 async def test_count_matching_pooches_for_owner_returns_zero_on_none():
+    """
+    Test count matching pooches for owner returns zero on none.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_count_matching_pooches_for_owner_returns_zero_on_none`.
+    """
+
     mock_session = AsyncMock()
     mock_session.scalar = AsyncMock(return_value=None)
     query_result = MagicMock()
@@ -324,6 +423,15 @@ async def test_count_matching_pooches_for_owner_returns_zero_on_none():
 
 
 async def test_get_matching_pooch_ids_for_owner():
+    """
+    Test get matching pooch ids for owner.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_get_matching_pooch_ids_for_owner`.
+    """
+
     mock_session = AsyncMock()
     query_result = MagicMock()
     query_result.scalars.return_value.all.return_value = [10, 20, 30]
@@ -334,6 +442,15 @@ async def test_get_matching_pooch_ids_for_owner():
 
 
 async def test_get_random_matching_pooch_id_returns_none_when_no_matches():
+    """
+    Test get random matching pooch id returns none when no matches.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_get_random_matching_pooch_id_returns_none_when_no_matches`.
+    """
+
     mock_session = AsyncMock()
     query_result = MagicMock()
     query_result.scalars.return_value.all.return_value = []
@@ -344,6 +461,15 @@ async def test_get_random_matching_pooch_id_returns_none_when_no_matches():
 
 
 async def test_get_random_matching_pooch_id_returns_one_of_ids():
+    """
+    Test get random matching pooch id returns one of ids.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_get_random_matching_pooch_id_returns_one_of_ids`.
+    """
+
     mock_session = AsyncMock()
     query_result = MagicMock()
     query_result.scalars.return_value.all.return_value = [5, 10, 15]
@@ -370,6 +496,15 @@ async def test_get_matching_kennel_ids_for_owner_no_nested_filters():
 
 
 async def test_count_matching_kennels_for_owner():
+    """
+    Test count matching kennels for owner.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_count_matching_kennels_for_owner`.
+    """
+
     mock_session = AsyncMock()
     kennel_result = MagicMock()
     kennel_result.scalars.return_value.all.return_value = [1, 2]
@@ -380,6 +515,15 @@ async def test_count_matching_kennels_for_owner():
 
 
 async def test_get_random_matching_kennel_id_returns_none_when_empty():
+    """
+    Test get random matching kennel id returns none when empty.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_get_random_matching_kennel_id_returns_none_when_empty`.
+    """
+
     mock_session = AsyncMock()
     kennel_result = MagicMock()
     kennel_result.scalars.return_value.all.return_value = []
@@ -390,6 +534,15 @@ async def test_get_random_matching_kennel_id_returns_none_when_empty():
 
 
 async def test_get_random_matching_kennel_id_returns_one_of_ids():
+    """
+    Test get random matching kennel id returns one of ids.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_get_random_matching_kennel_id_returns_one_of_ids`.
+    """
+
     mock_session = AsyncMock()
     kennel_result = MagicMock()
     kennel_result.scalars.return_value.all.return_value = [10, 20]
@@ -450,6 +603,15 @@ async def test_check_stray_event_filter_with_pooch_filters_fail():
 
 
 async def test_get_matching_stray_pooch_ids_for_server():
+    """
+    Test get matching stray pooch ids for server.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_get_matching_stray_pooch_ids_for_server`.
+    """
+
     mock_session = AsyncMock()
     query_result = MagicMock()
     query_result.scalars.return_value.all.return_value = [100, 200]
@@ -460,6 +622,15 @@ async def test_get_matching_stray_pooch_ids_for_server():
 
 
 async def test_count_matching_stray_pooches_for_server():
+    """
+    Test count matching stray pooches for server.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_count_matching_stray_pooches_for_server`.
+    """
+
     mock_session = AsyncMock()
     query_result = MagicMock()
     query_result.scalars.return_value.all.return_value = [1, 2, 3]

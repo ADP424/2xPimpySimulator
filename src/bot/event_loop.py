@@ -3,6 +3,7 @@ import os
 
 import discord
 
+from src.bot.ui import send_triggered_event_dm
 from src.game import (
     run_hourly_breeding_cooldown_check,
     run_hourly_event_check,
@@ -11,12 +12,28 @@ from src.game import (
 from src.logger import get_logger
 
 from .constants import EVENT_LOOP_INTERVAL_SECONDS
-from .ui.events import send_triggered_event_dm
 
 logger = get_logger("bot/event_loop")
 
 
 async def post_hourly_event_notifications(bot: discord.Client, triggered_owner_events: dict[int, list]):
+    """
+    Post hourly event notifications.
+
+    Parameters
+    ----------
+    bot: Any
+        The `bot` value.
+
+    triggered_owner_events: Any
+        The `triggered_owner_events` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `post_hourly_event_notifications`.
+    """
+
     for owner_discord_id, events in triggered_owner_events.items():
         for event in events:
             delivered = await send_triggered_event_dm(bot, owner_discord_id, event)
@@ -29,6 +46,23 @@ async def post_hourly_event_notifications(bot: discord.Client, triggered_owner_e
 
 
 async def hourly_event_runner(bot: discord.Client, stage: str):
+    """
+    Hourly event runner.
+
+    Parameters
+    ----------
+    bot: Any
+        The `bot` value.
+
+    stage: Any
+        The `stage` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `hourly_event_runner`.
+    """
+
     async def run_once():
         logger.info("Running hourly event check...")
         triggered_events = await run_hourly_event_check(rng_seed=int.from_bytes(os.urandom(8)))

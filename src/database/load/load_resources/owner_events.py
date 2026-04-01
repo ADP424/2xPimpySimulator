@@ -2,6 +2,7 @@ from typing import Any
 
 from sqlalchemy import delete, select
 
+from src.database.session import session_scope
 from src.logger import get_logger
 
 from ...models import (
@@ -13,7 +14,6 @@ from ...models import (
     Injury,
     Mutation,
 )
-from ...session import session_scope
 from .utils import (
     EVENT_SEVERITY_VALUES,
     RARITY_VALUES,
@@ -201,6 +201,15 @@ class _OwnerEventValidator(BaseEventValidator):
 
 
 async def load_owner_events():
+    """
+    Load owner events.
+
+    Returns
+    -------
+    Any
+        The result of calling `load_owner_events`.
+    """
+
     logger.info("Loading owner events from owner event resources into the database...")
 
     owner_events_json = load_categorized_resource_objects(OWNER_EVENTS_ROOT, "event")

@@ -48,7 +48,7 @@ class InteractionResponder:
         view: Any = MISSING,
         mention_author: bool = False,
     ) -> None:
-        kwargs = _build_kwargs(content, embed, view)
+        kwargs = build_kwargs(content, embed, view)
 
         # Never send a components-only reply.
         visible_content = kwargs.get("content", MISSING)
@@ -92,7 +92,7 @@ class InteractionResponder:
         embed: Any = MISSING,
         view: Any = MISSING,
     ) -> None:
-        kwargs = _build_kwargs(content, embed, view)
+        kwargs = build_kwargs(content, embed, view)
 
         if self.interaction.message is not None:
             try:
@@ -127,10 +127,38 @@ class InteractionResponder:
 
 
 async def run_blocking(fn: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
+    """
+    Run blocking.
+
+    Parameters
+    ----------
+    fn: Any
+        The `fn` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `run_blocking`.
+    """
+
     return await asyncio.to_thread(fn, *args, **kwargs)
 
 
 def mention(discord_id: int) -> str:
+    """
+    Mention.
+
+    Parameters
+    ----------
+    discord_id: Any
+        The `discord_id` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `mention`.
+    """
+
     return f"<@{discord_id}>"
 
 
@@ -151,7 +179,27 @@ async def defer_interaction(
         return
 
 
-def _build_kwargs(content: Any, embed: Any, view: Any) -> dict[str, Any]:
+def build_kwargs(content: Any, embed: Any, view: Any) -> dict[str, Any]:
+    """
+    Build kwargs.
+
+    Parameters
+    ----------
+    content: Any
+        The `content` value.
+
+    embed: Any
+        The `embed` value.
+
+    view: Any
+        The `view` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `build_kwargs`.
+    """
+
     kwargs: dict[str, Any] = {}
     if content is not MISSING:
         kwargs["content"] = content
@@ -173,7 +221,7 @@ async def edit_interaction(
     Works whether or not it's been deferred, and falls back to editing the
     underlying message if the interaction token has expired.
     """
-    kwargs = _build_kwargs(content, embed, view)
+    kwargs = build_kwargs(content, embed, view)
 
     # IMPORTANT:
     # For component interactions (buttons/selects/modals), the message we want to
@@ -224,7 +272,7 @@ async def reply_to_interacted_message(
     Prefer calling `await defer_interaction(...)` first in component callbacks.
     """
 
-    kwargs = _build_kwargs(content, embed, view)
+    kwargs = build_kwargs(content, embed, view)
     # Guardrail: never send a "blank" reply that contains only components.
     # This can happen when callers pass content=None/embed=None while trying to
     # "refresh" a view before sending a real follow-up (e.g., opening a pooch info card).

@@ -56,6 +56,15 @@ _HEALTH_IMPACT_WEIGHTS = [
 
 
 def main():
+    """
+    Main.
+
+    Returns
+    -------
+    Any
+        The result of calling `main`.
+    """
+
     load_dotenv()
 
     dsn = _get_sync_dsn()

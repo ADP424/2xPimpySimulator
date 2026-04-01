@@ -75,6 +75,15 @@ def test_validate_event_with_options_and_outcomes():
 
 
 def test_validate_root_not_dict():
+    """
+    Test validate root not dict.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_validate_root_not_dict`.
+    """
+
     v = _make_validator()
     v.validate_owner_events_json("not a dict")
     with pytest.raises(EventValidationError, match="root value must be an object"):
@@ -82,6 +91,15 @@ def test_validate_root_not_dict():
 
 
 def test_validate_category_not_dict():
+    """
+    Test validate category not dict.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_validate_category_not_dict`.
+    """
+
     v = _make_validator()
     v.validate_owner_events_json({"cat": "bad"})
     with pytest.raises(EventValidationError, match="category value must be an object"):
@@ -89,6 +107,15 @@ def test_validate_category_not_dict():
 
 
 def test_validate_event_not_dict():
+    """
+    Test validate event not dict.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_validate_event_not_dict`.
+    """
+
     v = _make_validator()
     v.validate_owner_events_json({"cat": {"event": "bad"}})
     with pytest.raises(EventValidationError, match="event definition must be an object"):
@@ -96,6 +123,15 @@ def test_validate_event_not_dict():
 
 
 def test_validate_event_unknown_keys():
+    """
+    Test validate event unknown keys.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_validate_event_unknown_keys`.
+    """
+
     v = _make_validator()
     v.validate_owner_events_json(
         {
@@ -214,12 +250,30 @@ def test_validate_outcome_chances_exceed_one():
 
 
 def test_validate_owner_filter_valid():
+    """
+    Test validate owner filter valid.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_validate_owner_filter_valid`.
+    """
+
     v = _make_validator()
     v._validate_owner_filter("test", {"min_money": 100, "max_money": 500})
     assert not v.errors
 
 
 def test_validate_owner_filter_unknown_key():
+    """
+    Test validate owner filter unknown key.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_validate_owner_filter_unknown_key`.
+    """
+
     v = _make_validator()
     v._validate_owner_filter("test", {"invalid_key": True})
     assert len(v.errors) == 1
@@ -227,6 +281,15 @@ def test_validate_owner_filter_unknown_key():
 
 
 def test_validate_pooch_filter_valid():
+    """
+    Test validate pooch filter valid.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_validate_pooch_filter_valid`.
+    """
+
     v = _make_validator()
     v._validate_pooch_filter(
         "test", {"min_age": 1, "max_age": 10, "sex": "male"}, allow_counts=False, allow_location=False
@@ -235,6 +298,15 @@ def test_validate_pooch_filter_valid():
 
 
 def test_validate_pooch_filter_invalid_sex():
+    """
+    Test validate pooch filter invalid sex.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_validate_pooch_filter_invalid_sex`.
+    """
+
     v = _make_validator()
     v._validate_pooch_filter("test", {"sex": "alien"}, allow_counts=False, allow_location=False)
     assert len(v.errors) == 1

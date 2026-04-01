@@ -37,6 +37,23 @@ async def to_triggered_server_event(
     occurrence: ServerEventOccurrenceORM,
     viewer_owner_discord_id: int | None = None,
 ) -> TriggeredServerEvent:
+    """
+    To triggered server event.
+
+    Parameters
+    ----------
+    occurrence: Any
+        The `occurrence` value.
+
+    viewer_owner_discord_id: Any
+        The `viewer_owner_discord_id` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `to_triggered_server_event`.
+    """
+
     event = occurrence.server_event
     viewer_participation = None
     if viewer_owner_discord_id is not None:

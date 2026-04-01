@@ -55,6 +55,15 @@ def test_validate_minimal_server_event():
 
 
 def test_validate_server_event_with_all_fields():
+    """
+    Test validate server event with all fields.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_validate_server_event_with_all_fields`.
+    """
+
     v = _make_validator()
     events = {
         "Contest": {
@@ -73,6 +82,15 @@ def test_validate_server_event_with_all_fields():
 
 
 def test_validate_server_event_with_filter_block():
+    """
+    Test validate server event with filter block.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_validate_server_event_with_filter_block`.
+    """
+
     v = _make_validator()
     events = {
         "Community": {
@@ -91,6 +109,15 @@ def test_validate_server_event_with_filter_block():
 
 
 def test_validate_server_event_with_scoring():
+    """
+    Test validate server event with scoring.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_validate_server_event_with_scoring`.
+    """
+
     v = _make_validator()
     events = {
         "Contest": {
@@ -126,6 +153,15 @@ def test_validate_server_event_with_scoring():
 
 
 def test_validate_server_event_root_not_dict():
+    """
+    Test validate server event root not dict.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_validate_server_event_root_not_dict`.
+    """
+
     v = _make_validator()
     v.validate_server_events_json("bad")
     with pytest.raises(EventValidationError, match="root value must be an object"):
@@ -141,6 +177,15 @@ def test_validate_server_event_no_menus_no_actions():
 
 
 def test_validate_server_event_unknown_keys():
+    """
+    Test validate server event unknown keys.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_validate_server_event_unknown_keys`.
+    """
+
     v = _make_validator()
     v.validate_server_events_json(
         {
@@ -175,6 +220,15 @@ def test_validate_server_event_old_keys_rejected():
 
 
 def test_validate_server_outcome_min_rank_exceeds_max():
+    """
+    Test validate server outcome min rank exceeds max.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_validate_server_outcome_min_rank_exceeds_max`.
+    """
+
     v = _make_validator()
     v.validate_server_events_json(
         {
@@ -191,6 +245,15 @@ def test_validate_server_outcome_min_rank_exceeds_max():
 
 
 def test_validate_server_outcome_chances_exceed_one():
+    """
+    Test validate server outcome chances exceed one.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_validate_server_outcome_chances_exceed_one`.
+    """
+
     v = _make_validator()
     v.validate_server_events_json(
         {
@@ -210,6 +273,15 @@ def test_validate_server_outcome_chances_exceed_one():
 
 
 def test_validate_menu_depends_on_unknown_menu():
+    """
+    Test validate menu depends on unknown menu.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_validate_menu_depends_on_unknown_menu`.
+    """
+
     v = _make_validator()
     v.validate_server_events_json(
         {
@@ -231,6 +303,15 @@ def test_validate_menu_depends_on_unknown_menu():
 
 
 def test_validate_invalid_scoring_aggregate():
+    """
+    Test validate invalid scoring aggregate.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_validate_invalid_scoring_aggregate`.
+    """
+
     v = _make_validator()
     v.validate_server_events_json(
         {

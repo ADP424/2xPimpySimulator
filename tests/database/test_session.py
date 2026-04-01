@@ -106,7 +106,7 @@ async def test_session_scope_commits_on_success():
     mock_sessionmaker.return_value = mock_ctx
 
     with patch("src.database.session._get_sessionmaker", return_value=mock_sessionmaker):
-        from src.database.session import session_scope
+        from src.database import session_scope
 
         async with session_scope():
             pass  # simulate success
@@ -126,7 +126,7 @@ async def test_session_scope_rolls_back_on_error():
     mock_sessionmaker.return_value = mock_ctx
 
     with patch("src.database.session._get_sessionmaker", return_value=mock_sessionmaker):
-        from src.database.session import session_scope
+        from src.database import session_scope
 
         with pytest.raises(ValueError, match="boom"):
             async with session_scope():

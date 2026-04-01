@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import discord
 import pytest
 
-from src.bot.ui.home import (
+from src.bot.ui import (
     HomeNavigationSelect,
     HomeView,
     TownButton,
@@ -120,7 +120,7 @@ class TestTownButton:
 @pytest.mark.contract
 class TestSendHomeMenu:
     async def test_requires_guild(self):
-        from src.bot.ui.home import send_home_menu
+        from src.bot.ui import send_home_menu
 
         interaction = _make_interaction(guild_id=None)
 
@@ -134,7 +134,7 @@ class TestSendHomeMenu:
             assert "server" in msg.lower()
 
     async def test_sends_home_content_with_view(self):
-        from src.bot.ui.home import send_home_menu
+        from src.bot.ui import send_home_menu
 
         owner = _make_owner(dollars=123, bloodskulls=2, bones=1)
         interaction = _make_interaction(user_id=100, guild_id=200)

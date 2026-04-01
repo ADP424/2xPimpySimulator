@@ -28,7 +28,7 @@ async def test_load_dog_names_loads_names():
         patch("src.database.load.load_resources.dog_names.validate_name_list", side_effect=lambda name, items: items),
         patch("src.database.load.load_resources.dog_names.session_scope", return_value=_FakeScope()),
     ):
-        from src.database.load.load_resources.dog_names import load_dog_names
+        from src.database.load.load_resources import load_dog_names
 
         await load_dog_names()
 
@@ -55,7 +55,7 @@ async def test_load_dog_names_empty_list():
         patch("src.database.load.load_resources.dog_names.validate_name_list", return_value=[]),
         patch("src.database.load.load_resources.dog_names.session_scope", return_value=_FakeScope()),
     ):
-        from src.database.load.load_resources.dog_names import load_dog_names
+        from src.database.load.load_resources import load_dog_names
 
         await load_dog_names()
 

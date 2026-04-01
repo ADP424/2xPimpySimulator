@@ -10,7 +10,7 @@ from tests.bot.commands.conftest import capture_command_callback, make_interacti
 @pytest.mark.contract
 class TestTriggerEventCommand:
     async def test_requires_guild(self):
-        from src.bot.commands.trigger_event import register_trigger_event_command
+        from src.bot.commands import register_trigger_event_command
 
         callback = capture_command_callback(register_trigger_event_command)
         interaction = make_interaction()
@@ -24,7 +24,7 @@ class TestTriggerEventCommand:
         assert "server" in msg.lower()
 
     async def test_not_found_event(self):
-        from src.bot.commands.trigger_event import register_trigger_event_command
+        from src.bot.commands import register_trigger_event_command
 
         callback = capture_command_callback(register_trigger_event_command)
         interaction = make_interaction()
@@ -37,7 +37,7 @@ class TestTriggerEventCommand:
         assert "no" in msg.lower()
 
     async def test_triggers_and_posts(self):
-        from src.bot.commands.trigger_event import register_trigger_event_command
+        from src.bot.commands import register_trigger_event_command
 
         callback = capture_command_callback(register_trigger_event_command)
         interaction = make_interaction()

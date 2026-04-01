@@ -135,6 +135,7 @@ from .set import (
     append_server_event_submission,
     archive_active_event,
     bury_pooch,
+    copy_pooch_injuries,
     create_active_owner_event,
     create_auction_bid,
     create_auction_bounty_listing,
@@ -348,6 +349,7 @@ __all__ = [
     # Set
     "add_breed_to_pooch",
     "add_injury_to_pooch",
+    "copy_pooch_injuries",
     "create_auction_bid",
     "create_auction_bounty_listing",
     "create_auction_sale_listing",

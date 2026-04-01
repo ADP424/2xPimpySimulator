@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from conftest import make_kennel, make_owner, make_pooch
+from tests.conftest import make_kennel, make_owner, make_pooch
 
 
 @pytest.fixture(autouse=True)
@@ -17,7 +17,7 @@ def mock_owners_db_calls():
 
 
 from src.game.exceptions import OwnerNotFound
-from src.game.manage_owners import (
+from src.game import (
     add_money,
     beg_for_money,
     cast_out_pooch,

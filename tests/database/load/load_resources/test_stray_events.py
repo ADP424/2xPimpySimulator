@@ -59,6 +59,15 @@ def test_validate_stray_event_with_outcomes():
 
 
 def test_validate_stray_event_with_filter():
+    """
+    Test validate stray event with filter.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_validate_stray_event_with_filter`.
+    """
+
     v = _make_validator()
     events = {
         "Encounters": {
@@ -78,6 +87,15 @@ def test_validate_stray_event_with_filter():
 
 
 def test_validate_stray_event_root_not_dict():
+    """
+    Test validate stray event root not dict.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_validate_stray_event_root_not_dict`.
+    """
+
     v = _make_validator()
     v.validate_stray_events_json([])
     with pytest.raises(EventValidationError, match="root value must be an object"):
@@ -93,6 +111,15 @@ def test_validate_stray_event_no_actions_or_outcomes():
 
 
 def test_validate_stray_event_invalid_action_type():
+    """
+    Test validate stray event invalid action type.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_validate_stray_event_invalid_action_type`.
+    """
+
     v = _make_validator()
     v.validate_stray_events_json({"cat": {"event": {"actions": [{"action_type": "fly_away", "parameters": {}}]}}})
     with pytest.raises(EventValidationError, match="action_type"):
@@ -100,6 +127,15 @@ def test_validate_stray_event_invalid_action_type():
 
 
 def test_validate_stray_event_unknown_keys():
+    """
+    Test validate stray event unknown keys.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_validate_stray_event_unknown_keys`.
+    """
+
     v = _make_validator()
     v.validate_stray_events_json(
         {
@@ -116,6 +152,15 @@ def test_validate_stray_event_unknown_keys():
 
 
 def test_validate_stray_event_invalid_selector():
+    """
+    Test validate stray event invalid selector.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_validate_stray_event_invalid_selector`.
+    """
+
     v = _make_validator()
     v.validate_stray_events_json(
         {"cat": {"event": {"actions": [{"action_type": "kill_pooch", "parameters": {"selector": "chosen_one"}}]}}}
@@ -125,6 +170,15 @@ def test_validate_stray_event_invalid_selector():
 
 
 def test_validate_stray_outcome_chances_exceed_one():
+    """
+    Test validate stray outcome chances exceed one.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_validate_stray_outcome_chances_exceed_one`.
+    """
+
     v = _make_validator()
     v.validate_stray_events_json(
         {

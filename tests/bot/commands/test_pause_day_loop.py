@@ -10,7 +10,7 @@ from tests.bot.commands.conftest import capture_command_callback, make_interacti
 @pytest.mark.contract
 class TestPauseDayLoopCommand:
     async def test_toggles_pause(self):
-        from src.bot.commands.pause_day_loop import register_pause_day_loop_command
+        from src.bot.commands import register_pause_day_loop_command
 
         callback = capture_command_callback(register_pause_day_loop_command)
         interaction = make_interaction()

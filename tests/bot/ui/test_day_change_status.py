@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 import discord
 import pytest
 
-from src.bot.ui.day_change_status import (
+from src.bot.ui import (
     DayChangeStatusPageSource,
     PublicPaginatorView,
     make_status_view,

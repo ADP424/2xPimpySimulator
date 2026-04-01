@@ -7,11 +7,20 @@ import pytest
 
 @pytest.fixture(autouse=True)
 def mock_cancel_listing():
+    """
+    Mock cancel listing.
+
+    Returns
+    -------
+    Any
+        The result of calling `mock_cancel_listing`.
+    """
+
     with patch("src.game.manage_vendors.cancel_listing_for_pooch", new=AsyncMock()):
         yield
 
 
-from conftest import (
+from tests.conftest import (
     make_breed,
     make_kennel,
     make_mutation,
@@ -19,18 +28,18 @@ from conftest import (
     make_pooch,
     make_vendor,
 )
-from src.game.exceptions import PoochNotFound, VendorNotFound
-from src.game.manage_vendors import (
-    _get_pooch_base_price,
+from src.game import (
     buy_pooch,
+    get_pooch_base_price,
     get_pooch_buy_price,
     get_pooch_sell_price,
     get_vendor_by_id,
     sell_pooch,
 )
+from src.game.exceptions import PoochNotFound, VendorNotFound
 
 # ---------------------------------------------------------------------------
-# _get_pooch_base_price
+# get_pooch_base_price
 # ---------------------------------------------------------------------------
 
 
@@ -48,7 +57,7 @@ class TestGetPoochBasePrice:
         breed = make_breed(breed_id=1, rarity="common")
         mock_breeds.return_value = [(breed, 1)]
 
-        price = await _get_pooch_base_price(1)
+        price = await get_pooch_base_price(1)
         # 75 - 0*5 = 75; health: 75 - 5*(2 - 10) = 75 + 40 = 115; breed: 115 * 0.5 = 57.5 -> 58
         assert isinstance(price, int)
         assert price >= 0
@@ -68,10 +77,10 @@ class TestGetPoochBasePrice:
         mock_breeds.return_value = [(breed, 1)]
 
         mock_get.return_value = young
-        young_price = await _get_pooch_base_price(1)
+        young_price = await get_pooch_base_price(1)
 
         mock_get.return_value = old
-        old_price = await _get_pooch_base_price(2)
+        old_price = await get_pooch_base_price(2)
 
         assert young_price > old_price
 
@@ -79,7 +88,7 @@ class TestGetPoochBasePrice:
     async def test_pooch_not_found_raises(self, mock_get):
         mock_get.return_value = None
         with pytest.raises(PoochNotFound):
-            await _get_pooch_base_price(999)
+            await get_pooch_base_price(999)
 
     @patch("src.game.manage_vendors.list_pooch_breeds", new_callable=AsyncMock)
     @patch("src.game.manage_vendors.list_pooch_mutations", new_callable=AsyncMock)
@@ -95,10 +104,10 @@ class TestGetPoochBasePrice:
         breed = make_breed(breed_id=1, rarity="uncommon")
         mock_breeds.return_value = [(breed, 1)]
 
-        price_with_mut = await _get_pooch_base_price(1)
+        price_with_mut = await get_pooch_base_price(1)
 
         mock_muts.return_value = []
-        price_without = await _get_pooch_base_price(1)
+        price_without = await get_pooch_base_price(1)
 
         assert price_with_mut > price_without
 
@@ -115,11 +124,11 @@ class TestGetPoochBasePrice:
 
         common_breed = make_breed(breed_id=1, rarity="common")
         mock_breeds.return_value = [(common_breed, 1)]
-        common_price = await _get_pooch_base_price(1)
+        common_price = await get_pooch_base_price(1)
 
         rare_breed = make_breed(breed_id=2, rarity="rare")
         mock_breeds.return_value = [(rare_breed, 1)]
-        rare_price = await _get_pooch_base_price(1)
+        rare_price = await get_pooch_base_price(1)
 
         assert rare_price > common_price
 
@@ -130,14 +139,14 @@ class TestGetPoochBasePrice:
 
 
 class TestGetPoochBuyPrice:
-    @patch("src.game.manage_vendors._get_pooch_base_price", new_callable=AsyncMock)
+    @patch("src.game.manage_vendors.get_pooch_base_price", new_callable=AsyncMock)
     async def test_without_vendor_returns_base_price(self, mock_base):
         mock_base.return_value = 100
         price = await get_pooch_buy_price(1)
         assert price == 100
 
     @patch("src.game.manage_vendors.db_get_vendor_by_id", new_callable=AsyncMock)
-    @patch("src.game.manage_vendors._get_pooch_base_price", new_callable=AsyncMock)
+    @patch("src.game.manage_vendors.get_pooch_base_price", new_callable=AsyncMock)
     async def test_with_vendor_markup(self, mock_base, mock_vendor):
         mock_base.return_value = 100
         vendor = make_vendor(vendor_id=1)
@@ -148,7 +157,7 @@ class TestGetPoochBuyPrice:
         assert price == 150
 
     @patch("src.game.manage_vendors.db_get_vendor_by_id", new_callable=AsyncMock)
-    @patch("src.game.manage_vendors._get_pooch_base_price", new_callable=AsyncMock)
+    @patch("src.game.manage_vendors.get_pooch_base_price", new_callable=AsyncMock)
     async def test_vendor_not_found_raises(self, mock_base, mock_vendor):
         mock_base.return_value = 100
         mock_vendor.return_value = None
@@ -163,7 +172,7 @@ class TestGetPoochBuyPrice:
 
 
 class TestGetPoochSellPrice:
-    @patch("src.game.manage_vendors._get_pooch_base_price", new_callable=AsyncMock)
+    @patch("src.game.manage_vendors.get_pooch_base_price", new_callable=AsyncMock)
     async def test_without_vendor_returns_base_price(self, mock_base):
         mock_base.return_value = 80
         price = await get_pooch_sell_price(1)
@@ -174,7 +183,7 @@ class TestGetPoochSellPrice:
     @patch("src.game.manage_vendors.list_vendor_desired_mutations", new_callable=AsyncMock)
     @patch("src.game.manage_vendors.list_pooch_mutations", new_callable=AsyncMock)
     @patch("src.game.manage_vendors.db_get_vendor_by_id", new_callable=AsyncMock)
-    @patch("src.game.manage_vendors._get_pooch_base_price", new_callable=AsyncMock)
+    @patch("src.game.manage_vendors.get_pooch_base_price", new_callable=AsyncMock)
     async def test_sell_price_with_desired_mutation_bonus(
         self, mock_base, mock_vendor, mock_muts, mock_desired, mock_breeds, mock_desired_breeds
     ):
@@ -199,7 +208,7 @@ class TestGetPoochSellPrice:
     @patch("src.game.manage_vendors.list_vendor_desired_mutations", new_callable=AsyncMock)
     @patch("src.game.manage_vendors.list_pooch_mutations", new_callable=AsyncMock)
     @patch("src.game.manage_vendors.db_get_vendor_by_id", new_callable=AsyncMock)
-    @patch("src.game.manage_vendors._get_pooch_base_price", new_callable=AsyncMock)
+    @patch("src.game.manage_vendors.get_pooch_base_price", new_callable=AsyncMock)
     async def test_sell_price_no_matching_mutation(
         self, mock_base, mock_vendor, mock_muts, mock_desired, mock_breeds, mock_desired_breeds
     ):

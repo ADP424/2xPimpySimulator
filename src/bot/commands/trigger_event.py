@@ -16,6 +16,20 @@ _EVENT_TYPES = ["owner", "stray", "server_minor", "server_major"]
 
 
 def register_trigger_event_command(tree: app_commands.CommandTree):
+    """
+    Register trigger event command.
+
+    Parameters
+    ----------
+    tree: Any
+        The `tree` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `register_trigger_event_command`.
+    """
+
     @tree.command(
         name="trigger_event",
         description="(DEV) Trigger a specific event by name",

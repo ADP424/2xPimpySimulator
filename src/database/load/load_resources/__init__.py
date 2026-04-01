@@ -10,6 +10,15 @@ from .vendor_last_names import load_vendor_last_names
 
 
 async def main():
+    """
+    Main.
+
+    Returns
+    -------
+    Any
+        The result of calling `main`.
+    """
+
     from .utils import logger
 
     logger.info("Loading resources into database...")

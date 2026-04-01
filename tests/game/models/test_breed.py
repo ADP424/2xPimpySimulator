@@ -2,7 +2,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from src.game.models.breed import Breed, to_breed
+from src.game.models import Breed, to_breed
 
 
 class TestBreedCreation:

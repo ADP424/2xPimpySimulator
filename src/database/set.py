@@ -443,6 +443,32 @@ async def add_injury_to_pooch(pooch_id: int, injury_id: int) -> Optional[PoochIn
     return pooch_injury
 
 
+async def copy_pooch_injuries(source_id: int, dest_id: int) -> list[PoochInjury]:
+    """
+    Copy all PoochInjury records from source_id to dest_id, preserving every field
+    (persistence, treated, last_treated_at, displayed_symptom, visible).
+    """
+    from .list import list_pooch_injury_instances
+
+    instances = await list_pooch_injury_instances(source_id)
+    copies: list[PoochInjury] = []
+    async with session_scope() as session:
+        for src in instances:
+            new_injury = PoochInjury(
+                pooch_id=dest_id,
+                injury_id=src.injury_id,
+                persistence=src.persistence,
+                treated=src.treated,
+                last_treated_at=src.last_treated_at,
+                displayed_symptom=src.displayed_symptom,
+                visible=src.visible,
+            )
+            session.add(new_injury)
+            copies.append(new_injury)
+        await session.flush()
+    return copies
+
+
 async def add_owner_to_server(server_discord_id: int, owner_discord_id: int) -> OwnerServer:
     """
     Add an owner with the given Discord ID to the server with the given Discord ID.
@@ -1183,6 +1209,29 @@ async def create_server_event_occurrence(
     context: dict[str, Any],
     expires_at: datetime,
 ) -> ServerEventOccurrence:
+    """
+    Create server event occurrence.
+
+    Parameters
+    ----------
+    server_discord_id: Any
+        The `server_discord_id` value.
+
+    server_event_id: Any
+        The `server_event_id` value.
+
+    context: Any
+        The `context` value.
+
+    expires_at: Any
+        The `expires_at` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `create_server_event_occurrence`.
+    """
+
     async with session_scope() as session:
         occurrence = ServerEventOccurrence(
             server_discord_id=server_discord_id,
@@ -1237,6 +1286,32 @@ async def create_server_event_participation(
     first_submission: dict[str, Any],
     immediate_result: dict[str, Any],
 ) -> ServerEventParticipation:
+    """
+    Create server event participation.
+
+    Parameters
+    ----------
+    occurrence_id: Any
+        The `occurrence_id` value.
+
+    owner_discord_id: Any
+        The `owner_discord_id` value.
+
+    context: Any
+        The `context` value.
+
+    first_submission: Any
+        The `first_submission` value.
+
+    immediate_result: Any
+        The `immediate_result` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `create_server_event_participation`.
+    """
+
     async with session_scope() as session:
         participation = ServerEventParticipation(
             occurrence_id=occurrence_id,

@@ -2,7 +2,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from src.game.models.mutation import Mutation, to_mutation
+from src.game.models import Mutation, to_mutation
 
 
 class TestMutationCreation:

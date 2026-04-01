@@ -10,7 +10,7 @@ from tests.bot.commands.conftest import capture_command_callback, make_interacti
 @pytest.mark.contract
 class TestSetEventChannelCommand:
     async def test_requires_guild(self):
-        from src.bot.commands.set_event_channel import (
+        from src.bot.commands import (
             register_set_event_channel_command,
         )
 
@@ -26,7 +26,7 @@ class TestSetEventChannelCommand:
         assert "server" in msg.lower()
 
     async def test_sets_channel(self):
-        from src.bot.commands.set_event_channel import (
+        from src.bot.commands import (
             register_set_event_channel_command,
         )
 

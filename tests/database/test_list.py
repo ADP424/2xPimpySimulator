@@ -51,7 +51,7 @@ async def test_list_all_breeds_returns_breeds():
     scope_cls, _ = _mock_session_scope(scalars_result=fake_breeds)
 
     with patch("src.database.list.session_scope", return_value=scope_cls()):
-        from src.database.list import list_all_breeds
+        from src.database import list_all_breeds
 
         result = await list_all_breeds()
 
@@ -65,7 +65,7 @@ async def test_list_all_breeds_returns_empty_list():
     scope_cls, _ = _mock_session_scope(scalars_result=[])
 
     with patch("src.database.list.session_scope", return_value=scope_cls()):
-        from src.database.list import list_all_breeds
+        from src.database import list_all_breeds
 
         result = await list_all_breeds()
 
@@ -78,11 +78,20 @@ async def test_list_all_breeds_returns_empty_list():
 
 
 async def test_list_all_mutations_returns_mutations():
+    """
+    Test list all mutations returns mutations.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_list_all_mutations_returns_mutations`.
+    """
+
     fake_mutations = [SimpleNamespace(id=1, name="Cataracts", category="Blindness")]
     scope_cls, _ = _mock_session_scope(scalars_result=fake_mutations)
 
     with patch("src.database.list.session_scope", return_value=scope_cls()):
-        from src.database.list import list_all_mutations
+        from src.database import list_all_mutations
 
         result = await list_all_mutations()
 
@@ -96,6 +105,15 @@ async def test_list_all_mutations_returns_mutations():
 
 
 async def test_list_living_pooches_returns_alive_pooches():
+    """
+    Test list living pooches returns alive pooches.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_list_living_pooches_returns_alive_pooches`.
+    """
+
     fake_pooches = [
         SimpleNamespace(id=1, name="Buddy", alive=True),
         SimpleNamespace(id=2, name="Max", alive=True),
@@ -103,7 +121,7 @@ async def test_list_living_pooches_returns_alive_pooches():
     scope_cls, _ = _mock_session_scope(scalars_result=fake_pooches)
 
     with patch("src.database.list.session_scope", return_value=scope_cls()):
-        from src.database.list import list_living_pooches
+        from src.database import list_living_pooches
 
         result = await list_living_pooches()
 
@@ -111,10 +129,19 @@ async def test_list_living_pooches_returns_alive_pooches():
 
 
 async def test_list_living_pooches_returns_empty():
+    """
+    Test list living pooches returns empty.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_list_living_pooches_returns_empty`.
+    """
+
     scope_cls, _ = _mock_session_scope(scalars_result=[])
 
     with patch("src.database.list.session_scope", return_value=scope_cls()):
-        from src.database.list import list_living_pooches
+        from src.database import list_living_pooches
 
         result = await list_living_pooches()
 
@@ -142,7 +169,7 @@ async def test_list_kennels_for_owner_returns_empty_when_no_owner():
             pass
 
     with patch("src.database.list.session_scope", return_value=_FakeScope()):
-        from src.database.list import list_kennels_for_owner
+        from src.database import list_kennels_for_owner
 
         result = await list_kennels_for_owner(999)
 
@@ -155,11 +182,20 @@ async def test_list_kennels_for_owner_returns_empty_when_no_owner():
 
 
 async def test_list_vendors_returns_vendors():
+    """
+    Test list vendors returns vendors.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_list_vendors_returns_vendors`.
+    """
+
     fake_vendors = [SimpleNamespace(id=1, name="Bob Smith", server_discord_id=123)]
     scope_cls, _ = _mock_session_scope(scalars_result=fake_vendors)
 
     with patch("src.database.list.session_scope", return_value=scope_cls()):
-        from src.database.list import list_vendors
+        from src.database import list_vendors
 
         result = await list_vendors(123)
 
@@ -173,11 +209,20 @@ async def test_list_vendors_returns_vendors():
 
 
 async def test_list_servers_returns_servers():
+    """
+    Test list servers returns servers.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_list_servers_returns_servers`.
+    """
+
     fake_servers = [SimpleNamespace(discord_id=111), SimpleNamespace(discord_id=222)]
     scope_cls, _ = _mock_session_scope(scalars_result=fake_servers)
 
     with patch("src.database.list.session_scope", return_value=scope_cls()):
-        from src.database.list import list_servers
+        from src.database import list_servers
 
         result = await list_servers()
 
@@ -190,11 +235,20 @@ async def test_list_servers_returns_servers():
 
 
 async def test_list_owners_returns_all_owners():
+    """
+    Test list owners returns all owners.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_list_owners_returns_all_owners`.
+    """
+
     fake_owners = [SimpleNamespace(discord_id=1), SimpleNamespace(discord_id=2)]
     scope_cls, _ = _mock_session_scope(scalars_result=fake_owners)
 
     with patch("src.database.list.session_scope", return_value=scope_cls()):
-        from src.database.list import list_owners
+        from src.database import list_owners
 
         result = await list_owners()
 
@@ -207,10 +261,19 @@ async def test_list_owners_returns_all_owners():
 
 
 async def test_count_owners_for_server_returns_count():
+    """
+    Test count owners for server returns count.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_count_owners_for_server_returns_count`.
+    """
+
     scope_cls, mock_session = _mock_session_scope(scalar_value=5)
 
     with patch("src.database.list.session_scope", return_value=scope_cls()):
-        from src.database.list import count_owners_for_server
+        from src.database import count_owners_for_server
 
         result = await count_owners_for_server(123)
 
@@ -218,10 +281,19 @@ async def test_count_owners_for_server_returns_count():
 
 
 async def test_count_owners_for_server_returns_zero_when_none():
+    """
+    Test count owners for server returns zero when none.
+
+    Returns
+    -------
+    Any
+        The result of calling `test_count_owners_for_server_returns_zero_when_none`.
+    """
+
     scope_cls, mock_session = _mock_session_scope(scalar_value=None)
 
     with patch("src.database.list.session_scope", return_value=scope_cls()):
-        from src.database.list import count_owners_for_server
+        from src.database import count_owners_for_server
 
         result = await count_owners_for_server(123)
 
