@@ -18,6 +18,7 @@ from database import (
     get_mutation_health_impact,
     get_pooch_health,
     get_pooch_kennel,
+    list_hell_pooches,
     list_living_pooches,
     list_pooch_mutations,
     list_pooch_pregnancies,
@@ -28,6 +29,7 @@ from database import (
     remove_pooch_from_kennel,
     reset_begged_today,
     set_pooch_dead,
+    update_pooch_mood,
 )
 from database.models import Mutation, Pooch
 from database.update import set_pooch_breeding_cooldown
@@ -59,6 +61,82 @@ from .models import (
 from .utils import get_pooch_mutation_advanced_option_total
 
 logger = get_logger("game/change_day")
+
+
+MOODS = ["happy", "excited", "sleepy", "grumpy", "anxious", "mischievous", "zoomies", "hungry", "content", "clingy"]
+
+# Base weights for each mood (index-matched to MOODS)
+_BASE_MOOD_WEIGHTS = [15, 10, 10, 5, 5, 10, 10, 10, 15, 10]
+
+
+def _pick_mood(total_health: int, age: int, rng: random.Random) -> str:
+    """Pick a random mood for a pooch, biased by health and age."""
+    weights = list(_BASE_MOOD_WEIGHTS)
+
+    # Low health → more anxious, grumpy
+    if total_health <= 3:
+        weights[4] += 20  # anxious
+        weights[3] += 15  # grumpy
+        weights[0] -= 10  # happy
+        weights[6] -= 8   # zoomies
+
+    # High health → more happy, excited, zoomies
+    elif total_health >= 8:
+        weights[0] += 10  # happy
+        weights[1] += 10  # excited
+        weights[6] += 10  # zoomies
+
+    # Old → more sleepy, grumpy, content
+    if age >= POOCH_HEALTH_LOSS_STARTING_AGE:
+        weights[2] += 15  # sleepy
+        weights[3] += 10  # grumpy
+        weights[8] += 10  # content
+        weights[6] -= 8   # zoomies
+        weights[5] -= 5   # mischievous
+
+    # Young → more zoomies, mischievous, excited
+    elif age < 5:
+        weights[6] += 15  # zoomies
+        weights[5] += 15  # mischievous
+        weights[1] += 10  # excited
+        weights[2] -= 5   # sleepy
+
+    # Clamp to minimum 1
+    weights = [max(w, 1) for w in weights]
+
+    return rng.choices(MOODS, weights=weights, k=1)[0]
+
+
+async def refresh_moods(rng_seed: Optional[int] = None) -> int:
+    """
+    Refresh the mood of every living pooch without changing the day.
+
+    Returns
+    -------
+    int
+        The number of pooches whose mood was updated.
+    """
+    rng = random.Random(rng_seed)
+    count = 0
+
+    pooches = await list_living_pooches()
+    for pooch in pooches:
+        total_health: int = await get_pooch_health(pooch.id)
+        new_mood = _pick_mood(total_health, pooch.age, rng)
+        await update_pooch_mood(pooch.id, new_mood)
+    count += len(pooches)
+
+    # Set "dead" mood on all hell pooches
+    hell_pooches = await list_hell_pooches()
+    hell_updated = 0
+    for pooch in hell_pooches:
+        if pooch.mood != "dead":
+            await update_pooch_mood(pooch.id, "dead")
+            hell_updated += 1
+    count += hell_updated
+
+    logger.info("Refreshed moods for %d pooches (%d hell pooches).", count, hell_updated)
+    return count
 
 
 def _death_roll(total_health: int, rng: random.Random) -> bool:
@@ -113,6 +191,8 @@ async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeS
 
         kennel = await get_pooch_kennel(mother_id)
         if kennel is None:
+            baby_health = await get_pooch_health(baby.id)
+            await update_pooch_mood(baby.id, _pick_mood(baby_health, baby.age, rng))
             for server in servers:
                 births_by_server.setdefault(server.discord_id, []).append(
                     BirthEvent(
@@ -126,6 +206,7 @@ async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeS
 
         success = await add_pooch_to_kennel(kennel.id, baby.id)
         if not success:
+            await update_pooch_mood(baby.id, "dead")
             for server in servers:
                 births_by_server.setdefault(server.discord_id, []).append(
                     BirthEvent(
@@ -139,6 +220,9 @@ async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeS
                     )
                 )
             continue
+
+        baby_health = await get_pooch_health(baby.id)
+        await update_pooch_mood(baby.id, _pick_mood(baby_health, baby.age, rng))
 
         for server in servers:
             births_by_server.setdefault(server.discord_id, []).append(
@@ -170,8 +254,13 @@ async def run_day_change(rng_seed: Optional[int] = None) -> dict[int, DayChangeS
         if not pooch.alive:
             continue
 
+        # Assign a new mood for the day
+        new_mood = _pick_mood(total_health, pooch.age, rng)
+        await update_pooch_mood(pooch.id, new_mood)
+
         if _death_roll(total_health, rng):
             pooch = await _kill_pooch(pooch)
+            await update_pooch_mood(pooch.id, "dead")
             pooch_mutations = await list_pooch_mutations(pooch.id)
             negative_pooch_mutations = await list_pooch_mutations(pooch.id, positive=False, neutral=False)
 

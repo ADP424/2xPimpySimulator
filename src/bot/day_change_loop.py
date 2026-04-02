@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 
 import discord
 
-from game import get_event_channel, run_day_change
+from game import get_event_channel, list_all_owners, run_day_change, update_owner_names
 from logger import get_logger
 
 from .ui.day_change_status import make_status_view
@@ -60,6 +60,21 @@ async def trigger_manual_day_change(bot: discord.Client):
     manual_queue.put_nowait(1)
 
 
+async def _fetch_and_update_names(bot: discord.Client):
+    """Resolve Discord display names for all owners and pass them to the game layer."""
+    owners = await list_all_owners()
+    names: dict[int, str] = {}
+    for owner in owners:
+        try:
+            user = bot.get_user(owner.discord_id) or await bot.fetch_user(owner.discord_id)
+            names[owner.discord_id] = user.display_name
+        except discord.NotFound:
+            logger.warning(f"Owner {owner.discord_id} not found on Discord, skipping name update")
+        except discord.HTTPException as e:
+            logger.warning(f"Failed to fetch user {owner.discord_id}: {e}")
+    await update_owner_names(names)
+
+
 async def post_day_change_summaries(bot: discord.Client, summaries: dict[int, DayChangeSummary]):
     for server_discord_id, summary in summaries.items():
         channel_id = await get_event_channel(server_discord_id)
@@ -103,7 +118,9 @@ async def post_day_change_summaries(bot: discord.Client, summaries: dict[int, Da
         await channel.send(**send_kwargs)
 
 
-async def day_change_runner(bot: discord.Client, stage: str, tz: str = "America/New_York"):
+async def day_change_runner(
+    bot: discord.Client, stage: str, tz: str = "America/New_York", skip_startup_day_change: bool = False
+):
     zone = ZoneInfo(tz)
     paused_event, manual_queue, run_lock = _ensure_controls(bot)
 
@@ -112,16 +129,21 @@ async def day_change_runner(bot: discord.Client, stage: str, tz: str = "America/
         summaries = await run_day_change(rng_seed=int.from_bytes(os.urandom(8)))
         await post_day_change_summaries(bot, summaries)
         await post_day_change_webhooks(summaries)
+        try:
+            await _fetch_and_update_names(bot)
+        except Exception:
+            logger.exception("Failed to update owner display names")
 
     bot._day_change_run_once = run_once
 
     logger.info(f"Beginning day change loop as {stage.upper()}...")
 
-    async with run_lock:
-        try:
-            await run_once()
-        except Exception:
-            logger.exception("Startup day change failed")
+    if not skip_startup_day_change:
+        async with run_lock:
+            try:
+                await run_once()
+            except Exception:
+                logger.exception("Startup day change failed")
 
     while True:
         manual_task = asyncio.create_task(manual_queue.get())

@@ -37,6 +37,7 @@ class Pooch:
     breeding_cooldown: int
     alive: bool
     virgin: bool
+    mood: Optional[str]
 
     owner_discord_id: Optional[int]
     vendor_id: Optional[int]
@@ -97,6 +98,7 @@ async def to_pooch(pooch: PoochORM) -> Pooch:
         breeding_cooldown=pooch.breeding_cooldown,
         alive=pooch.alive,
         virgin=pooch.virgin,
+        mood=pooch.mood,
         health=(await get_pooch_health(pooch.id)),
         owner_discord_id=pooch.owner_discord_id,
         vendor_id=pooch.vendor_id,

@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from database.models import Mutation as MutationORM
 
@@ -20,6 +20,8 @@ class Mutation:
     affects_females: bool
     affects_males: bool
 
+    advanced_options: dict = field(default_factory=dict)
+
 
 async def to_mutation(mutation: MutationORM) -> Mutation:
     return Mutation(
@@ -33,4 +35,5 @@ async def to_mutation(mutation: MutationORM) -> Mutation:
         rarity=mutation.rarity,
         affects_females=mutation.affects_females,
         affects_males=mutation.affects_males,
+        advanced_options=mutation.advanced_options or {},
     )

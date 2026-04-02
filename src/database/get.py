@@ -1,6 +1,6 @@
 from typing import Optional
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, func, literal, or_, select, union
 
 from .models import (
     HealthImpactWeight,
@@ -331,3 +331,145 @@ async def get_vendor_server(vendor_id: int) -> Optional[Server]:
         response = await session.execute(query)
 
     return response.scalar_one_or_none()
+
+
+async def get_parentage_maps(
+    root_id: int, ancestor_depth: int, descendant_depth: int,
+) -> tuple[dict[int, tuple[int | None, int | None]], dict[int, list[int]]]:
+    """
+    Load parentage rows reachable from *root_id* within the given depth limits
+    using recursive CTEs (1 query).
+
+    Parameters
+    ----------
+    root_id: int
+        The ID of the root pooch to start traversal from.
+    ancestor_depth: int
+        How many generations upward to traverse.
+    descendant_depth: int
+        How many generations downward to traverse.
+
+    Returns
+    -------
+    tuple[dict, dict]
+        (parents_of, children_of) where:
+        parents_of[child_id] = (father_id, mother_id)
+        children_of[parent_id] = [child_id, ...]
+    """
+    # Ancestor recursive CTE
+    ancestor_base = (
+        select(
+            PoochParentage.child_id,
+            PoochParentage.father_id,
+            PoochParentage.mother_id,
+            literal(0).label("depth"),
+        )
+        .where(PoochParentage.child_id == root_id)
+    )
+    ancestor_cte = ancestor_base.cte("ancestor_rows", recursive=True)
+
+    ancestor_recursive = (
+        select(
+            PoochParentage.child_id,
+            PoochParentage.father_id,
+            PoochParentage.mother_id,
+            (ancestor_cte.c.depth + 1).label("depth"),
+        )
+        .join(
+            ancestor_cte,
+            or_(
+                PoochParentage.child_id == ancestor_cte.c.father_id,
+                PoochParentage.child_id == ancestor_cte.c.mother_id,
+            ),
+        )
+        .where(ancestor_cte.c.depth < ancestor_depth)
+    )
+    ancestor_cte = ancestor_cte.union_all(ancestor_recursive)
+
+    # Descendant recursive CTE
+    descendant_base = (
+        select(
+            PoochParentage.child_id,
+            PoochParentage.father_id,
+            PoochParentage.mother_id,
+            literal(1).label("depth"),
+        )
+        .where(
+            or_(
+                PoochParentage.father_id == root_id,
+                PoochParentage.mother_id == root_id,
+            )
+        )
+    )
+    descendant_cte = descendant_base.cte("descendant_rows", recursive=True)
+
+    descendant_recursive = (
+        select(
+            PoochParentage.child_id,
+            PoochParentage.father_id,
+            PoochParentage.mother_id,
+            (descendant_cte.c.depth + 1).label("depth"),
+        )
+        .join(
+            descendant_cte,
+            or_(
+                PoochParentage.father_id == descendant_cte.c.child_id,
+                PoochParentage.mother_id == descendant_cte.c.child_id,
+            ),
+        )
+        .where(descendant_cte.c.depth < descendant_depth)
+    )
+    descendant_cte = descendant_cte.union_all(descendant_recursive)
+
+    # Sibling query: rows sharing the same parents as root
+    PP2 = PoochParentage.__table__.alias("sibling_pp")
+    sibling_query = (
+        select(
+            PP2.c.child_id,
+            PP2.c.father_id,
+            PP2.c.mother_id,
+        )
+        .where(
+            PP2.c.father_id == select(PoochParentage.father_id).where(
+                PoochParentage.child_id == root_id
+            ).correlate(None).scalar_subquery(),
+            PP2.c.mother_id == select(PoochParentage.mother_id).where(
+                PoochParentage.child_id == root_id
+            ).correlate(None).scalar_subquery(),
+        )
+    )
+
+    # Combine all three into a single query
+    combined = union(
+        select(
+            ancestor_cte.c.child_id,
+            ancestor_cte.c.father_id,
+            ancestor_cte.c.mother_id,
+        ),
+        select(
+            descendant_cte.c.child_id,
+            descendant_cte.c.father_id,
+            descendant_cte.c.mother_id,
+        ),
+        sibling_query,
+    )
+
+    parents_of: dict[int, tuple[int | None, int | None]] = {}
+    children_of: dict[int, list[int]] = {}
+
+    async with session_scope() as session:
+        result = await session.execute(combined)
+        rows = result.all()
+
+    for row in rows:
+        cid, fid, mid = row[0], row[1], row[2]
+        parents_of[cid] = (fid, mid)
+        if fid is not None:
+            children_of.setdefault(fid, []).append(cid)
+        if mid is not None:
+            children_of.setdefault(mid, []).append(cid)
+
+    for kids in children_of.values():
+        kids.sort()
+
+    return parents_of, children_of

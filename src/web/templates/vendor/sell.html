@@ -151,7 +151,7 @@ function createSellCard(pooch, price) {
                     <div class="flex gap-2 text-success font-semibold text-sm">
                         <span>Sell price:</span><span>${formatCurrency(price)}${bonusIndicator}</span>
                     </div>
-                    <button class="btn btn-sm btn-outline btn-success btn-block" onclick="sellPooch(${pooch.id}, '${escapeHtml(pooch.name).replace(/'/g, "\\'")}', ${price})">Sell</button>
+                    <button class="btn btn-sm btn-outline btn-success btn-block" onclick="sellPooch(${pooch.id}, '${escapeHtml(pooch.name)}', ${price})">Sell</button>
                 </div>
             </div>
         </div>
@@ -165,7 +165,7 @@ async function sellPooch(poochId, name, price) {
         const resp = await fetch(`/api/vendors/${PAGE_DATA.vendorId}/sell/${poochId}`, { method: 'POST' });
         const result = await resp.json();
         if (result.success) {
-            App.showNotification(result.message, 'success');
+            App.queueNotification(result.message, 'success');
             window.location.reload();
         } else {
             App.showNotification(result.message || result.error || 'Sale failed', 'error');

@@ -18,6 +18,7 @@ def serialize_breed(breed: Any) -> dict:
         "category": breed.category,
         "description": breed.description,
         "rarity": breed.rarity,
+        "advanced_options": getattr(breed, "advanced_options", {}),
     }
 
 
@@ -34,6 +35,7 @@ def serialize_mutation(mutation: Any) -> dict:
         "rarity": mutation.rarity,
         "affects_females": mutation.affects_females,
         "affects_males": mutation.affects_males,
+        "advanced_options": getattr(mutation, "advanced_options", {}),
     }
 
 
@@ -41,6 +43,7 @@ def serialize_owner(owner: Any) -> dict:
     """Serialize an Owner object."""
     return {
         "discord_id": owner.discord_id,
+        "discord_name": owner.discord_name,
         "dollars": owner.dollars,
         "bloodskulls": owner.bloodskulls,
     }
@@ -82,11 +85,14 @@ def serialize_pooch(pooch: Any, include_relations: bool = True) -> dict:
         "birthday": serialize_datetime(pooch.birthday),
         "health": pooch.health,
         "status": pooch.status,
+        "mood": pooch.mood,
     }
 
     if include_relations:
         data["breeds"] = [serialize_pooch_breed_info(b) for b in pooch.breeds]
         data["mutations"] = [serialize_mutation(m) for m in pooch.mutations]
+        if pooch.owner is not None:
+            data["owner"] = serialize_owner(pooch.owner)
 
     return data
 

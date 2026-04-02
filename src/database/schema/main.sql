@@ -9,6 +9,7 @@ CREATE TABLE servers (
 -- OWNERS (players)
 CREATE TABLE owners (
     discord_id      BIGINT NOT NULL PRIMARY KEY,
+    discord_name    TEXT NULL,
     dollars         INTEGER NOT NULL DEFAULT 100,
     bloodskulls     INTEGER NOT NULL DEFAULT 0,
     begged_today    BOOLEAN NOT NULL DEFAULT TRUE,
@@ -56,6 +57,7 @@ CREATE TABLE pooches (
     breeding_cooldown   INTEGER NOT NULL DEFAULT 2,
     alive               BOOLEAN NOT NULL DEFAULT TRUE,
     virgin              BOOLEAN NOT NULL DEFAULT TRUE,
+    mood                mood NULL,
 
     owner_discord_id    BIGINT NULL REFERENCES owners(discord_id) ON DELETE SET NULL,
     vendor_id           BIGINT NULL REFERENCES vendors(id) ON DELETE SET NULL,

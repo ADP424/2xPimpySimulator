@@ -80,6 +80,7 @@ async def add_pooch_to_kennel(kennel_id: int, pooch_id: int) -> bool:
         return False
 
     await db_add_pooch_to_kennel(kennel_id, pooch_id)
+    return True
 
 
 async def rename_kennel(kennel_id: int, name: str) -> bool:

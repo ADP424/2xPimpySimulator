@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from database.models import Breed as BreedORM
 
@@ -14,6 +14,8 @@ class Breed:
 
     rarity: str
 
+    advanced_options: dict = field(default_factory=dict)
+
 
 async def to_breed(breed: BreedORM) -> Breed:
     return Breed(
@@ -23,4 +25,5 @@ async def to_breed(breed: BreedORM) -> Breed:
         category=breed.category,
         description=breed.description,
         rarity=breed.rarity,
+        advanced_options=breed.advanced_options or {},
     )

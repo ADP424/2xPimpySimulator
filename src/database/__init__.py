@@ -12,6 +12,7 @@ from .get import (
     get_mutation_health_impact,
     get_owner_by_discord_id,
     get_owner_server,
+    get_parentage_maps,
     get_pooch_by_id,
     get_pooch_health,
     get_pooch_kennel,
@@ -28,6 +29,7 @@ from .list import (
     list_hell_pooches,
     list_kennels_for_owner,
     list_living_pooches,
+    list_owners,
     list_owner_servers,
     list_pooch_breed_weights,
     list_pooch_breeds,
@@ -36,6 +38,7 @@ from .list import (
     list_pooch_pregnancies,
     list_pooch_siblings,
     list_pooches_for_kennel,
+    list_pooches_with_health,
     list_servers,
     list_servers_for_pooch,
     list_vendor_pooch_stock,
@@ -75,6 +78,8 @@ from .update import (
     set_pooch_virgin,
     transfer_pooch_to_owner,
     transfer_pooch_to_vendor,
+    update_owner_discord_name,
+    update_pooch_mood,
 )
 
 __all__ = [
@@ -91,6 +96,7 @@ __all__ = [
     "get_mutation_health_impact",
     "get_owner_by_discord_id",
     "get_owner_server",
+    "get_parentage_maps",
     "get_pooch_by_id",
     "get_pooch_health",
     "get_pooch_kennel",
@@ -106,6 +112,7 @@ __all__ = [
     "list_hell_pooches",
     "list_kennels_for_owner",
     "list_living_pooches",
+    "list_owners",
     "list_owner_servers",
     "list_pooch_breed_weights",
     "list_pooch_breeds",
@@ -114,6 +121,7 @@ __all__ = [
     "list_pooch_pregnancies",
     "list_pooch_siblings",
     "list_pooches_for_kennel",
+    "list_pooches_with_health",
     "list_servers",
     "list_servers_for_pooch",
     "list_vendor_pooch_stock",
@@ -152,4 +160,6 @@ __all__ = [
     "set_pooch_virgin",
     "transfer_pooch_to_owner",
     "transfer_pooch_to_vendor",
+    "update_owner_discord_name",
+    "update_pooch_mood",
 ]

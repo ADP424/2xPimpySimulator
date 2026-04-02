@@ -12,7 +12,12 @@ class ColorFormatter(logging.Formatter):
         record.levelname = f"{self.PURPLE}{record.levelname}{self.RESET}"
         record.name = f"{self.BLUE}{record.name}{self.RESET}"
         record.message = record.getMessage()
-        return f"{record.asctime} {record.levelname} — {record.name} — {record.message}"
+        s = f"{record.asctime} {record.levelname} — {record.name} — {record.message}"
+        if record.exc_info and not record.exc_text:
+            record.exc_text = self.formatException(record.exc_info)
+        if record.exc_text:
+            s += "\n" + record.exc_text
+        return s
 
 
 def get_logger(name: str):

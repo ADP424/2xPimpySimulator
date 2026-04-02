@@ -1,0 +1,15 @@
+{
+  "name": "pooch-breeder-js",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "esbuild app.src.js --bundle --outfile=app.bundle.js --format=iife --target=es2020",
+    "watch": "esbuild app.src.js --bundle --outfile=app.bundle.js --format=iife --target=es2020 --watch"
+  },
+  "dependencies": {
+    "web-haptics": "^0.0.6"
+  },
+  "devDependencies": {
+    "esbuild": "^0.27.3"
+  }
+}

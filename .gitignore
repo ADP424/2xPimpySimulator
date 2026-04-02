@@ -9,6 +9,10 @@ __pycache__/
 .pytest_cache/
 .coverage
 
+# JS build
+node_modules/
+src/web/static/js/app.bundle.js
+
 # other
 .vscode
 *.egg-info

@@ -18,6 +18,12 @@
     <div class="card bg-base-200 shadow-md mb-6">
         <div class="card-body py-4">
             <div id="vendor-details"></div>
+            <div id="desired-mutations-section" style="display: none;">
+                <div class="divider my-2"></div>
+                <h2 class="card-title text-sm uppercase tracking-wide text-base-content/50">✨ Desired Mutations</h2>
+                <p class="text-xs text-base-content/50 mb-3">This vendor pays a bonus for pooches with these mutations.</p>
+                <div id="desired-mutations-list" class="flex flex-wrap gap-3"></div>
+            </div>
         </div>
     </div>
 
@@ -35,6 +41,8 @@ const PAGE_DATA = {
     vendorId: {{ vendor_id }}
 };
 
+let desiredMutationIds = new Set();
+
 document.addEventListener('DOMContentLoaded', async function() {
     try {
         const response = await fetch(`/api/vendors/${PAGE_DATA.vendorId}`);
@@ -44,6 +52,20 @@ document.addEventListener('DOMContentLoaded', async function() {
         document.getElementById('vendor-container').style.display = 'block';
 
         document.getElementById('vendor-name').textContent = `🏪 ${vendor.name}`;
+
+        // Desired mutations
+        if (vendor.desired_mutations && vendor.desired_mutations.length > 0) {
+            desiredMutationIds = new Set(vendor.desired_mutations.map(m => m.id));
+            const section = document.getElementById('desired-mutations-section');
+            const list = document.getElementById('desired-mutations-list');
+            section.style.display = '';
+            list.innerHTML = vendor.desired_mutations.map(m => `
+                <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-base-300 health-${App.healthImpactGroup(m.health_impact)}">
+                    <span class="font-medium text-sm">${escapeHtml(m.name)}</span>
+                    <span class="rarity-badge rarity-${(m.rarity || '').toLowerCase()}">${escapeHtml(App.format.enumLabel(m.rarity))}</span>
+                </div>
+            `).join('');
+        }
 
         // Load pooches
         const poochResponse = await fetch(`/api/vendors/${PAGE_DATA.vendorId}/pooches`);
@@ -92,9 +114,10 @@ function createPoochCard(pooch) {
           ).join(' ')
         : `<span>Unknown</span>`;
     const mutationsHtml = pooch.mutations.length > 0
-        ? pooch.mutations.map((m, i) =>
-            `<span class="rarity-text-${(m.rarity || '').toLowerCase()}">${escapeHtml(m.name)}${i < pooch.mutations.length - 1 ? ',' : ''}</span>`
-          ).join(' ')
+        ? pooch.mutations.map((m, i) => {
+            const isDesired = desiredMutationIds.has(m.id);
+            return `<span class="rarity-text-${(m.rarity || '').toLowerCase()}">${isDesired ? '✨' : ''}${escapeHtml(m.name)}${i < pooch.mutations.length - 1 ? ',' : ''}</span>`;
+        }).join(' ')
         : `<span>None</span>`;
 
     return `
@@ -137,7 +160,7 @@ async function buyPooch(poochId) {
         const result = await response.json();
 
         if (result.success) {
-            App.showNotification('Purchase successful!', 'success');
+            App.queueNotification('Purchase successful!', 'success');
             window.location.reload();
         } else {
             App.showNotification(result.message || result.error || 'Purchase failed', 'error');

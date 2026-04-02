@@ -179,7 +179,17 @@ class PoochInfoView(View):
 
         embed.add_field(name="Days Until Heat", value=str(self.pooch.breeding_cooldown), inline=True)
         embed.add_field(name="Sexual Status", value=("Virgin" if self.pooch.virgin else "Debauched"), inline=True)
-        embed.add_field(name="-", value=(""), inline=True)
+
+        mood_emojis = {
+            "happy": "😊", "excited": "🤪", "sleepy": "😴", "grumpy": "😤",
+            "anxious": "😰", "mischievous": "😈", "zoomies": "🏃", "hungry": "🍖",
+            "content": "😌", "clingy": "🥺", "dead": "💀",
+        }
+        if self.pooch.mood:
+            mood_label = f"{mood_emojis.get(self.pooch.mood, '')} {self.pooch.mood.capitalize()}"
+        else:
+            mood_label = "—"
+        embed.add_field(name="Mood", value=mood_label, inline=True)
 
         parents = family.get("parents", [])
         children = family.get("children", [])

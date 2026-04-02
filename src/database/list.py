@@ -155,6 +155,23 @@ async def list_living_pooches() -> list[Pooch]:
     return list(response.scalars().all())
 
 
+async def list_owners() -> list[Owner]:
+    """
+    List all owners in the database.
+
+    Returns
+    -------
+    list[Owner]
+        A list of every Owner ORM object.
+    """
+
+    async with session_scope() as session:
+        query = select(Owner)
+        response = await session.execute(query)
+
+    return list(response.scalars().all())
+
+
 async def list_owner_servers(owner_discord_id: int) -> list[Server]:
     """
     Fetch a list of all the servers the owner with the given Discord ID is in.
@@ -364,6 +381,49 @@ async def list_pooch_siblings(pooch_id: int) -> list[Pooch]:
         siblings = list((await session.execute(query)).scalars().all())
 
     return siblings
+
+
+async def list_pooches_with_health(pooch_ids: set[int]) -> dict[int, dict]:
+    """
+    Batch-fetch pooch data with computed health in a single joined query.
+
+    Parameters
+    ----------
+    pooch_ids: set[int]
+        The set of pooch IDs to fetch.
+
+    Returns
+    -------
+    dict[int, dict]
+        A dict of {pooch_id: {id, name, sex, alive, age, health}}.
+    """
+    if not pooch_ids:
+        return {}
+
+    async with session_scope() as session:
+        query = (
+            select(
+                Pooch.id,
+                Pooch.name,
+                Pooch.sex,
+                Pooch.alive,
+                Pooch.age,
+                (
+                    Pooch.base_health - Pooch.health_loss_age + func.coalesce(func.sum(HealthImpactWeight.weight), 0)
+                ).label("health"),
+            )
+            .outerjoin(PoochMutation, PoochMutation.pooch_id == Pooch.id)
+            .outerjoin(Mutation, Mutation.id == PoochMutation.mutation_id)
+            .outerjoin(HealthImpactWeight, HealthImpactWeight.health_impact == Mutation.health_impact)
+            .where(Pooch.id.in_(pooch_ids))
+            .group_by(Pooch.id, Pooch.name, Pooch.sex, Pooch.alive, Pooch.age, Pooch.base_health, Pooch.health_loss_age)
+        )
+        rows = (await session.execute(query)).all()
+
+    return {
+        row[0]: {"id": row[0], "name": row[1], "sex": row[2], "alive": row[3], "age": row[4], "health": int(row[5])}
+        for row in rows
+    }
 
 
 async def list_pooches_for_kennel(kennel_id: int) -> list[Pooch]:
