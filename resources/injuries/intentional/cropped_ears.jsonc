@@ -1,0 +1,10 @@
+{
+    "name": "Cropped Ears",
+    "health_impact": "NEUTRAL",
+    "severity": "trivial",
+    "description": "This pooch's ears have been cropped.",
+    "parameters": { 
+        "strength_add": 1,
+        "cuteness_add": 1
+    }
+}

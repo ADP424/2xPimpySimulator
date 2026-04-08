@@ -11,6 +11,7 @@
         ],
         "cuteness_add": 1,
         "dexterity_mult": 0.70,
-        "strength_mult": 0.80
+        "strength_mult": 0.80,
+        "size_mult": 0.95
     }
 }

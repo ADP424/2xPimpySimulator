@@ -1,6 +1,6 @@
 {
     "name": "Missing Eye",
-    "health_impact": "HARMFUL",
+    "health_impact": "UNHEALTHY",
     "severity": "major",
     "description": "This pooch is missing an eye.",
     "parameters": {
