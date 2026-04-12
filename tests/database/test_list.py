@@ -298,3 +298,226 @@ async def test_count_owners_for_server_returns_zero_when_none():
         result = await count_owners_for_server(123)
 
     assert result == 0
+
+
+# ---------------------------------------------------------------------------
+# list_active_sale_listings_for_server
+# ---------------------------------------------------------------------------
+
+
+async def test_list_active_sale_listings_for_server_returns_listings():
+    """Should return all active listings on the server."""
+    fake_listings = [
+        SimpleNamespace(id=1, server_discord_id=10, is_active=True),
+        SimpleNamespace(id=2, server_discord_id=10, is_active=True),
+    ]
+    scope_cls, _ = _mock_session_scope(scalars_result=fake_listings)
+
+    with patch("src.database.list.session_scope", return_value=scope_cls()):
+        from src.database import list_active_sale_listings_for_server
+
+        result = await list_active_sale_listings_for_server(10)
+
+    assert result == fake_listings
+
+
+async def test_list_active_sale_listings_for_server_returns_empty():
+    """Should return empty list when no active listings exist on the server."""
+    scope_cls, _ = _mock_session_scope(scalars_result=[])
+
+    with patch("src.database.list.session_scope", return_value=scope_cls()):
+        from src.database import list_active_sale_listings_for_server
+
+        result = await list_active_sale_listings_for_server(999)
+
+    assert result == []
+
+
+# ---------------------------------------------------------------------------
+# list_active_sale_listings_for_owner
+# ---------------------------------------------------------------------------
+
+
+async def test_list_active_sale_listings_for_owner_returns_listings():
+    """Should return all active listings by the seller."""
+    fake_listings = [SimpleNamespace(id=3, seller_discord_id=42, is_active=True)]
+    scope_cls, _ = _mock_session_scope(scalars_result=fake_listings)
+
+    with patch("src.database.list.session_scope", return_value=scope_cls()):
+        from src.database import list_active_sale_listings_for_owner
+
+        result = await list_active_sale_listings_for_owner(42)
+
+    assert result == fake_listings
+
+
+async def test_list_active_sale_listings_for_owner_returns_empty():
+    """Should return empty list when the owner has no active listings."""
+    scope_cls, _ = _mock_session_scope(scalars_result=[])
+
+    with patch("src.database.list.session_scope", return_value=scope_cls()):
+        from src.database import list_active_sale_listings_for_owner
+
+        result = await list_active_sale_listings_for_owner(999)
+
+    assert result == []
+
+
+# ---------------------------------------------------------------------------
+# list_active_bounty_listings_for_server
+# ---------------------------------------------------------------------------
+
+
+async def test_list_active_bounty_listings_for_server_returns_listings():
+    """Should return all active bounty listings on the server."""
+    fake_bounties = [
+        SimpleNamespace(id=10, server_discord_id=5, is_active=True),
+    ]
+    scope_cls, _ = _mock_session_scope(scalars_result=fake_bounties)
+
+    with patch("src.database.list.session_scope", return_value=scope_cls()):
+        from src.database import list_active_bounty_listings_for_server
+
+        result = await list_active_bounty_listings_for_server(5)
+
+    assert result == fake_bounties
+
+
+async def test_list_active_bounty_listings_for_server_returns_empty():
+    """Should return empty list when no bounties exist on the server."""
+    scope_cls, _ = _mock_session_scope(scalars_result=[])
+
+    with patch("src.database.list.session_scope", return_value=scope_cls()):
+        from src.database import list_active_bounty_listings_for_server
+
+        result = await list_active_bounty_listings_for_server(999)
+
+    assert result == []
+
+
+# ---------------------------------------------------------------------------
+# list_active_bounty_listings_for_owner
+# ---------------------------------------------------------------------------
+
+
+async def test_list_active_bounty_listings_for_owner_returns_listings():
+    """Should return all active bounties posted by the owner."""
+    fake_bounties = [SimpleNamespace(id=20, buyer_discord_id=7, is_active=True)]
+    scope_cls, _ = _mock_session_scope(scalars_result=fake_bounties)
+
+    with patch("src.database.list.session_scope", return_value=scope_cls()):
+        from src.database import list_active_bounty_listings_for_owner
+
+        result = await list_active_bounty_listings_for_owner(7)
+
+    assert result == fake_bounties
+
+
+async def test_list_active_bounty_listings_for_owner_returns_empty():
+    """Should return empty list when the owner has no active bounties."""
+    scope_cls, _ = _mock_session_scope(scalars_result=[])
+
+    with patch("src.database.list.session_scope", return_value=scope_cls()):
+        from src.database import list_active_bounty_listings_for_owner
+
+        result = await list_active_bounty_listings_for_owner(999)
+
+    assert result == []
+
+
+# ---------------------------------------------------------------------------
+# list_bids_for_listing
+# ---------------------------------------------------------------------------
+
+
+async def test_list_bids_for_listing_returns_bids():
+    """Should return all bids for the listing ordered by amount DESC."""
+    fake_bids = [
+        SimpleNamespace(id=1, listing_id=5, amount=300),
+        SimpleNamespace(id=2, listing_id=5, amount=100),
+    ]
+    scope_cls, _ = _mock_session_scope(scalars_result=fake_bids)
+
+    with patch("src.database.list.session_scope", return_value=scope_cls()):
+        from src.database import list_bids_for_listing
+
+        result = await list_bids_for_listing(5)
+
+    assert result == fake_bids
+
+
+async def test_list_bids_for_listing_returns_empty():
+    """Should return empty list when no bids exist for the listing."""
+    scope_cls, _ = _mock_session_scope(scalars_result=[])
+
+    with patch("src.database.list.session_scope", return_value=scope_cls()):
+        from src.database import list_bids_for_listing
+
+        result = await list_bids_for_listing(999)
+
+    assert result == []
+
+
+# ---------------------------------------------------------------------------
+# list_expired_sale_listings
+# ---------------------------------------------------------------------------
+
+
+async def test_list_expired_sale_listings_returns_expired():
+    """Should return all active listings whose expiry time has passed."""
+    fake_expired = [
+        SimpleNamespace(id=8, is_active=True, expires_at="2020-01-01"),
+    ]
+    scope_cls, _ = _mock_session_scope(scalars_result=fake_expired)
+
+    with patch("src.database.list.session_scope", return_value=scope_cls()):
+        from src.database import list_expired_sale_listings
+
+        result = await list_expired_sale_listings()
+
+    assert result == fake_expired
+
+
+async def test_list_expired_sale_listings_returns_empty_when_none():
+    """Should return empty list when no listings have expired."""
+    scope_cls, _ = _mock_session_scope(scalars_result=[])
+
+    with patch("src.database.list.session_scope", return_value=scope_cls()):
+        from src.database import list_expired_sale_listings
+
+        result = await list_expired_sale_listings()
+
+    assert result == []
+
+
+# ---------------------------------------------------------------------------
+# list_owner_bid_history
+# ---------------------------------------------------------------------------
+
+
+async def test_list_owner_bid_history_returns_bids():
+    """Should return all bids placed by the owner, newest first."""
+    fake_bids = [
+        SimpleNamespace(id=3, bidder_discord_id=99, amount=200),
+        SimpleNamespace(id=1, bidder_discord_id=99, amount=50),
+    ]
+    scope_cls, _ = _mock_session_scope(scalars_result=fake_bids)
+
+    with patch("src.database.list.session_scope", return_value=scope_cls()):
+        from src.database import list_owner_bid_history
+
+        result = await list_owner_bid_history(99)
+
+    assert result == fake_bids
+
+
+async def test_list_owner_bid_history_returns_empty():
+    """Should return empty list when the owner has never bid."""
+    scope_cls, _ = _mock_session_scope(scalars_result=[])
+
+    with patch("src.database.list.session_scope", return_value=scope_cls()):
+        from src.database import list_owner_bid_history
+
+        result = await list_owner_bid_history(999)
+
+    assert result == []

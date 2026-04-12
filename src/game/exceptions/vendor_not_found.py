@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+
 class VendorNotFound(Exception):
     """
     Exception raised when a vendor corresponding to an ID isn't found.

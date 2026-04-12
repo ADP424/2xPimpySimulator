@@ -310,3 +310,35 @@ async def test_remove_breed_from_pooch_returns_none():
         result = await remove_breed_from_pooch(1, 999)
 
     assert result is None
+
+
+# ---------------------------------------------------------------------------
+# remove_auction_bid
+# ---------------------------------------------------------------------------
+
+
+async def test_remove_auction_bid_returns_true_when_bid_exists():
+    """remove_auction_bid should return True when the bid is found and deleted."""
+    fake_bid = SimpleNamespace(id=1, listing_id=5, amount=100)
+    scope_cls, mock_session = _mock_session_scope(entity=fake_bid)
+
+    with patch("src.database.delete.session_scope", return_value=scope_cls()):
+        from src.database import remove_auction_bid
+
+        result = await remove_auction_bid(1)
+
+    assert result is True
+    mock_session.delete.assert_awaited_once_with(fake_bid)
+
+
+async def test_remove_auction_bid_returns_false_when_missing():
+    """remove_auction_bid should return False when the bid doesn't exist."""
+    scope_cls, mock_session = _mock_session_scope(entity=None)
+
+    with patch("src.database.delete.session_scope", return_value=scope_cls()):
+        from src.database import remove_auction_bid
+
+        result = await remove_auction_bid(999)
+
+    assert result is False
+    mock_session.delete.assert_not_awaited()

@@ -1,5 +1,6 @@
 """Tests for src/game/breeding.py — name combining, breed_pooches, and incest calculation."""
 
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -81,6 +82,8 @@ class TestBreedPooches:
         with pytest.raises(ValueError, match="breeding cooldown"):
             await breed_pooches(1, 2, rng_seed=42)
 
+    @patch("src.database.get_current_season", new_callable=AsyncMock, return_value="spring")
+    @patch("src.game.breeding.handle_breeding_diseases", new_callable=AsyncMock, return_value=[])
     @patch("src.game.breeding.add_mutation_to_pooch", new_callable=AsyncMock)
     @patch("src.game.breeding.add_pooch_breeds", new_callable=AsyncMock)
     @patch("src.game.breeding.create_pooch_pregnancy", new_callable=AsyncMock)
@@ -105,6 +108,8 @@ class TestBreedPooches:
         mock_pregnancy,
         mock_add_breeds,
         mock_add_mut,
+        mock_handle_diseases,
+        mock_get_season,
     ):
         """When the first pooch is female, it becomes the mother."""
         female = make_pooch(pooch_id=1, sex="female", name="Mama")
@@ -127,6 +132,8 @@ class TestBreedPooches:
         mock_parentage.assert_called_with(99, father_id=2, mother_id=1)
         assert 99 in result
 
+    @patch("src.database.get_current_season", new_callable=AsyncMock, return_value="spring")
+    @patch("src.game.breeding.handle_breeding_diseases", new_callable=AsyncMock, return_value=[])
     @patch("src.game.breeding.add_mutation_to_pooch", new_callable=AsyncMock)
     @patch("src.game.breeding.add_pooch_breeds", new_callable=AsyncMock)
     @patch("src.game.breeding.create_pooch_pregnancy", new_callable=AsyncMock)
@@ -151,6 +158,8 @@ class TestBreedPooches:
         mock_pregnancy,
         mock_add_breeds,
         mock_add_mut,
+        mock_handle_diseases,
+        mock_get_season,
     ):
         """When RNG roll >= TWINS_CHANCE (0.25), litter size should be 1."""
         father = make_pooch(pooch_id=1, sex="male", name="Dad")
@@ -168,6 +177,8 @@ class TestBreedPooches:
         result = await breed_pooches(1, 2, rng_seed=42)
         assert len(result) == 1
 
+    @patch("src.database.get_current_season", new_callable=AsyncMock, return_value="spring")
+    @patch("src.game.breeding.handle_breeding_diseases", new_callable=AsyncMock, return_value=[])
     @patch("src.game.breeding.add_mutation_to_pooch", new_callable=AsyncMock)
     @patch("src.game.breeding.add_pooch_breeds", new_callable=AsyncMock)
     @patch("src.game.breeding.create_pooch_pregnancy", new_callable=AsyncMock)
@@ -192,6 +203,8 @@ class TestBreedPooches:
         mock_pregnancy,
         mock_add_breeds,
         mock_add_mut,
+        mock_handle_diseases,
+        mock_get_season,
     ):
         """When TRIPLETS_CHANCE <= roll < TWINS_CHANCE, litter size = 2."""
         father = make_pooch(pooch_id=1, sex="male", name="Dad")
@@ -215,6 +228,8 @@ class TestBreedPooches:
         result = await breed_pooches(1, 2, rng_seed=1)
         assert len(result) == 2
 
+    @patch("src.database.get_current_season", new_callable=AsyncMock, return_value="spring")
+    @patch("src.game.breeding.handle_breeding_diseases", new_callable=AsyncMock, return_value=[])
     @patch("src.game.breeding.add_mutation_to_pooch", new_callable=AsyncMock)
     @patch("src.game.breeding.add_pooch_breeds", new_callable=AsyncMock)
     @patch("src.game.breeding.create_pooch_pregnancy", new_callable=AsyncMock)
@@ -239,6 +254,8 @@ class TestBreedPooches:
         mock_pregnancy,
         mock_add_breeds,
         mock_add_mut,
+        mock_handle_diseases,
+        mock_get_season,
     ):
         """Each parent's breeds are normalized and contribute 50% each."""
         father = make_pooch(pooch_id=1, sex="male", name="Dad")
@@ -268,6 +285,8 @@ class TestBreedPooches:
         assert 20 in breed_weights
         assert abs(breed_weights[10] - breed_weights[20]) <= 1
 
+    @patch("src.database.get_current_season", new_callable=AsyncMock, return_value="spring")
+    @patch("src.game.breeding.handle_breeding_diseases", new_callable=AsyncMock, return_value=[])
     @patch("src.game.breeding.add_mutation_to_pooch", new_callable=AsyncMock)
     @patch("src.game.breeding.add_pooch_breeds", new_callable=AsyncMock)
     @patch("src.game.breeding.create_pooch_pregnancy", new_callable=AsyncMock)
@@ -292,6 +311,8 @@ class TestBreedPooches:
         mock_pregnancy,
         mock_add_breeds,
         mock_add_mut,
+        mock_handle_diseases,
+        mock_get_season,
     ):
         """A mutation with heritability=1.0 should always be inherited."""
         father = make_pooch(pooch_id=1, sex="male", name="Dad")
@@ -313,6 +334,8 @@ class TestBreedPooches:
         add_mut_calls = [c for c in mock_add_mut.call_args_list if c.kwargs.get("mutation_id") == 5]
         assert len(add_mut_calls) >= 1
 
+    @patch("src.database.get_current_season", new_callable=AsyncMock, return_value="spring")
+    @patch("src.game.breeding.handle_breeding_diseases", new_callable=AsyncMock, return_value=[])
     @patch("src.game.breeding.add_mutation_to_pooch", new_callable=AsyncMock)
     @patch("src.game.breeding.add_pooch_breeds", new_callable=AsyncMock)
     @patch("src.game.breeding.create_pooch_pregnancy", new_callable=AsyncMock)
@@ -337,6 +360,8 @@ class TestBreedPooches:
         mock_pregnancy,
         mock_add_breeds,
         mock_add_mut,
+        mock_handle_diseases,
+        mock_get_season,
     ):
         """When both parents have a mutation, heritability is doubled (capped at 1.0)."""
         father = make_pooch(pooch_id=1, sex="male", name="Dad")
@@ -358,6 +383,8 @@ class TestBreedPooches:
         add_mut_calls = [c for c in mock_add_mut.call_args_list if c.kwargs.get("mutation_id") == 7]
         assert len(add_mut_calls) >= 1
 
+    @patch("src.database.get_current_season", new_callable=AsyncMock, return_value="spring")
+    @patch("src.game.breeding.handle_breeding_diseases", new_callable=AsyncMock, return_value=[])
     @patch("src.game.breeding.add_mutation_to_pooch", new_callable=AsyncMock)
     @patch("src.game.breeding.add_pooch_breeds", new_callable=AsyncMock)
     @patch("src.game.breeding.create_pooch_pregnancy", new_callable=AsyncMock)
@@ -382,6 +409,8 @@ class TestBreedPooches:
         mock_pregnancy,
         mock_add_breeds,
         mock_add_mut,
+        mock_handle_diseases,
+        mock_get_season,
     ):
         """When incest_level > 0, random mutations can be added (NUM_INCEST_MUTATION_ROLLS=3 attempts)."""
         father = make_pooch(pooch_id=1, sex="male", name="Dad")
@@ -404,6 +433,8 @@ class TestBreedPooches:
         ]
         assert len(random_mut_calls) == 3
 
+    @patch("src.database.get_current_season", new_callable=AsyncMock, return_value="spring")
+    @patch("src.game.breeding.handle_breeding_diseases", new_callable=AsyncMock, return_value=[])
     @patch("src.game.breeding.add_mutation_to_pooch", new_callable=AsyncMock)
     @patch("src.game.breeding.add_pooch_breeds", new_callable=AsyncMock)
     @patch("src.game.breeding.create_pooch_pregnancy", new_callable=AsyncMock)
@@ -428,6 +459,8 @@ class TestBreedPooches:
         mock_pregnancy,
         mock_add_breeds,
         mock_add_mut,
+        mock_handle_diseases,
+        mock_get_season,
     ):
         """skip_validation=True should allow breeding even with same sex, cooldown, etc."""
         p1 = make_pooch(pooch_id=1, sex="male", name="Dad", breeding_cooldown=99)
@@ -530,3 +563,48 @@ class TestCalculateIncestLevel:
 
         result = await calculate_incest_level(1, 2, max_depth=2)
         assert result == 0.0
+
+    @patch("src.database.get_current_season", new_callable=AsyncMock, return_value="spring")
+    @patch(
+        "src.game.breeding.handle_breeding_diseases",
+        new_callable=AsyncMock,
+        return_value=[(2, "a mysterious illness", "spread")],
+    )
+    @patch("src.game.breeding.add_mutation_to_pooch", new_callable=AsyncMock)
+    @patch("src.game.breeding.add_pooch_breeds", new_callable=AsyncMock)
+    @patch("src.game.breeding.create_pooch_pregnancy", new_callable=AsyncMock)
+    @patch("src.game.breeding.set_pooch_parentage", new_callable=AsyncMock)
+    @patch("src.game.breeding.create_pooch", new_callable=AsyncMock)
+    @patch("src.game.breeding.list_pooch_mutations", new_callable=AsyncMock)
+    @patch("src.game.breeding.list_pooch_breed_weights", new_callable=AsyncMock)
+    @patch("src.game.breeding.calculate_incest_level", new_callable=AsyncMock)
+    @patch("src.game.breeding.set_pooch_virgin", new_callable=AsyncMock)
+    @patch("src.game.breeding.reset_pooch_breeding_cooldown", new_callable=AsyncMock)
+    @patch("src.game.breeding.get_pooch_by_id", new_callable=AsyncMock)
+    async def test_breed_pooches_can_return_disease_events(
+        self,
+        mock_get,
+        mock_reset_cd,
+        mock_set_virgin,
+        mock_incest,
+        mock_breeds,
+        mock_mutations,
+        mock_create,
+        mock_parentage,
+        mock_pregnancy,
+        mock_add_breeds,
+        mock_add_mut,
+        mock_handle_diseases,
+        mock_get_season,
+    ):
+        father = make_pooch(pooch_id=1, sex="male", name="Papa")
+        mother = make_pooch(pooch_id=2, sex="female", name="Mama")
+        mock_get.side_effect = lambda pid: father if pid == 1 else mother
+        mock_incest.return_value = 0.0
+        mock_breeds.return_value = [(10, 1)]
+        mock_mutations.return_value = []
+        mock_create.return_value = SimpleNamespace(id=99)
+
+        result = await breed_pooches(1, 2, rng_seed=42, return_disease_events=True)
+
+        assert result == ([99], [(2, "a mysterious illness", "spread")])

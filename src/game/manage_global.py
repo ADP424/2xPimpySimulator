@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from src.database import (
     advance_global_season,
     get_current_season,

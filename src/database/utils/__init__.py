@@ -17,7 +17,7 @@ from .owner_event_filters import (
     normalize_name,
     strip_requirement_metadata,
 )
-from .randomization import weighted_choice
+from .randomization import rarity_choice, weighted_choice
 
 __all__ = [
     "check_owner_event_filter",
@@ -31,6 +31,7 @@ __all__ = [
     "get_matching_stray_pooch_ids_for_server_filtered",
     "get_random_matching_kennel_id_for_owner",
     "get_random_matching_pooch_id_for_owner",
+    "rarity_choice",
     "weighted_choice",
     "is_excluded",
     "normalize_name",

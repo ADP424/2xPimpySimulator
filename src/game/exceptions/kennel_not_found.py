@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+
 class KennelNotFound(Exception):
     """
     Exception raised when a kennel corresponding to an ID isn't found.

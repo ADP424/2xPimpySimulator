@@ -29,6 +29,7 @@ def make_pooch(
     mutations: list | None = None,
     breeds: list | None = None,
     injuries: list | None = None,
+    diseases: list | None = None,
     **kwargs: Any,
 ) -> SimpleNamespace:
     """Create a lightweight Pooch-like namespace for use in unit tests."""
@@ -57,6 +58,7 @@ def make_pooch(
         mutations=mutations if mutations is not None else [],
         breeds=breeds if breeds is not None else [],
         injuries=injuries if injuries is not None else [],
+        diseases=diseases if diseases is not None else [],
         **kwargs,
     )
 
@@ -155,6 +157,7 @@ def make_kennel(
     pooch_limit: int = 10,
     upgrade_tier: int = 0,
     pooches: list | None = None,
+    messiness: int = 0,
     **kwargs: Any,
 ) -> SimpleNamespace:
     """Create a lightweight Kennel-like namespace for use in unit tests."""
@@ -165,6 +168,7 @@ def make_kennel(
         pooch_limit=pooch_limit,
         upgrade_tier=upgrade_tier,
         pooches=pooches if pooches is not None else [],
+        messiness=messiness,
         **kwargs,
     )
 

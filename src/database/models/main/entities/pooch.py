@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import datetime
 from typing import TYPE_CHECKING
 
@@ -23,10 +25,13 @@ if TYPE_CHECKING:
     from ..relationships.hell_pooch import HellPooch
     from ..relationships.kennel_pooch import KennelPooch
     from ..relationships.pooch_breed import PoochBreed
+    from ..relationships.pooch_disease import PoochDisease
+    from ..relationships.pooch_disease_immunity import PoochDiseaseImmunity
     from ..relationships.pooch_injury import PoochInjury
     from ..relationships.pooch_mutation import PoochMutation
     from ..relationships.pooch_parentage import PoochParentage
     from ..relationships.pooch_pregnancy import PoochPregnancy
+    from ..relationships.pooch_snapshot import PoochSnapshot
     from ..relationships.stray_pooch import StrayPooch
     from ..relationships.vendor_pooch_for_sale import VendorPoochForSale
     from .owner import Owner
@@ -78,6 +83,7 @@ class Pooch(Base):
     breeding_cooldown: Mapped[int] = mapped_column(Integer, default=2)
     alive: Mapped[bool] = mapped_column(Boolean, default=True)
     virgin: Mapped[bool] = mapped_column(Boolean, default=True)
+    vet_checked: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     mood: Mapped[str | None] = mapped_column(MOOD, nullable=True)
 
     owner_discord_id: Mapped[int] = mapped_column(
@@ -135,6 +141,19 @@ class Pooch(Base):
     )
     injuries = association_proxy("pooch_injuries", "injury")
 
+    pooch_diseases: Mapped[list[PoochDisease]] = relationship(
+        "PoochDisease",
+        back_populates="pooch",
+        cascade="all, delete-orphan",
+    )
+    diseases = association_proxy("pooch_diseases", "disease")
+
+    pooch_disease_immunities: Mapped[list[PoochDiseaseImmunity]] = relationship(
+        "PoochDiseaseImmunity",
+        back_populates="pooch",
+        cascade="all, delete-orphan",
+    )
+
     kennel_row: Mapped[KennelPooch] = relationship(
         "KennelPooch",
         back_populates="pooch",
@@ -169,4 +188,11 @@ class Pooch(Base):
         back_populates="pooch",
         uselist=False,
         foreign_keys="VendorPoochForSale.pooch_id",
+    )
+
+    pooch_snapshots: Mapped[list[PoochSnapshot]] = relationship(
+        "PoochSnapshot",
+        back_populates="pooch",
+        cascade="all, delete-orphan",
+        order_by="PoochSnapshot.snapshot_at",
     )

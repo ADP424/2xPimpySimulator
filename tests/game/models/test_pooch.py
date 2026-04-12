@@ -30,6 +30,7 @@ def _make_pooch(**overrides) -> Pooch:
         breeding_cooldown=0,
         alive=True,
         virgin=True,
+        vet_checked=False,
         owner_discord_id=None,
         vendor_id=None,
         created_at=None,
@@ -41,6 +42,7 @@ def _make_pooch(**overrides) -> Pooch:
         breeds=[],
         mutations=[],
         injuries=[],
+        diseases=[],
     )
     defaults.update(overrides)
     return Pooch(**defaults)
@@ -342,9 +344,16 @@ class TestPoochStatus:
 
 
 class TestPoochBirthday:
-    def test_birthday_returns_created_at(self):
+    def test_birthday_returns_created_at_minus_age(self):
+        from datetime import timedelta
+
         dt = datetime(2025, 1, 15, 12, 0, 0)
-        p = _make_pooch(created_at=dt)
+        p = _make_pooch(created_at=dt)  # age=2 by default
+        assert p.birthday == dt - timedelta(days=2)
+
+    def test_birthday_age_zero(self):
+        dt = datetime(2025, 1, 15, 12, 0, 0)
+        p = _make_pooch(created_at=dt, age=0)
         assert p.birthday == dt
 
     def test_birthday_none_when_created_at_none(self):
@@ -396,3 +405,26 @@ class TestPoochFrozen:
         p = _make_pooch()
         with pytest.raises(AttributeError):
             p.name = "Changed"  # type: ignore[misc]
+
+
+def _make_disease_instance(parameters: dict, visible: bool = True) -> SimpleNamespace:
+    """A minimal mock PoochDisease ORM row with an embedded disease catalog object."""
+    disease_catalog = SimpleNamespace(parameters=parameters, visible=visible)
+    return SimpleNamespace(disease=disease_catalog, visible=visible, displayed_symptom=None)
+
+
+class TestApplyStatParamsDiseases:
+    def test_disease_add_only(self):
+        disease = _make_disease_instance({"strength_add": -3})
+        assert apply_stat_params(10, "strength", [], [], [], [disease]) == 7
+
+    def test_disease_mult_only(self):
+        disease = _make_disease_instance({"constitution_mult": 0.5})
+        assert apply_stat_params(10, "constitution", [], [], [], [disease]) == 5
+
+    def test_diseases_stack_with_other_modifiers(self):
+        mutation = _make_mutation_orm({"strength_add": 2})
+        breed = _make_breed_orm({"strength_mult": 1.5})
+        injury = _make_injury_orm({"strength_add": -1})
+        disease = _make_disease_instance({"strength_mult": 0.5})
+        assert apply_stat_params(10, "strength", [mutation], [(breed, 1.0)], [injury], [disease]) == 8

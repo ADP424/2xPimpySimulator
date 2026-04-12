@@ -12,6 +12,7 @@ async def test_main_calls_all_loaders_in_order():
     mock_load_breeds = AsyncMock()
     mock_load_mutations = AsyncMock()
     mock_load_injuries = AsyncMock()
+    mock_load_diseases = AsyncMock()
     mock_load_dog_names = AsyncMock()
     mock_load_vendor_first_names = AsyncMock()
     mock_load_vendor_last_names = AsyncMock()
@@ -23,6 +24,7 @@ async def test_main_calls_all_loaders_in_order():
         "src.database.load.load_resources.load_breeds": mock_load_breeds,
         "src.database.load.load_resources.load_mutations": mock_load_mutations,
         "src.database.load.load_resources.load_injuries": mock_load_injuries,
+        "src.database.load.load_resources.load_diseases": mock_load_diseases,
         "src.database.load.load_resources.load_dog_names": mock_load_dog_names,
         "src.database.load.load_resources.load_vendor_first_names": mock_load_vendor_first_names,
         "src.database.load.load_resources.load_vendor_last_names": mock_load_vendor_last_names,
@@ -39,6 +41,7 @@ async def test_main_calls_all_loaders_in_order():
     mock_load_breeds.assert_awaited_once()
     mock_load_mutations.assert_awaited_once()
     mock_load_injuries.assert_awaited_once()
+    mock_load_diseases.assert_awaited_once()
     mock_load_dog_names.assert_awaited_once()
     mock_load_vendor_first_names.assert_awaited_once()
     mock_load_vendor_last_names.assert_awaited_once()
@@ -59,6 +62,7 @@ async def test_main_calls_breeds_before_events():
         load_breeds=AsyncMock(side_effect=lambda: call_order.append("breeds")),
         load_mutations=AsyncMock(side_effect=lambda: call_order.append("mutations")),
         load_injuries=AsyncMock(side_effect=lambda: call_order.append("injuries")),
+        load_diseases=AsyncMock(side_effect=lambda: call_order.append("diseases")),
         load_dog_names=AsyncMock(side_effect=lambda: call_order.append("dog_names")),
         load_vendor_first_names=AsyncMock(side_effect=lambda: call_order.append("vendor_first")),
         load_vendor_last_names=AsyncMock(side_effect=lambda: call_order.append("vendor_last")),

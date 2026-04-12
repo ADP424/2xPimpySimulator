@@ -6,6 +6,9 @@ from sqlalchemy import select, update
 
 from .constants import POOCH_BREEDING_COOLDOWN, POOCH_HEALTH_LOSS_STARTING_AGE
 from .models import (
+    SNAPSHOT_BIRTH,
+    SNAPSHOT_DEATH,
+    SNAPSHOT_OWNERSHIP,
     AuctionBountyListing,
     AuctionSaleListing,
     Breed,
@@ -17,8 +20,10 @@ from .models import (
     Owner,
     Pooch,
     PoochBreed,
+    PoochDisease,
     PoochInjury,
     PoochMutation,
+    PoochSnapshot,
     Server,
     ServerEventOccurrence,
     ServerEventParticipation,
@@ -52,9 +57,20 @@ async def age_pooch(pooch_id: int, health_loss_starting_age: int = POOCH_HEALTH_
         if pooch is None:
             return None
 
+        was_fetal = pooch.age == -1
         pooch.age += 1
         if pooch.age > health_loss_starting_age:
             pooch.health_loss_age += 1
+
+        if was_fetal:
+            session.add(
+                PoochSnapshot(
+                    pooch_id=pooch_id,
+                    kind=SNAPSHOT_BIRTH,
+                    description=f"{pooch.name} was born.",
+                    snapshot_at=datetime.now(timezone.utc),
+                )
+            )
 
     return pooch
 
@@ -1153,6 +1169,14 @@ async def set_pooch_dead(pooch_id: int) -> Optional[Pooch]:
             return None
 
         pooch.alive = False
+        session.add(
+            PoochSnapshot(
+                pooch_id=pooch_id,
+                kind=SNAPSHOT_DEATH,
+                description=f"{pooch.name} passed away.",
+                snapshot_at=datetime.now(timezone.utc),
+            )
+        )
 
     return pooch
 
@@ -1212,6 +1236,14 @@ async def transfer_pooch_to_owner(pooch_id: int, owner_discord_id: int) -> Optio
 
         pooch.owner_discord_id = owner_discord_id
         pooch.vendor_id = None
+        session.add(
+            PoochSnapshot(
+                pooch_id=pooch_id,
+                kind=SNAPSHOT_OWNERSHIP,
+                description=f"{pooch.name} was taken in by a new owner.",
+                snapshot_at=datetime.now(timezone.utc),
+            )
+        )
 
     return pooch
 
@@ -1273,6 +1305,50 @@ async def transfer_pooch_to_vendor(pooch_id: int, vendor_id: int) -> Optional[Po
 
         pooch.vendor_id = vendor_id
         pooch.owner_discord_id = None
+        session.add(
+            PoochSnapshot(
+                pooch_id=pooch_id,
+                kind=SNAPSHOT_OWNERSHIP,
+                description=f"{pooch.name} was transferred to a vendor.",
+                snapshot_at=datetime.now(timezone.utc),
+            )
+        )
+
+    return pooch
+
+
+async def remove_pooch_from_owner(pooch_id: int) -> Optional[Pooch]:
+    """
+    Clear the owner and vendor association from a pooch (e.g. sold to a private buyer).
+
+    Parameters
+    ----------
+    pooch_id: int
+        The ID of the pooch to disassociate.
+
+    Returns
+    -------
+    Pooch, optional
+        The updated Pooch ORM object, or None if the pooch wasn't found.
+    """
+
+    async with session_scope() as session:
+        query = select(Pooch).where(Pooch.id == pooch_id)
+        pooch = (await session.execute(query)).scalar_one_or_none()
+
+        if pooch is None:
+            return None
+
+        pooch.owner_discord_id = None
+        pooch.vendor_id = None
+        session.add(
+            PoochSnapshot(
+                pooch_id=pooch_id,
+                kind=SNAPSHOT_OWNERSHIP,
+                description=f"{pooch.name} was sold to a private buyer.",
+                snapshot_at=datetime.now(timezone.utc),
+            )
+        )
 
     return pooch
 
@@ -1569,3 +1645,108 @@ async def reveal_pooch_injury(pooch_injury_id: int) -> bool:
         pi.visible = True
         await session.flush()
     return True
+
+
+async def set_pooch_vet_checked(pooch_id: int, checked: bool = True) -> bool:
+    """
+    Set the vet_checked flag on a pooch. Returns True if the pooch was found and updated.
+    """
+    async with session_scope() as session:
+        pooch = await session.get(Pooch, pooch_id)
+        if pooch is None:
+            return False
+        pooch.vet_checked = checked
+        await session.flush()
+    return True
+
+
+async def treat_pooch_disease(pooch_disease_id: int) -> Optional[PoochDisease]:
+    """
+    Mark a PoochDisease as treated and record the timestamp.
+
+    Returns the updated PoochDisease, or None if not found.
+    """
+    async with session_scope() as session:
+        pd = await session.get(PoochDisease, pooch_disease_id)
+        if pd is None:
+            return None
+        pd.treated = True
+        await session.flush()
+    return pd
+
+
+async def reveal_pooch_disease(pooch_disease_id: int) -> Optional[PoochDisease]:
+    """
+    Make a hidden PoochDisease visible.
+
+    Returns the updated PoochDisease, or None if not found.
+    """
+    async with session_scope() as session:
+        pd = await session.get(PoochDisease, pooch_disease_id)
+        if pd is None:
+            return None
+        pd.visible = True
+        await session.flush()
+    return pd
+
+
+async def update_kennel_messiness(kennel_id: int, amount: int) -> Optional[int]:
+    """
+    Add the given amount to the kennel's messiness (can be negative). Returns the new value.
+
+    Parameters
+    ----------
+    kennel_id: int
+        The ID of the kennel to update.
+    amount: int
+        The amount to add to messiness (can be negative).
+
+    Returns
+    -------
+    int, optional
+        The new messiness value, or None if the kennel wasn't found.
+    """
+    async with session_scope() as session:
+        kennel = await session.get(Kennel, kennel_id)
+        if kennel is None:
+            return None
+        kennel.messiness = max(0, kennel.messiness + amount)
+        await session.flush()
+    return kennel.messiness
+
+
+async def set_kennel_messiness(kennel_id: int, value: int) -> Optional[int]:
+    """
+    Set the kennel's messiness to the given value. Returns the new value.
+
+    Parameters
+    ----------
+    kennel_id: int
+        The ID of the kennel to update.
+    value: int
+        The value to set messiness to.
+
+    Returns
+    -------
+    int, optional
+        The new messiness value, or None if the kennel wasn't found.
+    """
+    async with session_scope() as session:
+        kennel = await session.get(Kennel, kennel_id)
+        if kennel is None:
+            return None
+        kennel.messiness = max(0, value)
+        await session.flush()
+    return kennel.messiness
+
+
+async def increment_global_day() -> int:
+    """Increment the global day counter by 1 and return the new value."""
+    async with session_scope() as session:
+        row = await session.get(GlobalState, _GLOBAL_STATE_ID)
+        if row is None:
+            row = GlobalState(id=_GLOBAL_STATE_ID, current_season="spring", current_day=0)
+            session.add(row)
+        row.current_day += 1
+        await session.flush()
+    return row.current_day

@@ -31,6 +31,12 @@ def mock_change_day_db_calls():
         patch("src.game.change_day.bury_pooch", new=AsyncMock()),
         patch("src.game.change_day.list_vendor_desired_mutations", new=AsyncMock(return_value=[])),
         patch("src.game.change_day.list_vendor_desired_breeds", new=AsyncMock(return_value=[])),
+        patch("src.game.change_day.increment_global_day", new=AsyncMock(return_value=1)),
+        patch("src.game.change_day.run_daily_disease_tick", new=AsyncMock(return_value={})),
+        patch("src.game.change_day.list_pooch_diseases", new=AsyncMock(return_value=[])),
+        patch("src.game.change_day.get_disease_health_impact", new=AsyncMock(return_value=None)),
+        patch("src.game.change_day.list_pooch_injuries", new=AsyncMock(return_value=[])),
+        patch("src.game.change_day.get_injury_health_impact", new=AsyncMock(return_value=None)),
     ):
         yield
 
@@ -95,6 +101,10 @@ class TestDeathRoll:
 
 
 class TestRunDayChange:
+    @patch("src.game.change_day.increment_global_day", new_callable=AsyncMock, return_value=1)
+    @patch("src.game.change_day.run_daily_disease_tick", new_callable=AsyncMock, return_value={})
+    @patch("src.game.change_day.list_pooch_diseases", new_callable=AsyncMock, return_value=[])
+    @patch("src.game.change_day.get_disease_health_impact", new_callable=AsyncMock, return_value=None)
     @patch("src.game.change_day.run_daily_stray_event_check", new_callable=AsyncMock)
     @patch("src.game.change_day.add_pooch_to_vendor_stock", new_callable=AsyncMock)
     @patch("src.game.change_day.add_mutation_to_pooch", new_callable=AsyncMock)
@@ -137,6 +147,10 @@ class TestRunDayChange:
         mock_add_mut,
         mock_add_vendor_stock,
         mock_stray_events,
+        mock_disease_health_impact,
+        mock_pooch_diseases,
+        mock_disease_tick,
+        mock_increment_day,
     ):
         """Day change runs without error on a server with no pregnancies, pooches, or strays."""
         mock_pregnancies.return_value = []
@@ -158,6 +172,10 @@ class TestRunDayChange:
         mock_reset_beg.assert_awaited_once()
         mock_reset_park.assert_awaited_once()
 
+    @patch("src.game.change_day.increment_global_day", new_callable=AsyncMock, return_value=1)
+    @patch("src.game.change_day.run_daily_disease_tick", new_callable=AsyncMock, return_value={})
+    @patch("src.game.change_day.list_pooch_diseases", new_callable=AsyncMock, return_value=[])
+    @patch("src.game.change_day.get_disease_health_impact", new_callable=AsyncMock, return_value=None)
     @patch("src.game.change_day.run_daily_stray_event_check", new_callable=AsyncMock)
     @patch("src.game.change_day.add_pooch_to_vendor_stock", new_callable=AsyncMock)
     @patch("src.game.change_day.add_mutation_to_pooch", new_callable=AsyncMock)
@@ -214,6 +232,10 @@ class TestRunDayChange:
         mock_add_mut,
         mock_add_vendor_stock,
         mock_stray_events,
+        mock_disease_health_impact,
+        mock_pooch_diseases,
+        mock_disease_tick,
+        mock_increment_day,
     ):
         """A pregnancy produces a birth event when the mother has a kennel with space."""
         pregnancy = SimpleNamespace(mother_id=10, fetus_id=20)
@@ -247,6 +269,10 @@ class TestRunDayChange:
         birth = summaries[200].births[0]
         assert "gave birth" in birth.message
 
+    @patch("src.game.change_day.increment_global_day", new_callable=AsyncMock, return_value=1)
+    @patch("src.game.change_day.run_daily_disease_tick", new_callable=AsyncMock, return_value={})
+    @patch("src.game.change_day.list_pooch_diseases", new_callable=AsyncMock, return_value=[])
+    @patch("src.game.change_day.get_disease_health_impact", new_callable=AsyncMock, return_value=None)
     @patch("src.game.change_day.run_daily_stray_event_check", new_callable=AsyncMock)
     @patch("src.game.change_day.add_pooch_to_vendor_stock", new_callable=AsyncMock)
     @patch("src.game.change_day.add_mutation_to_pooch", new_callable=AsyncMock)
@@ -289,6 +315,10 @@ class TestRunDayChange:
         mock_add_mut,
         mock_add_vendor_stock,
         mock_stray_events,
+        mock_disease_health_impact,
+        mock_pooch_diseases,
+        mock_disease_tick,
+        mock_increment_day,
     ):
         """When a server has no strays, a guaranteed stray is created."""
         mock_pregnancies.return_value = []
@@ -309,6 +339,10 @@ class TestRunDayChange:
 
         mock_add_stray.assert_any_call(77, 200)
 
+    @patch("src.game.change_day.increment_global_day", new_callable=AsyncMock, return_value=1)
+    @patch("src.game.change_day.run_daily_disease_tick", new_callable=AsyncMock, return_value={})
+    @patch("src.game.change_day.list_pooch_diseases", new_callable=AsyncMock, return_value=[])
+    @patch("src.game.change_day.get_disease_health_impact", new_callable=AsyncMock, return_value=None)
     @patch("src.game.change_day.run_daily_stray_event_check", new_callable=AsyncMock)
     @patch("src.game.change_day.add_pooch_to_vendor_stock", new_callable=AsyncMock)
     @patch("src.game.change_day.add_mutation_to_pooch", new_callable=AsyncMock)
@@ -351,6 +385,10 @@ class TestRunDayChange:
         mock_add_mut,
         mock_add_vendor_stock,
         mock_stray_events,
+        mock_disease_health_impact,
+        mock_pooch_diseases,
+        mock_disease_tick,
+        mock_increment_day,
     ):
         """When a server has fewer vendors than NUM_VENDORS_PER_SERVER (3), new ones are created."""
         mock_pregnancies.return_value = []
@@ -427,6 +465,12 @@ _RUN_DAY_PATCHES = [
     "src.game.change_day.list_vendor_desired_mutations",
     "src.game.change_day.list_vendor_desired_breeds",
     "src.game.change_day.bury_pooch",
+    "src.game.change_day.increment_global_day",
+    "src.game.change_day.run_daily_disease_tick",
+    "src.game.change_day.list_pooch_diseases",
+    "src.game.change_day.get_disease_health_impact",
+    "src.game.change_day.list_pooch_injuries",
+    "src.game.change_day.get_injury_health_impact",
 ]
 
 
@@ -458,6 +502,12 @@ def _apply_default_mocks(mocks, server=None, vendors=None):
     mocks["src.game.change_day.list_hell_pooches"].return_value = []
     mocks["src.game.change_day.list_vendor_desired_mutations"].return_value = []
     mocks["src.game.change_day.list_vendor_desired_breeds"].return_value = []
+    mocks["src.game.change_day.increment_global_day"].return_value = 1
+    mocks["src.game.change_day.run_daily_disease_tick"].return_value = {}
+    mocks["src.game.change_day.list_pooch_diseases"].return_value = []
+    mocks["src.game.change_day.get_disease_health_impact"].return_value = None
+    mocks["src.game.change_day.list_pooch_injuries"].return_value = []
+    mocks["src.game.change_day.get_injury_health_impact"].return_value = None
     mocks["src.game.change_day.to_server"].side_effect = lambda s: SimpleNamespace(discord_id=s.discord_id)
     mocks["src.game.change_day.to_pooch"].side_effect = lambda p: SimpleNamespace(id=p.id, name=p.name)
 
@@ -581,7 +631,7 @@ class TestRunDayChangeDeath:
             total_health=0,
             mutations=[neg_mutation],
             neg_mutations=[neg_mutation],
-            health_impacts=[5],
+            health_impacts=[-5],
         )
         deaths = summaries[200].deaths
         assert len(deaths) >= 1
@@ -861,6 +911,10 @@ class TestRunDayChangeDeath:
 
 
 class TestRunDayChangeVendorRestock:
+    @patch("src.game.change_day.increment_global_day", new_callable=AsyncMock, return_value=1)
+    @patch("src.game.change_day.run_daily_disease_tick", new_callable=AsyncMock, return_value={})
+    @patch("src.game.change_day.list_pooch_diseases", new_callable=AsyncMock, return_value=[])
+    @patch("src.game.change_day.get_disease_health_impact", new_callable=AsyncMock, return_value=None)
     @patch("src.game.change_day.run_daily_stray_event_check", new_callable=AsyncMock)
     @patch("src.game.change_day.add_pooch_to_vendor_stock", new_callable=AsyncMock)
     @patch("src.game.change_day.add_mutation_to_pooch", new_callable=AsyncMock)
@@ -903,6 +957,10 @@ class TestRunDayChangeVendorRestock:
         mock_add_mut,
         mock_add_vendor_stock,
         mock_stray_events,
+        mock_disease_health_impact,
+        mock_pooch_diseases,
+        mock_disease_tick,
+        mock_increment_day,
     ):
         """clear_vendor_pooch_stock is called once per vendor."""
         mock_pregnancies.return_value = []
@@ -923,6 +981,10 @@ class TestRunDayChangeVendorRestock:
         # clear_vendor_pooch_stock called once per vendor (3 vendors)
         assert mock_clear_stock.await_count == 3
 
+    @patch("src.game.change_day.increment_global_day", new_callable=AsyncMock, return_value=1)
+    @patch("src.game.change_day.run_daily_disease_tick", new_callable=AsyncMock, return_value={})
+    @patch("src.game.change_day.list_pooch_diseases", new_callable=AsyncMock, return_value=[])
+    @patch("src.game.change_day.get_disease_health_impact", new_callable=AsyncMock, return_value=None)
     @patch("src.game.change_day.run_daily_stray_event_check", new_callable=AsyncMock)
     @patch("src.game.change_day.add_pooch_to_vendor_stock", new_callable=AsyncMock)
     @patch("src.game.change_day.add_mutation_to_pooch", new_callable=AsyncMock)
@@ -965,6 +1027,10 @@ class TestRunDayChangeVendorRestock:
         mock_add_mut,
         mock_add_vendor_stock,
         mock_stray_events,
+        mock_disease_health_impact,
+        mock_pooch_diseases,
+        mock_disease_tick,
+        mock_increment_day,
     ):
         """delete_random_vendor is called once per server."""
         mock_pregnancies.return_value = []
@@ -990,6 +1056,10 @@ class TestRunDayChangeVendorRestock:
 
 
 class TestRunDayChangeStrayEventResults:
+    @patch("src.game.change_day.increment_global_day", new_callable=AsyncMock, return_value=1)
+    @patch("src.game.change_day.run_daily_disease_tick", new_callable=AsyncMock, return_value={})
+    @patch("src.game.change_day.list_pooch_diseases", new_callable=AsyncMock, return_value=[])
+    @patch("src.game.change_day.get_disease_health_impact", new_callable=AsyncMock, return_value=None)
     @patch("src.game.change_day.run_daily_stray_event_check", new_callable=AsyncMock)
     @patch("src.game.change_day.add_pooch_to_vendor_stock", new_callable=AsyncMock)
     @patch("src.game.change_day.add_mutation_to_pooch", new_callable=AsyncMock)
@@ -1032,6 +1102,10 @@ class TestRunDayChangeStrayEventResults:
         mock_add_mut,
         mock_add_vendor_stock,
         mock_stray_events,
+        mock_disease_health_impact,
+        mock_pooch_diseases,
+        mock_disease_tick,
+        mock_increment_day,
     ):
         """The stray event results dict is returned as the second element of the tuple."""
         mock_pregnancies.return_value = []
@@ -1120,6 +1194,19 @@ class TestRunDayChangeSummaryCompilation:
         mocks["src.game.change_day.get_random_breed_ids"].return_value = [1]
         mocks["src.game.change_day.create_pooch"].return_value = make_pooch(pooch_id=50)
         mocks["src.game.change_day.run_daily_stray_event_check"].return_value = {}
+        mocks["src.game.change_day.get_current_season"].return_value = "spring"
+        mocks["src.game.change_day.get_active_auction_sale_listing_for_pooch"].return_value = None
+        mocks["src.game.change_day.list_bids_for_listing"].return_value = []
+        mocks["src.game.change_day.process_expired_sale_listings"].return_value = []
+        mocks["src.game.change_day.list_hell_pooches"].return_value = []
+        mocks["src.game.change_day.list_vendor_desired_mutations"].return_value = []
+        mocks["src.game.change_day.list_vendor_desired_breeds"].return_value = []
+        mocks["src.game.change_day.increment_global_day"].return_value = 1
+        mocks["src.game.change_day.run_daily_disease_tick"].return_value = {}
+        mocks["src.game.change_day.list_pooch_diseases"].return_value = []
+        mocks["src.game.change_day.get_disease_health_impact"].return_value = None
+        mocks["src.game.change_day.list_pooch_injuries"].return_value = []
+        mocks["src.game.change_day.get_injury_health_impact"].return_value = None
         mocks["src.game.change_day.to_server"].side_effect = lambda s: SimpleNamespace(discord_id=s.discord_id)
         mocks["src.game.change_day.to_pooch"].side_effect = lambda p: SimpleNamespace(id=p.id, name=p.name)
 
@@ -1128,3 +1215,82 @@ class TestRunDayChangeSummaryCompilation:
 
         assert 100 in summaries
         assert 300 in summaries
+
+
+@patch(
+    "src.game.change_day.run_daily_disease_tick",
+    new_callable=AsyncMock,
+    return_value={99: [(99, "a mysterious illness", "contracted")]},
+)
+@patch("src.game.change_day.increment_global_day", new_callable=AsyncMock, return_value=1)
+@patch("src.game.change_day.run_daily_stray_event_check", new_callable=AsyncMock, return_value={})
+@patch("src.game.change_day.add_pooch_to_vendor_stock", new_callable=AsyncMock)
+@patch("src.game.change_day.add_mutation_to_pooch", new_callable=AsyncMock)
+@patch("src.game.change_day.reset_pooch_breeding_cooldown", new_callable=AsyncMock)
+@patch("src.game.change_day.create_pooch", new_callable=AsyncMock)
+@patch("src.game.change_day.get_random_breed_ids", new_callable=AsyncMock)
+@patch("src.game.change_day.clear_vendor_pooch_stock", new_callable=AsyncMock)
+@patch("src.game.change_day.create_vendor", new_callable=AsyncMock)
+@patch("src.game.change_day.delete_random_vendor", new_callable=AsyncMock)
+@patch("src.game.change_day.list_vendors", new_callable=AsyncMock)
+@patch("src.game.change_day.add_pooch_to_strays", new_callable=AsyncMock)
+@patch("src.game.change_day.list_strays_for_server", new_callable=AsyncMock)
+@patch("src.game.change_day.list_servers", new_callable=AsyncMock)
+@patch("src.game.change_day.get_pooch_health", new_callable=AsyncMock)
+@patch("src.game.change_day.age_pooch", new_callable=AsyncMock)
+@patch("src.game.change_day.decrement_pooch_breeding_cooldown", new_callable=AsyncMock)
+@patch("src.game.change_day.list_living_pooches", new_callable=AsyncMock)
+@patch("src.game.change_day.list_servers_for_pooch", new_callable=AsyncMock)
+@patch("src.game.change_day.get_pooch_by_id", new_callable=AsyncMock)
+@patch("src.game.change_day.to_pooch", new_callable=AsyncMock)
+@patch("src.game.change_day.to_server", new_callable=AsyncMock)
+@patch("src.game.change_day.list_pooch_pregnancies", new_callable=AsyncMock)
+@patch("src.game.change_day.reset_visited_park_today", new_callable=AsyncMock)
+@patch("src.game.change_day.reset_begged_today", new_callable=AsyncMock)
+async def test_day_change_uses_public_disease_label_in_summary(
+    mock_reset_beg,
+    mock_reset_park,
+    mock_pregnancies,
+    mock_to_server,
+    mock_to_pooch,
+    mock_get_pooch,
+    mock_servers_for_pooch,
+    mock_living,
+    mock_dec_cd,
+    mock_age,
+    mock_health,
+    mock_servers,
+    mock_strays,
+    mock_add_stray,
+    mock_vendors,
+    mock_del_vendor,
+    mock_create_vendor,
+    mock_clear_stock,
+    mock_breed_ids,
+    mock_create_pooch,
+    mock_reset_cd,
+    mock_add_mut,
+    mock_add_vendor_stock,
+    mock_stray_events,
+    mock_increment_day,
+    mock_disease_tick,
+):
+    server = make_server(discord_id=10)
+    pooch = make_pooch(pooch_id=99, name="Buddy")
+    mock_servers.return_value = [server]
+    mock_servers_for_pooch.return_value = [server]
+    mock_get_pooch.return_value = pooch
+    mock_to_pooch.side_effect = lambda p: p
+    mock_to_server.side_effect = lambda s: s
+    mock_pregnancies.return_value = []
+    mock_living.return_value = []
+    mock_strays.return_value = [make_pooch()]
+    mock_vendors.return_value = [make_vendor(), make_vendor(vendor_id=2), make_vendor(vendor_id=3)]
+    mock_health.return_value = 10
+
+    summaries, _ = await run_day_change(rng_seed=42)
+
+    assert 10 in summaries
+    event_texts = [event.message for event in summaries[10].other_events]
+    assert any("a mysterious illness" in msg for msg in event_texts)
+    assert not any("Kennel Cough" in msg for msg in event_texts)

@@ -446,3 +446,281 @@ class TestHandleSelectPooch:
         await handle_select_pooch([1], {}, rng, result)
         assert result.pooches_affected == []
         assert result.pooches_killed == []
+
+
+# ===========================================================================
+# handle_add_mutation — list of mutations ("mutations" key)
+# ===========================================================================
+
+
+class TestHandleAddMutationList:
+    @patch("src.game.events.shared.pooch_actions.add_mutation_to_pooch", new_callable=AsyncMock)
+    @patch("src.game.events.shared.pooch_actions.get_mutation_by_name", new_callable=AsyncMock)
+    async def test_mutations_list(self, mock_get, mock_add, rng):
+        """When 'mutations' key is a list, each mutation in the list is added."""
+        mock_get.side_effect = [SimpleNamespace(id=1), SimpleNamespace(id=2)]
+        result = _make_result()
+        await handle_add_mutation([10], {"mutations": ["Alpha", "Beta"]}, rng, result)
+        assert mock_get.await_count == 2
+        assert mock_add.await_count == 2
+        assert result.pooches_affected == [10]
+
+    @patch("src.game.events.shared.pooch_actions.add_mutation_to_pooch", new_callable=AsyncMock)
+    @patch("src.game.events.shared.pooch_actions.get_mutation_by_name", new_callable=AsyncMock)
+    async def test_mutations_list_unknown_skipped(self, mock_get, mock_add, rng):
+        """If a mutation name in the list is not found, it is silently skipped."""
+        mock_get.return_value = None
+        result = _make_result()
+        await handle_add_mutation([10], {"mutations": ["Unknown"]}, rng, result)
+        mock_add.assert_not_awaited()
+
+
+# ===========================================================================
+# handle_injure_pooch
+# ===========================================================================
+
+
+from src.game.events.shared import handle_injure_pooch
+
+
+class TestHandleInjurePooch:
+    @patch("src.game.events.shared.pooch_actions.add_injury_to_pooch", new_callable=AsyncMock)
+    @patch("src.game.events.shared.pooch_actions.get_pooch_by_id", new_callable=AsyncMock)
+    @patch("src.game.events.shared.pooch_actions.get_injury_by_name", new_callable=AsyncMock)
+    async def test_named_injury(self, mock_get_injury, mock_get_pooch, mock_add, rng):
+        mock_get_injury.return_value = SimpleNamespace(id=7, name="Broken Leg")
+        mock_add.return_value = True
+        mock_get_pooch.return_value = SimpleNamespace(name="Buddy")
+        result = _make_result()
+
+        await handle_injure_pooch([1], {"injury": "Broken Leg"}, rng, result)
+
+        mock_get_injury.assert_awaited_once_with("Broken Leg")
+        mock_add.assert_awaited_once_with(1, 7)
+        assert 1 in result.pooches_affected
+
+    @patch("src.game.events.shared.pooch_actions.get_injury_by_name", new_callable=AsyncMock)
+    async def test_named_injury_not_found_does_nothing(self, mock_get_injury, rng):
+        mock_get_injury.return_value = None
+        result = _make_result()
+
+        await handle_injure_pooch([1], {"injury": "Ghost Injury"}, rng, result)
+
+        assert result.pooches_affected == []
+
+    @patch("src.game.events.shared.pooch_actions.add_injury_to_pooch", new_callable=AsyncMock)
+    @patch("src.game.events.shared.pooch_actions.get_pooch_by_id", new_callable=AsyncMock)
+    @patch("src.game.events.shared.pooch_actions.get_random_injury", new_callable=AsyncMock)
+    async def test_random_injury_per_pooch(self, mock_random_inj, mock_get_pooch, mock_add, rng):
+        mock_random_inj.return_value = SimpleNamespace(id=3, name="Minor Scratch")
+        mock_add.return_value = True
+        mock_get_pooch.return_value = SimpleNamespace(name="Buddy")
+        result = _make_result()
+
+        await handle_injure_pooch([1, 2], {}, rng, result)
+
+        # Random injury rolled independently per pooch
+        assert mock_random_inj.await_count == 2
+        assert len(result.pooches_affected) == 2
+
+    @patch("src.game.events.shared.pooch_actions.add_injury_to_pooch", new_callable=AsyncMock)
+    @patch("src.game.events.shared.pooch_actions.get_pooch_by_id", new_callable=AsyncMock)
+    @patch("src.game.events.shared.pooch_actions.get_random_injury", new_callable=AsyncMock)
+    async def test_roll_once_reuses_injury(self, mock_random_inj, mock_get_pooch, mock_add, rng):
+        mock_random_inj.return_value = SimpleNamespace(id=5, name="Bite")
+        mock_add.return_value = True
+        mock_get_pooch.return_value = SimpleNamespace(name="Buddy")
+        result = _make_result()
+
+        await handle_injure_pooch([1, 2, 3], {"roll_once": True}, rng, result)
+
+        # Should only roll once, then apply to all
+        assert mock_random_inj.await_count == 1
+        assert mock_add.await_count == 3
+
+    @patch("src.game.events.shared.pooch_actions.get_random_injury", new_callable=AsyncMock)
+    async def test_roll_once_no_injury_found(self, mock_random_inj, rng):
+        mock_random_inj.return_value = None
+        result = _make_result()
+
+        await handle_injure_pooch([1], {"roll_once": True}, rng, result)
+
+        assert result.pooches_affected == []
+
+    @patch("src.game.events.shared.pooch_actions.get_random_injury", new_callable=AsyncMock)
+    async def test_random_injury_not_found_skips(self, mock_random_inj, rng):
+        mock_random_inj.return_value = None
+        result = _make_result()
+
+        await handle_injure_pooch([1], {}, rng, result)
+
+        assert result.pooches_affected == []
+
+
+# ===========================================================================
+# _compute_damage and _strength_loss_for_round (pure functions)
+# ===========================================================================
+
+
+from src.game.events.shared.pooch_actions import (
+    _compute_damage,
+    _strength_loss_for_round,
+)
+
+
+class TestComputeDamage:
+    def test_returns_at_least_one(self):
+        rng = random.Random(0)
+        dmg = _compute_damage(
+            attacker_strength=1,
+            attacker_size=1,
+            attacker_dexterity=1,
+            attacker_aggressiveness=1,
+            defender_strength=1000,
+            defender_dexterity=1000,
+            defender_constitution=1000,
+            defender_size=1000,
+            rng=rng,
+        )
+        assert dmg >= 1
+
+    def test_high_attacker_high_damage(self):
+        rng = random.Random(42)
+        dmg = _compute_damage(
+            attacker_strength=50,
+            attacker_size=20,
+            attacker_dexterity=50,
+            attacker_aggressiveness=50,
+            defender_strength=1,
+            defender_dexterity=1,
+            defender_constitution=1,
+            defender_size=1,
+            rng=rng,
+        )
+        assert dmg > 5
+
+    def test_deterministic(self):
+        kwargs = dict(
+            attacker_strength=10,
+            attacker_size=10,
+            attacker_dexterity=10,
+            attacker_aggressiveness=10,
+            defender_strength=10,
+            defender_dexterity=10,
+            defender_constitution=10,
+            defender_size=10,
+        )
+        assert _compute_damage(**kwargs, rng=random.Random(7)) == _compute_damage(**kwargs, rng=random.Random(7))
+
+
+class TestStrengthLossForRound:
+    def test_returns_at_least_one(self):
+        assert _strength_loss_for_round(constitution=100) >= 1
+
+    def test_low_constitution_higher_loss(self):
+        loss_low = _strength_loss_for_round(constitution=1)
+        loss_high = _strength_loss_for_round(constitution=20)
+        assert loss_low >= loss_high
+
+    def test_zero_constitution(self):
+        # 2 / (1 + 0) = 2 → rounds to 2
+        assert _strength_loss_for_round(constitution=0) == 2
+
+
+# ===========================================================================
+# handle_fight_pooches
+# ===========================================================================
+
+
+from src.game.events.shared import handle_fight_pooches
+
+
+class TestHandleFightPooches:
+    def _make_pooch_ns(self, **overrides):
+        defaults = dict(
+            id=1,
+            name="Pooch",
+            alive=True,
+            strength=10,
+            size=10,
+            dexterity=10,
+            constitution=10,
+            aggressiveness=10,
+            base_health=20,
+        )
+        defaults.update(overrides)
+        return SimpleNamespace(**defaults)
+
+    @patch("src.game.events.shared.pooch_actions.add_injury_to_pooch", new_callable=AsyncMock)
+    @patch("src.game.events.shared.pooch_actions.get_injury_by_name", new_callable=AsyncMock)
+    @patch("src.game.events.shared.pooch_actions.modify_pooch_base_health", new_callable=AsyncMock)
+    @patch("src.game.events.shared.pooch_actions.set_pooch_dead", new_callable=AsyncMock)
+    @patch("src.game.events.shared.pooch_actions.get_pooch_by_id", new_callable=AsyncMock)
+    async def test_attacker_or_defender_none_returns_draw(
+        self, mock_get, mock_dead, mock_health, mock_inj_name, mock_add_inj, rng
+    ):
+        mock_get.return_value = None
+        result = await handle_fight_pooches(1, 2, rng=rng)
+        assert result["draw"] is True
+        assert result["rounds_fought"] == 0
+        assert "error" in result
+
+    @patch("src.game.events.shared.pooch_actions.add_injury_to_pooch", new_callable=AsyncMock)
+    @patch("src.game.events.shared.pooch_actions.get_injury_by_name", new_callable=AsyncMock)
+    @patch("src.game.events.shared.pooch_actions.modify_pooch_base_health", new_callable=AsyncMock)
+    @patch("src.game.events.shared.pooch_actions.set_pooch_dead", new_callable=AsyncMock)
+    @patch("src.game.events.shared.pooch_actions.get_pooch_by_id", new_callable=AsyncMock)
+    async def test_dead_pooch_returns_draw(self, mock_get, mock_dead, mock_health, mock_inj_name, mock_add_inj, rng):
+        dead_pooch = self._make_pooch_ns(id=1, alive=False)
+        living_pooch = self._make_pooch_ns(id=2)
+        mock_get.side_effect = [dead_pooch, living_pooch]
+        result = await handle_fight_pooches(1, 2, rng=rng)
+        assert result["draw"] is True
+        assert result["rounds_fought"] == 0
+
+    @patch("src.game.events.shared.pooch_actions.add_injury_to_pooch", new_callable=AsyncMock)
+    @patch("src.game.events.shared.pooch_actions.get_injury_by_name", new_callable=AsyncMock)
+    @patch("src.game.events.shared.pooch_actions.modify_pooch_base_health", new_callable=AsyncMock)
+    @patch("src.game.events.shared.pooch_actions.set_pooch_dead", new_callable=AsyncMock)
+    @patch("src.game.events.shared.pooch_actions.get_pooch_by_id", new_callable=AsyncMock)
+    async def test_fight_returns_expected_keys(
+        self, mock_get, mock_dead, mock_health, mock_inj_name, mock_add_inj, rng
+    ):
+        attacker = self._make_pooch_ns(id=1, base_health=100)
+        defender = self._make_pooch_ns(id=2, base_health=100)
+        mock_get.side_effect = [attacker, defender]
+        mock_inj_name.return_value = None
+
+        result = await handle_fight_pooches(1, 2, rounds=1, rng=rng)
+
+        for key in (
+            "attacker_id",
+            "defender_id",
+            "attacker_damage",
+            "defender_damage",
+            "attacker_died",
+            "defender_died",
+            "winner_id",
+            "draw",
+            "rounds_fought",
+        ):
+            assert key in result
+
+    @patch("src.game.events.shared.pooch_actions.add_injury_to_pooch", new_callable=AsyncMock)
+    @patch("src.game.events.shared.pooch_actions.get_injury_by_name", new_callable=AsyncMock)
+    @patch("src.game.events.shared.pooch_actions.modify_pooch_base_health", new_callable=AsyncMock)
+    @patch("src.game.events.shared.pooch_actions.set_pooch_dead", new_callable=AsyncMock)
+    @patch("src.game.events.shared.pooch_actions.get_pooch_by_id", new_callable=AsyncMock)
+    async def test_fight_attacker_wins_when_deals_more_damage(
+        self, mock_get, mock_dead, mock_health, mock_inj_name, mock_add_inj, rng
+    ):
+        # Give attacker huge stats, defender very low stats — attacker should deal more damage
+        attacker = self._make_pooch_ns(id=1, strength=100, dexterity=100, aggressiveness=100, size=20, base_health=1000)
+        defender = self._make_pooch_ns(id=2, strength=1, dexterity=1, aggressiveness=1, size=1, base_health=1000)
+        mock_get.side_effect = [attacker, defender]
+        mock_inj_name.return_value = None
+
+        result = await handle_fight_pooches(1, 2, rounds=1, rng=rng)
+
+        # With massively superior attacker, should deal more damage
+        assert result["defender_damage"] > result["attacker_damage"]

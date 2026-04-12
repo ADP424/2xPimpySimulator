@@ -1,5 +1,7 @@
 """Tests for src/bot/commands/town.py."""
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
 
 from tests.bot.commands.conftest import capture_command_callback, make_interaction
@@ -21,7 +23,8 @@ class TestTownCommand:
         msg = interaction.response.send_message.call_args[0][0]
         assert "server" in msg.lower()
 
-    async def test_town_sends_view(self):
+    @patch("src.bot.commands.town.get_season", new_callable=AsyncMock, return_value="spring")
+    async def test_town_sends_view(self, mock_season):
         from src.bot.commands import register_town_command
 
         callback = capture_command_callback(register_town_command)

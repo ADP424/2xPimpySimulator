@@ -13,6 +13,7 @@
         ],
         "dexterity_mult": 0.0,
         "strength_mult": 0.1,
-        "fertility_mult": 0.8
+        "fertility_mult": 0.8,
+        "size_mult": 0.8
     }
 }

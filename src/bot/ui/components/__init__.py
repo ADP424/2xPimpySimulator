@@ -1,7 +1,14 @@
+from __future__ import annotations
+
 from .breed_dropdown import (
     BreedDropdownControls,
     BreedOption,
     build_breed_info_embed,
+)
+from .disease_dropdown import (
+    DiseaseDropdownControls,
+    DiseaseOption,
+    build_disease_info_embed,
 )
 from .injury_dropdown import (
     InjuryDropdownControls,
@@ -19,6 +26,9 @@ __all__ = [
     "BreedDropdownControls",
     "BreedOption",
     "build_breed_info_embed",
+    "DiseaseDropdownControls",
+    "DiseaseOption",
+    "build_disease_info_embed",
     "InjuryDropdownControls",
     "InjuryOption",
     "build_injury_info_embed",

@@ -1,19 +1,37 @@
+from __future__ import annotations
+
 import os
 from typing import TYPE_CHECKING, Optional, Sequence
 
 import discord
-from discord.ui import Select, View
+from discord.ui import Button, Select, View
 
 from src.bot.constants import BREEDING_COOLDOWN_HEATING_UP_THRESHOLD, VIEW_TIMEOUT
 from src.bot.ui.util import (
     InteractionResponder,
     mention,
 )
-from src.game import get_pooch_family
+from src.database.models.main.relationships.pooch_snapshot import (
+    SNAPSHOT_BIRTH,
+    SNAPSHOT_DEATH,
+    SNAPSHOT_MEDICAL_EXAM,
+    SNAPSHOT_OWNERSHIP,
+    SNAPSHOT_VET_INJURIES,
+    SNAPSHOT_VET_MUTATIONS,
+)
+from src.game import (
+    get_injury_by_id,
+    get_mutation_by_id,
+    get_pooch_family,
+    list_snapshots_for_pooch,
+)
 from src.game.models import Mutation, PoochBreedInfo
 
 from .components import (
+    PageSource,
+    PaginatorView,
     build_breed_info_embed,
+    build_disease_info_embed,
     build_injury_info_embed,
     build_mutation_info_embed,
 )
@@ -182,6 +200,42 @@ class _InjurySelect(Select):
         await r.reply(embed=embed)
 
 
+class _DiseaseSelect(Select):
+    def __init__(self, diseases: Sequence, placeholder: str, empty_label: str):
+        if not diseases:
+            options = [discord.SelectOption(label=empty_label, value="__none__")]
+        else:
+            options = [discord.SelectOption(label=disease.name, value=str(disease.id)) for disease in diseases]
+
+        super().__init__(
+            placeholder=placeholder,
+            options=options,
+            disabled=(not bool(diseases)),
+            min_values=1,
+            max_values=1,
+        )
+        self._diseases = list(diseases)
+
+    async def callback(self, interaction: discord.Interaction):
+        r = InteractionResponder(interaction)
+        value = self.values[0]
+        for option in self.options:
+            option.default = option.value == value
+
+        await r.edit(view=self.view)
+
+        if value == "__none__":
+            return
+
+        disease_id = int(value)
+        selected = next((disease for disease in self._diseases if disease.id == disease_id), None)
+        if selected is None:
+            return
+
+        embed = build_disease_info_embed(selected)
+        await r.reply(embed=embed)
+
+
 class PoochInfoView(View):
     def __init__(
         self, *, server: Optional[Server], pooch: Pooch, owner: Optional[Owner], timeout: float = VIEW_TIMEOUT
@@ -217,7 +271,6 @@ class PoochInfoView(View):
         embed = discord.Embed(title=self.pooch.name)
         embed.add_field(name="Age", value=str(self.pooch.age), inline=True)
         embed.add_field(name="Sex", value=self.pooch.sex.capitalize(), inline=True)
-        embed.add_field(name="Size", value=self._format_size(self.pooch.size), inline=True)
 
         embed.add_field(
             name="Owner",
@@ -287,9 +340,18 @@ class PoochInfoView(View):
                 injury_display_parts.append(pi.displayed_symptom)
         injury_text = ", ".join(injury_display_parts) or "None"
 
+        disease_display_parts = []
+        for pd in self.pooch.diseases:
+            if pd.visible:
+                disease_display_parts.append(pd.disease.name)
+            elif pd.displayed_symptom:
+                disease_display_parts.append(pd.displayed_symptom)
+        disease_text = ", ".join(disease_display_parts) or "None"
+
         embed.add_field(name="Breeds", value=breed_text, inline=False)
         embed.add_field(name="Mutations", value=mutation_text, inline=False)
         embed.add_field(name="Injuries", value=injury_text, inline=False)
+        embed.add_field(name="Diseases", value=disease_text, inline=False)
 
         if is_dev:
             p = self.pooch
@@ -303,7 +365,7 @@ class PoochInfoView(View):
             dev_lines = [
                 f"Health: {p.health} (base {p.base_health}, age loss {p.health_loss_age})",
                 f"Breeding Cooldown: {p.breeding_cooldown}",
-                f"Size Bounds: {size_bounds}",
+                f"Size: {p.size} (bounds: {size_bounds})",
                 f"Strength: {p.strength}",
                 f"Cuteness: {p.cuteness}",
                 f"Fluffiness: {p.fluffiness}",
@@ -314,42 +376,118 @@ class PoochInfoView(View):
             ]
             embed.add_field(name="[DEV] Stats", value="\n".join(dev_lines), inline=False)
 
+        # Rows 0–3 for selects, row 4 reserved for the timeline button
         row = 0
-        if parents:
+        if parents and row < 4:
             parent_select = _FamilySelect(parents, placeholder="Parents", kind="parents", empty_label="Unknown parents")
             parent_select.row = row
             row += 1
             self.add_item(parent_select)
 
-        if children:
+        if children and row < 4:
             child_select = _FamilySelect(children, placeholder="Children", kind="children", empty_label="No children")
             child_select.row = row
             row += 1
             self.add_item(child_select)
 
-        if siblings:
+        if siblings and row < 4:
             sibling_select = _FamilySelect(siblings, placeholder="Siblings", kind="siblings", empty_label="No siblings")
             sibling_select.row = row
             row += 1
             self.add_item(sibling_select)
 
-        if self.pooch.breeds:
+        if self.pooch.breeds and row < 4:
             breed_select = _BreedSelect(self.pooch.breeds, placeholder="Breeds", empty_label="No breeds")
             breed_select.row = row
             row += 1
             self.add_item(breed_select)
 
         visible_mutations = [pm.mutation for pm in self.pooch.mutations if pm.visible]
-        if visible_mutations:
+        if visible_mutations and row < 4:
             mutation_select = _MutationSelect(visible_mutations, placeholder="Mutations", empty_label="No mutations")
             mutation_select.row = row
             row += 1
             self.add_item(mutation_select)
 
         visible_injuries = [pi.injury for pi in self.pooch.injuries if pi.visible]
-        if visible_injuries and row < 5:
+        if visible_injuries and row < 4:
             injury_select = _InjurySelect(visible_injuries, placeholder="Injuries", empty_label="No injuries")
             injury_select.row = row
+            row += 1
             self.add_item(injury_select)
 
+        visible_diseases = [pd.disease for pd in self.pooch.diseases if pd.visible]
+        if visible_diseases and row < 4:
+            disease_select = _DiseaseSelect(visible_diseases, placeholder="Diseases", empty_label="No diseases")
+            disease_select.row = row
+            self.add_item(disease_select)
+
+        timeline_btn = Button(label="Timeline", style=discord.ButtonStyle.secondary, row=4)
+        timeline_btn.callback = self._on_timeline
+        self.add_item(timeline_btn)
+
         return embed
+
+    async def _on_timeline(self, interaction: discord.Interaction):
+        r = InteractionResponder(interaction)
+        snapshots = await list_snapshots_for_pooch(self.pooch.id)
+        if not snapshots:
+            re = InteractionResponder(interaction, ephemeral=True)
+            await re.reply(content=f"No timeline entries found for {self.pooch.name}.")
+            return
+        source = _TimelinePageSource(pooch=self.pooch, snapshots=snapshots)
+        view = PaginatorView(source, owner_discord_id=interaction.user.id)
+        content, embed = await view.build_first_page()
+        await r.reply(content=content, embed=embed, view=view)
+
+
+_SNAPSHOT_KIND_LABEL = {
+    SNAPSHOT_BIRTH: "Birth",
+    SNAPSHOT_DEATH: "Death",
+    SNAPSHOT_OWNERSHIP: "Ownership Change",
+    SNAPSHOT_VET_INJURIES: "Vet Visit — Injuries",
+    SNAPSHOT_VET_MUTATIONS: "Vet Visit — Mutations",
+    SNAPSHOT_MEDICAL_EXAM: "Medical Exam",
+}
+
+
+class _TimelinePageSource(PageSource):
+    """One snapshot per page, oldest to newest."""
+
+    def __init__(self, pooch, snapshots: list):
+        self._pooch = pooch
+        self._snapshots = snapshots
+
+    async def load(self):
+        pass  # snapshots already loaded
+
+    def page_count(self) -> int:
+        return max(len(self._snapshots), 1)
+
+    async def render(self, view: View, page_index: int) -> tuple[Optional[str], Optional[discord.Embed]]:
+        snap = self._snapshots[page_index]
+        total = len(self._snapshots)
+        kind_label = _SNAPSHOT_KIND_LABEL.get(snap.kind, snap.kind.replace("_", " ").title())
+
+        timestamp = snap.snapshot_at.strftime("%Y-%m-%d %H:%M UTC")
+        embed = discord.Embed(
+            title=f"{self._pooch.name}'s Timeline ({page_index + 1}/{total})",
+            description=f"**{kind_label}**\n{snap.description}\n\n*{timestamp}*",
+        )
+
+        if snap.entity_ids and snap.kind in (SNAPSHOT_VET_INJURIES, SNAPSHOT_VET_MUTATIONS):
+            names: list[str] = []
+            if snap.kind == SNAPSHOT_VET_INJURIES:
+                for eid in snap.entity_ids:
+                    inj = await get_injury_by_id(eid)
+                    if inj:
+                        names.append(inj.name)
+            else:
+                for eid in snap.entity_ids:
+                    mut = await get_mutation_by_id(eid)
+                    if mut:
+                        names.append(mut.name)
+            label = "Injuries on record" if snap.kind == SNAPSHOT_VET_INJURIES else "Mutations on record"
+            embed.add_field(name=label, value=", ".join(names) if names else "None", inline=False)
+
+        return None, embed

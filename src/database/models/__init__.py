@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from .base import Base
 from .enums import (
     EVENT_SEVERITY,
@@ -8,6 +10,12 @@ from .enums import (
     RarityWeight,
 )
 from .main import (
+    SNAPSHOT_BIRTH,
+    SNAPSHOT_DEATH,
+    SNAPSHOT_MEDICAL_EXAM,
+    SNAPSHOT_OWNERSHIP,
+    SNAPSHOT_VET_INJURIES,
+    SNAPSHOT_VET_MUTATIONS,
     AuctionBid,
     AuctionBountyListing,
     AuctionSaleListing,
@@ -21,10 +29,13 @@ from .main import (
     OwnerServer,
     Pooch,
     PoochBreed,
+    PoochDisease,
+    PoochDiseaseImmunity,
     PoochInjury,
     PoochMutation,
     PoochParentage,
     PoochPregnancy,
+    PoochSnapshot,
     Server,
     ServerEventOccurrence,
     ServerEventParticipation,
@@ -36,6 +47,7 @@ from .main import (
 )
 from .static import (
     Breed,
+    Disease,
     DogName,
     Event,
     EventAction,
@@ -75,10 +87,19 @@ __all__ = [
     "KennelPooch",
     "OwnerServer",
     "PoochBreed",
+    "PoochDisease",
+    "PoochDiseaseImmunity",
     "PoochInjury",
     "PoochMutation",
     "PoochParentage",
     "PoochPregnancy",
+    "PoochSnapshot",
+    "SNAPSHOT_BIRTH",
+    "SNAPSHOT_DEATH",
+    "SNAPSHOT_OWNERSHIP",
+    "SNAPSHOT_VET_INJURIES",
+    "SNAPSHOT_VET_MUTATIONS",
+    "SNAPSHOT_MEDICAL_EXAM",
     "Server",
     "ServerEventOccurrence",
     "ServerEventParticipation",
@@ -88,6 +109,7 @@ __all__ = [
     "VendorDesiredMutation",
     "VendorPoochForSale",
     "Breed",
+    "Disease",
     "DogName",
     "Event",
     "EventAction",

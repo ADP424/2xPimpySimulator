@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # Pooch Lifecycle
 MIN_HEALTH_FOR_DEATH_CHANCE = 5
 POOCH_HEALTH_LOSS_STARTING_AGE = 5

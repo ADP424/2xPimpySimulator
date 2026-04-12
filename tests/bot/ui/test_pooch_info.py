@@ -59,6 +59,7 @@ def _make_pooch(
         breeding_cooldown=breeding_cooldown,
         alive=alive,
         virgin=virgin,
+        vet_checked=False,
         owner_discord_id=owner_discord_id,
         vendor_id=vendor_id,
         created_at=datetime(2024, 1, 1, tzinfo=timezone.utc),
@@ -70,6 +71,7 @@ def _make_pooch(
         breeds=breeds or [],
         mutations=mutations or [],
         injuries=[],
+        diseases=[],
     )
 
 

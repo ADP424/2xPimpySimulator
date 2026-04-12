@@ -68,6 +68,13 @@ from .amount import get_amount_from_parameters, get_mode, resolve_amount
 
 logger = logging.getLogger(__name__)
 
+
+def _log(result: Any, bucket: str, entry: dict) -> None:
+    """Append *entry* to both the named extra_data bucket and the ordered action_log."""
+    result.extra_data.setdefault(bucket, []).append(entry)
+    result.extra_data.setdefault("action_log", []).append({"type": bucket, **entry})
+
+
 # Default breeding cooldown constant — imported lazily to avoid circular risk
 _POOCH_BREEDING_COOLDOWN: Optional[int] = None
 
@@ -135,7 +142,7 @@ async def handle_kill_pooch(
                 await remove_pooch_from_kennel(pooch.id)
                 await bury_pooch(pooch.owner_discord_id, pooch.id)
             result.pooches_killed.append(pooch_id)
-            result.extra_data.setdefault("killed_pooches", []).append({"pooch_id": pooch_id, "pooch_name": pooch.name})
+            _log(result, "killed_pooches", {"pooch_id": pooch_id, "pooch_name": pooch.name})
     if result.pooches_killed:
         count = len(result.pooches_killed)
         result.message = "A pooch has died!" if count == 1 else f"{count} pooches have died!"
@@ -405,8 +412,10 @@ async def handle_modify_stat(
             pooch = await modify_fn(pooch_id, amount)
         if pooch:
             result.pooches_affected.append(pooch_id)
-            result.extra_data.setdefault("stat_changes", []).append(
-                {"pooch_id": pooch_id, "pooch_name": pooch.name, "stat": stat, "amount": amount, "mode": mode}
+            _log(
+                result,
+                "stat_changes",
+                {"pooch_id": pooch_id, "pooch_name": pooch.name, "stat": stat, "amount": amount, "mode": mode},
             )
 
 
@@ -425,9 +434,7 @@ async def handle_damn_pooch(
         hell_entry = await damn_pooch(pooch_id)
         if hell_entry:
             result.pooches_killed.append(pooch_id)
-            result.extra_data.setdefault("killed_pooches", []).append(
-                {"pooch_id": pooch_id, "pooch_name": pooch.name if pooch else None}
-            )
+            _log(result, "killed_pooches", {"pooch_id": pooch_id, "pooch_name": pooch.name if pooch else None})
             save_as = parameters.get("save_as")
             if isinstance(save_as, str) and save_as:
                 context.extra_data[save_as] = {"pooch_ids": [pooch_id]}

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from .server_event_context import ServerEventContext
 from .server_event_option import (
     ServerEventMenu,

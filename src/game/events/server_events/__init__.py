@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from .actions import (
     execute_server_actions,
     resolve_server_owner_pool,

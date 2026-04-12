@@ -31,7 +31,7 @@ _STATS = {
     "size",
 }
 _STAT_PARAM_KEYS = {f"{stat}_add" for stat in _STATS} | {f"{stat}_mult" for stat in _STATS}
-_ALLOWED_PARAM_KEYS = _STAT_PARAM_KEYS | {"max_duplicates", "persistence", "stacks"}
+_ALLOWED_PARAM_KEYS = _STAT_PARAM_KEYS | {"max_duplicates", "persistence", "stacks", "death_message"}
 _ALLOWED_STACK_KEYS = _STAT_PARAM_KEYS | {"min_count", "max_count"}
 
 
@@ -55,6 +55,9 @@ def _validate_parameters_dict(path: str, parameters: dict, allowed_param_keys: s
     description = parameters.get("description")
     if description is not None and not isinstance(description, str):
         errors.append(f"{path}.description: must be a string")
+    death_message = parameters.get("death_message")
+    if death_message is not None and not isinstance(death_message, str):
+        errors.append(f"{path}.death_message: must be a string")
     stacks = parameters.get("stacks")
     if stacks is not None:
         if not isinstance(stacks, list):
@@ -82,7 +85,7 @@ def _validate_parameters_dict(path: str, parameters: dict, allowed_param_keys: s
                     if not isinstance(value, (int, float)):
                         errors.append(f"{entry_path}.{key}: must be a number")
     for key, value in parameters.items():
-        if key in ("max_duplicates", "persistence", "stacks", "health_impact", "description"):
+        if key in ("max_duplicates", "persistence", "stacks", "health_impact", "description", "death_message"):
             continue
         if not isinstance(value, (int, float)):
             errors.append(f"{path}.{key}: must be a number")

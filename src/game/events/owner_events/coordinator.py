@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import random
 from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Any, Optional
@@ -36,6 +38,7 @@ from src.database import (
     modify_kennel_pooch_limit,
     modify_kennel_upgrade_tier,
     remove_pooch_from_kennel,
+    remove_pooch_from_owner,
     remove_pooch_from_strays,
     remove_pooch_from_vendor_stock,
     revive_pooch,
@@ -101,6 +104,12 @@ if TYPE_CHECKING:
 logger = get_logger("game/events/owner_events/coordinator")
 
 
+def _log(result: OwnerEventResult, bucket: str, entry: dict) -> None:
+    """Append *entry* to both the named extra_data bucket and the ordered action_log."""
+    result.extra_data.setdefault(bucket, []).append(entry)
+    result.extra_data.setdefault("action_log", []).append({"type": bucket, **entry})
+
+
 async def execute_single_action(
     owner_discord_id: int,
     action: EventAction,
@@ -125,8 +134,9 @@ async def execute_single_action(
                 await set_owner_dollars(owner_discord_id, amount)
             else:
                 await give_money_to_owner(owner_discord_id, amount)
-            result.money_changed = amount
+            result.money_changed += amount
             result.message = f"{amount:+d} dollars"
+            _log(result, "money_changes", {"amount": amount})
 
         elif action_type == "modify_bloodskulls":
             amount = get_amount_from_parameters(parameters, rng)
@@ -134,8 +144,9 @@ async def execute_single_action(
                 await set_owner_bloodskulls(owner_discord_id, amount)
             else:
                 await give_bloodskulls_to_owner(owner_discord_id, amount)
-            result.bloodskulls_changed = amount
+            result.bloodskulls_changed += amount
             result.message = f"{amount:+d} bloodskulls"
+            _log(result, "bloodskulls_changes", {"amount": amount})
 
         elif action_type == "create_pooch":
             create_pooch_kwargs = await build_pooch_kwargs(parameters, rng, season=season)
@@ -155,6 +166,7 @@ async def execute_single_action(
                 result.pooches_created.append(pooch.id)
                 result.pooches_affected.append(pooch.id)
 
+                kennel_name = None
                 if target_type == "kennel":
                     kennel_ids = await get_target_kennel_ids(
                         owner_discord_id, context, rng, target_type, selector, parameters
@@ -165,6 +177,7 @@ async def execute_single_action(
                         pooches_in = await list_pooches_for_kennel(kennel_id)
                         if kennel is not None and len(pooches_in) < kennel.pooch_limit:
                             await add_pooch_to_kennel(kennel_id, pooch.id)
+                            kennel_name = kennel.name
                             result.message = f"A new pooch has appeared and was placed in {kennel.name}!"
                         else:
                             result.message = "A new pooch has appeared but there was no space in the kennel!"
@@ -182,6 +195,17 @@ async def execute_single_action(
                     else:
                         result.message = "A new pooch has appeared!"
 
+                _log(
+                    result,
+                    "created_pooches",
+                    {
+                        "pooch_id": pooch.id,
+                        "pooch_name": pooch.name,
+                        "sex": pooch.sex,
+                        "age": pooch.age,
+                        "kennel_name": kennel_name,
+                    },
+                )
                 save_as = parameters.get("save_as")
                 if isinstance(save_as, str) and save_as:
                     context.extra_data[save_as] = {"pooch_ids": [pooch.id]}
@@ -223,6 +247,17 @@ async def execute_single_action(
                             result.message = f"A clone of {source.name} appeared and was sent to Hell!"
                         else:
                             result.message = f"A clone of {source.name} has appeared!"
+                        _log(
+                            result,
+                            "created_pooches",
+                            {
+                                "pooch_id": clone.id,
+                                "pooch_name": clone.name,
+                                "sex": clone.sex,
+                                "age": clone.age,
+                                "kennel_name": kennel_name if dest_key == "kennel" else None,
+                            },
+                        )
 
                         for spec in resolve_save_as_specs(parameters.get("save_as")):
                             slot = spec.get("slot")
@@ -249,6 +284,9 @@ async def execute_single_action(
                     if kennel_id not in context.affected_kennel_ids:
                         context.affected_kennel_ids.append(kennel_id)
                     result.extra_data.setdefault("kennel_capacity_changes", {})[kennel_id] = amount
+                    result.extra_data.setdefault("action_log", []).append(
+                        {"type": "kennel_capacity_changes", "kennel_id": kennel_id, "amount": amount}
+                    )
 
         elif action_type == "upgrade_kennel":
             kennel_ids = await get_target_kennel_ids(owner_discord_id, context, rng, target_type, selector, parameters)
@@ -260,6 +298,9 @@ async def execute_single_action(
                     if kennel_id not in context.affected_kennel_ids:
                         context.affected_kennel_ids.append(kennel_id)
                     result.extra_data.setdefault("kennel_upgrade_tier_changes", {})[kennel_id] = amount
+                    result.extra_data.setdefault("action_log", []).append(
+                        {"type": "kennel_upgrade_tier_changes", "kennel_id": kennel_id, "amount": amount}
+                    )
 
         elif action_type == "delete_kennel":
             kennel_ids = await get_target_kennel_ids(owner_discord_id, context, rng, target_type, selector, parameters)
@@ -267,6 +308,9 @@ async def execute_single_action(
                 kennel = await delete_kennel(kennel_id)
                 if kennel:
                     result.extra_data.setdefault("kennels_deleted", []).append(kennel_id)
+                    result.extra_data.setdefault("action_log", []).append(
+                        {"type": "kennels_deleted", "kennel_id": kennel_id}
+                    )
                     if kennel_id in context.affected_kennel_ids:
                         context.affected_kennel_ids.remove(kennel_id)
 
@@ -301,8 +345,10 @@ async def execute_single_action(
                     stray = await add_pooch_to_strays(pooch_id, server.discord_id)
                     if stray:
                         result.pooches_affected.append(pooch_id)
-                        result.extra_data.setdefault("released_strays", []).append(
-                            {"pooch_id": pooch_id, "pooch_name": pooch.name if pooch else None}
+                        _log(
+                            result,
+                            "released_strays",
+                            {"pooch_id": pooch_id, "pooch_name": pooch.name if pooch else None},
                         )
 
         elif action_type == "receive_stray":
@@ -348,14 +394,16 @@ async def execute_single_action(
                         dest_key, kennel_name = await deliver_pooch(owner_discord_id, chosen.id, destination_str)
 
                     result.pooches_created.append(chosen.id)
-                    result.extra_data.setdefault("created_pooches", []).append(
+                    _log(
+                        result,
+                        "received_strays",
                         {
                             "pooch_id": chosen.id,
                             "pooch_name": chosen.name,
                             "sex": chosen.sex,
                             "age": chosen.age,
                             "kennel_name": kennel_name,
-                        }
+                        },
                     )
                     save_as = parameters.get("save_as")
                     if isinstance(save_as, str) and save_as:
@@ -484,7 +532,7 @@ async def execute_single_action(
         elif action_type == "sell_pooch":
             pooch_ids = await get_target_pooch_ids(owner_discord_id, context, rng, target_type, selector, parameters)
             vendor_id = parameters.get("vendor_id")
-            vendor_selector = str(parameters.get("vendor_selector", "random")).strip().lower()
+            vendor_selector = str(parameters.get("vendor_selector", "none")).strip().lower()
             value_multiplier = parameters.get("value_multiplier")
             multiplier = float(value_multiplier) if isinstance(value_multiplier, (int, float)) else 1.0
 
@@ -512,13 +560,15 @@ async def execute_single_action(
                     await add_pooch_to_vendor_stock(resolved_vendor_id, pooch_id)
                     result.money_changed += price
                 else:
+                    # No vendor — sold to a private buyer; remove the pooch from the owner entirely
                     price = round((await get_pooch_sell_price(pooch_id)) * multiplier)
                     await give_money_to_owner(owner_discord_id, price)
+                    await cancel_listing_for_pooch(pooch_id)
+                    await remove_pooch_from_kennel(pooch_id)
+                    await remove_pooch_from_owner(pooch_id)
                     result.money_changed += price
                 result.pooches_affected.append(pooch_id)
-                result.extra_data.setdefault("sold_pooches", []).append(
-                    {"pooch_id": pooch_id, "pooch_name": pooch.name, "price": price}
-                )
+                _log(result, "sold_pooches", {"pooch_id": pooch_id, "pooch_name": pooch.name, "price": price})
 
         elif action_type == "buy_pooch":
             vendor_id = parameters.get("vendor_id")
@@ -581,13 +631,15 @@ async def execute_single_action(
                         result.money_changed -= price
                         result.pooches_created.append(pooch_db.id)
                         result.pooches_affected.append(pooch_db.id)
-                        result.extra_data.setdefault("bought_pooches", []).append(
+                        _log(
+                            result,
+                            "bought_pooches",
                             {
                                 "pooch_id": pooch_db.id,
                                 "pooch_name": pooch_db.name,
                                 "price": price,
                                 "kennel_name": kennel_name if dest_key == "kennel" else None,
-                            }
+                            },
                         )
 
                         save_as = parameters.get("save_as")
@@ -788,6 +840,17 @@ async def execute_single_action(
                     result.message = f"{conjured.name} was conjured and placed in {kennel_name}!"
                 else:
                     result.message = f"{conjured.name} was conjured!"
+                _log(
+                    result,
+                    "created_pooches",
+                    {
+                        "pooch_id": conjured.id,
+                        "pooch_name": conjured.name,
+                        "sex": conjured.sex,
+                        "age": conjured.age,
+                        "kennel_name": kennel_name if dest_key == "kennel" else None,
+                    },
+                )
                 save_as = parameters.get("save_as")
                 if isinstance(save_as, str) and save_as:
                     context.extra_data[save_as] = {"pooch_ids": [conjured.id]}
@@ -865,9 +928,7 @@ async def execute_single_action(
                 await damn_pooch(pooch_id)
                 result.bloodskulls_changed += value
                 result.pooches_killed.append(pooch_id)
-                result.extra_data.setdefault("killed_pooches", []).append(
-                    {"pooch_id": pooch_id, "pooch_name": pooch.name}
-                )
+                _log(result, "killed_pooches", {"pooch_id": pooch_id, "pooch_name": pooch.name})
             if result.pooches_killed:
                 count = len(result.pooches_killed)
                 result.message = (

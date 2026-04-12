@@ -3,6 +3,5 @@ omit =
     **/__init__.py
     constants.py
     main.py
-    src/bot/*
     src/logger.py
     src/web/*

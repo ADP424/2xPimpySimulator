@@ -39,16 +39,35 @@ class BreedMateView(View):
         await r.edit(view=self)
 
         try:
-            puppies = await breed_pooches(self.pooch.id, mate.id)
+            breeding_result = await breed_pooches(self.pooch.id, mate.id, return_disease_events=True)
+        except TypeError:
+            breeding_result = await breed_pooches(self.pooch.id, mate.id)
         except ValueError as exception:
             await r.reply(content=str(exception))
             return
+
+        if isinstance(breeding_result, tuple) and len(breeding_result) == 2:
+            puppies, disease_events = breeding_result
+        else:
+            puppies = breeding_result
+            disease_events = []
 
         if len(puppies) == 1:
             message = f"✅ **Breeding successful.** {self.pooch.name} and {mate.name} are expecting **1** puppy."
         elif len(puppies) == 2:
             message = f"✅ **Twins!** {self.pooch.name} and {mate.name} are expecting **2** puppies."
-        elif len(puppies) == 3:
+        else:
             message = f"✅ **Triplets!** {self.pooch.name} and {mate.name} are expecting **3** puppies."
+
+        if disease_events:
+            event_lines = []
+            for pooch_id, public_label, event_type in disease_events:
+                name = self.pooch.name if pooch_id == self.pooch.id else mate.name if pooch_id == mate.id else "A puppy"
+                if event_type == "spread":
+                    event_lines.append(f"• {name} was exposed to {public_label}.")
+                elif event_type == "inherited":
+                    event_lines.append(f"• A puppy inherited {public_label}.")
+            if event_lines:
+                message += "\n" + "\n".join(event_lines)
 
         await r.reply(content=message)

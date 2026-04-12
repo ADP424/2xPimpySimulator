@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from .global_state import GlobalState
 from .kennel import Kennel
 from .owner import Owner

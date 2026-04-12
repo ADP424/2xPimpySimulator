@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from .amount import get_amount_from_parameters, get_mode, resolve_amount
 from .pooch_actions import (
     handle_add_breed,

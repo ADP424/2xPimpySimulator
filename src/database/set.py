@@ -18,10 +18,13 @@ from .constants import (
 )
 from .get import get_owner_by_discord_id, get_pooch_by_id, get_vendor_by_id
 from .models import (
+    SNAPSHOT_BIRTH,
+    SNAPSHOT_OWNERSHIP,
     AuctionBid,
     AuctionBountyListing,
     AuctionSaleListing,
     Breed,
+    Disease,
     DogName,
     EventOccurrence,
     GraveyardPooch,
@@ -34,11 +37,13 @@ from .models import (
     OwnerServer,
     Pooch,
     PoochBreed,
+    PoochDisease,
+    PoochDiseaseImmunity,
     PoochInjury,
     PoochMutation,
     PoochParentage,
     PoochPregnancy,
-    RarityWeight,
+    PoochSnapshot,
     Server,
     ServerEventOccurrence,
     ServerEventParticipation,
@@ -51,7 +56,7 @@ from .models import (
     VendorPoochForSale,
 )
 from .session import session_scope
-from .utils import weighted_choice
+from .utils import rarity_choice
 
 # Ordered rarity values from most common to most rare
 _RARITY_ORDER = ["common", "uncommon", "novel", "rare", "unprecedented", "remarkable", "extraordinary", "unique"]
@@ -129,10 +134,8 @@ async def add_breed_to_pooch(
     async with session_scope() as session:
 
         if breed_id is None:
-            breed_query = (
-                select(Breed, RarityWeight.weight)
-                .join(RarityWeight, RarityWeight.rarity == Breed.rarity)
-                .where(Breed.id.not_in(select(PoochBreed.breed_id).where(PoochBreed.pooch_id == pooch_id)))
+            breed_query = select(Breed).where(
+                Breed.id.not_in(select(PoochBreed.breed_id).where(PoochBreed.pooch_id == pooch_id))
             )
             if from_vendor:
                 breed_query = breed_query.where(not_(Breed.parameters.contains({"sold_by_vendors": False})))
@@ -140,16 +143,14 @@ async def add_breed_to_pooch(
                 breed_query = breed_query.where(not_(Breed.parameters.contains({"born_from_ritual": False})))
             if min_rarity is not None and min_rarity.lower() in _RARITY_ORDER:
                 min_idx = _RARITY_ORDER.index(min_rarity.lower())
-                allowed = _RARITY_ORDER[min_idx:]
-                breed_query = breed_query.where(Breed.rarity.in_(allowed))
+                breed_query = breed_query.where(Breed.rarity.in_(_RARITY_ORDER[min_idx:]))
             if max_rarity is not None and max_rarity.lower() in _RARITY_ORDER:
                 max_idx = _RARITY_ORDER.index(max_rarity.lower())
-                allowed = _RARITY_ORDER[: max_idx + 1]
-                breed_query = breed_query.where(Breed.rarity.in_(allowed))
+                breed_query = breed_query.where(Breed.rarity.in_(_RARITY_ORDER[: max_idx + 1]))
 
             breed_response = await session.execute(breed_query)
-            rows = [(breed, breed_weight) for breed, breed_weight in breed_response.tuples().all()]
-            breed = weighted_choice(rng, rows)
+            rows = [(breed, breed.rarity) for breed in breed_response.scalars().all()]
+            breed = rarity_choice(rng, rows)
             breed_id = breed.id if breed is not None else None
 
         # If the pooch somehow has every possible breed it's eligible for already...
@@ -293,8 +294,7 @@ async def add_mutation_to_pooch(
 
         if mutation_id is None:
             mutation_query = (
-                select(Mutation, RarityWeight.weight)
-                .join(RarityWeight, RarityWeight.rarity == Mutation.rarity)
+                select(Mutation)
                 .join(Pooch, Pooch.id == pooch_id)
                 .where(
                     and_(
@@ -326,19 +326,20 @@ async def add_mutation_to_pooch(
                 mutation_query = mutation_query.where(Mutation.id.not_in(exclude_mutation_ids))
 
             mutation_response = await session.execute(mutation_query)
-            rows = [(mutation, weight) for mutation, weight in mutation_response.tuples().all()]
+            mutations = mutation_response.scalars().all()
             if season is not None:
                 season_lower = season.lower()
-                rows = [
-                    (m, w)
-                    for m, w in rows
+                mutations = [
+                    m
+                    for m in mutations
                     if (
                         not m.parameters
                         or "seasons" not in m.parameters
                         or season_lower in [s.lower() for s in m.parameters["seasons"]]
                     )
                 ]
-            mutation = weighted_choice(rng, rows)
+            rows = [(m, m.rarity) for m in mutations]
+            mutation = rarity_choice(rng, rows)
             mutation_id = mutation.id if mutation is not None else None
 
         # If the pooch somehow has every possible mutation already
@@ -940,6 +941,23 @@ async def create_pooch(
 
         await session.flush()
 
+        # Birth snapshot: only created for pooches born at age >= 0.
+        # Pooches created at age -1 (fetuses) get their birth snapshot when they are
+        # aged from -1 to 0 during the daily day-change cycle.
+        if age >= 0:
+            from datetime import timedelta
+
+            birth_time = datetime.now(timezone.utc) - timedelta(days=age)
+            session.add(
+                PoochSnapshot(
+                    pooch_id=pooch.id,
+                    kind=SNAPSHOT_BIRTH,
+                    description=f"{pooch.name} was born.",
+                    snapshot_at=birth_time,
+                )
+            )
+            await session.flush()
+
     return pooch
 
 
@@ -1275,6 +1293,14 @@ async def add_pooch_to_strays(pooch_id: int, server_discord_id: int) -> Optional
             await session.delete(kennel_row)
         stray = StrayPooch(pooch_id=pooch_id, server_discord_id=server_discord_id)
         session.add(stray)
+        session.add(
+            PoochSnapshot(
+                pooch_id=pooch_id,
+                kind=SNAPSHOT_OWNERSHIP,
+                description=f"{pooch.name} became a stray.",
+                snapshot_at=datetime.now(timezone.utc),
+            )
+        )
         await session.flush()
         return stray
 
@@ -1324,6 +1350,42 @@ async def create_server_event_participation(
         await session.flush()
         await session.refresh(participation)
     return participation
+
+
+async def create_pooch_snapshot(
+    pooch_id: int,
+    kind: str,
+    description: str,
+    snapshot_at: Optional[datetime] = None,
+    entity_ids: Optional[list[int]] = None,
+) -> PoochSnapshot:
+    """
+    Record a timeline snapshot for a pooch.
+
+    Parameters
+    ----------
+    pooch_id: int
+        ID of the pooch this snapshot belongs to.
+    kind: str
+        One of the SNAPSHOT_* constants (birth, death, ownership, vet_injuries, vet_mutations).
+    description: str
+        Human-readable description of the event.
+    snapshot_at: datetime
+        The timestamp of the event (timezone-aware).
+    entity_ids: list[int], optional
+        Optional list of injury or mutation IDs captured at the time (vet snapshots).
+    """
+    async with session_scope() as session:
+        snapshot = PoochSnapshot(
+            pooch_id=pooch_id,
+            kind=kind,
+            description=description,
+            snapshot_at=snapshot_at or datetime.now(timezone.utc),
+            entity_ids=entity_ids or None,
+        )
+        session.add(snapshot)
+        await session.flush()
+    return snapshot
 
 
 async def append_server_event_submission(
@@ -1404,3 +1466,95 @@ async def create_auction_bounty_listing(
         session.add(listing)
         await session.flush()
     return listing
+
+
+async def add_disease_to_pooch(
+    pooch_id: int,
+    disease_id: int,
+    current_day: int = 0,
+    rng: Optional[random.Random] = None,
+) -> Optional[PoochDisease]:
+    """
+    Give a pooch a disease. Sets invisible state based on disease visibility settings.
+
+    Parameters
+    ----------
+    pooch_id: int
+        The ID of the pooch to add the disease to.
+    disease_id: int
+        The ID of the disease to add.
+    current_day: int
+        The current global day number, stored as contracted_day.
+    rng: Random, optional
+        The random generator to use for invisible message selection.
+
+    Returns
+    -------
+    PoochDisease, optional
+        The newly created PoochDisease record, or None if the disease was not found.
+    """
+    rng = rng if rng is not None else random.Random()
+    async with session_scope() as session:
+        disease = await session.get(Disease, disease_id)
+        if disease is None:
+            return None
+        existing = await session.scalar(
+            select(PoochDisease).where(PoochDisease.pooch_id == pooch_id, PoochDisease.disease_id == disease_id)
+        )
+        if existing is not None:
+            return existing
+        displayed_symptom = None
+        if not disease.visible and disease.invisible_messages:
+            displayed_symptom = rng.choice(disease.invisible_messages)
+        pooch_disease = PoochDisease(
+            pooch_id=pooch_id,
+            disease_id=disease_id,
+            contracted_day=current_day,
+            displayed_symptom=displayed_symptom,
+            visible=disease.visible,
+        )
+        session.add(pooch_disease)
+        await session.flush()
+    return pooch_disease
+
+
+async def add_disease_immunity_to_pooch(
+    pooch_id: int,
+    disease_id: int,
+    immune_until_day: int,
+) -> Optional[PoochDiseaseImmunity]:
+    """
+    Grant a pooch immunity to a disease until the given day.
+
+    Parameters
+    ----------
+    pooch_id: int
+        The ID of the pooch to grant immunity to.
+    disease_id: int
+        The ID of the disease to grant immunity against.
+    immune_until_day: int
+        The day number when the immunity expires.
+
+    Returns
+    -------
+    PoochDiseaseImmunity, optional
+        The newly created PoochDiseaseImmunity record.
+    """
+    async with session_scope() as session:
+        immunity = await session.scalar(
+            select(PoochDiseaseImmunity).where(
+                PoochDiseaseImmunity.pooch_id == pooch_id,
+                PoochDiseaseImmunity.disease_id == disease_id,
+            )
+        )
+        if immunity is None:
+            immunity = PoochDiseaseImmunity(
+                pooch_id=pooch_id,
+                disease_id=disease_id,
+                immune_until_day=immune_until_day,
+            )
+            session.add(immunity)
+        else:
+            immunity.immune_until_day = max(immunity.immune_until_day, immune_until_day)
+        await session.flush()
+    return immunity

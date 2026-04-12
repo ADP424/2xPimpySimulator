@@ -1,0 +1,14 @@
+{
+    "name": "Debarked",
+    "health_impact": "NEUTRAL",
+    "severity": "trivial",
+    "description": "This pooch's vocal cords and been lessened.",
+    "visible": false,
+    "invisible_messages": [
+        "This pooch rarely responds to your calls.",
+        "This pooch has a muted bark."
+    ],
+    "parameters": { 
+        "constitution_add": -1
+    }
+}

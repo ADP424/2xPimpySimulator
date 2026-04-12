@@ -9,6 +9,7 @@ from src.bot.constants import MAX_NAME_LENGTH
 from src.bot.ui.util import InteractionResponder
 from src.game import (
     cast_out_pooch,
+    clean_kennel,
     get_or_create_owner,
     get_or_create_server,
     list_kennel_pooches,
@@ -44,7 +45,10 @@ class KennelsPageSource(PageSource):
         kennel = self._kennels[page_index]
         pooches = await list_kennel_pooches(kennel.id)
 
-        embed = discord.Embed(title=kennel.name, description=f"{len(pooches)} / {kennel.pooch_limit} pooches")
+        embed = discord.Embed(
+            title=kennel.name,
+            description=f"{len(pooches)} / {kennel.pooch_limit} pooches\nMessiness: **{kennel.messiness}**",
+        )
 
         controls = KennelPageControls(
             server_discord_id=self.server_discord_id,
@@ -78,7 +82,10 @@ class KennelPageControls:
         self.select.callback = self._on_select
 
         self.rename_kennel_button = Button(label="Rename", style=discord.ButtonStyle.secondary)
+        self.clean_kennel_button = Button(label="Clean", style=discord.ButtonStyle.primary)
+        self.show_clean_button = kennel.messiness > 0
         self.rename_kennel_button.callback = self._on_rename_kennel
+        self.clean_kennel_button.callback = self._on_clean_kennel
 
         self.info_button = Button(label="Info", style=discord.ButtonStyle.primary, disabled=True)
         self.breed_button = Button(label="Breed", style=discord.ButtonStyle.secondary, disabled=True)
@@ -101,6 +108,7 @@ class KennelPageControls:
 
     def attach(self, view: View):
         self.rename_kennel_button.row = 0
+        self.clean_kennel_button.row = 0
         self.select.row = 1
         self.info_button.row = 2
         self.breed_button.row = 2
@@ -109,6 +117,8 @@ class KennelPageControls:
         self.cast_out_button.row = 3
 
         view.add_item(self.rename_kennel_button)
+        if self.show_clean_button:
+            view.add_item(self.clean_kennel_button)
         view.add_item(self.select)
         view.add_item(self.info_button)
         view.add_item(self.breed_button)
@@ -176,6 +186,17 @@ class KennelPageControls:
                 parent_view=parent_view,
             )
         )
+
+    async def _on_clean_kennel(self, interaction: discord.Interaction):
+        r = InteractionResponder(interaction)
+        success, message = await clean_kennel(self.owner_discord_id, self.kennel.id)
+        if not success:
+            await r.reply(content=message)
+            return
+        parent_view = self.select.view
+        if isinstance(parent_view, PaginatorView):
+            await parent_view.refresh(interaction)
+        await r.reply(content=f"✅ {message}")
 
     async def _on_rename_pooch(self, interaction: discord.Interaction):
         if self.selected_pooch is None:

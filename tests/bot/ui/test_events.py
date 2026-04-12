@@ -472,10 +472,12 @@ class TestDetailEntries:
 
 @pytest.mark.contract
 class TestFormatOptionSelectDescription:
-    def test_with_description(self):
+    def test_with_description_only(self):
+        # Descriptions are shown in the embed, not the select — no description text here
         option = _make_option(label="Join", description="Join the event", min_money=0)
         result = format_option_select_description(option)
-        assert "Join the event" in result
+        assert "Join the event" not in result
+        assert "See details above." in result
 
     def test_with_costs(self):
         option = _make_option(label="Pay", description="", min_money=50, min_bloodskulls=2)
@@ -486,7 +488,7 @@ class TestFormatOptionSelectDescription:
     def test_no_description_no_costs(self):
         option = _make_option(label="Simple", description="")
         result = format_option_select_description(option)
-        assert "No description" in result
+        assert "See details above." in result
 
 
 @pytest.mark.contract

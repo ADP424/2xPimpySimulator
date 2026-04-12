@@ -19,8 +19,9 @@ class Kennel:
     owner_discord_id: int
     name: str
     pooch_limit: int
+    messiness: int = 0
 
-    owner: Optional[Owner]
+    owner: Optional[Owner] = None
 
 
 async def to_kennel(kennel: KennelORM) -> Kennel:
@@ -43,6 +44,7 @@ async def to_kennel(kennel: KennelORM) -> Kennel:
         owner_discord_id=kennel.owner_discord_id,
         name=kennel.name,
         pooch_limit=kennel.pooch_limit,
+        messiness=kennel.messiness,
         owner=(
             (await to_owner(await get_owner_by_discord_id(kennel.owner_discord_id)))
             if kennel.owner_discord_id is not None

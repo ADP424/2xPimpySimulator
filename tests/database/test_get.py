@@ -309,3 +309,157 @@ async def test_get_pooch_virginity_status_returns_none_when_missing():
         result = await get_pooch_virginity_status(999)
 
     assert result is None
+
+
+# ---------------------------------------------------------------------------
+# get_auction_sale_listing_by_id
+# ---------------------------------------------------------------------------
+
+
+async def test_get_auction_sale_listing_by_id_returns_listing():
+    """When a sale listing exists, the function should return it."""
+    fake_listing = SimpleNamespace(id=1, pooch_id=10, is_active=True)
+
+    mock_session = AsyncMock()
+    mock_session.get = AsyncMock(return_value=fake_listing)
+
+    class _FakeScope:
+        async def __aenter__(self):
+            return mock_session
+
+        async def __aexit__(self, *args):
+            pass
+
+    with patch("src.database.get.session_scope", return_value=_FakeScope()):
+        from src.database import get_auction_sale_listing_by_id
+
+        result = await get_auction_sale_listing_by_id(1)
+
+    assert result is fake_listing
+
+
+async def test_get_auction_sale_listing_by_id_returns_none():
+    """When no listing exists, the function should return None."""
+    mock_session = AsyncMock()
+    mock_session.get = AsyncMock(return_value=None)
+
+    class _FakeScope:
+        async def __aenter__(self):
+            return mock_session
+
+        async def __aexit__(self, *args):
+            pass
+
+    with patch("src.database.get.session_scope", return_value=_FakeScope()):
+        from src.database import get_auction_sale_listing_by_id
+
+        result = await get_auction_sale_listing_by_id(999)
+
+    assert result is None
+
+
+# ---------------------------------------------------------------------------
+# get_active_auction_sale_listing_for_pooch
+# ---------------------------------------------------------------------------
+
+
+async def test_get_active_auction_sale_listing_for_pooch_returns_listing():
+    """When an active listing exists for the pooch, it should be returned."""
+    fake_listing = SimpleNamespace(id=5, pooch_id=10, is_active=True)
+    scope_cls, _ = _mock_session_scope(scalar_result=fake_listing)
+
+    with patch("src.database.get.session_scope", return_value=scope_cls()):
+        from src.database import get_active_auction_sale_listing_for_pooch
+
+        result = await get_active_auction_sale_listing_for_pooch(10)
+
+    assert result is fake_listing
+
+
+async def test_get_active_auction_sale_listing_for_pooch_returns_none():
+    """When no active listing exists for the pooch, None should be returned."""
+    scope_cls, _ = _mock_session_scope(scalar_result=None)
+
+    with patch("src.database.get.session_scope", return_value=scope_cls()):
+        from src.database import get_active_auction_sale_listing_for_pooch
+
+        result = await get_active_auction_sale_listing_for_pooch(999)
+
+    assert result is None
+
+
+# ---------------------------------------------------------------------------
+# get_auction_bounty_listing_by_id
+# ---------------------------------------------------------------------------
+
+
+async def test_get_auction_bounty_listing_by_id_returns_listing():
+    """When a bounty listing exists, the function should return it."""
+    fake_listing = SimpleNamespace(id=3, buyer_discord_id=100, is_active=True)
+
+    mock_session = AsyncMock()
+    mock_session.get = AsyncMock(return_value=fake_listing)
+
+    class _FakeScope:
+        async def __aenter__(self):
+            return mock_session
+
+        async def __aexit__(self, *args):
+            pass
+
+    with patch("src.database.get.session_scope", return_value=_FakeScope()):
+        from src.database import get_auction_bounty_listing_by_id
+
+        result = await get_auction_bounty_listing_by_id(3)
+
+    assert result is fake_listing
+
+
+async def test_get_auction_bounty_listing_by_id_returns_none():
+    """When no bounty listing exists, None should be returned."""
+    mock_session = AsyncMock()
+    mock_session.get = AsyncMock(return_value=None)
+
+    class _FakeScope:
+        async def __aenter__(self):
+            return mock_session
+
+        async def __aexit__(self, *args):
+            pass
+
+    with patch("src.database.get.session_scope", return_value=_FakeScope()):
+        from src.database import get_auction_bounty_listing_by_id
+
+        result = await get_auction_bounty_listing_by_id(999)
+
+    assert result is None
+
+
+# ---------------------------------------------------------------------------
+# get_highest_bid_for_listing
+# ---------------------------------------------------------------------------
+
+
+async def test_get_highest_bid_for_listing_returns_bid():
+    """When bids exist, the highest one should be returned."""
+    fake_bid = SimpleNamespace(id=7, listing_id=1, amount=500, bidder_discord_id=42)
+    scope_cls, _ = _mock_session_scope(scalar_result=fake_bid)
+
+    with patch("src.database.get.session_scope", return_value=scope_cls()):
+        from src.database import get_highest_bid_for_listing
+
+        result = await get_highest_bid_for_listing(1)
+
+    assert result is fake_bid
+
+
+async def test_get_highest_bid_for_listing_returns_none_when_no_bids():
+    """When no bids exist for the listing, None should be returned."""
+    scope_cls, _ = _mock_session_scope(scalar_result=None)
+
+    with patch("src.database.get.session_scope", return_value=scope_cls()):
+        from src.database import get_highest_bid_for_listing
+
+        result = await get_highest_bid_for_listing(999)
+
+    assert result is None

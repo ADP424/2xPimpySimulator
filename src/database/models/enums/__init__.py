@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from .event_action_type import EVENT_ACTION_TYPE
 from .event_severity import EVENT_SEVERITY
 from .event_target_type import EVENT_TARGET_TYPE

@@ -677,3 +677,91 @@ async def test_check_server_event_filter_min_owners_passes():
 
     result = await check_server_event_filter(mock_session, 200, {"min_owners": 3})
     assert result is True
+
+
+# ---------------------------------------------------------------------------
+# check_owner_event_filter — season filtering
+# ---------------------------------------------------------------------------
+
+
+async def test_check_owner_event_filter_season_passes():
+    """Filter with matching season should not be blocked by season check."""
+    fake_owner = SimpleNamespace(discord_id=1, dollars=100, bloodskulls=0)
+    mock_session = AsyncMock()
+    mock_session.scalar = AsyncMock(side_effect=[fake_owner, 0, 0])
+
+    result = await check_owner_event_filter(mock_session, 1, {"seasons": ["spring", "summer"]}, season="spring")
+    assert result is True
+
+
+async def test_check_owner_event_filter_season_fails():
+    """Filter should fail when current season is not in allowed seasons list."""
+    mock_session = AsyncMock()
+    result = await check_owner_event_filter(mock_session, 1, {"seasons": ["winter"]}, season="spring")
+    assert result is False
+
+
+async def test_check_owner_event_filter_season_case_insensitive():
+    """Season comparison should be case-insensitive."""
+    fake_owner = SimpleNamespace(discord_id=1, dollars=0, bloodskulls=0)
+    mock_session = AsyncMock()
+    mock_session.scalar = AsyncMock(side_effect=[fake_owner, 0, 0])
+
+    result = await check_owner_event_filter(mock_session, 1, {"seasons": ["SPRING"]}, season="spring")
+    assert result is True
+
+
+async def test_check_owner_event_filter_no_season_provided_passes_season_filter():
+    """If season is None, the seasons restriction is skipped."""
+    fake_owner = SimpleNamespace(discord_id=1, dollars=0, bloodskulls=0)
+    mock_session = AsyncMock()
+    mock_session.scalar = AsyncMock(side_effect=[fake_owner, 0, 0])
+
+    # seasons filter present but season=None → not checked → passes
+    result = await check_owner_event_filter(mock_session, 1, {"seasons": ["winter"]}, season=None)
+    assert result is True
+
+
+# ---------------------------------------------------------------------------
+# check_stray_event_filter — season filtering
+# ---------------------------------------------------------------------------
+
+
+async def test_check_stray_event_filter_season_fails():
+    """Stray event filter should fail when the season doesn't match."""
+    mock_session = AsyncMock()
+    result = await check_stray_event_filter(mock_session, 200, {"seasons": ["winter"]}, season="summer")
+    assert result is False
+
+
+async def test_check_stray_event_filter_season_passes():
+    """Stray event filter should pass when the season matches."""
+    mock_session = AsyncMock()
+    query_result = MagicMock()
+    query_result.scalars.return_value.all.return_value = [1, 2]
+    mock_session.execute = AsyncMock(return_value=query_result)
+
+    result = await check_stray_event_filter(
+        mock_session, 200, {"seasons": ["summer"], "pooches": [{"min_count": 1}]}, season="summer"
+    )
+    assert result is True
+
+
+# ---------------------------------------------------------------------------
+# check_owner_event_filter — max_count on sub-filters
+# ---------------------------------------------------------------------------
+
+
+async def test_check_owner_event_filter_pooches_max_count_fails():
+    """Pooch sub-filter with max_count should fail when owner has more matching pooches."""
+    fake_owner = SimpleNamespace(discord_id=1, dollars=0, bloodskulls=0)
+    mock_session = AsyncMock()
+
+    # scalar calls: owner, pooch_count, kennel_count, then subquery count returns 3
+    mock_session.scalar = AsyncMock(side_effect=[fake_owner, 5, 0, 3])
+    query_result = MagicMock()
+    query_result.scalars.return_value.all.return_value = []
+    mock_session.execute = AsyncMock(return_value=query_result)
+
+    result = await check_owner_event_filter(mock_session, 1, {"pooches": [{"max_count": 2}]})
+    assert result is False

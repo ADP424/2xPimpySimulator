@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from .context import create_event_context, deliver_pooch
 from .coordinator import (
     create_and_execute_event,

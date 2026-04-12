@@ -233,6 +233,7 @@ async def test_run_daily_no_servers():
         patch(f"{MOD}.list_active_server_event_occurrences", new=AsyncMock(return_value=[])),
         patch(f"{MOD}.list_servers", new=AsyncMock(return_value=[])),
         patch(f"{MOD}.get_current_season", new=AsyncMock(return_value="spring")),
+        patch(f"{MOD}.advance_season", new=AsyncMock(return_value="summer")),
     ):
         result = await run_daily_server_event_cycle()
 

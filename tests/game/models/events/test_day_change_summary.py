@@ -29,6 +29,7 @@ def _make_pooch(id: int, name: str = "Dog") -> Pooch:
         breeding_cooldown=0,
         alive=True,
         virgin=True,
+        vet_checked=False,
         owner_discord_id=None,
         vendor_id=None,
         created_at=None,
@@ -40,6 +41,7 @@ def _make_pooch(id: int, name: str = "Dog") -> Pooch:
         breeds=[],
         mutations=[],
         injuries=[],
+        diseases=[],
     )
 
 

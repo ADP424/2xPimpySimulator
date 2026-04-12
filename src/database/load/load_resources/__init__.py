@@ -1,4 +1,5 @@
 from .breeds import load_breeds, validate_breeds_json
+from .diseases import load_diseases, validate_diseases_json
 from .dog_names import load_dog_names
 from .injuries import load_injuries
 from .mutations import load_mutations, validate_mutations_json
@@ -32,6 +33,7 @@ async def main():
     await load_breeds()
     await load_mutations()
     await load_injuries()
+    await load_diseases()
     await load_dog_names()
     await load_vendor_first_names()
     await load_vendor_last_names()
@@ -46,6 +48,8 @@ __all__ = [
     "validate_breeds_json",
     "load_mutations",
     "validate_mutations_json",
+    "load_diseases",
+    "validate_diseases_json",
     "load_injuries",
     "load_dog_names",
     "load_vendor_first_names",

@@ -52,6 +52,7 @@ def make_pooch(
     health=10,
     created_at=None,
     mood=None,
+    diseases=None,
     **overrides,
 ):
     attrs = dict(
@@ -81,14 +82,21 @@ def make_pooch(
         breeds=[],
         mutations=[],
         injuries=[],
+        diseases=diseases if diseases is not None else [],
         parameters={},
     )
     attrs.update(overrides)
     return SimpleNamespace(**attrs)
 
 
-def make_kennel(kennel_id=1, name="Test Kennel", pooch_limit=10, owner_discord_id=100):
-    return SimpleNamespace(id=kennel_id, name=name, pooch_limit=pooch_limit, owner_discord_id=owner_discord_id)
+def make_kennel(kennel_id=1, name="Test Kennel", pooch_limit=10, owner_discord_id=100, messiness=0):
+    return SimpleNamespace(
+        id=kennel_id,
+        name=name,
+        pooch_limit=pooch_limit,
+        owner_discord_id=owner_discord_id,
+        messiness=messiness,
+    )
 
 
 def make_owner(

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from .day_change_status import (
     DayChangeStatusPageSource,
     PublicPaginatorView,

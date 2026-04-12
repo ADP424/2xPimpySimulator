@@ -26,7 +26,7 @@ from src.database import (
     resolve_server_event_occurrence,
     session_scope,
 )
-from src.database.utils import check_server_event_filter, weighted_choice
+from src.database.utils import check_server_event_filter, rarity_choice
 from src.game.events.owner_events import (
     execute_event_actions as _execute_owner_event_actions,
 )
@@ -183,15 +183,15 @@ async def trigger_daily_server_event(
 
     events_with_weights = await list_server_events_with_weights_by_tier(tier)
     eligible: list[tuple] = []
-    for event_obj, weight in events_with_weights:
+    for event_obj, rarity in events_with_weights:
         filter_spec = event_obj.filter or {}
         if await _check_server_filter(server_discord_id, filter_spec, season=await get_current_season()):
-            eligible.append((event_obj, weight))
+            eligible.append((event_obj, rarity))
 
     if not eligible:
         return None
 
-    server_event = weighted_choice(rng, eligible)
+    server_event = rarity_choice(rng, eligible)
     if server_event is None:
         return None
 

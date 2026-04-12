@@ -9,10 +9,12 @@ from .models import (
     AuctionBountyListing,
     AuctionSaleListing,
     Breed,
+    Disease,
     Event,
     EventOccurrence,
     EventOption,
     EventOutcome,
+    GlobalState,
     HealthImpactWeight,
     Injury,
     Kennel,
@@ -22,10 +24,10 @@ from .models import (
     OwnerServer,
     Pooch,
     PoochBreed,
+    PoochDisease,
     PoochInjury,
     PoochMutation,
     PoochParentage,
-    RarityWeight,
     Server,
     ServerEvent,
     ServerEventMenu,
@@ -38,7 +40,7 @@ from .models import (
     Vendor,
 )
 from .session import session_scope
-from .utils import check_owner_event_filter, weighted_choice
+from .utils import check_owner_event_filter, rarity_choice
 
 
 async def get_active_owner_event_by_id(active_owner_event_id: int) -> Optional[EventOccurrence]:
@@ -177,7 +179,7 @@ async def get_random_breed_ids(
         return result
 
     async with session_scope() as session:
-        query = select(Breed, RarityWeight.weight).join(RarityWeight, RarityWeight.rarity == Breed.rarity)
+        query = select(Breed)
         if from_vendor:
             query = query.where(not_(Breed.parameters.contains({"sold_by_vendors": False})))
         if from_ritual:
@@ -185,19 +187,19 @@ async def get_random_breed_ids(
         if exclude_ids:
             query = query.where(Breed.id.not_in(exclude_ids))
         response = await session.execute(query)
-        raw_rows = [(breed, weight) for breed, weight in response.tuples().all()]
+        raw_rows = response.scalars().all()
 
     if season is not None:
         season_lower = season.lower()
-        rows = [(breed, weight) for breed, weight in raw_rows if _breed_allowed_in_season(breed, season_lower)]
+        rows = [(breed, breed.rarity) for breed in raw_rows if _breed_allowed_in_season(breed, season_lower)]
     else:
-        rows = raw_rows
+        rows = [(breed, breed.rarity) for breed in raw_rows]
 
     if not rows:
         return result
 
     for _ in range(n):
-        breed = weighted_choice(rng, rows)
+        breed = rarity_choice(rng, rows)
         if breed is not None:
             result.append(breed.id)
 
@@ -344,6 +346,12 @@ async def get_mutation_by_name(name: str) -> Optional[Mutation]:
     return response.scalar_one_or_none()
 
 
+async def get_injury_by_id(injury_id: int) -> Optional[Injury]:
+    """Fetch an injury by its ID."""
+    async with session_scope() as session:
+        return await session.get(Injury, injury_id)
+
+
 async def get_injury_by_name(name: str) -> Optional[Injury]:
     """Fetch an injury by its name (case-insensitive)."""
     async with session_scope() as session:
@@ -403,6 +411,32 @@ async def get_random_injury(
     if not injuries:
         return None
     return rng.choice(injuries)
+
+
+async def get_injury_health_impact(injury_id: int) -> Optional[int]:
+    """
+    Get the health impact for the injury with the given ID as an integer.
+
+    Parameters
+    ----------
+    injury_id: int
+        The ID of the injury to get the numerical health impact of.
+
+    Returns
+    -------
+    int, optional
+        The health impact of the given injury, or None if the injury wasn't found.
+    """
+
+    async with session_scope() as session:
+        query = (
+            select(HealthImpactWeight.weight)
+            .join(Injury, Injury.health_impact == HealthImpactWeight.health_impact)
+            .where(Injury.id == injury_id)
+        )
+        response = await session.execute(query)
+
+    return response.scalar_one_or_none()
 
 
 async def get_mutation_health_impact(mutation_id: int) -> Optional[int]:
@@ -552,7 +586,7 @@ async def get_pooch_by_id(pooch_id: int) -> Optional[Pooch]:
 
 async def get_pooch_health(pooch_id: int) -> Optional[int]:
     """
-    Get the current health of the given pooch, taking into account age, mutations, and injuries.
+    Get the current health of the given pooch, taking into account age, mutations, injuries, and diseases.
 
     Parameters
     ----------
@@ -566,7 +600,13 @@ async def get_pooch_health(pooch_id: int) -> Optional[int]:
     """
 
     async with session_scope() as session:
+        pooch = await session.scalar(select(Pooch).where(Pooch.id == pooch_id))
+        if pooch is None:
+            return None
+
         InjuryWeight = aliased(HealthImpactWeight)
+        DiseaseWeight = aliased(HealthImpactWeight)
+
         injury_subq = (
             select(func.coalesce(func.sum(InjuryWeight.weight), 0))
             .select_from(PoochInjury)
@@ -575,32 +615,35 @@ async def get_pooch_health(pooch_id: int) -> Optional[int]:
             .where(PoochInjury.pooch_id == pooch_id)
             .scalar_subquery()
         )
-        query = (
-            select(
-                Pooch.base_health
-                - Pooch.health_loss_age
-                + func.coalesce(func.sum(HealthImpactWeight.weight), 0)
-                + injury_subq
-            )
-            .outerjoin(PoochMutation, PoochMutation.pooch_id == Pooch.id)
-            .outerjoin(Mutation, Mutation.id == PoochMutation.mutation_id)
-            .outerjoin(HealthImpactWeight, HealthImpactWeight.health_impact == Mutation.health_impact)
-            .where(Pooch.id == pooch_id)
-            .group_by(Pooch.id, Pooch.base_health, Pooch.health_loss_age)
+        disease_subq = (
+            select(func.coalesce(func.sum(DiseaseWeight.weight), 0))
+            .select_from(PoochDisease)
+            .join(Disease, Disease.id == PoochDisease.disease_id)
+            .join(DiseaseWeight, DiseaseWeight.health_impact == Disease.health_impact)
+            .where(PoochDisease.pooch_id == pooch_id)
+            .scalar_subquery()
         )
-        response = await session.execute(query)
+        mutation_subq = (
+            select(func.coalesce(func.sum(HealthImpactWeight.weight), 0))
+            .select_from(PoochMutation)
+            .join(Mutation, Mutation.id == PoochMutation.mutation_id)
+            .join(HealthImpactWeight, HealthImpactWeight.health_impact == Mutation.health_impact)
+            .where(PoochMutation.pooch_id == pooch_id)
+            .scalar_subquery()
+        )
+        total_impact = await session.scalar(select(mutation_subq + injury_subq + disease_subq))
 
-    return response.scalar_one_or_none()
+    effective_base_health = await _get_pooch_stat(pooch_id, "base_health")
+    if effective_base_health is None:
+        return None
+
+    return effective_base_health - pooch.health_loss_age + (total_impact or 0)
 
 
 async def _get_pooch_stat(pooch_id: int, stat: str) -> Optional[int]:
     """
     Return the effective value of a single stat for the given pooch, accounting for
-    mutation and breed `{stat}_add` / `{stat}_mult` parameters.
-
-    Add modifiers are summed first, then mult modifiers are applied. Mutation mults
-    multiply together; breed mults are weighted-averaged by the breed's relative weight
-    in the pooch. The final value is rounded to the nearest integer.
+    mutation, breed, injury, and disease `{stat}_add` / `{stat}_mult` parameters.
     """
 
     async with session_scope() as session:
@@ -609,7 +652,6 @@ async def _get_pooch_stat(pooch_id: int, stat: str) -> Optional[int]:
             return None
 
         base: int = getattr(pooch, stat)
-
         mutations = (
             (
                 await session.execute(
@@ -621,7 +663,6 @@ async def _get_pooch_stat(pooch_id: int, stat: str) -> Optional[int]:
             .scalars()
             .all()
         )
-
         breed_rows = (
             await session.execute(
                 select(Breed, PoochBreed.weight)
@@ -629,9 +670,30 @@ async def _get_pooch_stat(pooch_id: int, stat: str) -> Optional[int]:
                 .where(PoochBreed.pooch_id == pooch_id)
             )
         ).all()
+        injury_rows = (
+            (
+                await session.execute(
+                    select(PoochInjury)
+                    .options(selectinload(PoochInjury.injury))
+                    .where(PoochInjury.pooch_id == pooch_id)
+                )
+            )
+            .scalars()
+            .all()
+        )
+        disease_rows = (
+            (
+                await session.execute(
+                    select(PoochDisease)
+                    .options(selectinload(PoochDisease.disease))
+                    .where(PoochDisease.pooch_id == pooch_id)
+                )
+            )
+            .scalars()
+            .all()
+        )
 
     total = float(base)
-
     mut_add = sum(m.parameters.get(f"{stat}_add", 0) for m in mutations)
     mut_mult = 1.0
     for m in mutations:
@@ -643,6 +705,46 @@ async def _get_pooch_stat(pooch_id: int, stat: str) -> Optional[int]:
         breed_add = sum(b.parameters.get(f"{stat}_add", 0) * (w / total_weight) for b, w in breed_rows)
         breed_mult = sum(b.parameters.get(f"{stat}_mult", 1.0) * (w / total_weight) for b, w in breed_rows)
         total = (total + breed_add) * breed_mult
+
+    injury_add = 0.0
+    injury_mult = 1.0
+    for pi in injury_rows:
+        injury = pi.injury
+        params = injury.parameters or {}
+        if pi.treated and injury.treated:
+            treated_params = injury.treated
+            injury_add += treated_params.get(f"{stat}_add", 0)
+            injury_mult *= treated_params.get(f"{stat}_mult", params.get(f"{stat}_mult", 1.0))
+        else:
+            injury_add += params.get(f"{stat}_add", 0)
+            injury_mult *= params.get(f"{stat}_mult", 1.0)
+    total = (total + injury_add) * injury_mult
+
+    injury_counts: dict[int, tuple[Injury, int]] = {}
+    for pi in injury_rows:
+        injury = pi.injury
+        if injury.id not in injury_counts:
+            injury_counts[injury.id] = (injury, 0)
+        injury_counts[injury.id] = (injury, injury_counts[injury.id][1] + 1)
+
+    stack_add = 0.0
+    stack_mult = 1.0
+    for injury, count in injury_counts.values():
+        for entry in (injury.parameters or {}).get("stacks", []):
+            min_count = entry.get("min_count", 1)
+            max_count = entry.get("max_count")
+            if count >= min_count and (max_count is None or count <= max_count):
+                stack_add += entry.get(f"{stat}_add", 0)
+                stack_mult *= entry.get(f"{stat}_mult", 1.0)
+    total = (total + stack_add) * stack_mult
+
+    disease_add = 0.0
+    disease_mult = 1.0
+    for pd in disease_rows:
+        params = pd.disease.parameters or {}
+        disease_add += params.get(f"{stat}_add", 0)
+        disease_mult *= params.get(f"{stat}_mult", 1.0)
+    total = (total + disease_add) * disease_mult
 
     return round(total)
 
@@ -817,8 +919,7 @@ async def get_random_eligible_owner_event_for_owner(
             return None
 
         event_query = (
-            select(Event, RarityWeight.weight)
-            .join(RarityWeight, RarityWeight.rarity == Event.rarity)
+            select(Event)
             .where(
                 true() if include_triggered_only else Event.triggered_only.is_(False),
             )
@@ -829,20 +930,20 @@ async def get_random_eligible_owner_event_for_owner(
             )
         )
         event_response = await session.execute(event_query)
-        rows = [(event, weight) for event, weight in event_response.tuples().all()]
+        rows = event_response.scalars().all()
 
         if not rows:
             return None
 
-        eligible_rows: list[tuple[Event, float]] = []
-        for event, weight in rows:
+        eligible_rows: list[tuple[Event, str]] = []
+        for event in rows:
             if await check_owner_event_filter(session, owner_discord_id, event.filter, season=season):
-                eligible_rows.append((event, weight))
+                eligible_rows.append((event, event.rarity))
 
         if not eligible_rows:
             return None
 
-        return weighted_choice(rng, eligible_rows)
+        return rarity_choice(rng, eligible_rows)
 
 
 async def check_owner_event_filter_for_owner(owner_discord_id: int, filter_spec: dict | None) -> bool:
@@ -1172,16 +1273,12 @@ async def get_server_event_participation(
     return response.scalar_one_or_none()
 
 
-async def list_all_server_events_with_weights() -> list[tuple[ServerEvent, int]]:
-    """Return all server events paired with their rarity weight, fully loaded."""
+async def list_all_server_events_with_weights() -> list[tuple[ServerEvent, str]]:
+    """Return all server events paired with their rarity string, fully loaded."""
     async with session_scope() as session:
-        event_query = (
-            select(ServerEvent, RarityWeight.weight)
-            .join(RarityWeight, RarityWeight.rarity == ServerEvent.rarity)
-            .options(*_server_event_load_options())
-        )
+        event_query = select(ServerEvent).options(*_server_event_load_options())
         response = await session.execute(event_query)
-        return [(event, weight) for event, weight in response.tuples().all()]
+        return [(event, event.rarity) for event in response.scalars().all()]
 
 
 async def get_server_event_by_name(name: str) -> Optional[ServerEvent]:
@@ -1193,17 +1290,12 @@ async def get_server_event_by_name(name: str) -> Optional[ServerEvent]:
         return result.scalars().first()
 
 
-async def list_server_events_with_weights_by_tier(tier: str) -> list[tuple[ServerEvent, int]]:
-    """Return server events for a specific tier ('minor' or 'major') with rarity weights."""
+async def list_server_events_with_weights_by_tier(tier: str) -> list[tuple[ServerEvent, str]]:
+    """Return server events for a specific tier ('minor' or 'major') with their rarity string."""
     async with session_scope() as session:
-        event_query = (
-            select(ServerEvent, RarityWeight.weight)
-            .join(RarityWeight, RarityWeight.rarity == ServerEvent.rarity)
-            .where(ServerEvent.tier == tier.lower())
-            .options(*_server_event_load_options())
-        )
+        event_query = select(ServerEvent).where(ServerEvent.tier == tier.lower()).options(*_server_event_load_options())
         response = await session.execute(event_query)
-        return [(event, weight) for event, weight in response.tuples().all()]
+        return [(event, event.rarity) for event in response.scalars().all()]
 
 
 def _stray_event_load_options():
@@ -1271,28 +1363,27 @@ async def get_random_eligible_stray_event_for_server(
 
     async with session_scope() as session:
         query = (
-            select(StrayEvent, RarityWeight.weight)
-            .join(RarityWeight, RarityWeight.rarity == StrayEvent.rarity)
+            select(StrayEvent)
             .where(
                 true() if include_triggered_only else StrayEvent.triggered_only.is_(False),
             )
             .options(*_stray_event_load_options())
         )
         response = await session.execute(query)
-        rows = [(event, weight) for event, weight in response.tuples().all()]
+        rows = response.scalars().all()
 
         if not rows:
             return None
 
-        eligible_rows: list[tuple[StrayEvent, float]] = []
-        for event, weight in rows:
+        eligible_rows: list[tuple[StrayEvent, str]] = []
+        for event in rows:
             if await check_stray_event_filter(session, server_discord_id, event.filter, season=season):
-                eligible_rows.append((event, weight))
+                eligible_rows.append((event, event.rarity))
 
         if not eligible_rows:
             return None
 
-        return weighted_choice(rng, eligible_rows)
+        return rarity_choice(rng, eligible_rows)
 
 
 async def get_parentage_maps(
@@ -1457,3 +1548,55 @@ async def get_highest_bid_for_listing(listing_id: int) -> Optional[AuctionBid]:
             select(AuctionBid).where(AuctionBid.listing_id == listing_id).order_by(AuctionBid.amount.desc()).limit(1)
         )
         return (await session.execute(query)).scalar_one_or_none()
+
+
+async def get_disease_by_id(disease_id: int) -> Optional[Disease]:
+    """Fetch a disease by its ID."""
+    async with session_scope() as session:
+        return await session.get(Disease, disease_id)
+
+
+async def get_disease_by_name(name: str) -> Optional[Disease]:
+    """Fetch a disease by its name (case-insensitive)."""
+    async with session_scope() as session:
+        query = select(Disease).where(Disease.name.ilike(name))
+        response = await session.execute(query)
+    return response.scalar_one_or_none()
+
+
+async def get_disease_health_impact(disease_id: int) -> Optional[int]:
+    """
+    Get the health impact for the disease with the given ID as an integer.
+
+    Parameters
+    ----------
+    disease_id: int
+        The ID of the disease to get the numerical health impact of.
+
+    Returns
+    -------
+    int, optional
+        The health impact of the given disease, or None if the disease wasn't found.
+    """
+
+    async with session_scope() as session:
+        query = (
+            select(HealthImpactWeight.weight)
+            .join(Disease, Disease.health_impact == HealthImpactWeight.health_impact)
+            .where(Disease.id == disease_id)
+        )
+        response = await session.execute(query)
+
+    return response.scalar_one_or_none()
+
+
+_GET_GLOBAL_STATE_ID = 1
+
+
+async def get_current_day() -> int:
+    """Return the current global day number, defaulting to 0 if the row doesn't exist yet."""
+    async with session_scope() as session:
+        row = await session.get(GlobalState, _GET_GLOBAL_STATE_ID)
+        if row is None:
+            return 0
+        return row.current_day

@@ -30,6 +30,8 @@ from .models import (
     Mutation,
     Pooch,
     PoochBreed,
+    PoochDisease,
+    PoochDiseaseImmunity,
     PoochMutation,
     PoochPregnancy,
     StrayPooch,
@@ -500,3 +502,59 @@ async def remove_auction_bid(bid_id: int) -> bool:
             return False
         await session.delete(bid)
         return True
+
+
+async def remove_disease_from_pooch(pooch_id: int, disease_id: int) -> Optional[PoochDisease]:
+    """
+    Remove a disease from a pooch.
+
+    Parameters
+    ----------
+    pooch_id: int
+        The ID of the pooch to remove the disease from.
+
+    disease_id: int
+        The ID of the disease to remove.
+
+    Returns
+    -------
+    PoochDisease, optional
+        The removed PoochDisease relationship, or None if it didn't exist.
+    """
+
+    async with session_scope() as session:
+        query = select(PoochDisease).where(
+            and_(
+                PoochDisease.pooch_id == pooch_id,
+                PoochDisease.disease_id == disease_id,
+            )
+        )
+        result = await session.execute(query)
+        pooch_disease = result.scalar_one_or_none()
+
+        if pooch_disease is not None:
+            await session.delete(pooch_disease)
+
+        return pooch_disease
+
+
+async def remove_expired_disease_immunities(current_day: int) -> int:
+    """
+    Remove all disease immunity records that have expired. Returns count removed.
+
+    Parameters
+    ----------
+    current_day: int
+        The current global day number.
+
+    Returns
+    -------
+    int
+        The number of expired immunity records deleted.
+    """
+
+    async with session_scope() as session:
+        result = await session.execute(
+            delete(PoochDiseaseImmunity).where(PoochDiseaseImmunity.immune_until_day <= current_day)
+        )
+        return result.rowcount

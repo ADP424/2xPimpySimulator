@@ -10,6 +10,7 @@ from .models import (
     AuctionBountyListing,
     AuctionSaleListing,
     Breed,
+    Disease,
     Event,
     EventOccurrence,
     EventOption,
@@ -25,10 +26,13 @@ from .models import (
     OwnerServer,
     Pooch,
     PoochBreed,
+    PoochDisease,
+    PoochDiseaseImmunity,
     PoochInjury,
     PoochMutation,
     PoochParentage,
     PoochPregnancy,
+    PoochSnapshot,
     Server,
     ServerEvent,
     ServerEventMenu,
@@ -1259,3 +1263,84 @@ async def list_owner_bid_history(owner_discord_id: int) -> list[AuctionBid]:
             .order_by(AuctionBid.placed_at.desc())
         )
         return list((await session.execute(query)).scalars().all())
+
+
+async def list_pooch_snapshots(pooch_id: int) -> list[PoochSnapshot]:
+    """Return all timeline snapshots for a pooch, oldest first."""
+    async with session_scope() as session:
+        query = (
+            select(PoochSnapshot)
+            .where(PoochSnapshot.pooch_id == pooch_id)
+            .order_by(PoochSnapshot.snapshot_at.asc(), PoochSnapshot.id.asc())
+        )
+        return list((await session.execute(query)).scalars().all())
+
+
+async def list_all_diseases(season: str | None = None) -> list[Disease]:
+    """Fetch every disease in alphabetical order by name, optionally filtering by season."""
+    async with session_scope() as session:
+        query = select(Disease)
+        if season is not None:
+            query = query.where(or_(Disease.seasons.is_(None), Disease.seasons.any(season)))
+        response = await session.execute(query.order_by(Disease.name.asc()))
+    return list(response.scalars().all())
+
+
+async def list_pooch_diseases(pooch_id: int) -> list[Disease]:
+    """Fetch the list of diseases the given pooch currently has."""
+    async with session_scope() as session:
+        query = (
+            select(Disease)
+            .join(PoochDisease, PoochDisease.disease_id == Disease.id)
+            .where(PoochDisease.pooch_id == pooch_id)
+            .order_by(Disease.name)
+        )
+        response = await session.execute(query)
+    return list(response.scalars().all())
+
+
+async def list_pooch_disease_instances(pooch_id: int) -> list[PoochDisease]:
+    """Fetch the PoochDisease join records for the given pooch, with the disease relationship eagerly loaded."""
+    from sqlalchemy.orm import selectinload
+
+    async with session_scope() as session:
+        query = (
+            select(PoochDisease)
+            .options(selectinload(PoochDisease.disease))
+            .where(PoochDisease.pooch_id == pooch_id)
+            .order_by(PoochDisease.id)
+        )
+        response = await session.execute(query)
+    return list(response.scalars().all())
+
+
+async def list_pooch_disease_immunities(pooch_id: int) -> list[PoochDiseaseImmunity]:
+    """Fetch all PoochDiseaseImmunity records for the given pooch, with the disease relationship eagerly loaded."""
+    from sqlalchemy.orm import selectinload
+
+    async with session_scope() as session:
+        query = (
+            select(PoochDiseaseImmunity)
+            .options(selectinload(PoochDiseaseImmunity.disease))
+            .where(PoochDiseaseImmunity.pooch_id == pooch_id)
+            .order_by(PoochDiseaseImmunity.id)
+        )
+        response = await session.execute(query)
+    return list(response.scalars().all())
+
+
+async def list_pooches_with_disease_in_kennel(kennel_id: int, disease_id: int) -> list[int]:
+    """Return IDs of living pooches in the given kennel that currently have the given disease."""
+    async with session_scope() as session:
+        query = (
+            select(Pooch.id)
+            .join(KennelPooch, KennelPooch.pooch_id == Pooch.id)
+            .join(PoochDisease, PoochDisease.pooch_id == Pooch.id)
+            .where(
+                KennelPooch.kennel_id == kennel_id,
+                PoochDisease.disease_id == disease_id,
+                Pooch.alive.is_(True),
+            )
+        )
+        response = await session.execute(query)
+    return list(response.scalars().all())

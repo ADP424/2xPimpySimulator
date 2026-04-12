@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Pure helper functions for resolving amounts and modes from event action parameters.
 No database calls — suitable for use from any event context.

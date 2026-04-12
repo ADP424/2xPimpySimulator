@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from sqlalchemy.dialects.postgresql import ENUM
 
 EVENT_SEVERITY = ENUM(

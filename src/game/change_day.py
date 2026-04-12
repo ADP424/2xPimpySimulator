@@ -21,14 +21,19 @@ from src.database import (
     delete_random_vendor,
     get_active_auction_sale_listing_for_pooch,
     get_current_season,
+    get_disease_health_impact,
+    get_injury_health_impact,
     get_mutation_health_impact,
     get_pooch_health,
     get_pooch_kennel,
     get_random_breed_ids,
     give_money_to_owner,
+    increment_global_day,
     list_bids_for_listing,
     list_hell_pooches,
     list_living_pooches,
+    list_pooch_diseases,
+    list_pooch_injuries,
     list_pooch_mutations,
     list_pooch_pregnancies,
     list_pooches_for_kennel,
@@ -45,6 +50,7 @@ from src.database import (
     set_pooch_dead,
     update_pooch_mood,
 )
+from src.database.models import Mutation
 from src.logger import get_logger
 
 from .constants import (
@@ -63,6 +69,7 @@ from .constants import (
 )
 from .events.stray_events import run_daily_stray_event_check
 from .manage_auctions import process_expired_sale_listings
+from .manage_diseases import run_daily_disease_tick
 from .manage_kennels import add_pooch_to_kennel
 from .manage_pooches import get_pooch_by_id
 from .models import (
@@ -75,7 +82,7 @@ from .models import (
 )
 
 if TYPE_CHECKING:
-    from src.database.models import Mutation, Pooch
+    from src.database.models import Pooch
 
 logger = get_logger("game/change_day")
 
@@ -300,27 +307,54 @@ async def run_day_change(
             pooch_mutations = await list_pooch_mutations(pooch.id)
             negative_pooch_mutations = await list_pooch_mutations(pooch.id, positive=False, neutral=False)
 
-            negative_health_impacts = [
+            # Build a weighted pool of possible death causes:
+            # negative mutations, injuries with negative health impact, and old age.
+            pool_candidates: list = []  # mutation ORM | injury ORM | "old_age" sentinel
+            pool_weights: list[int] = []
+
+            mutation_health_impacts = [
                 await get_mutation_health_impact(mutation.id) for mutation in negative_pooch_mutations
             ]
-            negative_health_impacts = [
-                health_impact for health_impact in negative_health_impacts if health_impact is not None
-            ]
-            if negative_health_impacts:
-                total_health_impact = sum(negative_health_impacts)
-                death_cause: Mutation = (
-                    numpy_rng.choice(
-                        negative_pooch_mutations,
-                        p=[(health_impact / total_health_impact) for health_impact in negative_health_impacts],
+            for mutation, impact in zip(negative_pooch_mutations, mutation_health_impacts):
+                if impact is not None and impact < 0:
+                    pool_candidates.append(mutation)
+                    pool_weights.append(abs(impact))
+
+            pooch_injuries = await list_pooch_injuries(pooch.id)
+            for injury in pooch_injuries:
+                impact = await get_injury_health_impact(injury.id)
+                if impact is not None and impact < 0:
+                    pool_candidates.append(injury)
+                    pool_weights.append(abs(impact))
+
+            pooch_diseases = await list_pooch_diseases(pooch.id)
+            for disease in pooch_diseases:
+                impact = await get_disease_health_impact(disease.id)
+                if impact is not None and impact < 0:
+                    pool_candidates.append(disease)
+                    pool_weights.append(abs(impact))
+
+            if pooch.health_loss_age > 0:
+                pool_candidates.append("old_age")
+                pool_weights.append(pooch.health_loss_age)
+
+            death_cause: Optional[Mutation] = None
+            if pool_candidates:
+                total_weight = sum(pool_weights)
+                chosen = numpy_rng.choice(
+                    pool_candidates,
+                    p=[w / total_weight for w in pool_weights],
+                )
+                if chosen == "old_age":
+                    death_message = f"{pooch.name} died of old age."
+                else:
+                    if isinstance(chosen, Mutation):
+                        death_cause = chosen
+                    death_message = (
+                        (chosen.parameters or {})
+                        .get("death_message", f"{pooch.name} died of {chosen.name}.")
+                        .replace("[pooch]", pooch.name)
                     )
-                    if negative_pooch_mutations
-                    else None
-                )
-                death_message = death_cause.parameters.get("death_message", f"{pooch.name} died.").replace(
-                    "[pooch]", pooch.name
-                )
-            elif pooch.health_loss_age > 0:
-                death_message = f"{pooch.name} died of old age."
             else:
                 death_message = f"{pooch.name} died of unknown causes."
 
@@ -338,7 +372,7 @@ async def run_day_change(
 
                     if (
                         on_death == "none"
-                        or (not always_on_death and pooch_mutation.id != death_cause.id)
+                        or (not always_on_death and (death_cause is None or pooch_mutation.id != death_cause.id))
                         or rng.random() > on_death_chance
                     ):
                         continue
@@ -362,6 +396,8 @@ async def run_day_change(
                             for kennel_pooch in (await list_pooches_for_kennel(pooch_kennel_before_death.id))
                             if kennel_pooch.alive and kennel_pooch.id != pooch.id
                         ]
+                        if not kennel_pooches:
+                            continue
                         target_pooches = [rng.choice(kennel_pooches)]
 
                     if on_death == "kill":
@@ -445,6 +481,34 @@ async def run_day_change(
 
     servers = await list_servers()
     _season = await get_current_season()
+
+    # increment global day counter
+    await increment_global_day()
+
+    # disease tick
+    logger.info("Running daily disease tick...")
+    disease_events = await run_daily_disease_tick(season=_season, rng_seed=rng_seed)
+    for pooch_id, pooch_events in disease_events.items():
+        for disease_id, public_label, event_type in pooch_events:
+            del disease_id
+            pooch_orm = await get_pooch_by_id(pooch_id)
+            for server in await list_servers_for_pooch(pooch_id):
+                if event_type == "contracted":
+                    msg = f"{pooch_orm.name} started showing signs of {public_label}."
+                elif event_type == "spread":
+                    msg = f"{pooch_orm.name} caught {public_label} from a kennel mate."
+                elif event_type == "recovered":
+                    msg = f"{pooch_orm.name} recovered from {public_label}."
+                else:
+                    msg = f"{pooch_orm.name} was affected by {public_label}."
+                other_events_by_server.setdefault(server.discord_id, []).append(
+                    OtherEvent(
+                        server=(await to_server(server)),
+                        pooch=(await to_pooch(pooch_orm)),
+                        message=msg,
+                    )
+                )
+    logger.info("Completed daily disease tick.")
 
     # minimum stray guarantee: every server must have at least one alive stray
     logger.info("Checking minimum stray population per server...")

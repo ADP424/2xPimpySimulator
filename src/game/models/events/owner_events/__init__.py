@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from .owner_event import OwnerEvent, to_owner_event
 from .owner_event_context import OwnerEventContext
 from .owner_event_entity_reference import (

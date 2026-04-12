@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from .birth_event import BirthEvent
 from .day_change_summary import DayChangeSummary
 from .death_event import DeathEvent

@@ -31,6 +31,7 @@ from .constants import (
     TWINS_CHANCE,
 )
 from .exceptions import PoochNotFound
+from .manage_diseases import handle_breeding_diseases
 
 
 def combine_puppy_name(father_name: str, mother_name: str) -> str:
@@ -60,8 +61,12 @@ def combine_puppy_name(father_name: str, mother_name: str) -> str:
 
 
 async def breed_pooches(
-    first_pooch_id: int, second_pooch_id: int, rng_seed: Optional[int] = None, skip_validation=False
-) -> list[int]:
+    first_pooch_id: int,
+    second_pooch_id: int,
+    rng_seed: Optional[int] = None,
+    skip_validation: bool = False,
+    return_disease_events: bool = False,
+) -> list[int] | tuple[list[int], list[tuple[int, str, str]]]:
     """
     Breed two pooches and create a fetus in the mother.
 
@@ -81,8 +86,9 @@ async def breed_pooches(
 
     Returns
     -------
-    list[int]
-        A list of the new pooch IDs.
+    list[int] | tuple[list[int], list[tuple[int, str, str]]]
+        The new puppy IDs. When ``return_disease_events`` is True, returns a
+        ``(puppy_ids, disease_events)`` tuple instead.
 
     Raises
     ------
@@ -184,21 +190,22 @@ async def breed_pooches(
         for breed_id in merged:
             merged[breed_id] *= rng.uniform(*BREED_NOISE_RANGE)
 
-        scalar = 1 / min(merged.values())
+        if merged:
+            scalar = 1 / min(merged.values())
 
-        int_weights: dict[int, int] = {}
-        for breed_id, weight in merged.items():
-            int_weight = round(scalar * weight)
-            if int_weight <= 0 and weight > 0:
-                int_weight = 1
-            if int_weight > 0:
-                int_weights[breed_id] = int_weight
+            int_weights: dict[int, int] = {}
+            for breed_id, weight in merged.items():
+                int_weight = round(scalar * weight)
+                if int_weight <= 0 and weight > 0:
+                    int_weight = 1
+                if int_weight > 0:
+                    int_weights[breed_id] = int_weight
 
-        # Drop breeds whose weight is less than 1% of the total
-        total_weight = sum(int_weights.values())
-        int_weights = {bid: w for bid, w in int_weights.items() if w / total_weight >= 0.01}
+            # Drop breeds whose weight is less than 1% of the total
+            total_weight = sum(int_weights.values())
+            int_weights = {bid: w for bid, w in int_weights.items() if w / total_weight >= 0.01}
 
-        await add_pooch_breeds(puppy.id, int_weights)
+            await add_pooch_breeds(puppy.id, int_weights)
 
         # The child has a chance to inherit mutations equal to the mutation's heritability,
         # or double that if both parents have it
@@ -221,6 +228,20 @@ async def breed_pooches(
 
         puppies.append(puppy.id)
 
+    # Disease transmission during breeding (STDs and inheritance)
+    from src.database import get_current_season
+
+    _season = await get_current_season()
+    disease_events = await handle_breeding_diseases(
+        father_id=father.id,
+        mother_id=mother.id,
+        puppy_ids=puppies,
+        season=_season,
+        rng=rng,
+    )
+
+    if return_disease_events:
+        return puppies, disease_events
     return puppies
 
 

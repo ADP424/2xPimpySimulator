@@ -179,11 +179,11 @@ async def post_day_change_webhooks(summaries: dict[int, DayChangeSummary]) -> No
     secret = os.environ.get("WEBHOOK_SECRET")
 
     if not url:
-        logger.log("Webhook URL not set. Skipping posting day change summaries to web app...")
+        logger.info("Webhook URL not set. Skipping posting day change summaries to web app...")
         return
 
     if not secret:
-        logger.log("Webhook secret not set. Skipping posting day change summaries to web app...")
+        logger.info("Webhook secret not set. Skipping posting day change summaries to web app...")
         return
 
     tasks = []

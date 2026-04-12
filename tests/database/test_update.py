@@ -42,6 +42,7 @@ class FakePooch:
         self, id=1, base_health=10, age=3, health_loss_age=0, breeding_cooldown=5, strength=10, alive=True, fertility=10
     ):
         self.id = id
+        self.name = "Test Pooch"
         self.base_health = base_health
         self.age = age
         self.health_loss_age = health_loss_age
@@ -2501,4 +2502,171 @@ async def test_finalize_server_event_participation_returns_none_when_missing():
         from src.database import finalize_server_event_participation
 
         result = await finalize_server_event_participation(999)
+    assert result is None
+
+
+# ---------------------------------------------------------------------------
+# Auction helpers
+# ---------------------------------------------------------------------------
+
+
+def _mock_session_scope_with_get(entity=None):
+    """
+    Return a mock session_scope whose session.get() returns the given entity.
+    Used for auction update functions that call session.get() rather than execute().
+    """
+    mock_session = AsyncMock()
+    mock_session.get = AsyncMock(return_value=entity)
+    mock_session.flush = AsyncMock()
+
+    class _FakeScope:
+        async def __aenter__(self):
+            return mock_session
+
+        async def __aexit__(self, *args):
+            pass
+
+    return _FakeScope, mock_session
+
+
+class FakeAuctionSaleListing:
+    """Mutable stand-in for AuctionSaleListing."""
+
+    def __init__(self, id=1, pooch_id=10, seller_discord_id=42, is_active=True):
+        self.id = id
+        self.pooch_id = pooch_id
+        self.seller_discord_id = seller_discord_id
+        self.is_active = is_active
+        self.closed_at = None
+        self.winning_bidder_discord_id = None
+        self.winning_bid_amount = None
+
+
+class FakeAuctionBountyListing:
+    """Mutable stand-in for AuctionBountyListing."""
+
+    def __init__(self, id=1, buyer_discord_id=77, escrow_amount=500, is_active=True):
+        self.id = id
+        self.buyer_discord_id = buyer_discord_id
+        self.escrow_amount = escrow_amount
+        self.is_active = is_active
+        self.cancelled_at = None
+        self.fulfilled_at = None
+        self.fulfilled_by_discord_id = None
+        self.fulfilled_pooch_id = None
+
+
+# ---------------------------------------------------------------------------
+# close_auction_sale_listing
+# ---------------------------------------------------------------------------
+
+
+async def test_close_auction_sale_listing_marks_inactive_with_winner():
+    """close_auction_sale_listing should set is_active=False and record winner."""
+    fake_listing = FakeAuctionSaleListing(id=1, is_active=True)
+    scope_cls, _ = _mock_session_scope_with_get(entity=fake_listing)
+
+    with patch("src.database.update.session_scope", return_value=scope_cls()):
+        from src.database import close_auction_sale_listing
+
+        result = await close_auction_sale_listing(1, winning_bidder_discord_id=99, winning_bid_amount=300)
+
+    assert result.is_active is False
+    assert result.winning_bidder_discord_id == 99
+    assert result.winning_bid_amount == 300
+    assert result.closed_at is not None
+
+
+async def test_close_auction_sale_listing_marks_inactive_no_winner():
+    """close_auction_sale_listing with no winner should still close the listing."""
+    fake_listing = FakeAuctionSaleListing(id=2, is_active=True)
+    scope_cls, _ = _mock_session_scope_with_get(entity=fake_listing)
+
+    with patch("src.database.update.session_scope", return_value=scope_cls()):
+        from src.database import close_auction_sale_listing
+
+        result = await close_auction_sale_listing(2, winning_bidder_discord_id=None, winning_bid_amount=None)
+
+    assert result.is_active is False
+    assert result.winning_bidder_discord_id is None
+    assert result.winning_bid_amount is None
+
+
+async def test_close_auction_sale_listing_returns_none_when_missing():
+    """close_auction_sale_listing should return None when listing doesn't exist."""
+    scope_cls, _ = _mock_session_scope_with_get(entity=None)
+
+    with patch("src.database.update.session_scope", return_value=scope_cls()):
+        from src.database import close_auction_sale_listing
+
+        result = await close_auction_sale_listing(999, None, None)
+
+    assert result is None
+
+
+# ---------------------------------------------------------------------------
+# cancel_auction_bounty_listing
+# ---------------------------------------------------------------------------
+
+
+async def test_cancel_auction_bounty_listing_marks_inactive():
+    """cancel_auction_bounty_listing should set is_active=False and record cancelled_at."""
+    fake_listing = FakeAuctionBountyListing(id=5, is_active=True)
+    scope_cls, _ = _mock_session_scope_with_get(entity=fake_listing)
+
+    with patch("src.database.update.session_scope", return_value=scope_cls()):
+        from src.database import cancel_auction_bounty_listing
+
+        result = await cancel_auction_bounty_listing(5)
+
+    assert result.is_active is False
+    assert result.cancelled_at is not None
+
+
+async def test_cancel_auction_bounty_listing_returns_none_when_missing():
+    """cancel_auction_bounty_listing should return None when bounty doesn't exist."""
+    scope_cls, _ = _mock_session_scope_with_get(entity=None)
+
+    with patch("src.database.update.session_scope", return_value=scope_cls()):
+        from src.database import cancel_auction_bounty_listing
+
+        result = await cancel_auction_bounty_listing(999)
+
+    assert result is None
+
+
+# ---------------------------------------------------------------------------
+# fulfill_auction_bounty_listing
+# ---------------------------------------------------------------------------
+
+
+async def test_fulfill_auction_bounty_listing_marks_fulfilled():
+    """fulfill_auction_bounty_listing should mark the listing as inactive and record fulfilment."""
+    fake_listing = FakeAuctionBountyListing(id=7, is_active=True)
+    scope_cls, _ = _mock_session_scope_with_get(entity=fake_listing)
+
+    with patch("src.database.update.session_scope", return_value=scope_cls()):
+        from src.database import fulfill_auction_bounty_listing
+
+        result = await fulfill_auction_bounty_listing(
+            listing_id=7,
+            fulfilled_by_discord_id=55,
+            fulfilled_pooch_id=20,
+        )
+
+    assert result.is_active is False
+    assert result.fulfilled_by_discord_id == 55
+    assert result.fulfilled_pooch_id == 20
+    assert result.fulfilled_at is not None
+
+
+async def test_fulfill_auction_bounty_listing_returns_none_when_missing():
+    """fulfill_auction_bounty_listing should return None when bounty doesn't exist."""
+    scope_cls, _ = _mock_session_scope_with_get(entity=None)
+
+    with patch("src.database.update.session_scope", return_value=scope_cls()):
+        from src.database import fulfill_auction_bounty_listing
+
+        result = await fulfill_auction_bounty_listing(999, 55, 20)
+
     assert result is None

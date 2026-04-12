@@ -963,3 +963,104 @@ async def test_create_server_event_participation():
 
     assert result.occurrence_id == 5
     assert result.owner_discord_id == 100
+
+
+# ---------------------------------------------------------------------------
+# create_auction_sale_listing
+# ---------------------------------------------------------------------------
+
+
+async def test_create_auction_sale_listing_adds_listing():
+    """create_auction_sale_listing should create a listing with the correct fields."""
+    from datetime import datetime, timezone
+
+    scope_cls, mock_session = _mock_session_scope()
+    expires = datetime(2030, 1, 1, tzinfo=timezone.utc)
+
+    with patch("src.database.set.session_scope", return_value=scope_cls()):
+        from src.database import create_auction_sale_listing
+
+        result = await create_auction_sale_listing(
+            pooch_id=10,
+            seller_discord_id=42,
+            server_discord_id=5,
+            minimum_bid=100,
+            expires_at=expires,
+        )
+
+    assert result.pooch_id == 10
+    assert result.seller_discord_id == 42
+    assert result.server_discord_id == 5
+    assert result.minimum_bid == 100
+    assert result.expires_at == expires
+    mock_session.add.assert_called_once()
+    mock_session.flush.assert_awaited_once()
+
+
+async def test_create_auction_sale_listing_no_expiry():
+    """create_auction_sale_listing should work with expires_at=None."""
+    scope_cls, mock_session = _mock_session_scope()
+
+    with patch("src.database.set.session_scope", return_value=scope_cls()):
+        from src.database import create_auction_sale_listing
+
+        result = await create_auction_sale_listing(
+            pooch_id=1,
+            seller_discord_id=10,
+            server_discord_id=2,
+            minimum_bid=0,
+        )
+
+    assert result.expires_at is None
+    mock_session.add.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# create_auction_bid
+# ---------------------------------------------------------------------------
+
+
+async def test_create_auction_bid_adds_bid():
+    """create_auction_bid should insert a bid row with the correct fields."""
+    scope_cls, mock_session = _mock_session_scope()
+
+    with patch("src.database.set.session_scope", return_value=scope_cls()):
+        from src.database import create_auction_bid
+
+        result = await create_auction_bid(listing_id=5, bidder_discord_id=99, amount=250)
+
+    assert result.listing_id == 5
+    assert result.bidder_discord_id == 99
+    assert result.amount == 250
+    mock_session.add.assert_called_once()
+    mock_session.flush.assert_awaited_once()
+
+
+# ---------------------------------------------------------------------------
+# create_auction_bounty_listing
+# ---------------------------------------------------------------------------
+
+
+async def test_create_auction_bounty_listing_adds_listing():
+    """create_auction_bounty_listing should create a bounty with the correct fields."""
+    criteria = [{"type": "sex", "value": "female", "dollar_value": 50}]
+    scope_cls, mock_session = _mock_session_scope()
+
+    with patch("src.database.set.session_scope", return_value=scope_cls()):
+        from src.database import create_auction_bounty_listing
+
+        result = await create_auction_bounty_listing(
+            buyer_discord_id=77,
+            server_discord_id=3,
+            title="Wanted: Female Dog",
+            escrow_amount=500,
+            criteria=criteria,
+        )
+
+    assert result.buyer_discord_id == 77
+    assert result.server_discord_id == 3
+    assert result.title == "Wanted: Female Dog"
+    assert result.escrow_amount == 500
+    assert result.criteria == criteria
+    mock_session.add.assert_called_once()
+    mock_session.flush.assert_awaited_once()

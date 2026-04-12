@@ -5,15 +5,12 @@
 | ----------------------------------------------------------------------------------------------------------------------------- | ------ |
 | Create new breeds at runtime ???                                                                                              | ???    |
 | Get breed population stats for server (add this info to the vet)                                                              | 3      |
-| Have rarity be rolled first, then pick one from that rarity (mutations, breeds, events, etc.)                                 | 2      |
 
 ## UI
 | Feature                                                                                                                       | Points |
 | ----------------------------------------------------------------------------------------------------------------------------- | ------ |
 | Remove showing markup on vendors                                                                                              | 1      |
 | In the rarity filter menu (for mutations and breeds) sort by decreasing weight                                                | 3      |
-| Have timeline per pooch showing birthday / other significant events (like being bought) / death using cool timeline comp      | 8      |
-| Obfuscate mutations (so they don't tell you exactly what a pooch has unless you get it checked at vet)                        | 8      |
 | Gendered pronoun placeholders in JSON where it's relevant                                                                     | 3      |
 
 ## Random Events

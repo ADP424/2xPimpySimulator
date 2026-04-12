@@ -199,7 +199,7 @@ async def load_mutations():
                         description=str(
                             attributes.get("description", f"{str(mutation).capitalize()} is a mutation for dogs.")
                         ),
-                        heritability=float(attributes.get("heritability", 25.0)),
+                        heritability=float(attributes.get("heritability", 0.25)),
                         health_impact=str(attributes.get("health_impact", "neutral")).lower(),
                         rarity=str(attributes.get("rarity", "common")).lower(),
                         affects_males=bool(attributes.get("affects_males", True)),

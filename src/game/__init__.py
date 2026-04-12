@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from .breeding import (
     breed_pooches,
     calculate_incest_level,
@@ -49,6 +51,15 @@ from .manage_auctions import (
     place_bid,
     process_expired_sale_listings,
 )
+from .manage_diseases import (
+    clean_kennel,
+    diagnose_diseases,
+    get_diagnose_diseases_cost,
+    get_disease_treatment_cost,
+    get_pooch_disease_instances,
+    run_daily_disease_tick,
+    treat_disease,
+)
 from .manage_global import (
     advance_season,
     get_season,
@@ -86,6 +97,7 @@ from .manage_owners import (
     visit_park,
 )
 from .manage_pooches import (
+    MEDICAL_EXAM_COST,
     diagnose_injuries,
     diagnose_mutations,
     get_diagnose_injuries_cost,
@@ -95,6 +107,9 @@ from .manage_pooches import (
     get_pooch_family_tree,
     get_pooch_injury_instances,
     get_treatment_cost,
+    list_snapshots_for_pooch,
+    mark_pooch_vet_checked,
+    medical_exam,
     rename_pooch,
     run_hourly_breeding_cooldown_check,
     run_hourly_injury_persistence_check,
@@ -107,8 +122,11 @@ from .manage_servers import (
 )
 from .manage_static import (
     get_breed_by_id,
+    get_disease_by_id,
+    get_injury_by_id,
     get_mutation_by_id,
     list_all_breeds,
+    list_all_diseases,
     list_all_injuries,
     list_all_mutations,
 )
@@ -171,6 +189,7 @@ __all__ = [
     "update_owner_names",
     "visit_park",
     # Pooch commands
+    "MEDICAL_EXAM_COST",
     "diagnose_injuries",
     "diagnose_mutations",
     "get_diagnose_injuries_cost",
@@ -180,6 +199,9 @@ __all__ = [
     "get_pooch_family_tree",
     "get_pooch_injury_instances",
     "get_treatment_cost",
+    "list_snapshots_for_pooch",
+    "mark_pooch_vet_checked",
+    "medical_exam",
     "treat_injury",
     "rename_pooch",
     "run_hourly_breeding_cooldown_check",
@@ -198,10 +220,21 @@ __all__ = [
     "set_server_event_message_id",
     "trigger_daily_server_event",
     "trigger_server_event_by_name",
+    # Disease commands
+    "clean_kennel",
+    "diagnose_diseases",
+    "get_diagnose_diseases_cost",
+    "get_disease_treatment_cost",
+    "get_pooch_disease_instances",
+    "run_daily_disease_tick",
+    "treat_disease",
     # Static listing commands
     "get_breed_by_id",
+    "get_disease_by_id",
+    "get_injury_by_id",
     "get_mutation_by_id",
     "list_all_breeds",
+    "list_all_diseases",
     "list_all_injuries",
     "list_all_mutations",
     # Auction house commands

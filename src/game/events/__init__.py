@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from .outcome import (
     choose_weighted_outcome,
     compute_outcome_stat_multiplier,

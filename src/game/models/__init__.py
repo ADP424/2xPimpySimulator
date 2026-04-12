@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from .auction import (
     AuctionBountyListing,
     AuctionSaleListing,
@@ -6,6 +8,7 @@ from .auction import (
     to_auction_sale_listing,
 )
 from .breed import Breed, to_breed
+from .disease import Disease, to_disease
 from .events import (
     BirthEvent,
     DayChangeSummary,
@@ -43,6 +46,7 @@ from .owner import Owner, to_owner
 from .pooch import (
     Pooch,
     PoochBreedInfo,
+    PoochDiseaseInfo,
     PoochInjuryInfo,
     PoochMutationInfo,
     apply_stat_params,
@@ -59,6 +63,8 @@ __all__ = [
     "to_auction_sale_listing",
     "Breed",
     "to_breed",
+    "Disease",
+    "to_disease",
     "BirthEvent",
     "DayChangeSummary",
     "DeathEvent",
@@ -96,6 +102,7 @@ __all__ = [
     "to_owner",
     "Pooch",
     "PoochBreedInfo",
+    "PoochDiseaseInfo",
     "PoochInjuryInfo",
     "PoochMutationInfo",
     "to_pooch",

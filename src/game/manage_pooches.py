@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Optional
 
 from src.database import (
+    create_pooch_snapshot,
     get_owner_by_discord_id,
     get_parentage_maps,
 )
@@ -12,7 +13,12 @@ from src.database import (
     get_pooch_parents,
     give_money_to_owner,
     list_pooch_children,
+    list_pooch_injury_instances,
+    list_pooch_mutation_instances,
     list_pooch_siblings,
+)
+from src.database import list_pooch_snapshots as db_list_pooch_snapshots
+from src.database import (
     list_pooches_with_health,
     reduce_pooch_injury_persistence,
 )
@@ -20,11 +26,17 @@ from src.database import rename_pooch as db_rename_pooch
 from src.database import (
     reveal_pooch_injury,
     reveal_pooch_mutation,
+    set_pooch_vet_checked,
     tick_hourly_breeding_cooldowns,
     tick_hourly_injury_persistence,
     treat_pooch_injury,
 )
-from src.database.models import PoochInjury
+from src.database.models import (
+    SNAPSHOT_MEDICAL_EXAM,
+    SNAPSHOT_VET_INJURIES,
+    SNAPSHOT_VET_MUTATIONS,
+    PoochInjury,
+)
 from src.logger import get_logger
 
 from .constants import (
@@ -480,6 +492,21 @@ async def diagnose_injuries(
             await reveal_pooch_injury(pi.id)
             revealed.append(pi.injury.name)
 
+    await set_pooch_vet_checked(pooch_id, checked=True)
+
+    # Snapshot: record all currently visible injury IDs after diagnosis
+    all_instances = await list_pooch_injury_instances(pooch_id)
+    visible_injury_ids = [pi.injury_id for pi in all_instances if pi.visible]
+    pooch_orm = await db_get_pooch_by_id(pooch_id)
+    pooch_name = pooch_orm.name if pooch_orm else "Unknown"
+    await create_pooch_snapshot(
+        pooch_id=pooch_id,
+        kind=SNAPSHOT_VET_INJURIES,
+        description=f"{pooch_name} had their injuries examined by a vet.",
+        snapshot_at=datetime.now(timezone.utc),
+        entity_ids=visible_injury_ids or None,
+    )
+
     return True, "", revealed
 
 
@@ -536,6 +563,21 @@ async def diagnose_mutations(
             await reveal_pooch_mutation(pm.pooch_id, pm.mutation_id)
             revealed.append(pm.mutation.name)
 
+    await set_pooch_vet_checked(pooch_id, checked=True)
+
+    # Snapshot: record all currently visible mutation IDs after diagnosis
+    all_mut_instances = await list_pooch_mutation_instances(pooch_id)
+    visible_mutation_ids = [pm.mutation_id for pm in all_mut_instances if pm.visible]
+    pooch_orm = await db_get_pooch_by_id(pooch_id)
+    pooch_name = pooch_orm.name if pooch_orm else "Unknown"
+    await create_pooch_snapshot(
+        pooch_id=pooch_id,
+        kind=SNAPSHOT_VET_MUTATIONS,
+        description=f"{pooch_name} had their mutations examined by a vet.",
+        snapshot_at=datetime.now(timezone.utc),
+        entity_ids=visible_mutation_ids or None,
+    )
+
     return True, "", revealed
 
 
@@ -573,3 +615,72 @@ async def rename_pooch(pooch_id: int, name: str) -> bool:
     if pooch is None:
         raise PoochNotFound(pooch_id)
     return True
+
+
+MEDICAL_EXAM_COST = 50
+
+
+def _rate_stat(value: int) -> str:
+    if value <= 4:
+        return "Significantly Below Average"
+    if value <= 7:
+        return "Below Average"
+    if value <= 9:
+        return "Slightly Below Average"
+    if value == 10:
+        return "Average"
+    if value <= 12:
+        return "Slightly Above Average"
+    if value <= 15:
+        return "Above Average"
+    return "Significantly Above Average"
+
+
+async def medical_exam(owner_discord_id: int, pooch: "Pooch") -> tuple[bool, str, dict]:
+    """
+    Perform a medical exam on a pooch. Charges the owner $MEDICAL_EXAM_COST.
+
+    Returns
+    -------
+    tuple[bool, str, dict]
+        (success, error_message, stats_report)
+        stats_report maps stat name → display string.
+    """
+    owner = await get_owner_by_discord_id(owner_discord_id)
+    if owner is None:
+        return False, "Owner not found.", {}
+    if owner.dollars < MEDICAL_EXAM_COST:
+        return False, f"Not enough money. A medical exam costs **${MEDICAL_EXAM_COST}**.", {}
+
+    await give_money_to_owner(owner_discord_id, -MEDICAL_EXAM_COST)
+
+    report = {
+        "Strength": _rate_stat(pooch.strength),
+        "Cuteness": _rate_stat(pooch.cuteness),
+        "Fluffiness": _rate_stat(pooch.fluffiness),
+        "Intelligence": _rate_stat(pooch.intelligence),
+        "Dexterity": _rate_stat(pooch.dexterity),
+        "Fertility": _rate_stat(pooch.fertility),
+        "Aggressiveness": _rate_stat(pooch.aggressiveness),
+        "Constitution": _rate_stat(pooch.constitution),
+        "Size Class": str(pooch.size),
+    }
+
+    stats_lines = "\n".join(f"{k}: {v}" for k, v in report.items())
+    await create_pooch_snapshot(
+        pooch_id=pooch.id,
+        kind=SNAPSHOT_MEDICAL_EXAM,
+        description=f"{pooch.name} received a medical exam.\n{stats_lines}",
+    )
+
+    return True, "", report
+
+
+async def mark_pooch_vet_checked(pooch_id: int) -> None:
+    """Mark a pooch as vet-checked."""
+    await set_pooch_vet_checked(pooch_id, checked=True)
+
+
+async def list_snapshots_for_pooch(pooch_id: int) -> list:
+    """Return all timeline snapshots for a pooch, oldest first."""
+    return await db_list_pooch_snapshots(pooch_id)

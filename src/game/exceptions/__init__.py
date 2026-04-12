@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from .kennel_not_found import KennelNotFound
 from .owner_not_found import OwnerNotFound
 from .pooch_not_found import PoochNotFound
