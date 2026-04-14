@@ -52,13 +52,15 @@ class TestBuildHomeContent:
         owner = _make_owner(bloodskulls=7)
         with patch("src.bot.ui.home.get_or_create_owner", new_callable=AsyncMock, return_value=owner):
             content = await build_home_content(guild_id=200, user_id=100)
-            assert "7 bloodskulls" in content
+            assert "**7**" in content
+            assert "bloodskulls" in content
 
     async def test_includes_bones(self):
         owner = _make_owner(bones=2)
         with patch("src.bot.ui.home.get_or_create_owner", new_callable=AsyncMock, return_value=owner):
             content = await build_home_content(guild_id=200, user_id=100)
-            assert "2 bone" in content
+            assert "**2**" in content
+            assert "bone" in content
 
     async def test_includes_mention(self):
         owner = _make_owner(discord_id=100)

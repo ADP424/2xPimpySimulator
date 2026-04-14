@@ -8,11 +8,40 @@
         <h1 class="text-3xl font-bold" id="kennel-name">Loading...</h1>
         <button class="btn btn-ghost btn-xs" onclick="document.getElementById('rename-kennel-modal').showModal()" title="Rename">✏️</button>
     </div>
-    <div class="flex gap-2">
+    <div class="flex gap-2 flex-wrap">
         <a href="{{ url_for('kennel.breeding_interface', kennel_id=kennel_id) }}" class="btn btn-primary btn-sm">💕 Breed Pooches</a>
+        <button class="btn btn-sm btn-outline" onclick="document.getElementById('clean-modal').showModal()">🧹 Clean</button>
+        <button class="btn btn-sm btn-outline btn-success" onclick="document.getElementById('feed-modal').showModal()">🍖 Feed</button>
         <a href="{{ url_for('kennel.kennels_list') }}" class="btn btn-ghost btn-sm">← Back to Kennels</a>
     </div>
 </div>
+
+<!-- Clean modal -->
+<dialog id="clean-modal" class="modal">
+    <div class="modal-box">
+        <h3 class="font-bold text-lg mb-4">🧹 Clean Kennel</h3>
+        <div id="clean-items-loading" class="text-sm text-base-content/50">Loading...</div>
+        <div id="clean-items-list" class="flex flex-col gap-2 mb-4" style="display: none;"></div>
+        <div class="modal-action">
+            <form method="dialog"><button class="btn btn-ghost btn-sm">Cancel</button></form>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+<!-- Feed modal -->
+<dialog id="feed-modal" class="modal">
+    <div class="modal-box">
+        <h3 class="font-bold text-lg mb-4">🍖 Feed Kennel</h3>
+        <p class="text-sm text-base-content/60 mb-3">Food stock: <span id="feed-stock-display">-</span></p>
+        <div id="feed-items-loading" class="text-sm text-base-content/50">Loading...</div>
+        <div id="feed-items-list" class="flex flex-col gap-2 mb-4" style="display: none;"></div>
+        <div class="modal-action">
+            <form method="dialog"><button class="btn btn-ghost btn-sm">Cancel</button></form>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
 
 <!-- Rename modal -->
 <dialog id="rename-kennel-modal" class="modal">
@@ -59,7 +88,10 @@ document.addEventListener('DOMContentLoaded', async function() {
             document.getElementById('kennel-name').textContent = `🏠 ${kennel.name}`;
             document.getElementById('kennel-info').innerHTML = `
                 Capacity: <strong id="pooch-count">-</strong> / ${kennel.pooch_limit}
+                &nbsp;·&nbsp; 🍖 Food: <strong id="food-stock-display">${kennel.food_stock ?? 0}</strong> units
+                &nbsp;·&nbsp; 🧹 Mess: <strong>${escapeHtml(kennel.messiness_label || 'Unknown')}</strong>
             `;
+            document.getElementById('feed-stock-display').textContent = `${kennel.food_stock ?? 0} units`;
             document.getElementById('rename-kennel-input').value = kennel.name;
         }
 
@@ -106,6 +138,116 @@ async function submitRenameKennel() {
         App.showNotification('Something went wrong.', 'error');
         console.error('Error:', e);
     }
+}
+
+// ---- Clean modal ----
+
+let cleanItemsLoaded = false;
+document.getElementById('clean-modal').addEventListener('show', async () => { if (!cleanItemsLoaded) await loadCleanItems(); });
+document.getElementById('clean-modal').addEventListener('toggle', async (e) => { if (e.newState === 'open' && !cleanItemsLoaded) await loadCleanItems(); });
+
+async function loadCleanItems() {
+    cleanItemsLoaded = true;
+    try {
+        const [itemsResp, invResp] = await Promise.all([fetch('/api/items'), fetch('/api/owner/items')]);
+        const items = (await itemsResp.json()).filter(i => i.category === 'cleaning');
+        const inv = await invResp.json();
+
+        const listEl = document.getElementById('clean-items-list');
+        document.getElementById('clean-items-loading').style.display = 'none';
+        listEl.style.display = 'flex';
+
+        // Hand clean option
+        let html = `<div class="flex justify-between items-center p-2 rounded-lg bg-base-300">
+            <div><span class="font-medium text-sm">Hand Clean</span><span class="text-xs text-base-content/50 ml-2">Free, once per day</span></div>
+            <button class="btn btn-xs btn-outline" onclick="doClean('hand')">Clean</button>
+        </div>`;
+
+        items.forEach(item => {
+            const owned = inv[item.name] ?? 0;
+            const reduction = (item.parameters || {}).mess_reduction ?? 0;
+            html += `<div class="flex justify-between items-center p-2 rounded-lg bg-base-300">
+                <div>
+                    <span class="font-medium text-sm">${escapeHtml(item.name)}</span>
+                    <span class="text-xs text-base-content/50 ml-2">−${reduction} mess · ${owned} owned</span>
+                </div>
+                <button class="btn btn-xs btn-outline" ${owned <= 0 ? 'disabled' : ''} onclick="doClean('${escapeHtml(item.name)}')">Clean</button>
+            </div>`;
+        });
+        listEl.innerHTML = html;
+    } catch(e) { document.getElementById('clean-items-loading').textContent = 'Failed to load.'; }
+}
+
+async function doClean(itemName) {
+    try {
+        const r = await fetch(`/api/kennels/${PAGE_DATA.kennelId}/clean`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ item_name: itemName }),
+        });
+        const data = await r.json();
+        document.getElementById('clean-modal').close();
+        if (data.success) App.queueNotification(data.message, 'success');
+        else App.showNotification(data.error || data.message || 'Clean failed', 'error');
+    } catch(e) { App.showNotification('Something went wrong.', 'error'); }
+}
+
+// ---- Feed modal ----
+
+let feedItemsLoaded = false;
+document.getElementById('feed-modal').addEventListener('toggle', async (e) => { if (e.newState === 'open' && !feedItemsLoaded) await loadFeedItems(); });
+
+async function loadFeedItems() {
+    feedItemsLoaded = true;
+    try {
+        const [itemsResp, invResp] = await Promise.all([fetch('/api/items'), fetch('/api/owner/items')]);
+        const items = (await itemsResp.json()).filter(i => i.category === 'food');
+        const inv = await invResp.json();
+
+        const listEl = document.getElementById('feed-items-list');
+        document.getElementById('feed-items-loading').style.display = 'none';
+        listEl.style.display = 'flex';
+
+        if (!items.length) { listEl.innerHTML = '<p class="text-sm text-base-content/50">No food items available.</p>'; return; }
+
+        let html = '';
+        items.forEach(item => {
+            const owned = inv[item.name] ?? 0;
+            const units = (item.parameters || {}).food_units ?? 0;
+            html += `<div class="flex justify-between items-center p-2 rounded-lg bg-base-300">
+                <div>
+                    <span class="font-medium text-sm">${escapeHtml(item.name)}</span>
+                    <span class="text-xs text-base-content/50 ml-2">${units} food units each · ${owned} owned</span>
+                </div>
+                <div class="flex gap-1 items-center">
+                    <input type="number" id="feed-count-${escapeHtml(item.name)}" min="1" max="${owned}" value="1" class="input input-xs w-14" ${owned <= 0 ? 'disabled' : ''}>
+                    <button class="btn btn-xs btn-success" ${owned <= 0 ? 'disabled' : ''} onclick="doFeed('${escapeHtml(item.name)}')">Feed</button>
+                </div>
+            </div>`;
+        });
+        listEl.innerHTML = html;
+    } catch(e) { document.getElementById('feed-items-loading').textContent = 'Failed to load.'; }
+}
+
+async function doFeed(itemName) {
+    const countEl = document.getElementById(`feed-count-${itemName}`);
+    const count = parseInt(countEl?.value || '1');
+    try {
+        const r = await fetch(`/api/kennels/${PAGE_DATA.kennelId}/feed`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ item_name: itemName, count }),
+        });
+        const data = await r.json();
+        document.getElementById('feed-modal').close();
+        if (data.success) {
+            App.queueNotification(`Fed ${count}x ${itemName}. Stock: ${data.new_stock} units.`, 'success');
+            document.getElementById('food-stock-display').textContent = data.new_stock;
+            document.getElementById('feed-stock-display').textContent = `${data.new_stock} units`;
+        } else {
+            App.showNotification(data.error || 'Feed failed', 'error');
+        }
+    } catch(e) { App.showNotification('Something went wrong.', 'error'); }
 }
 
 function createPoochCard(pooch) {

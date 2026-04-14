@@ -35,6 +35,10 @@ from src.game import (
     treat_disease,
     treat_injury,
 )
+from src.game.breeding import neuter_pooch
+from src.game.constants import NEUTER_COST
+from src.game.manage_graveyard import breed_population_survey
+from src.game.manage_pooches import DETAILED_WORKUP_COST, detailed_workup
 
 if TYPE_CHECKING:
     from src.database.models import Injury
@@ -68,6 +72,7 @@ class VetClinicView(View):
         self.add_item(_ListInjuriesButton(owner_discord_id=owner_discord_id))
         self.add_item(_ListDiseasesButton(owner_discord_id=owner_discord_id))
         self.add_item(_PatientRoomButton(owner_discord_id=owner_discord_id))
+        self.add_item(_BreedSurveyButton(owner_discord_id=owner_discord_id, row=1))
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         return interaction.user.id == self._owner_id
@@ -299,6 +304,16 @@ class _PatientRoomView(View):
         exam_btn.callback = self._on_medical_exam
         self.add_item(exam_btn)
 
+        workup_btn = Button(
+            label=f"Detailed Workup (${DETAILED_WORKUP_COST})", style=discord.ButtonStyle.secondary, row=2
+        )
+        workup_btn.callback = self._on_detailed_workup
+        self.add_item(workup_btn)
+
+        neuter_btn = Button(label=f"Neuter (${NEUTER_COST})", style=discord.ButtonStyle.danger, row=3)
+        neuter_btn.callback = self._on_neuter
+        self.add_item(neuter_btn)
+
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         return interaction.user.id == self._owner_id
 
@@ -411,6 +426,47 @@ class _PatientRoomView(View):
         lines = [f"**{stat}:** {rating}" for stat, rating in report.items()]
         embed.description = "\n".join(lines)
         await re.reply(embed=embed)
+
+    async def _on_detailed_workup(self, interaction: discord.Interaction):
+        re = InteractionResponder(interaction, ephemeral=True)
+        success, error, report = await detailed_workup(self._owner_id, self._pooch.id)
+        if not success:
+            await re.reply(content=f"Detailed workup failed: {error}")
+            return
+        embed = discord.Embed(title=f"Detailed Workup — {self._pooch.name}")
+        lines = []
+        for stat, info in report.items():
+            base = info.get("base", "?")
+            effective = info.get("effective", "?")
+            label = info.get("label", "")
+            sources = info.get("sources", [])
+            mod_parts = [
+                f"{s['source_name']} ({'+' if s['delta'] >= 0 else ''}{s['delta']:.0f})"
+                for s in sources
+                if s.get("delta")
+            ]
+            mod_str = f" ← {', '.join(mod_parts)}" if mod_parts else ""
+            lines.append(f"**{stat}:** {base} → **{effective}** ({label}){mod_str}")
+        embed.description = "\n".join(lines) if lines else "No stat data."
+        await re.reply(embed=embed)
+
+    async def _on_neuter(self, interaction: discord.Interaction):
+        re = InteractionResponder(interaction, ephemeral=True)
+        # Deduct cost manually here before calling neuter_pooch (which doesn't bill)
+        from src.database import get_owner_by_discord_id, give_money_to_owner
+
+        owner = await get_owner_by_discord_id(self._owner_id)
+        if owner is None or owner.dollars < NEUTER_COST:
+            await re.reply(content=f"You need ${NEUTER_COST} to neuter {self._pooch.name}.")
+            return
+        await give_money_to_owner(self._owner_id, -NEUTER_COST)
+        success, message = await neuter_pooch(self._owner_id, self._pooch.id)
+        if not success:
+            # Refund
+            await give_money_to_owner(self._owner_id, NEUTER_COST)
+            await re.reply(content=f"Neuter failed: {message}")
+            return
+        await re.reply(content=f"✂️ {message} (Cost: ${NEUTER_COST})")
 
 
 class _TreatInjurySelectView(View):
@@ -606,6 +662,30 @@ class _TreatDiseaseSelectView(View):
         await r.edit(embed=embed, view=self)
         re = InteractionResponder(interaction, ephemeral=True)
         await re.reply(content=f"Treated **{self._pooch.name}**. {message}")
+
+
+class _BreedSurveyButton(Button):
+    def __init__(self, owner_discord_id: int, row: int = 1):
+        super().__init__(label="Breed Survey", style=discord.ButtonStyle.secondary, row=row)
+        self._owner_id = owner_discord_id
+
+    async def callback(self, interaction: discord.Interaction):
+        re = InteractionResponder(interaction, ephemeral=True)
+        survey = await breed_population_survey(interaction.guild_id)
+        lines = []
+        for population_name, entries in survey.items():
+            if not entries:
+                continue
+            lines.append(f"**{population_name.capitalize()}** ({len(entries)} breeds)")
+            for e in entries[:10]:
+                pct = round(e["weighted_total"] * 100, 1)
+                dominant = e["dominant_count"]
+                lines.append(f"  • {e['breed']} — {pct}% avg ({dominant} dominant)")
+        if not lines:
+            await re.reply(content="No breed data found for this server.")
+            return
+        embed = discord.Embed(title="Breed Population Survey", description="\n".join(lines))
+        await re.reply(embed=embed)
 
 
 class InjuryListPageSource(PageSource):

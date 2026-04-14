@@ -108,10 +108,98 @@ class BasementView(View):
         self.add_item(_SacrificeButton(server_discord_id=server_discord_id, owner_discord_id=owner_discord_id))
         self.add_item(_SummonButton(owner_discord_id=owner_discord_id))
         self.add_item(_HellButton(server_discord_id=server_discord_id, owner_discord_id=owner_discord_id))
+        # Section 3 rituals
+        self.add_item(_RitualButton("Clone", "clone", owner_discord_id, row=1))
+        self.add_item(_RitualButton("Rejuvenate", "rejuvenate", owner_discord_id, row=1))
+        self.add_item(_RitualButton("Gender Change", "gender", owner_discord_id, row=1))
+        self.add_item(_RitualButton("Immortality", "immortal", owner_discord_id, row=2))
         self.add_item(_BackToChurchButton(server_discord_id=server_discord_id, owner_discord_id=owner_discord_id))
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         return interaction.user.id == self.owner_discord_id
+
+
+class _RitualButton(Button):
+    """A simple selector that asks the player to pick a pooch then runs a ritual."""
+
+    def __init__(self, label: str, ritual: str, owner_discord_id: int, row: int = 1):
+        super().__init__(label=label, style=discord.ButtonStyle.danger, row=row)
+        self._owner_id = owner_discord_id
+        self._ritual = ritual
+
+    async def callback(self, interaction: discord.Interaction):
+        r = InteractionResponder(interaction)
+        await r.defer(thinking=True)
+        # Pick a kennel pooch — find any living owned pooch.
+        from src.database import list_kennels_for_owner, list_pooches_for_kennel
+
+        kennels = await list_kennels_for_owner(self._owner_id)
+        eligible: list = []
+        for kennel in kennels:
+            for p in await list_pooches_for_kennel(kennel.id):
+                if p.alive:
+                    eligible.append(p)
+        if not eligible:
+            await r.reply(content="You have no living pooches available for this ritual.")
+            return
+
+        view = _RitualPoochSelectView(
+            owner_discord_id=self._owner_id,
+            ritual=self._ritual,
+            pooches=eligible[:25],
+        )
+        await r.reply(content=f"Choose a pooch for the {self._ritual} ritual:", view=view)
+
+
+class _RitualPoochSelectView(View):
+    def __init__(self, owner_discord_id: int, ritual: str, pooches: list):
+        super().__init__(timeout=VIEW_TIMEOUT)
+        self._owner_id = owner_discord_id
+        self._ritual = ritual
+        self._pooches = {p.id: p for p in pooches}
+
+        options = [discord.SelectOption(label=p.name[:80], value=str(p.id)) for p in pooches]
+        select = Select(placeholder="Pick a pooch", options=options, min_values=1, max_values=1)
+        select.callback = self._on_select
+        self.add_item(select)
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self._owner_id
+
+    async def _on_select(self, interaction: discord.Interaction):
+        r = InteractionResponder(interaction)
+        await r.defer(thinking=True)
+        select = next(child for child in self.children if isinstance(child, Select))
+        pooch_id = int(select.values[0])
+
+        from src.game import (
+            clone_pooch_ritual,
+            gender_change_pooch,
+            immortalize_pooch,
+            rejuvenate_pooch,
+        )
+
+        try:
+            if self._ritual == "clone":
+                result = await clone_pooch_ritual(self._owner_id, pooch_id)
+            elif self._ritual == "rejuvenate":
+                result = await rejuvenate_pooch(self._owner_id, pooch_id)
+            elif self._ritual == "gender":
+                result = await gender_change_pooch(self._owner_id, pooch_id)
+            elif self._ritual == "immortal":
+                result = await immortalize_pooch(self._owner_id, pooch_id)
+            else:
+                await r.reply(content="Unknown ritual.")
+                return
+        except Exception as exc:
+            logger.exception("Ritual failed")
+            await r.finish_with_error(f"The ritual fizzled: {exc}")
+            return
+
+        if result.success:
+            await r.reply(content=f"⛧ {result.message}")
+        else:
+            await r.reply(content=f"❌ {result.message}")
 
 
 class _BackToChurchButton(Button):

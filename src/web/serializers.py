@@ -47,6 +47,11 @@ def serialize_owner(owner: Any) -> dict:
         "dollars": owner.dollars,
         "bloodskulls": owner.bloodskulls,
         "bones": owner.bones,
+        "hearts": getattr(owner, "hearts", 0),
+        "brains": getattr(owner, "brains", 0),
+        "eyes": getattr(owner, "eyes", 0),
+        "tails": getattr(owner, "tails", 0),
+        "teeth": getattr(owner, "teeth", 0),
         "begged_today": owner.begged_today,
         "visited_park_today": owner.visited_park_today,
     }
@@ -54,11 +59,18 @@ def serialize_owner(owner: Any) -> dict:
 
 def serialize_kennel(kennel: Any) -> dict:
     """Serialize a Kennel object."""
+    from src.game.utils.obfuscation import messiness_label
+
+    messiness = getattr(kennel, "messiness", 0) or 0
+    pooch_limit = kennel.pooch_limit or 10
     return {
         "id": kennel.id,
         "owner_discord_id": kennel.owner_discord_id,
         "name": kennel.name,
-        "pooch_limit": kennel.pooch_limit,
+        "pooch_limit": pooch_limit,
+        "messiness": messiness,
+        "messiness_label": messiness_label(messiness, capacity=pooch_limit),
+        "food_stock": getattr(kennel, "food_stock", 0),
     }
 
 
@@ -72,6 +84,9 @@ def serialize_pooch_breed_info(info: Any) -> dict:
 
 def serialize_pooch(pooch: Any, include_relations: bool = True) -> dict:
     """Serialize a Pooch object."""
+    from src.game.utils.obfuscation import health_label, starvation_label
+
+    _starvation = getattr(pooch, "starvation", 0) or 0
     data = {
         "id": pooch.id,
         "name": pooch.name,
@@ -87,8 +102,14 @@ def serialize_pooch(pooch: Any, include_relations: bool = True) -> dict:
         "created_at": serialize_datetime(pooch.created_at),
         "birthday": serialize_datetime(pooch.birthday),
         "health": pooch.health,
+        "health_label": health_label(pooch.health),
         "status": pooch.status,
         "mood": pooch.mood,
+        "pregnant": getattr(pooch, "pregnancy_timer", None) is not None,
+        "immortal": getattr(pooch, "immortal", False),
+        "rejuvenation_count": getattr(pooch, "rejuvenation_count", 0),
+        "starvation": _starvation,
+        "starvation_label": starvation_label(_starvation),
     }
 
     if include_relations:
@@ -146,6 +167,67 @@ def serialize_other_event(event: Any) -> dict:
         "type": "other",
         "pooch": serialize_pooch(event.pooch, include_relations=False),
         "message": event.message,
+    }
+
+
+def serialize_sale_listing(listing: Any) -> dict:
+    """Serialize an AuctionSaleListing for the web UI."""
+    top_bid = max((b.amount for b in (listing.bids or [])), default=None)
+    return {
+        "id": listing.id,
+        "pooch": serialize_pooch(listing.pooch, include_relations=True) if listing.pooch else None,
+        "seller_discord_id": listing.seller_discord_id,
+        "server_discord_id": listing.server_discord_id,
+        "minimum_bid": listing.minimum_bid,
+        "top_bid": top_bid,
+        "bid_count": len(listing.bids or []),
+        "created_at": serialize_datetime(listing.created_at),
+        "expires_at": serialize_datetime(listing.expires_at),
+        "is_active": listing.is_active,
+    }
+
+
+def serialize_bounty_listing(listing: Any) -> dict:
+    """Serialize an AuctionBountyListing for the web UI."""
+    return {
+        "id": listing.id,
+        "title": listing.title,
+        "buyer_discord_id": listing.buyer_discord_id,
+        "server_discord_id": listing.server_discord_id,
+        "escrow_amount": listing.escrow_amount,
+        "criteria": listing.criteria,
+        "created_at": serialize_datetime(listing.created_at),
+        "is_active": listing.is_active,
+    }
+
+
+def serialize_server_event_occurrence(occurrence: Any) -> dict:
+    """Serialize a ServerEventOccurrence for the web UI."""
+    event = occurrence.server_event if occurrence else None
+    options = []
+    if event and event.options:
+        for opt in event.options:
+            options.append(
+                {
+                    "id": opt.id,
+                    "label": opt.label,
+                    "description": getattr(opt, "description", ""),
+                }
+            )
+    return {
+        "id": occurrence.id,
+        "server_discord_id": occurrence.server_discord_id,
+        "event_name": event.name if event else "Unknown",
+        "event_description": getattr(event, "description", "") if event else "",
+        "options": options,
+        "triggered_at": serialize_datetime(getattr(occurrence, "triggered_at", None)),
+        "expires_at": serialize_datetime(getattr(occurrence, "expires_at", None)),
+        "resolved_at": serialize_datetime(getattr(occurrence, "resolved_at", None)),
+        "resolved": occurrence.resolved_at is not None,
+        "participations": [
+            {"owner_discord_id": p.owner_discord_id, "option_id": p.option_id}
+            for p in (occurrence.participations or [])
+        ],
     }
 
 

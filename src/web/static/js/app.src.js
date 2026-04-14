@@ -10,6 +10,8 @@ const App = {
     _subscribedServers: new Set(),
     _dayChangeHandlers: [],
     _dayChangeListenerInstalled: false,
+    _hourChangeHandlers: [],
+    _hourChangeListenerInstalled: false,
 
     init() {
         this.initSocket();
@@ -71,6 +73,7 @@ const App = {
         });
 
         this._installDayChangeListener();
+        this._installHourChangeListener();
     },
 
     _installDayChangeListener() {
@@ -90,17 +93,42 @@ const App = {
         this._dayChangeListenerInstalled = true;
     },
 
+    _installHourChangeListener() {
+        if (!this.socket || this._hourChangeListenerInstalled) return;
+
+        this.socket.on('hour_change', (data) => {
+            // Hour ticks are more frequent than day ticks, so use a gentler haptic.
+            if (data && (data.deaths?.length || data.births?.length || data.fights?.length)) {
+                haptics.trigger('success');
+            }
+            for (const handler of this._hourChangeHandlers) {
+                try {
+                    handler(data);
+                } catch (err) {
+                    console.error('Hour change handler failed:', err);
+                }
+            }
+        });
+
+        this._hourChangeListenerInstalled = true;
+    },
+
     /**
-     * Subscribe the current socket to server rooms for receiving day-change events.
+     * Subscribe the current socket to server rooms for receiving day-change
+     * and hour-change events.
      *
      * @param {number[]} serverIds
      * @param {(data: any) => void} [onDayChange]
+     * @param {(data: any) => void} [onHourChange]
      */
-    subscribeToServers(serverIds, onDayChange) {
+    subscribeToServers(serverIds, onDayChange, onHourChange) {
         if (!this.socket) return;
 
         if (typeof onDayChange === 'function') {
             this._dayChangeHandlers.push(onDayChange);
+        }
+        if (typeof onHourChange === 'function') {
+            this._hourChangeHandlers.push(onHourChange);
         }
 
         const ids = (serverIds || [])
@@ -188,11 +216,31 @@ const App = {
 };
 
 // Utility functions
+//
+// escapeHtml takes any value and returns a string that is safe to embed
+// into an HTML attribute OR text node. We escape the five characters that
+// can break out of either context: & < > " '
+//
+// Prefer element.textContent over this function when possible. This is
+// only safe for well-formed attribute/text substitutions, not for
+// constructing complex markup.
 function escapeHtml(text) {
     if (text === null || text === undefined) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML.replace(/'/g, '&quot;');
+    return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+// Construct a DOM node safely from untrusted text. Use this instead of
+// innerHTML when you only need to set text inside an element.
+function makeTextNode(tag, text, className) {
+    const el = document.createElement(tag);
+    if (className) el.className = className;
+    el.textContent = text == null ? '' : String(text);
+    return el;
 }
 
 function formatCurrency(amount) {
@@ -207,6 +255,7 @@ function formatCurrency(amount) {
 window.App = App;
 window.escapeHtml = escapeHtml;
 window.formatCurrency = formatCurrency;
+window.makeTextNode = makeTextNode;
 
 // Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', () => {

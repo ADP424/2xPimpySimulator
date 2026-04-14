@@ -13,10 +13,15 @@ from src.database import (
     create_pooch,
     get_pooch_by_id,
     get_stray_event_by_name,
+    list_living_pooches,
+    list_matching_dead_pooch_ids_for_server,
+    list_matching_hell_pooch_ids_for_server,
     list_matching_stray_pooch_ids,
+    list_matching_stray_pooch_ids_filtered,
+    list_owner_discord_ids_for_server,
+    list_strays_for_server,
     remove_pooch_from_kennel,
     revive_pooch,
-    session_scope,
 )
 from src.game.breeding import breed_pooches as _breed_pooches
 from src.game.constants import FIGHT_DEFENDER_STRENGTH_BONUS, FIGHT_ROUNDS
@@ -82,9 +87,6 @@ async def resolve_server_pool(
 
     pool values: "stray" | "dead" | "in_hell" | "all_alive" | "all" | "saved"
     """
-    from src.database import list_strays_for_server
-    from src.database.utils import get_matching_stray_pooch_ids_for_server_filtered
-
     pool_key = str(pool).strip().lower()
     base_filter = dict(filter_spec or {})
     base_filter.pop("min_count", None)
@@ -97,39 +99,19 @@ async def resolve_server_pool(
         return []
 
     if pool_key == "stray":
-        async with session_scope() as session:
-            if base_filter:
-                return await get_matching_stray_pooch_ids_for_server_filtered(session, server_discord_id, base_filter)
-            strays = await list_strays_for_server(server_discord_id)
-            return [p.id for p in strays if p.alive]
+        if base_filter:
+            return await list_matching_stray_pooch_ids_filtered(server_discord_id, base_filter)
+        strays = await list_strays_for_server(server_discord_id)
+        return [p.id for p in strays if p.alive]
 
     if pool_key == "dead":
-        from src.database.utils import (
-            get_matching_dead_pooch_ids_for_server,
-        )
-
-        async with session_scope() as session:
-            return await get_matching_dead_pooch_ids_for_server(session, server_discord_id, base_filter or None)
+        return await list_matching_dead_pooch_ids_for_server(server_discord_id, base_filter or None)
 
     if pool_key == "in_hell":
-        from src.database.utils import (
-            get_matching_hell_pooch_ids_for_server,
-        )
-
-        async with session_scope() as session:
-            return await get_matching_hell_pooch_ids_for_server(session, server_discord_id, base_filter or None)
+        return await list_matching_hell_pooch_ids_for_server(server_discord_id, base_filter or None)
 
     if pool_key in ("all_alive", "all"):
-        from sqlalchemy import select
-
-        from src.database import list_living_pooches
-        from src.database.models import OwnerServer as OwnerServerModel
-
-        async with session_scope() as session:
-            owner_ids_result = await session.execute(
-                select(OwnerServerModel.owner_discord_id).where(OwnerServerModel.server_discord_id == server_discord_id)
-            )
-            owner_ids = set(owner_ids_result.scalars().all())
+        owner_ids = set(await list_owner_discord_ids_for_server(server_discord_id))
         pooches = await list_living_pooches()
         return [p.id for p in pooches if p.owner_discord_id in owner_ids]
 
@@ -147,10 +129,6 @@ async def resolve_server_owner_pool(
     count: int = 1,
 ) -> list[int]:
     """Resolve a named owner pool into a list of owner discord IDs."""
-    from sqlalchemy import select
-
-    from src.database.models import OwnerServer as OwnerServerModel
-
     pool_key = str(pool).strip().lower()
 
     if pool_key == "saved_owner":
@@ -159,11 +137,7 @@ async def resolve_server_owner_pool(
         return []
 
     if pool_key == "owner":
-        async with session_scope() as session:
-            result = await session.execute(
-                select(OwnerServerModel.owner_discord_id).where(OwnerServerModel.server_discord_id == server_discord_id)
-            )
-            all_owner_ids = list(result.scalars().all())
+        all_owner_ids = await list_owner_discord_ids_for_server(server_discord_id)
 
         if selector == "all":
             return all_owner_ids

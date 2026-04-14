@@ -44,6 +44,14 @@ class BreedDropdownControls:
     """Reusable dropdown + info button for showing general breed info."""
 
     def __init__(self, breeds: list[BreedOption], placeholder: str = "Select a breed"):
+        from src.game.utils.rarity_sort import sort_by_rarity_weight
+
+        # Sort so that most-common breeds appear first. Stable tiebreak on name.
+        breeds = sort_by_rarity_weight(
+            breeds,
+            key=lambda o: getattr(o.breed, "rarity", None),
+            secondary=lambda o: getattr(o.breed, "name", "") or "",
+        )
         self.breeds = breeds
         self.selected: Optional[Breed] = None
 

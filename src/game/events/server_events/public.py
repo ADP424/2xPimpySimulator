@@ -10,14 +10,18 @@ from typing import Optional
 
 from src.database import (
     append_server_event_submission,
+    check_owner_event_filter_for_owner,
     create_server_event_participation,
     get_active_server_event_occurrence,
     get_owner_server,
+)
+from src.database import get_pooch_by_id as db_get_pooch_by_id
+from src.database import (
     get_server_event_menu_option_by_id,
     get_server_event_occurrence_by_id,
     get_server_event_participation,
     list_active_server_event_occurrences,
-    session_scope,
+    list_matching_pooch_ids,
     set_server_event_occurrence_message_discord_id,
 )
 from src.game.events.owner_events import (
@@ -161,28 +165,20 @@ async def participate_in_server_event(
             return False, f"You have used the '{menu.label}' menu the maximum number of times.", None
 
     if option.filter:
-        from src.database.utils import check_owner_event_filter
-
-        async with session_scope() as session:
-            if not await check_owner_event_filter(session, owner_discord_id, option.filter):
-                return False, "You do not meet the requirements for that option.", None
+        if not await check_owner_event_filter_for_owner(owner_discord_id, option.filter):
+            return False, "You do not meet the requirements for that option.", None
 
     if option.requires:
         pooch_req = option.requires.get("pooch")
         if pooch_req is not None:
             if selected_pooch_id is None:
                 return False, "You must select a pooch for that option.", None
-            from src.database import get_pooch_by_id as db_get_pooch_by_id
-
             pooch = await db_get_pooch_by_id(selected_pooch_id)
             if pooch is None or pooch.owner_discord_id != owner_discord_id:
                 return False, "That pooch does not belong to you.", None
             pooch_filter = pooch_req.get("filter", {}) if isinstance(pooch_req, dict) else {}
             if pooch_filter:
-                from src.database.utils import get_matching_pooch_ids_for_owner
-
-                async with session_scope() as session:
-                    matching_ids = await get_matching_pooch_ids_for_owner(session, owner_discord_id, pooch_filter)
+                matching_ids = await list_matching_pooch_ids(owner_discord_id, pooch_filter)
                 if selected_pooch_id not in matching_ids:
                     return False, "That pooch does not meet the requirements.", None
 

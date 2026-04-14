@@ -1,9 +1,7 @@
 """Tests for src/game/manage_auctions.py."""
 
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, patch
-
-import pytest
+from unittest.mock import AsyncMock, patch
 
 from src.game.manage_auctions import (
     _find_kennel_space,

@@ -4,12 +4,19 @@ from .breeding import (
     breed_pooches,
     calculate_incest_level,
     combine_puppy_name,
+    compute_breeding_chance,
+    neuter_pooch,
+    select_actual_mate,
 )
 from .change_day import (
-    death_roll,
     refresh_moods,
     run_day_change,
 )
+from .change_hour import (
+    hourly_death_roll,
+    run_hour_change,
+)
+from .change_week import run_week_change
 from .events.owner_events import (
     get_active_events_for_owner,
     get_event_history,
@@ -53,11 +60,13 @@ from .manage_auctions import (
 )
 from .manage_diseases import (
     clean_kennel,
+    clean_kennel_by_hand,
+    clean_kennel_with_item,
     diagnose_diseases,
     get_diagnose_diseases_cost,
     get_disease_treatment_cost,
     get_pooch_disease_instances,
-    run_daily_disease_tick,
+    run_hourly_disease_tick,
     treat_disease,
 )
 from .manage_global import (
@@ -65,6 +74,7 @@ from .manage_global import (
     get_season,
 )
 from .manage_graveyard import (
+    breed_population_survey,
     list_graveyard_pooches,
 )
 from .manage_hell import (
@@ -98,6 +108,7 @@ from .manage_owners import (
 )
 from .manage_pooches import (
     MEDICAL_EXAM_COST,
+    detailed_workup,
     diagnose_injuries,
     diagnose_mutations,
     get_diagnose_injuries_cost,
@@ -115,9 +126,18 @@ from .manage_pooches import (
     run_hourly_injury_persistence_check,
     treat_injury,
 )
+from .manage_rituals import (
+    RitualResult,
+    clone_pooch_ritual,
+    clone_ritual_cost,
+    gender_change_pooch,
+    immortalize_pooch,
+    rejuvenate_pooch,
+)
 from .manage_servers import (
     get_event_channel,
     get_or_create_server,
+    list_all_servers,
     set_event_channel,
 )
 from .manage_static import (
@@ -129,6 +149,11 @@ from .manage_static import (
     list_all_diseases,
     list_all_injuries,
     list_all_mutations,
+)
+from .manage_stats import (
+    StatSource,
+    compute_effective_stats,
+    effective_size,
 )
 from .manage_vendors import (
     buy_pooch,
@@ -147,6 +172,23 @@ __all__ = [
     "calculate_incest_level",
     # Day change commands
     "run_day_change",
+    "run_hour_change",
+    "run_week_change",
+    "hourly_death_roll",
+    "RitualResult",
+    "clone_pooch_ritual",
+    "clone_ritual_cost",
+    "gender_change_pooch",
+    "immortalize_pooch",
+    "rejuvenate_pooch",
+    "StatSource",
+    "compute_effective_stats",
+    "effective_size",
+    "compute_breeding_chance",
+    "neuter_pooch",
+    "select_actual_mate",
+    "breed_population_survey",
+    "detailed_workup",
     # Event commands
     "list_all_owner_events",
     "get_active_events_for_owner",
@@ -212,6 +254,7 @@ __all__ = [
     # Server commands
     "get_event_channel",
     "get_or_create_server",
+    "list_all_servers",
     "set_event_channel",
     "get_active_server_event",
     "list_active_server_events",
@@ -222,11 +265,13 @@ __all__ = [
     "trigger_server_event_by_name",
     # Disease commands
     "clean_kennel",
+    "clean_kennel_by_hand",
+    "clean_kennel_with_item",
+    "run_hourly_disease_tick",
     "diagnose_diseases",
     "get_diagnose_diseases_cost",
     "get_disease_treatment_cost",
     "get_pooch_disease_instances",
-    "run_daily_disease_tick",
     "treat_disease",
     # Static listing commands
     "get_breed_by_id",
@@ -262,7 +307,6 @@ __all__ = [
     "sell_pooch",
     "refresh_moods",
     "combine_puppy_name",
-    "death_roll",
     "add_pooch_to_kennel",
     "get_pooch_base_price",
 ]

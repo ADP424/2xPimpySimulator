@@ -50,8 +50,11 @@ from .models import (
 from .session import session_scope
 from .utils import (
     check_owner_event_filter,
+    get_matching_dead_pooch_ids_for_server,
+    get_matching_hell_pooch_ids_for_server,
     get_matching_kennel_ids_for_owner,
     get_matching_pooch_ids_for_owner,
+    get_matching_stray_pooch_ids_for_server_filtered,
 )
 
 
@@ -380,6 +383,28 @@ async def list_hell_pooches() -> list[Pooch]:
     return list(response.scalars().all())
 
 
+async def list_owner_discord_ids_for_server(server_discord_id: int) -> list[int]:
+    """Return the discord IDs of all owners that are members of the given server."""
+    async with session_scope() as session:
+        result = await session.execute(
+            select(OwnerServer.owner_discord_id).where(OwnerServer.server_discord_id == server_discord_id)
+        )
+        return [row[0] for row in result.all()]
+
+
+async def list_graveyard_pooches_for_owners(owner_ids: list[int]) -> list[Pooch]:
+    """Return all graveyard pooches buried by any of the given owners."""
+    async with session_scope() as session:
+        if not owner_ids:
+            return []
+        result = await session.execute(
+            select(Pooch)
+            .join(GraveyardPooch, GraveyardPooch.pooch_id == Pooch.id)
+            .where(GraveyardPooch.owner_discord_id.in_(owner_ids))
+        )
+        return list(result.scalars().all())
+
+
 async def list_kennels_for_owner(owner_discord_id: int) -> list[Kennel]:
     """
     Fetch the list of kennels owned by the owner with the given Discord ID.
@@ -643,6 +668,69 @@ async def list_pooch_mutation_instances(pooch_id: int) -> list[PoochMutation]:
         )
         response = await session.execute(query)
     return list(response.scalars().all())
+
+
+async def get_pooch_injury_instance_by_id(pooch_injury_id: int) -> PoochInjury | None:
+    """Return the PoochInjury with the given ID, with the injury relationship eagerly loaded."""
+    from sqlalchemy.orm import selectinload
+
+    async with session_scope() as session:
+        result = await session.execute(
+            select(PoochInjury).options(selectinload(PoochInjury.injury)).where(PoochInjury.id == pooch_injury_id)
+        )
+        return result.scalar_one_or_none()
+
+
+async def list_invisible_pooch_injury_instances(pooch_id: int) -> list[PoochInjury]:
+    """Return all invisible PoochInjury records for the given pooch, with the injury eagerly loaded."""
+    from sqlalchemy.orm import selectinload
+
+    async with session_scope() as session:
+        result = await session.execute(
+            select(PoochInjury)
+            .options(selectinload(PoochInjury.injury))
+            .where(PoochInjury.pooch_id == pooch_id, PoochInjury.visible.is_(False))
+        )
+        return list(result.scalars().all())
+
+
+async def list_invisible_pooch_mutation_instances(pooch_id: int) -> list[PoochMutation]:
+    """Return all invisible PoochMutation records for the given pooch, with the mutation eagerly loaded."""
+    from sqlalchemy.orm import selectinload
+
+    async with session_scope() as session:
+        result = await session.execute(
+            select(PoochMutation)
+            .options(selectinload(PoochMutation.mutation))
+            .where(PoochMutation.pooch_id == pooch_id, PoochMutation.visible.is_(False))
+        )
+        return list(result.scalars().all())
+
+
+async def list_invisible_pooch_disease_instances(pooch_id: int) -> list[PoochDisease]:
+    """Return all invisible PoochDisease records for the given pooch, with the disease eagerly loaded."""
+    from sqlalchemy.orm import selectinload
+
+    async with session_scope() as session:
+        result = await session.execute(
+            select(PoochDisease)
+            .options(selectinload(PoochDisease.disease))
+            .where(PoochDisease.pooch_id == pooch_id, PoochDisease.visible.is_(False))
+        )
+        return list(result.scalars().all())
+
+
+async def get_pooch_disease_instance_by_id(pooch_disease_id: int) -> PoochDisease | None:
+    """Return the PoochDisease with the given ID, with disease and pooch eagerly loaded."""
+    from sqlalchemy.orm import selectinload
+
+    async with session_scope() as session:
+        result = await session.execute(
+            select(PoochDisease)
+            .options(selectinload(PoochDisease.disease), selectinload(PoochDisease.pooch))
+            .where(PoochDisease.id == pooch_disease_id)
+        )
+        return result.scalar_one_or_none()
 
 
 async def list_pooch_pregnancies() -> list[PoochPregnancy]:
@@ -1177,6 +1265,24 @@ async def list_matching_stray_pooch_ids(server_discord_id: int, filter_spec: dic
 
     async with session_scope() as session:
         return await get_matching_stray_pooch_ids_for_server(session, server_discord_id, filter_spec or {})
+
+
+async def list_matching_stray_pooch_ids_filtered(server_discord_id: int, filter_spec: dict | None) -> list[int]:
+    """Like list_matching_stray_pooch_ids but strips count metadata fields from the filter first."""
+    async with session_scope() as session:
+        return await get_matching_stray_pooch_ids_for_server_filtered(session, server_discord_id, filter_spec)
+
+
+async def list_matching_dead_pooch_ids_for_server(server_discord_id: int, filter_spec: dict | None) -> list[int]:
+    """Return IDs of dead pooches (graveyard) owned by server members that match the given filter."""
+    async with session_scope() as session:
+        return await get_matching_dead_pooch_ids_for_server(session, server_discord_id, filter_spec)
+
+
+async def list_matching_hell_pooch_ids_for_server(server_discord_id: int, filter_spec: dict | None) -> list[int]:
+    """Return IDs of hell pooches owned by server members that match the given filter."""
+    async with session_scope() as session:
+        return await get_matching_hell_pooch_ids_for_server(session, server_discord_id, filter_spec)
 
 
 async def list_active_sale_listings_for_server(server_discord_id: int) -> list[AuctionSaleListing]:

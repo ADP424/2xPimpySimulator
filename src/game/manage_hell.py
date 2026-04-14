@@ -17,6 +17,7 @@ from src.database import (
     get_random_breed_ids,
     give_bloodskulls_to_owner,
     give_bones_to_owner,
+    give_owner_body_part,
 )
 from src.database import list_hell_pooches as db_list_hell_pooches
 from src.database import (
@@ -167,11 +168,40 @@ async def sacrifice_pooch(owner_discord_id: int, pooch_id: int) -> tuple[bool, s
 
     await give_bloodskulls_to_owner(owner_discord_id, value)
     await give_bones_to_owner(owner_discord_id, 1)
+
+    # Roll body-part drops based on size and per-part rates.
+    import random as _random
+
+    from .constants import BODY_PART_DROP_RATES
+
+    part_rng = _random.Random()
+    size_factor = max(1, int(pooch.size or 10) // 5)
+    dropped_parts: dict[str, int] = {}
+    for part_name, rates in BODY_PART_DROP_RATES.items():
+        if part_name == "bloodskull":
+            continue  # already granted above
+        if part_rng.random() > rates["chance"]:
+            continue
+        lo = rates["base_min"]
+        hi = rates["base_max"]
+        if part_name in ("bone", "teeth"):
+            hi = hi + size_factor
+        amount = part_rng.randint(lo, hi)
+        if amount > 0:
+            await give_owner_body_part(owner_discord_id, part_name, amount)
+            dropped_parts[part_name] = amount
+
     await set_pooch_dead(pooch.id)
     await update_pooch_mood(pooch.id, "dead")
     await remove_pooch_from_kennel(pooch.id)
     await damn_pooch(pooch_id)
 
+    if dropped_parts:
+        parts_desc = ", ".join(f"{v} {k}{'s' if v > 1 else ''}" for k, v in dropped_parts.items())
+        return (
+            True,
+            f"You sacrificed {pooch.name} for {value} bloodskulls... 𖤐\nYou also harvested: {parts_desc}.",
+        )
     return (True, f"You sacrificed {pooch.name} for {value} bloodskulls... 𖤐")
 
 

@@ -25,6 +25,9 @@ class Kennel(Base):
     pooch_limit: Mapped[int] = mapped_column(Integer, default=10)
     upgrade_tier: Mapped[int] = mapped_column(Integer, default=0)
     messiness: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default=text("0"))
+    # Hourly-consumed food pool for the pooches in this kennel. Filled by
+    # feeding dog food items from the owner's inventory.
+    food_stock: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default=text("0"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=text("now()"))
 
     owner: Mapped[Owner] = relationship("Owner", foreign_keys=[owner_discord_id], back_populates="kennels")

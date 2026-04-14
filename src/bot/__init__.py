@@ -1,14 +1,16 @@
 from .app import run
 from .day_change_loop import (
     ensure_controls,
+    ensure_week_controls,
     fetch_and_update_names,
     is_day_change_paused,
-    post_day_change_summaries,
+    post_new_day_announcement,
     post_server_event_notifications,
     post_server_event_resolutions,
     post_stray_event_summaries,
     set_day_change_paused,
     trigger_manual_day_change,
+    trigger_manual_week_change,
 )
 from .event_loop import hourly_event_runner, post_hourly_event_notifications
 from .webhooks import (
@@ -27,12 +29,14 @@ __all__ = [
     "ensure_controls",
     "fetch_and_update_names",
     "is_day_change_paused",
-    "post_day_change_summaries",
+    "post_new_day_announcement",
     "post_server_event_notifications",
     "post_server_event_resolutions",
     "post_stray_event_summaries",
     "set_day_change_paused",
     "trigger_manual_day_change",
+    "trigger_manual_week_change",
+    "ensure_week_controls",
     "hourly_event_runner",
     "post_hourly_event_notifications",
     "build_signature",

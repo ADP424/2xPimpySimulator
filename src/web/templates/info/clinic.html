@@ -3,26 +3,200 @@
 {% block title %}Veterinary Clinic - {{ server_name }}{% endblock %}
 
 {% block content %}
-<div class="mb-8">
-    <h1 class="text-3xl font-bold">🏥 Veterinary Clinic</h1>
-    <p class="text-base-content/60 mt-1">Learn about dog breeds and genetic mutations</p>
+<div class="flex justify-between items-center mb-6 flex-wrap gap-3">
+    <div>
+        <h1 class="text-3xl font-bold">🏥 Veterinary Clinic</h1>
+        <p class="text-base-content/60 mt-1">Care for your pooches and browse breed / mutation info</p>
+    </div>
 </div>
 
-<div class="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-2xl">
+<!-- Navigation cards -->
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
     <a href="{{ url_for('info.breeds_list') }}" class="card bg-base-200 shadow-md hover:-translate-y-1 hover:shadow-lg transition-all text-base-content no-underline">
-        <div class="card-body items-center text-center py-10">
-            <span class="text-6xl mb-4">🐕</span>
-            <h2 class="card-title">Dog Breeds</h2>
-            <p class="text-sm text-base-content/60">Browse all available breeds and their characteristics</p>
+        <div class="card-body items-center text-center py-8">
+            <span class="text-5xl mb-3">🐕</span>
+            <h2 class="card-title text-base">Dog Breeds</h2>
         </div>
     </a>
-
     <a href="{{ url_for('info.mutations_list') }}" class="card bg-base-200 shadow-md hover:-translate-y-1 hover:shadow-lg transition-all text-base-content no-underline">
-        <div class="card-body items-center text-center py-10">
-            <span class="text-6xl mb-4">🧬</span>
-            <h2 class="card-title">Genetic Mutations</h2>
-            <p class="text-sm text-base-content/60">Learn about mutations that can affect your pooches</p>
+        <div class="card-body items-center text-center py-8">
+            <span class="text-5xl mb-3">🧬</span>
+            <h2 class="card-title text-base">Mutations</h2>
         </div>
     </a>
+    <button class="card bg-base-200 shadow-md hover:-translate-y-1 hover:shadow-lg transition-all text-base-content text-left" onclick="toggleSurvey()">
+        <div class="card-body items-center text-center py-8">
+            <span class="text-5xl mb-3">📊</span>
+            <h2 class="card-title text-base">Breed Survey</h2>
+        </div>
+    </button>
 </div>
+
+<!-- Breed Survey panel -->
+<div id="survey-panel" style="display: none;" class="card bg-base-200 shadow-md mb-8">
+    <div class="card-body">
+        <h2 class="card-title">📊 Breed Population Survey</h2>
+        <div id="survey-loading" class="flex items-center gap-2 text-base-content/50 py-2">
+            <span class="loading loading-spinner loading-sm"></span> Loading...
+        </div>
+        <div id="survey-content" style="display: none;"></div>
+    </div>
+</div>
+
+<!-- Patient Room -->
+<div class="card bg-base-200 shadow-md">
+    <div class="card-body">
+        <h2 class="card-title">🩺 Patient Room</h2>
+        <p class="text-sm text-base-content/60 mb-4">Select a pooch to examine or treat.</p>
+
+        <div class="flex gap-3 flex-wrap mb-4">
+            <select id="kennel-select" class="select select-sm w-52" onchange="loadKennelPooches()">
+                <option value="">— select kennel —</option>
+            </select>
+            <select id="pooch-select" class="select select-sm w-52" onchange="onPoochSelect()" disabled>
+                <option value="">— select pooch —</option>
+            </select>
+        </div>
+
+        <div id="patient-panel" style="display: none;">
+            <div id="patient-conditions" class="mb-4 text-sm text-base-content/70"></div>
+            <div class="flex flex-wrap gap-2">
+                <button class="btn btn-sm btn-secondary" onclick="runProcedure('medical-exam')">Medical Exam (${{ medical_exam_cost }})</button>
+                <button class="btn btn-sm btn-secondary" onclick="runProcedure('detailed-workup')">Detailed Workup (${{ detailed_workup_cost }})</button>
+                <button class="btn btn-sm btn-error" onclick="runNeuter()">Neuter (${{ neuter_cost }})</button>
+            </div>
+            <div id="procedure-result" class="mt-4"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let allKennels = [];
+let selectedPoochId = null;
+
+document.addEventListener('DOMContentLoaded', async function() {
+    try {
+        const r = await fetch('/api/kennels');
+        allKennels = await r.json();
+        const sel = document.getElementById('kennel-select');
+        sel.innerHTML = '<option value="">— select kennel —</option>' +
+            allKennels.map(k => `<option value="${k.id}">${escapeHtml(k.name)}</option>`).join('');
+    } catch(e) { console.error(e); }
+});
+
+async function loadKennelPooches() {
+    const kennelId = document.getElementById('kennel-select').value;
+    const poochSel = document.getElementById('pooch-select');
+    document.getElementById('patient-panel').style.display = 'none';
+    selectedPoochId = null;
+    if (!kennelId) { poochSel.disabled = true; poochSel.innerHTML = '<option value="">— select pooch —</option>'; return; }
+    try {
+        const r = await fetch(`/api/kennels/${kennelId}/pooches`);
+        const pooches = await r.json();
+        const living = pooches.filter(p => p.alive);
+        poochSel.innerHTML = '<option value="">— select pooch —</option>' +
+            living.map(p => {
+                const sex = p.sex === 'female' ? '♀️' : '♂️';
+                const tags = [p.pregnant ? '🤰' : '', p.immortal ? '♾️' : ''].filter(Boolean).join('');
+                return `<option value="${p.id}">${sex} ${escapeHtml(p.name)}${tags ? ' ' + tags : ''}</option>`;
+            }).join('');
+        poochSel.disabled = false;
+    } catch(e) { console.error(e); }
+}
+
+async function onPoochSelect() {
+    const poochId = document.getElementById('pooch-select').value;
+    const panel = document.getElementById('patient-panel');
+    document.getElementById('procedure-result').innerHTML = '';
+    if (!poochId) { panel.style.display = 'none'; return; }
+    selectedPoochId = parseInt(poochId);
+    // Load pooch details
+    try {
+        const r = await fetch(`/api/pooches/${selectedPoochId}`);
+        const p = await r.json();
+        const conditions = [];
+        if ((p.mutations || []).some(m => !m.visible)) conditions.push(`${p.mutations.filter(m => !m.visible).length} hidden mutation(s)`);
+        if (p.pregnant) conditions.push('🤰 Pregnant');
+        if (p.immortal) conditions.push('♾️ Immortal');
+        if (p.rejuvenation_count > 0) conditions.push(`Rejuvenated ×${p.rejuvenation_count}`);
+        document.getElementById('patient-conditions').textContent = conditions.join(' · ') || 'No known conditions.';
+        panel.style.display = 'block';
+    } catch(e) { console.error(e); }
+}
+
+async function runProcedure(type) {
+    if (!selectedPoochId) return;
+    const resultEl = document.getElementById('procedure-result');
+    resultEl.innerHTML = '<span class="loading loading-spinner loading-sm"></span>';
+    try {
+        const r = await fetch(`/api/vet/${type}/${selectedPoochId}`, { method: 'POST' });
+        const data = await r.json();
+        if (!data.success) { resultEl.innerHTML = `<p class="text-error">${escapeHtml(data.error || 'Failed')}</p>`; return; }
+        if (type === 'detailed-workup') {
+            let html = '<div class="overflow-x-auto mt-2"><table class="table table-xs w-full"><thead><tr><th>Stat</th><th>Base</th><th>Effective</th><th>Modifiers</th></tr></thead><tbody>';
+            for (const [stat, info] of Object.entries(data.report || data.stats || {})) {
+                const mods = (info.sources || []).filter(s => s.delta).map(s => `${s.source_name} (${s.delta >= 0 ? '+' : ''}${Math.round(s.delta)})`).join(', ');
+                html += `<tr><td class="font-medium">${escapeHtml(stat)}</td><td>${info.base}</td><td class="font-semibold">${info.effective} <span class="text-xs text-base-content/50">${escapeHtml(info.label || '')}</span></td><td class="text-xs text-base-content/50">${escapeHtml(mods)}</td></tr>`;
+            }
+            html += '</tbody></table></div>';
+            resultEl.innerHTML = `<p class="text-success mb-2">✅ ${escapeHtml(data.message || 'Done')}</p>` + html;
+        } else {
+            let html = '<div class="mt-2 flex flex-wrap gap-2">';
+            for (const [stat, label] of Object.entries(data.report || {})) {
+                html += `<span class="badge badge-ghost">${escapeHtml(stat)}: ${escapeHtml(String(label))}</span>`;
+            }
+            html += '</div>';
+            resultEl.innerHTML = `<p class="text-success mb-1">✅ ${escapeHtml(data.message || 'Done')}</p>` + html;
+        }
+    } catch(e) { resultEl.innerHTML = '<p class="text-error">Something went wrong.</p>'; console.error(e); }
+}
+
+async function runNeuter() {
+    if (!selectedPoochId) return;
+    const poochName = document.getElementById('pooch-select').options[document.getElementById('pooch-select').selectedIndex].text;
+    if (!confirm(`Neuter ${poochName}? This cannot be undone.`)) return;
+    const resultEl = document.getElementById('procedure-result');
+    resultEl.innerHTML = '<span class="loading loading-spinner loading-sm"></span>';
+    try {
+        const r = await fetch(`/api/vet/neuter/${selectedPoochId}`, { method: 'POST' });
+        const data = await r.json();
+        if (data.success) {
+            resultEl.innerHTML = `<p class="text-success">✅ ${escapeHtml(data.message)}</p>`;
+        } else {
+            resultEl.innerHTML = `<p class="text-error">${escapeHtml(data.error || data.message || 'Failed')}</p>`;
+        }
+    } catch(e) { resultEl.innerHTML = '<p class="text-error">Something went wrong.</p>'; }
+}
+
+let surveyLoaded = false;
+function toggleSurvey() {
+    const panel = document.getElementById('survey-panel');
+    panel.style.display = panel.style.display === 'none' ? '' : 'none';
+    if (!surveyLoaded && panel.style.display !== 'none') loadSurvey();
+}
+
+async function loadSurvey() {
+    surveyLoaded = true;
+    try {
+        const r = await fetch('/api/vet/breed-survey');
+        const data = await r.json();
+        document.getElementById('survey-loading').style.display = 'none';
+        const contentEl = document.getElementById('survey-content');
+        let html = '';
+        for (const [pop, entries] of Object.entries(data)) {
+            if (!entries || !entries.length) continue;
+            html += `<div class="mb-4"><h3 class="font-semibold capitalize mb-2">${escapeHtml(pop)}</h3><div class="flex flex-col gap-1">`;
+            entries.slice(0, 15).forEach(e => {
+                const pct = (e.weighted_total * 100).toFixed(1);
+                html += `<div class="flex justify-between text-sm"><span>${escapeHtml(e.breed)}</span><span class="text-base-content/50">${pct}% avg · ${e.dominant_count} dominant</span></div>`;
+            });
+            html += '</div></div>';
+        }
+        contentEl.innerHTML = html || '<p class="text-base-content/50">No data yet.</p>';
+        contentEl.style.display = 'block';
+    } catch(e) { document.getElementById('survey-loading').textContent = 'Failed to load survey.'; }
+}
+</script>
 {% endblock %}

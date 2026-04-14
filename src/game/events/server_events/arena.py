@@ -9,7 +9,10 @@ from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING
 
 from src.database import get_pooch_by_id as db_get_pooch_by_id
-from src.database import session_scope, update_server_event_occurrence_context
+from src.database import (
+    list_owner_discord_ids_for_server,
+    update_server_event_occurrence_context,
+)
 from src.game.constants import FIGHT_DEFENDER_STRENGTH_BONUS, FIGHT_ROUNDS
 from src.game.models.events import ServerEventContext
 
@@ -285,17 +288,7 @@ async def resolve_arena_matchups(
 
     arena["fight_wins"] = fight_wins
     if any_resolved and fight_wins:
-        from sqlalchemy import select as _sa_select
-
-        from src.database.models import OwnerServer as OwnerServerModel
-
-        async with session_scope() as session:
-            result = await session.execute(
-                _sa_select(OwnerServerModel.owner_discord_id).where(
-                    OwnerServerModel.server_discord_id == server_context.server_discord_id
-                )
-            )
-            participant_count = len(list(result.scalars().all()))
+        participant_count = len(await list_owner_discord_ids_for_server(server_context.server_discord_id))
 
         grand_prize = prize_per_participant * participant_count
         max_wins = max(fight_wins.values())

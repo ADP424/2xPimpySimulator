@@ -5,6 +5,12 @@ from typing import TYPE_CHECKING, Optional
 import discord
 from discord.ui import Button, Select, View
 
+from src.database import (
+    get_owner_by_discord_id,
+    give_money_to_owner,
+    give_owner_item,
+    list_items_by_category,
+)
 from src.game import (
     buy_pooch,
     get_or_create_owner,
@@ -161,10 +167,12 @@ class VendorPageControls:
         self.info_button = Button(label="Info", style=discord.ButtonStyle.primary, disabled=True)
         self.buy_button = Button(label="Buy", style=discord.ButtonStyle.success, disabled=True)
         self.sell_button = Button(label="Sell Pooch", style=discord.ButtonStyle.secondary)
+        self.items_button = Button(label="🛒 Buy Items", style=discord.ButtonStyle.secondary)
 
         self.info_button.callback = self._on_info
         self.buy_button.callback = self._on_buy
         self.sell_button.callback = self._on_sell
+        self.items_button.callback = self._on_buy_items
 
         if not pooches:
             self.info_button.disabled = True
@@ -178,6 +186,7 @@ class VendorPageControls:
         self.info_button.row = 4
         self.buy_button.row = 4
         self.sell_button.row = 4
+        self.items_button.row = 4
 
         view.add_item(self.mutation_select)
         view.add_item(self.breed_select)
@@ -185,6 +194,7 @@ class VendorPageControls:
         view.add_item(self.info_button)
         view.add_item(self.buy_button)
         view.add_item(self.sell_button)
+        view.add_item(self.items_button)
 
     async def _on_mutation_select(self, interaction: discord.Interaction):
         r = InteractionResponder(interaction)
@@ -289,6 +299,91 @@ class VendorPageControls:
         view = PaginatorView(source, owner_discord_id=self.owner_discord_id)
         content, embed = await view.build_first_page()
         await r.reply(content=content, embed=embed, view=view)
+
+    async def _on_buy_items(self, interaction: discord.Interaction):
+        r = InteractionResponder(interaction)
+        re = InteractionResponder(interaction, ephemeral=True)
+        cleaning = await list_items_by_category("cleaning")
+        food = await list_items_by_category("food")
+        all_items = cleaning + food
+        if not all_items:
+            await re.reply(content="This vendor has no items for sale.")
+            return
+        view = _BuyItemsView(owner_discord_id=self.owner_discord_id, items=all_items)
+        embed = await view.build_embed()
+        await r.reply(embed=embed, view=view)
+
+
+class _BuyItemsView(View):
+    """Simple view for buying consumable items from a vendor."""
+
+    def __init__(self, owner_discord_id: int, items: list):
+        from src.bot.constants import VIEW_TIMEOUT
+
+        super().__init__(timeout=VIEW_TIMEOUT)
+        self._owner_id = owner_discord_id
+        self._items = items
+        self._selected_item = None
+
+        from src.bot.constants import DISCORD_SELECT_MAX_OPTIONS
+
+        options = [
+            discord.SelectOption(
+                label=f"{item.name} (${(item.parameters or {}).get('price', 10)})",
+                value=item.name,
+                description=(item.description or "")[:100],
+            )
+            for item in items[:DISCORD_SELECT_MAX_OPTIONS]
+        ]
+        select = Select(placeholder="Select an item to buy", options=options)
+        select.callback = self._on_select
+        self._select = select
+        self.add_item(select)
+
+        self._buy_btn = Button(label="Buy ×1", style=discord.ButtonStyle.success, disabled=True, row=1)
+        self._buy_btn.callback = self._on_buy
+        self.add_item(self._buy_btn)
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self._owner_id
+
+    async def build_embed(self) -> discord.Embed:
+        lines = []
+        for item in self._items:
+            price = (item.parameters or {}).get("price", 10)
+            units = (item.parameters or {}).get("food_units", 0)
+            reduction = (item.parameters or {}).get("mess_reduction", 0)
+            detail = f"${price}"
+            if units:
+                detail += f" · {units} food units"
+            if reduction:
+                detail += f" · −{reduction} mess"
+            lines.append(f"**{item.name}** — {detail}")
+        embed = discord.Embed(title="🛒 Items for Sale", description="\n".join(lines))
+        return embed
+
+    async def _on_select(self, interaction: discord.Interaction):
+        r = InteractionResponder(interaction)
+        item_name = self._select.values[0]
+        self._selected_item = next((i for i in self._items if i.name == item_name), None)
+        self._buy_btn.disabled = self._selected_item is None
+        for opt in self._select.options:
+            opt.default = opt.value == item_name
+        await r.edit(view=self)
+
+    async def _on_buy(self, interaction: discord.Interaction):
+        re = InteractionResponder(interaction, ephemeral=True)
+        if self._selected_item is None:
+            return
+        item = self._selected_item
+        price = int((item.parameters or {}).get("price", 10))
+        owner = await get_owner_by_discord_id(self._owner_id)
+        if owner is None or owner.dollars < price:
+            await re.reply(content=f"Not enough money. Cost: ${price}")
+            return
+        await give_money_to_owner(self._owner_id, -price)
+        await give_owner_item(self._owner_id, item.name, 1)
+        await re.reply(content=f"✅ Purchased **{item.name}** for **${price}**.")
 
 
 class _SellKennelsPageSource(PageSource):

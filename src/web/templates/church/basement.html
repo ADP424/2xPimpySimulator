@@ -63,6 +63,28 @@
     </div>
 </div>
 
+<!-- Blood Rituals -->
+<div class="card bg-base-200 shadow-md mb-8">
+    <div class="card-body">
+        <h2 class="card-title text-warning">⚗️ Blood Rituals</h2>
+        <p class="text-sm text-base-content/60 mb-4">Spend bloodskulls and body parts to reshape your pooches.</p>
+
+        <label class="text-sm" for="ritual-select">Choose a pooch</label>
+        <select id="ritual-select" class="select select-sm w-64 mb-4" onchange="onRitualPoochSelect()">
+            <option value="">— select a pooch —</option>
+        </select>
+        <div id="ritual-loading-pooches" class="text-xs text-base-content/50">Loading pooches...</div>
+
+        <div id="ritual-buttons" class="flex flex-wrap gap-2" style="display: none;">
+            <button class="btn btn-sm btn-outline btn-warning" onclick="confirmRitual('clone')">🧬 Clone</button>
+            <button class="btn btn-sm btn-outline btn-info" onclick="confirmRitual('rejuvenate')">✨ Rejuvenate</button>
+            <button class="btn btn-sm btn-outline btn-secondary" onclick="confirmRitual('gender-change')">⚧️ Gender Change</button>
+            <button class="btn btn-sm btn-outline btn-accent" onclick="confirmRitual('immortalize')">♾️ Immortalize</button>
+        </div>
+        <div id="ritual-result" class="mt-3 text-sm"></div>
+    </div>
+</div>
+
 <!-- Gaze into Hell -->
 <div class="card bg-base-200 shadow-md">
     <div class="card-body">
@@ -106,13 +128,74 @@ const HELL_PAGE_SIZE = 20;
 let hellCurrentPage = 1;
 let hellFiltered = [];
 
+const RITUAL_COSTS = {
+    'clone':         '100+ bloodskulls + 1 brain + 1 heart',
+    'rejuvenate':    '150 bloodskulls + 1 heart',
+    'gender-change': '75 bloodskulls + 1 eye',
+    'immortalize':   '1000 bloodskulls + 1 heart + 1 brain + 2 eyes + 1 tail',
+};
+
 document.addEventListener('DOMContentLoaded', async function() {
     await Promise.all([
         loadMyPooches(),
         loadHell(),
         updateSummonCost(),
+        loadRitualPooches(),
     ]);
 });
+
+// ---- Rituals ----
+
+async function loadRitualPooches() {
+    try {
+        const kennelsResp = await fetch('/api/kennels');
+        const kennels = await kennelsResp.json();
+        const poochPromises = kennels.map(k => fetch(`/api/kennels/${k.id}/pooches`).then(r => r.json()));
+        const poochLists = await Promise.all(poochPromises);
+        const living = poochLists.flat().filter(p => p.alive);
+
+        document.getElementById('ritual-loading-pooches').style.display = 'none';
+        const sel = document.getElementById('ritual-select');
+        sel.innerHTML = '<option value="">— select a pooch —</option>' +
+            living.map(p => {
+                const sex = p.sex === 'female' ? '♀️' : '♂️';
+                return `<option value="${p.id}">${sex} ${escapeHtml(p.name)}</option>`;
+            }).join('');
+    } catch(e) { console.error(e); }
+}
+
+function onRitualPoochSelect() {
+    const val = document.getElementById('ritual-select').value;
+    const btns = document.getElementById('ritual-buttons');
+    document.getElementById('ritual-result').innerHTML = '';
+    btns.style.display = val ? 'flex' : 'none';
+}
+
+async function confirmRitual(ritual) {
+    const poochId = document.getElementById('ritual-select').value;
+    if (!poochId) return;
+    const cost = RITUAL_COSTS[ritual] || '';
+    const label = { clone: 'Clone', rejuvenate: 'Rejuvenate', 'gender-change': 'Gender Change', immortalize: 'Immortalize' }[ritual] || ritual;
+    if (!confirm(`${label} this pooch?\nCost: ${cost}`)) return;
+
+    const resultEl = document.getElementById('ritual-result');
+    resultEl.innerHTML = '<span class="loading loading-spinner loading-sm"></span>';
+    try {
+        const r = await fetch(`/api/church/${ritual}/${poochId}`, { method: 'POST' });
+        const data = await r.json();
+        if (data.success) {
+            resultEl.innerHTML = `<span class="text-success">✅ ${escapeHtml(data.message)}</span>`;
+            App.rumble();
+            await loadRitualPooches();
+            await loadMyPooches();
+        } else {
+            resultEl.innerHTML = `<span class="text-error">${escapeHtml(data.error || data.message || 'Failed')}</span>`;
+        }
+    } catch(e) {
+        resultEl.innerHTML = '<span class="text-error">Something went wrong.</span>';
+        console.error(e);
+    }
+}
 
 // ---- Sacrifice ----
 

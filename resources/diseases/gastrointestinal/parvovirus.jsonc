@@ -1,0 +1,23 @@
+{
+    "name": "Parvovirus",
+    "description": "A severe and highly contagious viral illness that attacks the digestive system.",
+    "health_impact": "FATAL",
+    "contagion_chance": 0.25,
+    "sexually_transmitted": false,
+    "recovery_chance": 0.05,
+    "treatable": true,
+    "curable": true,
+    "immunity_duration": 60,
+    "heritability": 0.0,
+    "invisible_messages": [
+        "This pooch hasn't been eating well.",
+        "This pooch seems lethargic and weak.",
+        "This pooch has been vomiting."
+    ],
+    "visible": false,
+    "reveal_chance": 0.7,
+    "parameters": {
+        "constitution_add": -3,
+        "strength_add": -2
+    }
+}

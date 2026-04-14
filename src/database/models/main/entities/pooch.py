@@ -58,6 +58,14 @@ class Pooch(Base):
         CheckConstraint("constitution >= 0", name="pooch_constitution_minimum"),
         CheckConstraint("size >= 0", name="pooch_size_minimum"),
         CheckConstraint("breeding_cooldown >= 0", name="pooch_breeding_cooldown_minimum"),
+        CheckConstraint("starvation >= 0", name="pooch_starvation_minimum"),
+        CheckConstraint("mess_output >= 0", name="pooch_mess_output_minimum"),
+        CheckConstraint("consumption >= 0", name="pooch_consumption_minimum"),
+        CheckConstraint("rejuvenation_count >= 0", name="pooch_rejuvenation_count_minimum"),
+        CheckConstraint(
+            "pregnancy_timer IS NULL OR pregnancy_timer >= 0",
+            name="pooch_pregnancy_timer_minimum",
+        ),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
@@ -85,6 +93,30 @@ class Pooch(Base):
     virgin: Mapped[bool] = mapped_column(Boolean, default=True)
     vet_checked: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     mood: Mapped[str | None] = mapped_column(MOOD, nullable=True)
+
+    # Pregnancy: hours remaining until birth. NULL means not pregnant.
+    pregnancy_timer: Mapped[int | None] = mapped_column(Integer, nullable=True, default=None)
+
+    # Rejuvenation ritual: cumulative count. Each increments applies permanent
+    # fertility/constitution multipliers via the stats pipeline.
+    rejuvenation_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0", default=0)
+
+    # Immortality ritual flag: True = pooch cannot die of age, is infertile.
+    immortal: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false", default=False)
+
+    # Starvation counter. Rises when hourly food needs are unmet, decays otherwise.
+    starvation: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0", default=0)
+
+    # Per-pooch mess output used by hourly kennel mess accumulation.
+    mess_output: Mapped[int] = mapped_column(Integer, nullable=False, server_default="2", default=2)
+
+    # Per-pooch hourly food consumption, derived from size/breed/mutation params.
+    consumption: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1", default=1)
+
+    # Absolute hour of birth (GlobalState.current_hour at birth). Used by the
+    # hour loop to compute age increments on each 24-hour anniversary. NULL for
+    # pooches created before the hour-loop migration.
+    birth_hour: Mapped[int | None] = mapped_column(BigInteger, nullable=True, default=None)
 
     owner_discord_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("owners.discord_id", ondelete="SET NULL"), nullable=True

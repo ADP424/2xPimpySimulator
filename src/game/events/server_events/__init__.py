@@ -12,6 +12,7 @@ from .coordinator import (
     resolve_server_event,
     roll_outcome_chance,
     run_daily_server_event_cycle,
+    run_weekly_server_event_cycle,
     trigger_daily_server_event,
     trigger_server_event_by_name,
 )
@@ -35,6 +36,7 @@ __all__ = [
     "resolve_arena_matchups",
     "resolve_server_event",
     "run_daily_server_event_cycle",
+    "run_weekly_server_event_cycle",
     "trigger_daily_server_event",
     "trigger_server_event_by_name",
     "get_active_server_event",

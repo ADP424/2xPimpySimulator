@@ -93,8 +93,8 @@ class TestKennelPageControls:
         view = MagicMock()
         view.add_item = MagicMock()
         controls.attach(view)
-        # Should add: rename kennel button, select, info, breed, walk, rename pooch, cast out
-        assert view.add_item.call_count == 7
+        # Should add: rename kennel button, feed button, select, info, breed, walk, rename pooch, cast out
+        assert view.add_item.call_count == 8
 
     async def test_select_enables_action_buttons(self):
         kennel = _make_kennel()

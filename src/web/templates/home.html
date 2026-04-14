@@ -20,9 +20,17 @@
                     <span class="text-base-content/60">💵 Dollars</span>
                     <span class="font-bold" id="owner-dollars">-</span>
                 </div>
-                <div class="flex justify-between items-center py-2">
+                <div class="flex justify-between items-center py-2 border-b border-base-300">
                     <span class="text-base-content/60">💀 Bloodskulls</span>
                     <span class="font-bold" id="owner-bloodskulls">-</span>
+                </div>
+                <div class="flex justify-between items-center py-2 border-b border-base-300">
+                    <span class="text-base-content/60">🦴 Bones</span>
+                    <span class="font-bold" id="owner-bones">-</span>
+                </div>
+                <div id="owner-body-parts" style="display: none;">
+                    <div class="text-xs text-base-content/50 uppercase tracking-wide mt-2 mb-1">Body Parts</div>
+                    <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm" id="owner-body-parts-grid"></div>
                 </div>
             </div>
             <div id="no-server-message" style="display: none;" class="py-2">
@@ -67,6 +75,14 @@
                     <span class="text-2xl">🏥</span>
                     <span>Vet Clinic</span>
                 </a>
+                <a href="{{ url_for('auction.auction_list') }}" class="flex items-center gap-3 p-3 rounded-lg bg-base-300 hover:bg-base-100 transition-colors text-base-content no-underline">
+                    <span class="text-2xl">🏛️</span>
+                    <span>Auction House</span>
+                </a>
+                <a href="{{ url_for('server_events.server_events_list') }}" class="flex items-center gap-3 p-3 rounded-lg bg-base-300 hover:bg-base-100 transition-colors text-base-content no-underline">
+                    <span class="text-2xl">🎪</span>
+                    <span>Server Events</span>
+                </a>
                 {% endif %}
             </div>
         </div>
@@ -103,7 +119,7 @@ document.addEventListener('DOMContentLoaded', function() {
     loadKennels();
 
     if (typeof App !== 'undefined') {
-        App.subscribeToServers(PAGE_DATA.serverIds, handleDayChange);
+        App.subscribeToServers(PAGE_DATA.serverIds, handleDayChange, handleHourChange);
     }
 });
 
@@ -119,6 +135,23 @@ async function loadOwnerInfo() {
         document.getElementById('owner-info').style.display = 'block';
         document.getElementById('owner-dollars').textContent = formatCurrency(owner.dollars);
         document.getElementById('owner-bloodskulls').textContent = owner.bloodskulls;
+        document.getElementById('owner-bones').textContent = owner.bones ?? 0;
+
+        const bodyParts = [
+            { label: '❤️ Hearts', key: 'hearts' },
+            { label: '🧠 Brains', key: 'brains' },
+            { label: '👁️ Eyes', key: 'eyes' },
+            { label: '🦷 Teeth', key: 'teeth' },
+            { label: '🐾 Tails', key: 'tails' },
+        ];
+        const nonEmpty = bodyParts.filter(p => (owner[p.key] ?? 0) > 0);
+        if (nonEmpty.length > 0) {
+            const grid = document.getElementById('owner-body-parts-grid');
+            grid.innerHTML = nonEmpty.map(p =>
+                `<span class="text-base-content/60">${p.label}</span><span class="font-semibold">${owner[p.key]}</span>`
+            ).join('');
+            document.getElementById('owner-body-parts').style.display = 'block';
+        }
     } catch (error) {
         document.getElementById('owner-loading').textContent = 'Failed to load owner info';
         console.error('Error loading owner:', error);
@@ -200,6 +233,40 @@ function handleDayChange(data) {
     if (PAGE_DATA.hasServer) {
         loadOwnerInfo();
     }
+}
+
+function handleHourChange(data) {
+    if (!data.births?.length && !data.deaths?.length && !data.other_events?.length) return;
+
+    const eventsList = document.getElementById('events-list');
+    const guild = PAGE_DATA.guilds.find(g => Number(g.id) === Number(data.server_discord_id));
+    const serverName = guild ? guild.name : `Server ${data.server_discord_id}`;
+
+    let html = '<div class="rounded-lg bg-base-300 p-4 mb-3">';
+    html += `<h4 class="font-semibold mb-2">Hour Change — ${escapeHtml(serverName)}</h4>`;
+
+    if (data.births?.length) {
+        html += '<p class="text-sm font-medium">🎉 Births</p>';
+        data.births.forEach(b => {
+            html += `<p class="text-sm"><a href="/pooch/${b.child.id}" class="link link-primary">${escapeHtml(b.child.name)}</a> was born! ${escapeHtml(b.message)}</p>`;
+        });
+    }
+    if (data.deaths?.length) {
+        html += '<p class="text-sm font-medium mt-1">💀 Deaths</p>';
+        data.deaths.forEach(d => {
+            html += `<p class="text-sm">${escapeHtml(d.pooch.name)}: ${escapeHtml(d.message)}</p>`;
+        });
+    }
+    if (data.other_events?.length) {
+        html += '<p class="text-sm font-medium mt-1">📢 Events</p>';
+        data.other_events.forEach(e => {
+            html += `<p class="text-sm">${escapeHtml(e.message)}</p>`;
+        });
+    }
+    html += '</div>';
+    eventsList.innerHTML = html + eventsList.innerHTML;
+
+    if (PAGE_DATA.hasServer) loadOwnerInfo();
 }
 </script>
 {% endblock %}

@@ -1,0 +1,8 @@
+{
+    "description": "A pack of heavy-duty trash bags. Useful for a thorough kennel cleanup.",
+    "rarity": "common",
+    "parameters": {
+        "price": 12,
+        "mess_reduction": 10
+    }
+}

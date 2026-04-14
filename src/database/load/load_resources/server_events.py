@@ -139,9 +139,34 @@ _SERVER_MENU_OPTION_REQUIRES_ALLOWED_KEYS = {"pooch"}
 _SERVER_MENU_OPTION_REQUIRES_POOCH_ALLOWED_KEYS = {"filter"}
 
 _SCORING_ALLOWED_KEYS = {"aggregate", "sources"}
-_SCORING_SOURCE_ALLOWED_KEYS = {"type", "stat", "scale", "pivot", "direction", "min", "max", "value"}
+_SCORING_SOURCE_ALLOWED_KEYS = {
+    "type",
+    "stat",
+    "scale",
+    "pivot",
+    "direction",
+    "min",
+    "max",
+    "value",
+    # Section 2A new source types (breed_match, mutation_match, stat_target).
+    "targets",
+    "weight",
+    "required",
+    "excluded",
+    "target",
+    "falloff",
+    "max_distance",
+}
 _SCORING_AGGREGATE_VALUES = {"sum", "average", "max"}
-_SCORING_SOURCE_TYPES = {"random", "pooch_stat", "owner_stat", "constant"}
+_SCORING_SOURCE_TYPES = {
+    "random",
+    "pooch_stat",
+    "owner_stat",
+    "constant",
+    "breed_match",
+    "mutation_match",
+    "stat_target",
+}
 
 _SERVER_EVENT_OUTCOME_ALLOWED_KEYS = {
     "label",
@@ -378,6 +403,34 @@ class _ServerEventValidator(BaseEventValidator):
 
         elif source_type == "constant":
             self._validate_optional_number(path, source, "value")
+
+        elif source_type == "breed_match":
+            targets = source.get("targets")
+            if not isinstance(targets, list) or not all(isinstance(t, str) for t in targets):
+                self.error(f"{path}.targets", "must be a list of breed name strings")
+            self._validate_optional_number(path, source, "weight")
+
+        elif source_type == "mutation_match":
+            required = source.get("required", []) or []
+            excluded = source.get("excluded", []) or []
+            if required and (not isinstance(required, list) or not all(isinstance(t, str) for t in required)):
+                self.error(f"{path}.required", "must be a list of mutation name strings")
+            if excluded and (not isinstance(excluded, list) or not all(isinstance(t, str) for t in excluded)):
+                self.error(f"{path}.excluded", "must be a list of mutation name strings")
+            self._validate_optional_number(path, source, "weight")
+
+        elif source_type == "stat_target":
+            if "stat" not in source or not isinstance(source.get("stat"), str):
+                self.error(f"{path}.stat", "required string for stat_target source")
+            if "target" not in source or not isinstance(source.get("target"), (int, float)):
+                self.error(f"{path}.target", "required number for stat_target source")
+            self._validate_optional_number(path, source, "scale")
+            self._validate_optional_number(path, source, "max_distance")
+            falloff = source.get("falloff")
+            if falloff is not None and (
+                not isinstance(falloff, str) or falloff.strip().lower() not in {"linear", "gaussian"}
+            ):
+                self.error(f"{path}.falloff", "must be one of: linear, gaussian")
 
     def _validate_server_outcomes_list(self, path: str, outcomes: Any) -> list[dict[str, Any]]:
         outcomes_path = f"{path}.outcomes"

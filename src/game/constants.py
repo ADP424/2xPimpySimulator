@@ -3,11 +3,79 @@ from __future__ import annotations
 # Pooch Lifecycle
 MIN_HEALTH_FOR_DEATH_CHANCE = 5
 POOCH_HEALTH_LOSS_STARTING_AGE = 5
-DEATH_CHANCE_PER_HEALTH_UNDER_MIN = 0.2
+# Hourly death chance per health point below MIN_HEALTH_FOR_DEATH_CHANCE.
+# At health=0 (deficit=5): 5 * 0.008 = 4% per hour → ~64% over 24 hours.
+# At health=3 (deficit=2): 2 * 0.008 = 1.6% per hour → ~32% over 24 hours.
+HOURLY_DEATH_CHANCE_PER_HEALTH_UNDER_MIN = 0.008
 POOCH_STAT_RANGE = (8, 12)
 POOCH_BREEDING_COOLDOWN = 10
 BREEDING_COOLDOWN_HOURLY_FERTILITY_DIVISOR = 50
 INJURY_PERSISTENCE_HOURLY_CONSTITUTION_DIVISOR = 50
+
+# Strays also roll for disease contraction hourly. Their "dirty outdoors"
+# environmental mess modifier — equivalent to a medium-dirty kennel.
+STRAY_ENVIRONMENTAL_MESSINESS = 10
+# Pregnancy timer range (hours) set when a pooch becomes pregnant.
+PREGNANCY_TIMER_HOURS_RANGE = (15, 20)
+# Per-hour miscarriage base chance for a healthy young pooch (age≤5, constitution=10,
+# starvation=0). Over a 15–20 hour pregnancy this gives ~8% cumulative miscarriage
+# chance at baseline; higher for old/weak/starving mothers.
+MISCARRIAGE_HOURLY_BASE_CHANCE = 0.005
+# Per-pup stillbirth base chance at moment of birth.
+STILLBIRTH_BASE_CHANCE = 0.01
+
+# Hourly aggression fight mechanics
+HOURLY_FIGHT_BASE_CHANCE = 0.0005  # 0.05% base per pooch per hour
+HOURLY_FIGHT_AGGRESSION_SCALE = 0.0002  # per aggressiveness point over 10
+HOURLY_FIGHT_STARVATION_SCALE = 0.0005  # per point of starvation
+HOURLY_FIGHT_HEALTH_PENALTY = 0.05  # low health → fewer fights
+
+# Food / starvation
+POOCH_BASE_CONSUMPTION = 1
+POOCH_CONSUMPTION_PER_SIZE_UNIT = 0.1  # consumption scales with size
+
+# Mess output per pooch per hour
+POOCH_BASE_MESS_OUTPUT = 2
+POOCH_MESS_OUTPUT_PER_SIZE_UNIT = 0.15  # mess scales with size
+STARVATION_DECAY_PER_FED_HOUR = 1
+STARVATION_PENALTY_PER_STAT = 0.02  # multiplicative stat penalty per starvation unit
+
+# Cannibalism
+CANNIBALISM_HOURLY_BASE_CHANCE = 0.0002
+CANNIBALISM_STARVATION_MULTIPLIER = 0.0005
+
+# Body-part drop rates on sacrifice (per part, base chance × size factor)
+# These are used by the rituals module. Each tuple is (min, max, per_size_divisor).
+BODY_PART_DROP_RATES = {
+    "bone": {"base_min": 2, "base_max": 6, "chance": 1.0},
+    "teeth": {"base_min": 2, "base_max": 6, "chance": 1.0},
+    "eye": {"base_min": 1, "base_max": 2, "chance": 0.45},
+    "brain": {"base_min": 1, "base_max": 1, "chance": 0.22},
+    "heart": {"base_min": 1, "base_max": 1, "chance": 0.22},
+    "tail": {"base_min": 1, "base_max": 1, "chance": 0.2},
+}
+
+# Rejuvenation penalties per count (cumulative multiplicative)
+REJUVENATION_FERTILITY_MULT = 0.95
+REJUVENATION_CONSTITUTION_MULT = 0.95
+
+# Rituals — costs in bloodskulls and body parts.
+CLONE_RITUAL_BLOODSKULLS_MIN = 100
+CLONE_RITUAL_BLOODSKULLS_VALUE_MULT = 5
+CLONE_RITUAL_BRAIN_COST = 1
+CLONE_RITUAL_HEART_COST = 1
+
+REJUVENATION_RITUAL_BLOODSKULLS = 150
+REJUVENATION_RITUAL_HEART_COST = 1
+
+GENDER_CHANGE_RITUAL_BLOODSKULLS = 75
+GENDER_CHANGE_RITUAL_EYE_COST = 1
+
+IMMORTALITY_RITUAL_BLOODSKULLS = 1000
+IMMORTALITY_RITUAL_HEART_COST = 1
+IMMORTALITY_RITUAL_BRAIN_COST = 1
+IMMORTALITY_RITUAL_EYE_COST = 2
+IMMORTALITY_RITUAL_TAIL_COST = 1
 
 # All heritable pooch stats (all use POOCH_STAT_RANGE)
 # The size range is determined by breeds, so that's why it's not included here
@@ -134,6 +202,9 @@ VET_TREATMENT_PERSISTENCE_REDUCTION = 10
 # Vet diagnosis costs (flat fee per procedure)
 VET_DIAGNOSE_INJURIES_COST = 25
 VET_DIAGNOSE_MUTATIONS_COST = 50
+
+# Neuter cost (applied at vet clinic)
+NEUTER_COST = 50
 
 # Other
 MAX_NAME_LENGTH = 100

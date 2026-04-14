@@ -1750,3 +1750,185 @@ async def increment_global_day() -> int:
         row.current_day += 1
         await session.flush()
     return row.current_day
+
+
+async def increment_global_hour() -> int:
+    """Increment the global hour counter by 1 and return the new value.
+
+    Keeps ``current_day`` in sync (``current_day = current_hour // 24``).
+    """
+    async with session_scope() as session:
+        row = await session.get(GlobalState, _GLOBAL_STATE_ID)
+        if row is None:
+            row = GlobalState(id=_GLOBAL_STATE_ID, current_season="spring", current_day=0, current_hour=0)
+            session.add(row)
+        row.current_hour = (row.current_hour or 0) + 1
+        row.current_day = int(row.current_hour // 24)
+        await session.flush()
+    return row.current_hour
+
+
+# ---------------------------------------------------------------------------
+# Pooch hour-loop fields
+# ---------------------------------------------------------------------------
+
+
+async def set_pooch_pregnancy_timer(pooch_id: int, timer: Optional[int]) -> Optional[Pooch]:
+    """Set the pregnancy timer to the given value (None = not pregnant)."""
+    async with session_scope() as session:
+        pooch = await session.get(Pooch, pooch_id)
+        if pooch is None:
+            return None
+        pooch.pregnancy_timer = timer
+        await session.flush()
+    return pooch
+
+
+async def decrement_pooch_pregnancy_timer(pooch_id: int) -> Optional[int]:
+    """Subtract 1 from the pregnancy timer, clamped to 0. Returns new value."""
+    async with session_scope() as session:
+        pooch = await session.get(Pooch, pooch_id)
+        if pooch is None or pooch.pregnancy_timer is None:
+            return None
+        pooch.pregnancy_timer = max(0, (pooch.pregnancy_timer or 0) - 1)
+        await session.flush()
+        return pooch.pregnancy_timer
+
+
+async def increment_pooch_rejuvenation_count(pooch_id: int) -> Optional[int]:
+    async with session_scope() as session:
+        pooch = await session.get(Pooch, pooch_id)
+        if pooch is None:
+            return None
+        pooch.rejuvenation_count = (pooch.rejuvenation_count or 0) + 1
+        await session.flush()
+        return pooch.rejuvenation_count
+
+
+async def set_pooch_immortal(pooch_id: int, immortal: bool = True) -> Optional[Pooch]:
+    async with session_scope() as session:
+        pooch = await session.get(Pooch, pooch_id)
+        if pooch is None:
+            return None
+        pooch.immortal = bool(immortal)
+        await session.flush()
+    return pooch
+
+
+async def modify_pooch_starvation(pooch_id: int, delta: int) -> Optional[int]:
+    async with session_scope() as session:
+        pooch = await session.get(Pooch, pooch_id)
+        if pooch is None:
+            return None
+        pooch.starvation = max(0, (pooch.starvation or 0) + int(delta))
+        await session.flush()
+        return pooch.starvation
+
+
+async def set_pooch_mess_output(pooch_id: int, value: int) -> Optional[Pooch]:
+    async with session_scope() as session:
+        pooch = await session.get(Pooch, pooch_id)
+        if pooch is None:
+            return None
+        pooch.mess_output = max(0, int(value))
+        await session.flush()
+    return pooch
+
+
+async def set_pooch_consumption(pooch_id: int, value: int) -> Optional[Pooch]:
+    async with session_scope() as session:
+        pooch = await session.get(Pooch, pooch_id)
+        if pooch is None:
+            return None
+        pooch.consumption = max(0, int(value))
+        await session.flush()
+    return pooch
+
+
+async def set_pooch_birth_hour(pooch_id: int, hour: Optional[int]) -> Optional[Pooch]:
+    async with session_scope() as session:
+        pooch = await session.get(Pooch, pooch_id)
+        if pooch is None:
+            return None
+        pooch.birth_hour = None if hour is None else int(hour)
+        await session.flush()
+    return pooch
+
+
+async def flip_pooch_sex(pooch_id: int) -> Optional[Pooch]:
+    async with session_scope() as session:
+        pooch = await session.get(Pooch, pooch_id)
+        if pooch is None:
+            return None
+        pooch.sex = "female" if pooch.sex == "male" else "male"
+        await session.flush()
+    return pooch
+
+
+# ---------------------------------------------------------------------------
+# Kennel food stock
+# ---------------------------------------------------------------------------
+
+
+async def modify_kennel_food_stock(kennel_id: int, amount: int) -> Optional[int]:
+    """Add ``amount`` (may be negative) to a kennel's food stock. Clamped to 0."""
+    async with session_scope() as session:
+        kennel = await session.get(Kennel, kennel_id)
+        if kennel is None:
+            return None
+        kennel.food_stock = max(0, (kennel.food_stock or 0) + int(amount))
+        await session.flush()
+        return kennel.food_stock
+
+
+# ---------------------------------------------------------------------------
+# Owner body parts and item inventory
+# ---------------------------------------------------------------------------
+
+
+_BODY_PART_ATTR = {
+    "bloodskull": "bloodskulls",
+    "bloodskulls": "bloodskulls",
+    "bone": "bones",
+    "bones": "bones",
+    "heart": "hearts",
+    "hearts": "hearts",
+    "brain": "brains",
+    "brains": "brains",
+    "eye": "eyes",
+    "eyes": "eyes",
+    "tail": "tails",
+    "tails": "tails",
+    "tooth": "teeth",
+    "teeth": "teeth",
+}
+
+BODY_PART_NAMES = ("bloodskull", "bone", "heart", "brain", "eye", "tail", "teeth")
+
+
+async def give_owner_body_part(owner_discord_id: int, part: str, amount: int) -> Optional[Owner]:
+    """
+    Increment one of the owner's body-part columns by ``amount`` (may be negative).
+
+    ``part`` is a human-friendly singular or plural ("heart", "hearts", "bone").
+    """
+    attr = _BODY_PART_ATTR.get(part.strip().lower())
+    if attr is None:
+        raise ValueError(f"Unknown body part '{part}'")
+    async with session_scope() as session:
+        owner = await session.get(Owner, owner_discord_id)
+        if owner is None:
+            return None
+        setattr(owner, attr, max(0, int(getattr(owner, attr) or 0) + int(amount)))
+        await session.flush()
+    return owner
+
+
+async def set_owner_hand_cleaned_today(owner_discord_id: int, value: bool) -> Optional[Owner]:
+    async with session_scope() as session:
+        owner = await session.get(Owner, owner_discord_id)
+        if owner is None:
+            return None
+        owner.hand_cleaned_today = bool(value)
+        await session.flush()
+    return owner

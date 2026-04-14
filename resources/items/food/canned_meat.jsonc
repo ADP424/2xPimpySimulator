@@ -1,0 +1,8 @@
+{
+    "description": "A can of premium dog food. Provides more food units than dry kibble.",
+    "rarity": "uncommon",
+    "parameters": {
+        "price": 15,
+        "food_units": 30
+    }
+}

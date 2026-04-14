@@ -161,7 +161,7 @@ function renderPooch(pooch, family) {
             </div>
             <div class="flex flex-col gap-0.5">
                 <span class="text-xs text-base-content/50 uppercase tracking-wide">Health</span>
-                <span class="font-medium">${pooch.health} / ${pooch.base_health}</span>
+                <span class="font-medium">${pooch.health_label || pooch.status}</span>
             </div>
             <div class="flex flex-col gap-0.5">
                 <span class="text-xs text-base-content/50 uppercase tracking-wide">Breeding Cooldown</span>
@@ -175,6 +175,30 @@ function renderPooch(pooch, family) {
             <div class="flex flex-col gap-0.5">
                 <span class="text-xs text-base-content/50 uppercase tracking-wide">Mood</span>
                 <span class="font-medium">${moodEmoji[pooch.mood] || pooch.mood}</span>
+            </div>
+            ` : ''}
+            ${pooch.pregnant ? `
+            <div class="flex flex-col gap-0.5">
+                <span class="text-xs text-base-content/50 uppercase tracking-wide">Pregnant</span>
+                <span class="font-medium text-pink-400">🤰 Expecting!</span>
+            </div>
+            ` : ''}
+            ${pooch.immortal ? `
+            <div class="flex flex-col gap-0.5">
+                <span class="text-xs text-base-content/50 uppercase tracking-wide">Immortal</span>
+                <span class="font-medium text-purple-400">☠️ Undying</span>
+            </div>
+            ` : ''}
+            ${(pooch.rejuvenation_count > 0) ? `
+            <div class="flex flex-col gap-0.5">
+                <span class="text-xs text-base-content/50 uppercase tracking-wide">Rejuvenations</span>
+                <span class="font-medium">${pooch.rejuvenation_count}×</span>
+            </div>
+            ` : ''}
+            ${(pooch.starvation > 0) ? `
+            <div class="flex flex-col gap-0.5">
+                <span class="text-xs text-base-content/50 uppercase tracking-wide">Hunger</span>
+                <span class="font-medium text-warning">${escapeHtml(pooch.starvation_label || starvationLabel(pooch.starvation))}</span>
             </div>
             ` : ''}
             ${pooch.birthday ? `
@@ -262,6 +286,15 @@ function renderPooch(pooch, family) {
     }
 
     document.getElementById('family-info').innerHTML = familyHtml;
+}
+
+function starvationLabel(v) {
+    if (!v || v <= 0) return 'Well-fed';
+    if (v <= 5) return 'Peckish';
+    if (v <= 12) return 'Hungry';
+    if (v <= 24) return 'Famished';
+    if (v <= 48) return 'Starving';
+    return 'Dying of Hunger';
 }
 
 function createFamilyMemberLink(pooch) {

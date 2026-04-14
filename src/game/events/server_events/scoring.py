@@ -7,8 +7,14 @@ from __future__ import annotations
 import random
 from typing import TYPE_CHECKING
 
-from src.database import get_owner_by_discord_id
+from src.database import (
+    get_owner_by_discord_id,
+)
 from src.database import get_pooch_by_id as db_get_pooch_by_id
+from src.database import (
+    list_pooch_breed_weights,
+    list_pooch_mutations,
+)
 
 if TYPE_CHECKING:
     from src.database.models import ServerEventOccurrence, ServerEventParticipation
@@ -62,6 +68,61 @@ async def compute_submission_score(
                     scale = float(source.get("scale", 1.0))
                     direction = float(source.get("direction", 1.0))
                     total += (raw - pivot) * scale * direction
+
+        elif source_type == "breed_match":
+            # Score based on how much of the entered pooch is one of the
+            # target breeds. Sum of (proportion of breed × weight).
+            pooch_id = submission.get("selected_pooch_id")
+            targets = [str(b).strip().lower() for b in (source.get("targets") or [])]
+            weight = float(source.get("weight", 1.0))
+            if pooch_id is not None and targets:
+                from src.database import get_breed_by_id
+
+                breed_weights = await list_pooch_breed_weights(pooch_id)
+                if breed_weights:
+                    pooch_total = sum(w for _, w in breed_weights) or 1
+                    for breed_id, w in breed_weights:
+                        breed = await get_breed_by_id(breed_id)
+                        if breed is None:
+                            continue
+                        if breed.name.strip().lower() in targets:
+                            total += (float(w) / float(pooch_total)) * weight
+
+        elif source_type == "mutation_match":
+            # +weight per required mutation present, -weight per excluded.
+            pooch_id = submission.get("selected_pooch_id")
+            required = [str(m).strip().lower() for m in (source.get("required") or [])]
+            excluded = [str(m).strip().lower() for m in (source.get("excluded") or [])]
+            weight = float(source.get("weight", 1.0))
+            if pooch_id is not None and (required or excluded):
+                muts = [str(m.name).strip().lower() for m in (await list_pooch_mutations(pooch_id))]
+                for r in required:
+                    if r in muts:
+                        total += weight
+                for e in excluded:
+                    if e in muts:
+                        total -= weight
+
+        elif source_type == "stat_target":
+            # Linear/gaussian falloff from a target stat value.
+            pooch_id = submission.get("selected_pooch_id")
+            stat = str(source.get("stat", "base_health"))
+            target = float(source.get("target", 10))
+            scale = float(source.get("scale", 1.0))
+            falloff = str(source.get("falloff", "linear")).strip().lower()
+            max_dist = float(source.get("max_distance", 10))
+            if pooch_id is not None:
+                pooch = await db_get_pooch_by_id(pooch_id)
+                if pooch is not None:
+                    raw = float(getattr(pooch, stat, 0) or 0)
+                    distance = abs(raw - target)
+                    if falloff == "gaussian":
+                        import math
+
+                        score = math.exp(-((distance / max_dist) ** 2))
+                    else:
+                        score = max(0.0, 1.0 - distance / max_dist) if max_dist > 0 else 0.0
+                    total += scale * score
 
     return total
 

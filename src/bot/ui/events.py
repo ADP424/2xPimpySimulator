@@ -528,7 +528,7 @@ def format_result_summary(
                 lines.append(f"Fight: {att_name} vs {def_name} ({rounds} rounds)")
 
     # Strip any empty strings left by formatters that returned None/""
-    lines = [l for l in lines if l]
+    lines = [line for line in lines if line]
 
     # Started events (chain events) — always shown last regardless of path
     for entry in extra_data.get("started_events") or []:
@@ -589,8 +589,16 @@ def build_triggered_event_embed(event: TriggeredOwnerEvent) -> discord.Embed:
         f"**Severity:** {event.severity.title()}",
     ]
     if event.requires_response and event.expires_at is not None:
+        # Section 2B: once the deadline has passed, label changes to "Expired".
+        from datetime import datetime, timezone
+
+        now = datetime.now(timezone.utc)
+        expires_at = event.expires_at
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        label = "Expired" if expires_at <= now else "Expires"
         details.append(
-            f"**Expires:** {discord_timestamp(event.expires_at, 'R')} ({discord_timestamp(event.expires_at)})"
+            f"**{label}:** {discord_timestamp(event.expires_at, 'R')} ({discord_timestamp(event.expires_at)})"
         )
     embed.add_field(name="Details", value="\n".join(details), inline=False)
 

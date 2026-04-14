@@ -147,6 +147,7 @@ class TestGetPoochBloodskullValue:
 class TestSacrificePooch:
     @patch("src.game.manage_hell.damn_pooch", new_callable=AsyncMock)
     @patch("src.game.manage_hell.remove_pooch_from_kennel", new_callable=AsyncMock)
+    @patch("src.game.manage_hell.give_owner_body_part", new_callable=AsyncMock)
     @patch("src.game.manage_hell.update_pooch_mood", new_callable=AsyncMock)
     @patch("src.game.manage_hell.set_pooch_dead", new_callable=AsyncMock)
     @patch("src.game.manage_hell.give_bones_to_owner", new_callable=AsyncMock)
@@ -163,6 +164,7 @@ class TestSacrificePooch:
         mock_bones,
         mock_kill,
         mock_mood,
+        mock_body_part,
         mock_remove,
         mock_damn,
     ):

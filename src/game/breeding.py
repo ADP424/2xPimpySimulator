@@ -13,10 +13,12 @@ from src.database import (
     get_pooch_parents,
     list_pooch_breed_weights,
     list_pooch_children,
+    list_pooch_injuries,
     list_pooch_mutations,
     list_pooch_siblings,
     reset_pooch_breeding_cooldown,
     set_pooch_parentage,
+    set_pooch_pregnancy_timer,
     set_pooch_virgin,
 )
 
@@ -26,6 +28,7 @@ from .constants import (
     POOCH_BREEDING_COOLDOWN,
     POOCH_FETAL_AGE,
     POOCH_STATS,
+    PREGNANCY_TIMER_HOURS_RANGE,
     SHARED_BREED_WEIGHT_BONUS,
     TRIPLETS_CHANCE,
     TWINS_CHANCE,
@@ -118,6 +121,9 @@ async def breed_pooches(
 
     if (father.breeding_cooldown > 0 or mother.breeding_cooldown > 0) and not skip_validation:
         raise ValueError("One or both pooches are still on breeding cooldown.")
+
+    if getattr(mother, "pregnancy_timer", None) is not None and not skip_validation:
+        raise ValueError(f"{mother.name} is already pregnant.")
 
     await reset_pooch_breeding_cooldown(father.id, base_cooldown=POOCH_BREEDING_COOLDOWN)
     await reset_pooch_breeding_cooldown(mother.id, base_cooldown=POOCH_BREEDING_COOLDOWN)
@@ -240,9 +246,85 @@ async def breed_pooches(
         rng=rng,
     )
 
+    # Set the mother's pregnancy timer (Section 7B). The hour loop ticks this
+    # down each hour and births the puppies when it hits 0.
+    timer = rng.randint(*PREGNANCY_TIMER_HOURS_RANGE)
+    await set_pooch_pregnancy_timer(mother.id, timer)
+
     if return_disease_events:
         return puppies, disease_events
     return puppies
+
+
+def compute_breeding_chance(intelligence: int) -> float:
+    """
+    Section 7A: probability that a chosen mate accepts the male's advances.
+
+    The chance is based on the male's intelligence. Average intelligence (10)
+    gives a 50% success rate. Clamped to [0.1, 0.95] so even an idiot has
+    some chance and a genius isn't guaranteed.
+    """
+    return max(0.1, min(0.95, float(intelligence) / 20.0))
+
+
+async def select_actual_mate(
+    male: object,
+    intended_female: object,
+    eligible_females: list,
+    *,
+    rng: random.Random,
+) -> object:
+    """
+    Decide whether the intended female actually mates with the male.
+
+    Returns the chosen female pooch. If the intelligence roll fails AND there
+    is more than one eligible female in the kennel, picks a random other one.
+    With only one eligible female (the intended one), success is guaranteed.
+    """
+    if len(eligible_females) <= 1:
+        return intended_female
+    chance = compute_breeding_chance(int(getattr(male, "intelligence", 10) or 10))
+    if rng.random() < chance:
+        return intended_female
+    others = [f for f in eligible_females if f.id != intended_female.id]
+    if not others:
+        return intended_female
+    return rng.choice(others)
+
+
+async def neuter_pooch(owner_discord_id: int, pooch_id: int) -> tuple[bool, str]:
+    """
+    Apply the existing 'Neutered' injury to the given pooch via the vet path.
+
+    Costs nothing here — the bot/web vet UI handles billing the owner before
+    calling this. Validates ownership and that the pooch is alive and not
+    already neutered.
+    """
+    from src.database import (
+        add_injury_to_pooch,
+        get_injury_by_name,
+    )
+    from src.database import get_pooch_by_id as db_get_pooch
+
+    pooch = await db_get_pooch(pooch_id)
+    if pooch is None:
+        return False, "That pooch doesn't exist."
+    if pooch.owner_discord_id != owner_discord_id:
+        return False, "You don't own that pooch."
+    if not pooch.alive:
+        return False, "That pooch is already dead."
+
+    # Already neutered?
+    existing_injuries = await list_pooch_injuries(pooch_id)
+    if any((getattr(i, "name", "") or "").lower() == "neutered" for i in existing_injuries):
+        return False, f"{pooch.name} is already neutered."
+
+    injury = await get_injury_by_name("Neutered")
+    if injury is None:
+        return False, "The vet doesn't have the right tools today (Neutered injury not loaded)."
+
+    await add_injury_to_pooch(pooch_id, injury.id)
+    return True, f"{pooch.name} has been neutered."
 
 
 async def calculate_incest_level(first_pooch_id: int, second_pooch_id: int, max_depth: int = 8) -> float:

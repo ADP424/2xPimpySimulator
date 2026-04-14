@@ -17,10 +17,12 @@ from .models import (
     GlobalState,
     HealthImpactWeight,
     Injury,
+    Item,
     Kennel,
     KennelPooch,
     Mutation,
     Owner,
+    OwnerItem,
     OwnerServer,
     Pooch,
     PoochBreed,
@@ -40,7 +42,7 @@ from .models import (
     Vendor,
 )
 from .session import session_scope
-from .utils import check_owner_event_filter, rarity_choice
+from .utils import check_owner_event_filter, check_server_event_filter, rarity_choice
 
 
 async def get_active_owner_event_by_id(active_owner_event_id: int) -> Optional[EventOccurrence]:
@@ -968,6 +970,14 @@ async def check_owner_event_filter_for_owner(owner_discord_id: int, filter_spec:
         return await check_owner_event_filter(session, owner_discord_id, filter_spec or {})
 
 
+async def check_server_event_filter_for_server(
+    server_discord_id: int, filter_spec: dict | None, season: str | None = None
+) -> bool:
+    """Session-free wrapper around check_server_event_filter."""
+    async with session_scope() as session:
+        return await check_server_event_filter(session, server_discord_id, filter_spec or {}, season=season)
+
+
 async def get_random_matching_pooch_id(
     owner_discord_id: int,
     filter_spec: dict | None,
@@ -1600,3 +1610,102 @@ async def get_current_day() -> int:
         if row is None:
             return 0
         return row.current_day
+
+
+async def get_current_hour() -> int:
+    """Return the current global hour number, defaulting to 0."""
+    async with session_scope() as session:
+        row = await session.get(GlobalState, _GET_GLOBAL_STATE_ID)
+        if row is None:
+            return 0
+        return int(row.current_hour or 0)
+
+
+# ---------------------------------------------------------------------------
+# Item catalog + owner inventory
+# ---------------------------------------------------------------------------
+
+
+async def list_all_items() -> list[Item]:
+    """Return every item defined in the static item catalog."""
+    async with session_scope() as session:
+        result = await session.execute(select(Item).order_by(Item.name))
+        return list(result.scalars().all())
+
+
+async def list_items_by_category(category: str) -> list[Item]:
+    async with session_scope() as session:
+        result = await session.execute(select(Item).where(Item.category == category).order_by(Item.name))
+        return list(result.scalars().all())
+
+
+async def get_item_by_name(name: str) -> Optional[Item]:
+    async with session_scope() as session:
+        return (await session.execute(select(Item).where(Item.name == name))).scalar_one_or_none()
+
+
+async def get_owner_items(owner_discord_id: int) -> dict[str, int]:
+    """Return a ``{item_name: count}`` mapping of everything the owner owns."""
+    async with session_scope() as session:
+        result = await session.execute(select(OwnerItem).where(OwnerItem.owner_discord_id == owner_discord_id))
+        return {row.item_name: row.count for row in result.scalars().all() if row.count > 0}
+
+
+async def get_owner_item_count(owner_discord_id: int, item_name: str) -> int:
+    async with session_scope() as session:
+        row = (
+            await session.execute(
+                select(OwnerItem).where(
+                    OwnerItem.owner_discord_id == owner_discord_id,
+                    OwnerItem.item_name == item_name,
+                )
+            )
+        ).scalar_one_or_none()
+        return int(row.count) if row is not None else 0
+
+
+async def give_owner_item(owner_discord_id: int, item_name: str, amount: int) -> int:
+    """Add ``amount`` of ``item_name`` to an owner's inventory. Returns new count."""
+    async with session_scope() as session:
+        row = (
+            await session.execute(
+                select(OwnerItem).where(
+                    OwnerItem.owner_discord_id == owner_discord_id,
+                    OwnerItem.item_name == item_name,
+                )
+            )
+        ).scalar_one_or_none()
+        if row is None:
+            row = OwnerItem(
+                owner_discord_id=owner_discord_id,
+                item_name=item_name,
+                count=max(0, int(amount)),
+            )
+            session.add(row)
+        else:
+            row.count = max(0, int(row.count) + int(amount))
+        await session.flush()
+        return int(row.count)
+
+
+async def consume_owner_item(owner_discord_id: int, item_name: str, amount: int = 1) -> bool:
+    """
+    Try to remove ``amount`` of ``item_name`` from the owner's inventory.
+    Returns True on success, False if the owner didn't have enough.
+    """
+    if amount <= 0:
+        return True
+    async with session_scope() as session:
+        row = (
+            await session.execute(
+                select(OwnerItem).where(
+                    OwnerItem.owner_discord_id == owner_discord_id,
+                    OwnerItem.item_name == item_name,
+                )
+            )
+        ).scalar_one_or_none()
+        if row is None or int(row.count) < int(amount):
+            return False
+        row.count = int(row.count) - int(amount)
+        await session.flush()
+        return True

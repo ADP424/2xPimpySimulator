@@ -33,10 +33,29 @@
         </div>
     </div>
 
-    <h2 class="text-xl font-bold mb-4">Available Pooches</h2>
-    <div id="pooches-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
-    <div id="no-pooches" class="text-center py-12 text-base-content/50" style="display: none;">
-        <p>This vendor has no pooches available.</p>
+    <!-- Tab navigation -->
+    <div role="tablist" class="tabs tabs-bordered mb-4">
+        <button role="tab" class="tab tab-active" id="tab-pooches" onclick="switchTab('pooches')">Pooches</button>
+        <button role="tab" class="tab" id="tab-items" onclick="switchTab('items')">🛒 Items</button>
+    </div>
+
+    <!-- Pooches tab -->
+    <div id="tab-content-pooches">
+        <div id="pooches-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
+        <div id="no-pooches" class="text-center py-12 text-base-content/50" style="display: none;">
+            <p>This vendor has no pooches available.</p>
+        </div>
+    </div>
+
+    <!-- Items tab -->
+    <div id="tab-content-items" style="display: none;">
+        <div id="items-loading" class="flex items-center gap-2 text-base-content/50 py-4">
+            <span class="loading loading-spinner loading-sm"></span> Loading items...
+        </div>
+        <div id="items-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" style="display: none;"></div>
+        <div id="no-items" class="text-center py-8 text-base-content/50" style="display: none;">
+            <p>No items available.</p>
+        </div>
     </div>
 </div>
 {% endblock %}
@@ -93,16 +112,14 @@ document.addEventListener('DOMContentLoaded', async function() {
         const pooches = await poochResponse.json();
 
         // Vendor details (rendered after pooches load so we have the real count)
+        // Section 1B: vendor markup is internal pricing only — players see final
+        // buy/sell prices on each pooch card, never the markup percentage.
         document.getElementById('vendor-details').innerHTML = `
             <div class="flex gap-8">
                 <div class="flex flex-col gap-0.5">
                     <span class="text-xs text-base-content/50 uppercase tracking-wide">Stock</span>
                     <span class="text-2xl font-black">${pooches.length}</span>
                     <span class="text-xs text-base-content/50">pooches</span>
-                </div>
-                <div class="flex flex-col gap-0.5">
-                    <span class="text-xs text-base-content/50 uppercase tracking-wide">Price Markup</span>
-                    <span class="text-2xl font-black">${formatMarkup(vendor.price_markup)}</span>
                 </div>
             </div>
         `;
@@ -190,6 +207,92 @@ async function buyPooch(poochId) {
     } catch (error) {
         App.showNotification('Something went wrong. Please try again.', 'error');
         console.error('Error:', error);
+    }
+}
+
+// ---- Tab switching ----
+
+function switchTab(name) {
+    ['pooches', 'items'].forEach(t => {
+        document.getElementById(`tab-content-${t}`).style.display = t === name ? '' : 'none';
+        const tab = document.getElementById(`tab-${t}`);
+        tab.classList.toggle('tab-active', t === name);
+    });
+    if (name === 'items') loadVendorItems();
+}
+
+let itemsLoaded = false;
+async function loadVendorItems() {
+    if (itemsLoaded) return;
+    itemsLoaded = true;
+    try {
+        const [itemsResp, invResp] = await Promise.all([
+            fetch(`/api/vendors/${PAGE_DATA.vendorId}/items`),
+            fetch('/api/owner/items'),
+        ]);
+        const items = await itemsResp.json();
+        const inv = await invResp.json();
+
+        document.getElementById('items-loading').style.display = 'none';
+
+        if (!items.length) {
+            document.getElementById('no-items').style.display = 'block';
+            return;
+        }
+
+        const grid = document.getElementById('items-grid');
+        grid.innerHTML = items.map(item => createItemCard(item, inv[item.name] ?? 0)).join('');
+        grid.style.display = '';
+    } catch(e) {
+        document.getElementById('items-loading').textContent = 'Failed to load items.';
+        console.error(e);
+    }
+}
+
+function createItemCard(item, owned) {
+    const units = (item.parameters || {}).food_units ? `${item.parameters.food_units} food units` : '';
+    const reduction = (item.parameters || {}).mess_reduction ? `−${item.parameters.mess_reduction} mess` : '';
+    const effect = units || reduction || '';
+    const rarityClass = `rarity-badge rarity-${(item.rarity || '').toLowerCase()}`;
+    return `
+        <div class="card bg-base-200 shadow-sm">
+            <div class="card-body py-4 px-4 gap-2">
+                <div class="flex justify-between items-start">
+                    <span class="font-bold text-sm">${escapeHtml(item.name)}</span>
+                    <span class="${rarityClass}">${escapeHtml(App.format.enumLabel(item.rarity))}</span>
+                </div>
+                <p class="text-xs text-base-content/60">${escapeHtml(item.description || '')}</p>
+                ${effect ? `<p class="text-xs text-base-content/50">${escapeHtml(effect)}</p>` : ''}
+                <div class="text-xs text-base-content/50">Owned: ${owned}</div>
+                <div class="mt-auto flex gap-2 items-center">
+                    <span class="text-success font-semibold text-sm">${formatCurrency(item.price)}</span>
+                    <input type="number" id="item-qty-${escapeHtml(item.name)}" min="1" value="1" class="input input-xs w-14">
+                    <button class="btn btn-xs btn-primary btn-block flex-1" onclick="buyItem('${escapeHtml(item.name)}')">Buy</button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+async function buyItem(itemName) {
+    const qtyEl = document.getElementById(`item-qty-${itemName}`);
+    const count = parseInt(qtyEl?.value || '1');
+    try {
+        const r = await fetch(`/api/vendors/${PAGE_DATA.vendorId}/items/buy`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ item_name: itemName, count }),
+        });
+        const data = await r.json();
+        if (data.success) {
+            App.queueNotification(data.message, 'success');
+            itemsLoaded = false;
+            loadVendorItems();
+        } else {
+            App.showNotification(data.error || 'Purchase failed', 'error');
+        }
+    } catch(e) {
+        App.showNotification('Something went wrong.', 'error');
     }
 }
 </script>

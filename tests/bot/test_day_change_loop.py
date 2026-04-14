@@ -10,7 +10,7 @@ from src.bot import (
     ensure_controls,
     fetch_and_update_names,
     is_day_change_paused,
-    post_day_change_summaries,
+    post_new_day_announcement,
     post_server_event_notifications,
     post_server_event_resolutions,
     post_stray_event_summaries,
@@ -178,33 +178,36 @@ class TestFetchAndUpdateNames:
 
 
 @pytest.mark.contract
-class TestPostDayChangeSummaries:
+class TestPostNewDayAnnouncement:
     async def test_skips_server_with_no_event_channel(self):
         bot = MagicMock()
-        summary = MagicMock()
-        summary.births = []
-        summary.deaths = []
+        server = MagicMock()
+        server.discord_id = 200
 
-        with patch("src.bot.day_change_loop.get_event_channel", new_callable=AsyncMock, return_value=None):
-            await post_day_change_summaries(bot, {200: summary})
+        with (
+            patch("src.bot.day_change_loop.list_all_servers", new_callable=AsyncMock, return_value=[server]),
+            patch("src.bot.day_change_loop.get_event_channel", new_callable=AsyncMock, return_value=None),
+        ):
+            await post_new_day_announcement(bot)
             bot.get_channel.assert_not_called()
 
-    async def test_sends_nothing_to_report_when_empty(self):
+    async def test_sends_new_day_embed(self):
         bot = MagicMock()
         channel = MagicMock()
         channel.send = AsyncMock()
         bot.get_channel = MagicMock(return_value=channel)
+        server = MagicMock()
+        server.discord_id = 200
 
-        summary = MagicMock()
-        summary.births = []
-        summary.deaths = []
-
-        with patch("src.bot.day_change_loop.get_event_channel", new_callable=AsyncMock, return_value=12345):
-            await post_day_change_summaries(bot, {200: summary})
+        with (
+            patch("src.bot.day_change_loop.list_all_servers", new_callable=AsyncMock, return_value=[server]),
+            patch("src.bot.day_change_loop.get_event_channel", new_callable=AsyncMock, return_value=12345),
+        ):
+            await post_new_day_announcement(bot)
             channel.send.assert_called_once()
             call_kwargs = channel.send.call_args[1]
             embed = call_kwargs["embed"]
-            assert "Nothing to report" in embed.description
+            assert "new day" in embed.title.lower()
 
     async def test_fetches_channel_if_not_cached(self):
         bot = MagicMock()
@@ -212,27 +215,29 @@ class TestPostDayChangeSummaries:
         channel = MagicMock()
         channel.send = AsyncMock()
         bot.fetch_channel = AsyncMock(return_value=channel)
+        server = MagicMock()
+        server.discord_id = 200
 
-        summary = MagicMock()
-        summary.births = []
-        summary.deaths = []
-
-        with patch("src.bot.day_change_loop.get_event_channel", new_callable=AsyncMock, return_value=12345):
-            await post_day_change_summaries(bot, {200: summary})
+        with (
+            patch("src.bot.day_change_loop.list_all_servers", new_callable=AsyncMock, return_value=[server]),
+            patch("src.bot.day_change_loop.get_event_channel", new_callable=AsyncMock, return_value=12345),
+        ):
+            await post_new_day_announcement(bot)
             bot.fetch_channel.assert_called_once_with(12345)
 
     async def test_skips_when_channel_fetch_fails(self):
         bot = MagicMock()
         bot.get_channel = MagicMock(return_value=None)
         bot.fetch_channel = AsyncMock(side_effect=Exception("not found"))
+        server = MagicMock()
+        server.discord_id = 200
 
-        summary = MagicMock()
-        summary.births = []
-        summary.deaths = []
-
-        with patch("src.bot.day_change_loop.get_event_channel", new_callable=AsyncMock, return_value=12345):
+        with (
+            patch("src.bot.day_change_loop.list_all_servers", new_callable=AsyncMock, return_value=[server]),
+            patch("src.bot.day_change_loop.get_event_channel", new_callable=AsyncMock, return_value=12345),
+        ):
             # Should not raise
-            await post_day_change_summaries(bot, {200: summary})
+            await post_new_day_announcement(bot)
 
 
 @pytest.mark.contract

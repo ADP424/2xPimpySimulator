@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block title %}Server Events - {{ server_name }}{% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-6 flex-wrap gap-3">
+    <div>
+        <h1 class="text-3xl font-bold">🎪 Server Events</h1>
+        <p class="text-base-content/60 mt-1">{{ server_name }}</p>
+    </div>
+</div>
+
+<div id="loading" class="flex items-center gap-3 text-base-content/50 py-8">
+    <span class="loading loading-spinner loading-md"></span>
+    <span>Checking for active events...</span>
+</div>
+
+<div id="no-event" class="text-center py-16 text-base-content/50" style="display: none;">
+    <p class="text-4xl mb-4">🌙</p>
+    <p>No active event right now. Check back later!</p>
+</div>
+
+<div id="event-container" style="display: none;">
+    <div class="card bg-base-200 shadow-md mb-6">
+        <div class="card-body">
+            <h2 class="card-title text-2xl" id="event-name"></h2>
+            <p class="text-base-content/70" id="event-description"></p>
+            <div class="flex gap-4 text-sm text-base-content/50 mt-2">
+                <span id="event-expires"></span>
+                <span id="event-participants"></span>
+            </div>
+        </div>
+    </div>
+
+    <div id="resolved-banner" class="alert alert-success mb-4" style="display: none;">
+        <span>✅ This event has been resolved.</span>
+    </div>
+
+    <div id="participate-section" style="display: none;">
+        <h3 class="font-bold text-lg mb-3">Enter the Event</h3>
+        <p class="text-sm text-base-content/60 mb-4">Select a pooch and an option to participate.</p>
+
+        <div class="flex flex-col gap-4 max-w-md">
+            <div>
+                <label class="label"><span class="label-text">Select your pooch</span></label>
+                <select id="pooch-select" class="select select-bordered w-full">
+                    <option value="">Loading pooches...</option>
+                </select>
+            </div>
+            <div id="options-section">
+                <label class="label"><span class="label-text">Choose an option</span></label>
+                <div id="options-list" class="flex flex-col gap-2"></div>
+            </div>
+            <button class="btn btn-primary w-full" id="participate-btn" onclick="submitParticipation()">Enter Event</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const PAGE_DATA = { serverId: {{ server_id }} };
+let currentEvent = null;
+let selectedOptionId = null;
+
+document.addEventListener('DOMContentLoaded', loadEvent);
+
+async function loadEvent() {
+    try {
+        const resp = await fetch('/api/server-events/active');
+        const event = await resp.json();
+
+        document.getElementById('loading').style.display = 'none';
+
+        if (!event) {
+            document.getElementById('no-event').style.display = 'block';
+            return;
+        }
+
+        currentEvent = event;
+        document.getElementById('event-container').style.display = 'block';
+        document.getElementById('event-name').textContent = event.event_name;
+        document.getElementById('event-description').textContent = event.event_description || '';
+
+        if (event.expires_at) {
+            const expires = new Date(event.expires_at);
+            document.getElementById('event-expires').textContent = `Expires: ${expires.toLocaleString()}`;
+        }
+
+        const participantCount = (event.participations || []).length;
+        document.getElementById('event-participants').textContent = `${participantCount} participant${participantCount !== 1 ? 's' : ''}`;
+
+        if (event.resolved) {
+            document.getElementById('resolved-banner').style.display = '';
+        } else {
+            document.getElementById('participate-section').style.display = '';
+            await loadPooches();
+            renderOptions(event.options || []);
+        }
+    } catch(e) {
+        document.getElementById('loading').innerHTML = '<span class="text-error">Failed to load event.</span>';
+        console.error(e);
+    }
+}
+
+async function loadPooches() {
+    try {
+        const kennelsResp = await fetch('/api/kennels');
+        const kennels = await kennelsResp.json();
+
+        const allPooches = [];
+        for (const kennel of kennels) {
+            const poochResp = await fetch(`/api/kennels/${kennel.id}/pooches`);
+            const pooches = await poochResp.json();
+            allPooches.push(...pooches.filter(p => p.alive !== false));
+        }
+
+        const select = document.getElementById('pooch-select');
+        if (!allPooches.length) {
+            select.innerHTML = '<option value="">No living pooches available</option>';
+            return;
+        }
+        select.innerHTML = '<option value="">Select a pooch...</option>' +
+            allPooches.map(p => `<option value="${p.id}">${escapeHtml(p.name)} (${p.sex})</option>`).join('');
+    } catch(e) {
+        document.getElementById('pooch-select').innerHTML = '<option value="">Failed to load pooches</option>';
+    }
+}
+
+function renderOptions(options) {
+    const list = document.getElementById('options-list');
+    if (!options.length) {
+        list.innerHTML = '<p class="text-sm text-base-content/50">No options available.</p>';
+        return;
+    }
+    list.innerHTML = options.map(opt => `
+        <label class="flex items-start gap-3 p-3 rounded-lg bg-base-300 cursor-pointer has-[:checked]:bg-primary/20 has-[:checked]:border-primary border border-transparent transition-colors">
+            <input type="radio" name="event-option" value="${opt.id}" class="radio radio-primary mt-0.5" onchange="selectedOptionId = ${opt.id}">
+            <div>
+                <div class="font-medium text-sm">${escapeHtml(opt.label)}</div>
+                ${opt.description ? `<div class="text-xs text-base-content/50 mt-0.5">${escapeHtml(opt.description)}</div>` : ''}
+            </div>
+        </label>
+    `).join('');
+}
+
+async function submitParticipation() {
+    const poochId = parseInt(document.getElementById('pooch-select').value || '0');
+    if (!poochId) { App.showNotification('Select a pooch first.', 'error'); return; }
+    if (!selectedOptionId) { App.showNotification('Select an option.', 'error'); return; }
+    if (!currentEvent) return;
+
+    const btn = document.getElementById('participate-btn');
+    btn.disabled = true;
+    btn.textContent = 'Entering...';
+
+    try {
+        const resp = await fetch(`/api/server-events/participate/${currentEvent.id}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pooch_id: poochId, menu_option_id: selectedOptionId }),
+        });
+        const data = await resp.json();
+        if (data.success) {
+            App.queueNotification(data.message || 'Entered the event!', 'success');
+            document.getElementById('participate-section').style.display = 'none';
+        } else {
+            App.showNotification(data.message || data.error || 'Could not enter.', 'error');
+        }
+    } catch(e) {
+        App.showNotification('Something went wrong.', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Enter Event';
+    }
+}
+</script>
+{% endblock %}

@@ -61,6 +61,24 @@ class InjuryDropdownControls:
     """Reusable dropdown + info button for showing general injury info."""
 
     def __init__(self, injuries: list[InjuryOption], placeholder: str = "Select an injury"):
+        # Injuries don't have a rarity enum; they have a severity enum. Sort
+        # "most common" first, which for severity means trivial injuries first.
+        _SEVERITY_ORDER = {
+            "trivial": 0,
+            "minor": 1,
+            "moderate": 2,
+            "major": 3,
+            "critical": 4,
+            "remarkable": 5,
+            "catastrophic": 6,
+        }
+        injuries = sorted(
+            injuries,
+            key=lambda o: (
+                _SEVERITY_ORDER.get(str(getattr(o.injury, "severity", "moderate")).lower(), 99),
+                getattr(o.injury, "name", "") or "",
+            ),
+        )
         self.injuries = injuries
         self.selected: Optional[Injury] = None
 

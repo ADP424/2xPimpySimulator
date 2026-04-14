@@ -108,8 +108,8 @@ class TestVendorPageControls:
         view = MagicMock()
         view.add_item = MagicMock()
         controls.attach(view)
-        # mutation_select, breed_select, pooch_select, info, buy, sell
-        assert view.add_item.call_count == 6
+        # mutation_select, breed_select, pooch_select, info, buy, sell, buy_items
+        assert view.add_item.call_count == 7
 
     async def test_buy_defers_and_calls_game(self):
         vendor = _make_vendor()

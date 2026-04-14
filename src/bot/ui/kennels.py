@@ -7,9 +7,16 @@ from discord.ui import Button, Select, View
 
 from src.bot.constants import MAX_NAME_LENGTH
 from src.bot.ui.util import InteractionResponder
+from src.database import (
+    consume_owner_item,
+    get_owner_items,
+    list_items_by_category,
+    modify_kennel_food_stock,
+)
 from src.game import (
     cast_out_pooch,
-    clean_kennel,
+    clean_kennel_by_hand,
+    clean_kennel_with_item,
     get_or_create_owner,
     get_or_create_server,
     list_kennel_pooches,
@@ -17,6 +24,7 @@ from src.game import (
     rename_kennel,
     rename_pooch,
 )
+from src.game.utils.obfuscation import messiness_label
 
 if TYPE_CHECKING:
     from src.game.models import Kennel, Pooch
@@ -45,9 +53,14 @@ class KennelsPageSource(PageSource):
         kennel = self._kennels[page_index]
         pooches = await list_kennel_pooches(kennel.id)
 
+        food_stock = getattr(kennel, "food_stock", 0)
         embed = discord.Embed(
             title=kennel.name,
-            description=f"{len(pooches)} / {kennel.pooch_limit} pooches\nMessiness: **{kennel.messiness}**",
+            description=(
+                f"{len(pooches)} / {kennel.pooch_limit} pooches\n"
+                f"🧹 Messiness: **{messiness_label(kennel.messiness, capacity=kennel.pooch_limit)}**\n"
+                f"🍖 Food stock: **{food_stock}** units"
+            ),
         )
 
         controls = KennelPageControls(
@@ -93,6 +106,9 @@ class KennelPageControls:
         self.rename_pooch_button = Button(label="Rename Pooch", style=discord.ButtonStyle.secondary, disabled=True)
         self.cast_out_button = Button(label="Cast Out", style=discord.ButtonStyle.danger, disabled=True)
 
+        self.feed_button = Button(label="🍖 Feed", style=discord.ButtonStyle.secondary)
+        self.feed_button.callback = self._on_feed
+
         self.info_button.callback = self._on_info
         self.breed_button.callback = self._on_breed
         self.walk_button.callback = self._noop
@@ -109,6 +125,7 @@ class KennelPageControls:
     def attach(self, view: View):
         self.rename_kennel_button.row = 0
         self.clean_kennel_button.row = 0
+        self.feed_button.row = 0
         self.select.row = 1
         self.info_button.row = 2
         self.breed_button.row = 2
@@ -119,6 +136,7 @@ class KennelPageControls:
         view.add_item(self.rename_kennel_button)
         if self.show_clean_button:
             view.add_item(self.clean_kennel_button)
+        view.add_item(self.feed_button)
         view.add_item(self.select)
         view.add_item(self.info_button)
         view.add_item(self.breed_button)
@@ -189,14 +207,34 @@ class KennelPageControls:
 
     async def _on_clean_kennel(self, interaction: discord.Interaction):
         r = InteractionResponder(interaction)
-        success, message = await clean_kennel(self.owner_discord_id, self.kennel.id)
-        if not success:
-            await r.reply(content=message)
-            return
-        parent_view = self.select.view
-        if isinstance(parent_view, PaginatorView):
-            await parent_view.refresh(interaction)
-        await r.reply(content=f"✅ {message}")
+        # Open item selection view
+        cleaning_items = await list_items_by_category("cleaning")
+        owned = await get_owner_items(self.owner_discord_id)
+        view = _CleanKennelView(
+            owner_discord_id=self.owner_discord_id,
+            kennel_id=self.kennel.id,
+            cleaning_items=cleaning_items,
+            owned=owned,
+            parent_view=self.select.view,
+        )
+        embed = view.build_embed()
+        await r.reply(embed=embed, view=view)
+
+    async def _on_feed(self, interaction: discord.Interaction):
+        r = InteractionResponder(interaction)
+        food_items = await list_items_by_category("food")
+        owned = await get_owner_items(self.owner_discord_id)
+        food_stock = getattr(self.kennel, "food_stock", 0)
+        view = _FeedKennelView(
+            owner_discord_id=self.owner_discord_id,
+            kennel_id=self.kennel.id,
+            food_items=food_items,
+            owned=owned,
+            food_stock=food_stock,
+            parent_view=self.select.view,
+        )
+        embed = view.build_embed()
+        await r.reply(embed=embed, view=view)
 
     async def _on_rename_pooch(self, interaction: discord.Interaction):
         if self.selected_pooch is None:
@@ -285,7 +323,7 @@ class _RenamePoochModal(discord.ui.Modal):
             return
 
         new_name = str(self.name.value).strip()
-        ok = await rename_pooch(self._pooch_id)
+        ok = await rename_pooch(self._pooch_id, new_name)
         if not ok:
             await r.reply(content=f"That name is too long. Keep it under {MAX_NAME_LENGTH} characters.")
             return
@@ -294,3 +332,126 @@ class _RenamePoochModal(discord.ui.Modal):
             await self._parent_view.refresh(interaction)
 
         await r.reply(content=f"✅ Renamed pooch to **{new_name}**")
+
+
+class _CleanKennelView(View):
+    def __init__(self, owner_discord_id: int, kennel_id: int, cleaning_items: list, owned: dict, parent_view: View):
+        from src.bot.constants import VIEW_TIMEOUT
+
+        super().__init__(timeout=VIEW_TIMEOUT)
+        self._owner_id = owner_discord_id
+        self._kennel_id = kennel_id
+        self._cleaning_items = cleaning_items
+        self._owned = owned
+        self._parent_view = parent_view
+
+        options = [discord.SelectOption(label="Hand Clean (free, once/day)", value="hand")]
+        for item in cleaning_items:
+            count = owned.get(item.name, 0)
+            reduction = (item.parameters or {}).get("mess_reduction", 0)
+            label = f"{item.name} (−{reduction} mess, {count} owned)"
+            options.append(discord.SelectOption(label=label[:100], value=item.name, description=f"Owned: {count}"))
+
+        select = Select(placeholder="Choose a cleaning method", options=options[:25])
+        select.callback = self._on_select
+        self.add_item(select)
+        self._select = select
+
+    def build_embed(self) -> discord.Embed:
+        embed = discord.Embed(title="🧹 Clean Kennel", description="Choose a cleaning method.")
+        return embed
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self._owner_id
+
+    async def _on_select(self, interaction: discord.Interaction):
+        re = InteractionResponder(interaction, ephemeral=True)
+        choice = self._select.values[0]
+        if choice == "hand":
+            ok, msg = await clean_kennel_by_hand(self._owner_id, self._kennel_id)
+        else:
+            ok, msg = await clean_kennel_with_item(self._owner_id, self._kennel_id, choice)
+        if not ok:
+            await re.reply(content=f"❌ {msg}")
+            return
+        if isinstance(self._parent_view, PaginatorView):
+            await self._parent_view.refresh(interaction)
+        await re.reply(content=f"✅ {msg}")
+
+
+class _FeedKennelView(View):
+    def __init__(
+        self, owner_discord_id: int, kennel_id: int, food_items: list, owned: dict, food_stock: int, parent_view: View
+    ):
+        from src.bot.constants import VIEW_TIMEOUT
+
+        super().__init__(timeout=VIEW_TIMEOUT)
+        self._owner_id = owner_discord_id
+        self._kennel_id = kennel_id
+        self._food_items = food_items
+        self._owned = owned
+        self._food_stock = food_stock
+        self._parent_view = parent_view
+        self._selected_item = None
+
+        if not food_items:
+            options = [discord.SelectOption(label="No food available", value="__none__")]
+            disabled = True
+        else:
+            options = []
+            for item in food_items:
+                count = owned.get(item.name, 0)
+                units = (item.parameters or {}).get("food_units", 0)
+                options.append(
+                    discord.SelectOption(
+                        label=f"{item.name} ({units} units each, {count} owned)",
+                        value=item.name,
+                    )
+                )
+            disabled = False
+
+        select = Select(placeholder="Choose food to deposit", options=options[:25], disabled=disabled)
+        select.callback = self._on_select
+        self.add_item(select)
+        self._select = select
+
+        self._feed_btn = Button(label="Feed ×1", style=discord.ButtonStyle.success, disabled=True, row=1)
+        self._feed_btn.callback = self._on_feed
+        self.add_item(self._feed_btn)
+
+    def build_embed(self) -> discord.Embed:
+        embed = discord.Embed(
+            title="🍖 Feed Kennel",
+            description=f"Current food stock: **{self._food_stock}** units.\nSelect food items to deposit.",
+        )
+        return embed
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self._owner_id
+
+    async def _on_select(self, interaction: discord.Interaction):
+        r = InteractionResponder(interaction)
+        value = self._select.values[0]
+        if value == "__none__":
+            return
+        self._selected_item = next((i for i in self._food_items if i.name == value), None)
+        self._feed_btn.disabled = self._selected_item is None or self._owned.get(value, 0) <= 0
+        for opt in self._select.options:
+            opt.default = opt.value == value
+        await r.edit(view=self)
+
+    async def _on_feed(self, interaction: discord.Interaction):
+        re = InteractionResponder(interaction, ephemeral=True)
+        if self._selected_item is None:
+            return
+        item = self._selected_item
+        ok = await consume_owner_item(self._owner_id, item.name, 1)
+        if not ok:
+            await re.reply(content=f"You don't have any {item.name}.")
+            return
+        units = int((item.parameters or {}).get("food_units", 0))
+        new_stock = await modify_kennel_food_stock(self._kennel_id, units)
+        self._food_stock = new_stock
+        if isinstance(self._parent_view, PaginatorView):
+            await self._parent_view.refresh(interaction)
+        await re.reply(content=f"✅ Deposited **{item.name}** (+{units} food units). Stock now: **{new_stock}** units.")

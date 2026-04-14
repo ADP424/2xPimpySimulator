@@ -9,10 +9,15 @@ info_bp = Blueprint("info", __name__)
 @server_required
 def veterinary_clinic():
     """Veterinary clinic - info hub for breeds and mutations."""
+    from src.game.constants import NEUTER_COST
+    from src.game.manage_pooches import DETAILED_WORKUP_COST, MEDICAL_EXAM_COST
 
     return render_template(
         "info/clinic.html",
         server_name=g.current_server_name,
+        medical_exam_cost=MEDICAL_EXAM_COST,
+        detailed_workup_cost=DETAILED_WORKUP_COST,
+        neuter_cost=NEUTER_COST,
     )
 
 

@@ -22,7 +22,11 @@ from src.game import get_or_create_server
 from src.logger import get_logger
 
 from .constants import GUILDS
-from .day_change_loop import day_change_runner, fetch_and_update_names
+from .day_change_loop import (
+    day_change_runner,
+    fetch_and_update_names,
+    week_change_runner,
+)
 from .event_loop import hourly_event_runner
 
 logger = get_logger("bot/app")
@@ -101,6 +105,8 @@ def run(update_names_only: bool = False, skip_startup_day_change: bool = False):
 
         if not hasattr(bot, "_day_change_task"):
             bot._day_change_task = asyncio.create_task(day_change_runner(bot, stage=stage, tz=tz))
+        if not hasattr(bot, "_week_change_task"):
+            bot._week_change_task = asyncio.create_task(week_change_runner(bot, stage=stage))
         if not hasattr(bot, "_hourly_event_task"):
             bot._hourly_event_task = asyncio.create_task(hourly_event_runner(bot, stage=stage))
 

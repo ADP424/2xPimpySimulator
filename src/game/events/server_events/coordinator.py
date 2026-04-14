@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from src.database import (
+    check_server_event_filter_for_server,
     create_server_event_occurrence,
     finalize_server_event_participation,
     get_active_server_event_occurrence_by_tier,
@@ -20,17 +21,16 @@ from src.database import (
     get_server_event_occurrence_by_id,
     list_active_server_event_occurrences,
     list_kennels_for_owner,
+    list_owner_discord_ids_for_server,
     list_pooches_for_kennel,
     list_server_events_with_weights_by_tier,
     list_servers,
     resolve_server_event_occurrence,
-    session_scope,
 )
-from src.database.utils import check_server_event_filter, rarity_choice
+from src.database.utils import rarity_choice
 from src.game.events.owner_events import (
     execute_event_actions as _execute_owner_event_actions,
 )
-from src.game.manage_global import advance_season
 from src.game.models.events import (
     OwnerEventContext,
     OwnerEventResult,
@@ -140,10 +140,7 @@ async def build_owner_event_context(owner_discord_id: int, selected_pooch_id: in
 
 
 async def _check_server_filter(server_discord_id: int, filter_spec: dict | None, season: Optional[str] = None) -> bool:
-    if not filter_spec:
-        return True
-    async with session_scope() as session:
-        return await check_server_event_filter(session, server_discord_id, filter_spec, season=season)
+    return await check_server_event_filter_for_server(server_discord_id, filter_spec, season=season)
 
 
 async def trigger_daily_server_event(
@@ -367,17 +364,7 @@ async def resolve_server_event(
                 await execute_server_actions(server_discord_id, action_dicts, server_context, rng, season=_season)
 
             elif outcome_target == "non_participants":
-                from sqlalchemy import select as _sa_select
-
-                from src.database.models import OwnerServer as OwnerServerModel
-
-                async with session_scope() as session:
-                    result = await session.execute(
-                        _sa_select(OwnerServerModel.owner_discord_id).where(
-                            OwnerServerModel.server_discord_id == server_discord_id
-                        )
-                    )
-                    all_server_owner_ids = list(result.scalars().all())
+                all_server_owner_ids = await list_owner_discord_ids_for_server(server_discord_id)
 
                 for oid in all_server_owner_ids:
                     if oid not in participant_owner_ids:
@@ -409,8 +396,8 @@ async def resolve_server_event(
 
 async def run_daily_server_event_cycle(
     rng: Optional[random.Random] = None,
-) -> tuple[dict[int, TriggeredServerEvent], list[ServerEventResolution], dict[int, str]]:
-    """Resolve expired events, advance seasons (Monday only), and trigger new events."""
+) -> tuple[dict[int, TriggeredServerEvent], list[ServerEventResolution]]:
+    """Resolve expired events and roll for a new minor server event on each server."""
     rng = rng if rng is not None else random.Random()
 
     resolutions: list[ServerEventResolution] = []
@@ -420,28 +407,46 @@ async def run_daily_server_event_cycle(
         if resolution is not None:
             resolutions.append(resolution)
 
-    is_monday = datetime.now(timezone.utc).weekday() == 2  # Monday = 0
-
     new_events: dict[int, TriggeredServerEvent] = {}
-    season_advances: dict[int, str] = {}
     servers = await list_servers()
-
-    if is_monday:
-        new_season = await advance_season()
-        season_advances = {
-            server.discord_id: new_season for server in servers if server.event_channel_discord_id is not None
-        }
 
     for server in servers:
         if server.event_channel_discord_id is None:
             continue
-        if is_monday:
-            event = await trigger_daily_server_event(server.discord_id, tier="major", rng=rng)
-        else:
-            if rng.random() < MINOR_EVENT_DAILY_CHANCE:
-                event = await trigger_daily_server_event(server.discord_id, tier="minor", rng=rng)
-            else:
-                event = None
+        if rng.random() < MINOR_EVENT_DAILY_CHANCE:
+            event = await trigger_daily_server_event(server.discord_id, tier="minor", rng=rng)
+            if event is not None:
+                new_events[server.discord_id] = event
+
+    return new_events, resolutions
+
+
+async def run_weekly_server_event_cycle(
+    rng: Optional[random.Random] = None,
+    new_season: Optional[str] = None,
+) -> tuple[dict[int, TriggeredServerEvent], list[ServerEventResolution], dict[int, str]]:
+    """Resolve expired major events, trigger a new major event, and build season_advances."""
+    rng = rng if rng is not None else random.Random()
+
+    resolutions: list[ServerEventResolution] = []
+    active_occurrences = await list_active_server_event_occurrences()
+    for occurrence in active_occurrences:
+        resolution = await resolve_server_event(occurrence.id, rng)
+        if resolution is not None:
+            resolutions.append(resolution)
+
+    servers = await list_servers()
+    season_advances: dict[int, str] = {}
+    if new_season is not None:
+        season_advances = {
+            server.discord_id: new_season for server in servers if server.event_channel_discord_id is not None
+        }
+
+    new_events: dict[int, TriggeredServerEvent] = {}
+    for server in servers:
+        if server.event_channel_discord_id is None:
+            continue
+        event = await trigger_daily_server_event(server.discord_id, tier="major", rng=rng)
         if event is not None:
             new_events[server.discord_id] = event
 

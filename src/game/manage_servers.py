@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Optional
 from src.database import (
     create_server,
     get_server_by_discord_id,
+    list_servers,
     set_event_channel_discord_id,
 )
 
@@ -58,6 +59,11 @@ async def get_or_create_server(server_discord_id: int) -> Server:
     if server is None:
         server = await create_server(server_discord_id)
     return await to_server(server)
+
+
+async def list_all_servers() -> list[Server]:
+    """Return all registered servers."""
+    return [await to_server(s) for s in await list_servers()]
 
 
 async def set_event_channel(server_discord_id: int, event_channel_discord_id: int):

@@ -40,6 +40,7 @@ def create_app(config: dict | None = None) -> Flask:
 
     # Register blueprints
     from src.web.routes.api import api_bp
+    from src.web.routes.auction import auction_bp
     from src.web.routes.auth import auth_bp
     from src.web.routes.church import church_bp
     from src.web.routes.construction import construction_bp
@@ -49,18 +50,21 @@ def create_app(config: dict | None = None) -> Flask:
     from src.web.routes.main import main_bp
     from src.web.routes.park import park_bp
     from src.web.routes.pooch import pooch_bp
+    from src.web.routes.server_events import server_events_bp
     from src.web.routes.vendor import vendor_bp
     from src.web.routes.webhooks import webhooks_bp
 
     app.register_blueprint(auth_bp, url_prefix="/auth")
     app.register_blueprint(main_bp)
     app.register_blueprint(api_bp, url_prefix="/api")
+    app.register_blueprint(auction_bp, url_prefix="/auction")
     app.register_blueprint(church_bp, url_prefix="/church")
     app.register_blueprint(construction_bp, url_prefix="/construction")
     app.register_blueprint(graveyard_bp, url_prefix="/graveyard")
     app.register_blueprint(kennel_bp, url_prefix="/kennel")
     app.register_blueprint(park_bp, url_prefix="/park")
     app.register_blueprint(pooch_bp, url_prefix="/pooch")
+    app.register_blueprint(server_events_bp, url_prefix="/events")
     app.register_blueprint(vendor_bp, url_prefix="/vendor")
     app.register_blueprint(info_bp, url_prefix="/info")
     app.register_blueprint(webhooks_bp, url_prefix="/webhook")

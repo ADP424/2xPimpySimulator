@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+
+{% block title %}Auction House - {{ server_name }}{% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-6 flex-wrap gap-3">
+    <div>
+        <h1 class="text-3xl font-bold">🏛️ Auction House</h1>
+        <p class="text-base-content/60 mt-1">{{ server_name }}</p>
+    </div>
+</div>
+
+<div role="tablist" class="tabs tabs-bordered mb-6">
+    <button role="tab" class="tab tab-active" id="tab-sale" onclick="switchTab('sale')">🐕 For Sale</button>
+    <button role="tab" class="tab" id="tab-bounty" onclick="switchTab('bounty')">📋 Bounties</button>
+    <button role="tab" class="tab" id="tab-mine" onclick="switchTab('mine')">👤 Mine</button>
+</div>
+
+<!-- Sale listings tab -->
+<div id="tab-content-sale">
+    <div id="sale-loading" class="flex items-center gap-3 text-base-content/50 py-8">
+        <span class="loading loading-spinner loading-md"></span>
+        <span>Loading listings...</span>
+    </div>
+    <div id="sale-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" style="display: none;"></div>
+    <div id="sale-empty" class="text-center py-16 text-base-content/50" style="display: none;">
+        <p class="text-4xl mb-4">🔇</p>
+        <p>No pooches for sale right now.</p>
+    </div>
+</div>
+
+<!-- Bounty listings tab -->
+<div id="tab-content-bounty" style="display: none;">
+    <div id="bounty-loading" class="flex items-center gap-3 text-base-content/50 py-8">
+        <span class="loading loading-spinner loading-md"></span>
+        <span>Loading bounties...</span>
+    </div>
+    <div id="bounty-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" style="display: none;"></div>
+    <div id="bounty-empty" class="text-center py-16 text-base-content/50" style="display: none;">
+        <p class="text-4xl mb-4">📋</p>
+        <p>No bounties posted right now.</p>
+    </div>
+</div>
+
+<!-- My listings tab -->
+<div id="tab-content-mine" style="display: none;">
+    <div id="mine-loading" class="flex items-center gap-3 text-base-content/50 py-8">
+        <span class="loading loading-spinner loading-md"></span>
+        <span>Loading your listings...</span>
+    </div>
+    <div id="mine-sale-section" style="display: none;">
+        <h2 class="font-bold text-lg mb-3">Your Sale Listings</h2>
+        <div id="mine-sale-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6"></div>
+    </div>
+    <div id="mine-bounty-section" style="display: none;">
+        <h2 class="font-bold text-lg mb-3">Your Bounties</h2>
+        <div id="mine-bounty-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+    </div>
+    <div id="mine-empty" class="text-center py-16 text-base-content/50" style="display: none;">
+        <p>You have no active listings.</p>
+    </div>
+</div>
+
+<!-- Bid modal -->
+<dialog id="bid-modal" class="modal">
+    <div class="modal-box">
+        <h3 class="font-bold text-lg mb-4">Place a Bid</h3>
+        <p class="text-sm text-base-content/60 mb-2">Minimum bid: <span id="bid-min" class="font-semibold">-</span></p>
+        <p class="text-sm text-base-content/60 mb-4">Current top bid: <span id="bid-top" class="font-semibold">-</span></p>
+        <input type="number" id="bid-amount" class="input input-bordered w-full mb-4" min="1" placeholder="Your bid amount">
+        <div class="modal-action">
+            <form method="dialog"><button class="btn btn-ghost btn-sm">Cancel</button></form>
+            <button class="btn btn-primary btn-sm" onclick="submitBid()">Bid</button>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const PAGE_DATA = { serverId: {{ server_id }} };
+let currentBidListingId = null;
+let saleLoaded = false;
+
+document.addEventListener('DOMContentLoaded', () => loadSaleListings());
+
+function switchTab(name) {
+    ['sale', 'bounty', 'mine'].forEach(t => {
+        document.getElementById(`tab-content-${t}`).style.display = t === name ? '' : 'none';
+        document.getElementById(`tab-${t}`).classList.toggle('tab-active', t === name);
+    });
+    if (name === 'sale' && !saleLoaded) loadSaleListings();
+    if (name === 'bounty') loadBountyListings();
+    if (name === 'mine') loadMine();
+}
+
+async function loadSaleListings() {
+    saleLoaded = true;
+    try {
+        const resp = await fetch('/api/auction/sale-listings');
+        const listings = await resp.json();
+        document.getElementById('sale-loading').style.display = 'none';
+        if (!listings.length) {
+            document.getElementById('sale-empty').style.display = 'block';
+            return;
+        }
+        const grid = document.getElementById('sale-grid');
+        grid.innerHTML = listings.map(createSaleCard).join('');
+        grid.style.display = '';
+    } catch(e) {
+        document.getElementById('sale-loading').innerHTML = '<span class="text-error">Failed to load.</span>';
+    }
+}
+
+let bountyLoaded = false;
+async function loadBountyListings() {
+    if (bountyLoaded) return;
+    bountyLoaded = true;
+    try {
+        const resp = await fetch('/api/auction/bounty-listings');
+        const listings = await resp.json();
+        document.getElementById('bounty-loading').style.display = 'none';
+        if (!listings.length) {
+            document.getElementById('bounty-empty').style.display = 'block';
+            return;
+        }
+        const grid = document.getElementById('bounty-grid');
+        grid.innerHTML = listings.map(createBountyCard).join('');
+        grid.style.display = '';
+    } catch(e) {
+        document.getElementById('bounty-loading').innerHTML = '<span class="text-error">Failed to load.</span>';
+    }
+}
+
+let mineLoaded = false;
+async function loadMine() {
+    if (mineLoaded) return;
+    mineLoaded = true;
+    try {
+        const [saleResp, bountyResp] = await Promise.all([
+            fetch('/api/auction/my-sale-listings'),
+            fetch('/api/auction/my-bounty-listings'),
+        ]);
+        const myListings = await saleResp.json();
+        const myBounties = await bountyResp.json();
+        document.getElementById('mine-loading').style.display = 'none';
+
+        if (!myListings.length && !myBounties.length) {
+            document.getElementById('mine-empty').style.display = 'block';
+            return;
+        }
+        if (myListings.length) {
+            document.getElementById('mine-sale-section').style.display = 'block';
+            document.getElementById('mine-sale-grid').innerHTML = myListings.map(createSaleCard).join('');
+        }
+        if (myBounties.length) {
+            document.getElementById('mine-bounty-section').style.display = 'block';
+            document.getElementById('mine-bounty-grid').innerHTML = myBounties.map(createBountyCard).join('');
+        }
+    } catch(e) {
+        document.getElementById('mine-loading').innerHTML = '<span class="text-error">Failed to load.</span>';
+    }
+}
+
+function createSaleCard(listing) {
+    const pooch = listing.pooch;
+    const poochName = pooch ? escapeHtml(pooch.name) : 'Unknown Pooch';
+    const poochLink = pooch ? `<a href="/pooch/${pooch.id}" class="hover:underline font-bold">${poochName}</a>` : `<span class="font-bold">${poochName}</span>`;
+    const expires = listing.expires_at ? new Date(listing.expires_at).toLocaleDateString() : 'No expiry';
+    const topBid = listing.top_bid !== null ? formatCurrency(listing.top_bid) : '—';
+    return `
+        <div class="card bg-base-200 shadow-sm">
+            <div class="card-body py-4 px-4 gap-2">
+                <div class="flex justify-between items-start">
+                    ${poochLink}
+                    ${pooch ? `<span>${pooch.sex === 'female' ? '♀️' : '♂️'}</span>` : ''}
+                </div>
+                <div class="text-xs text-base-content/50 flex flex-col gap-0.5">
+                    <div>Min bid: <span class="font-semibold text-base-content/70">${formatCurrency(listing.minimum_bid)}</span></div>
+                    <div>Top bid: <span class="font-semibold text-success">${topBid}</span> (${listing.bid_count} bids)</div>
+                    <div>Expires: ${escapeHtml(expires)}</div>
+                </div>
+                <div class="mt-auto flex gap-2">
+                    <button class="btn btn-sm btn-primary flex-1" onclick="openBidModal(${listing.id}, ${listing.minimum_bid}, ${listing.top_bid ?? listing.minimum_bid})">Bid</button>
+                    <button class="btn btn-sm btn-ghost" onclick="cancelSale(${listing.id})">Cancel</button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function createBountyCard(listing) {
+    const criteria = (listing.criteria || []).map(c =>
+        `<li class="text-xs">${escapeHtml(c.description || JSON.stringify(c))}</li>`
+    ).join('');
+    return `
+        <div class="card bg-base-200 shadow-sm">
+            <div class="card-body py-4 px-4 gap-2">
+                <span class="font-bold">${escapeHtml(listing.title || 'Bounty')}</span>
+                <div class="text-sm text-success font-semibold">${formatCurrency(listing.escrow_amount)}</div>
+                ${criteria ? `<ul class="list-disc list-inside text-base-content/50 mt-1">${criteria}</ul>` : ''}
+                <div class="mt-auto">
+                    <button class="btn btn-sm btn-error btn-outline w-full" onclick="cancelBounty(${listing.id})">Cancel</button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function openBidModal(listingId, minBid, topBid) {
+    currentBidListingId = listingId;
+    document.getElementById('bid-min').textContent = formatCurrency(minBid);
+    document.getElementById('bid-top').textContent = topBid ? formatCurrency(topBid) : '—';
+    document.getElementById('bid-amount').value = Math.max(minBid, (topBid || 0) + 1);
+    document.getElementById('bid-modal').showModal();
+}
+
+async function submitBid() {
+    const amount = parseInt(document.getElementById('bid-amount').value || '0');
+    if (!amount || amount <= 0) { App.showNotification('Enter a valid bid amount.', 'error'); return; }
+    document.getElementById('bid-modal').close();
+    try {
+        const resp = await fetch(`/api/auction/bid/${currentBidListingId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ amount }),
+        });
+        const data = await resp.json();
+        if (data.success) {
+            App.queueNotification(data.message || 'Bid placed!', 'success');
+            saleLoaded = false;
+            loadSaleListings();
+        } else {
+            App.showNotification(data.message || data.error || 'Bid failed.', 'error');
+        }
+    } catch(e) { App.showNotification('Something went wrong.', 'error'); }
+}
+
+async function cancelSale(listingId) {
+    if (!confirm('Cancel this sale listing?')) return;
+    try {
+        const resp = await fetch(`/api/auction/cancel-sale/${listingId}`, { method: 'POST' });
+        const data = await resp.json();
+        if (data.success) { App.queueNotification('Listing cancelled.', 'success'); mineLoaded = false; saleLoaded = false; loadSaleListings(); }
+        else App.showNotification(data.message || 'Could not cancel.', 'error');
+    } catch(e) { App.showNotification('Something went wrong.', 'error'); }
+}
+
+async function cancelBounty(listingId) {
+    if (!confirm('Cancel this bounty?')) return;
+    try {
+        const resp = await fetch(`/api/auction/cancel-bounty/${listingId}`, { method: 'POST' });
+        const data = await resp.json();
+        if (data.success) { App.queueNotification('Bounty cancelled.', 'success'); mineLoaded = false; bountyLoaded = false; loadBountyListings(); }
+        else App.showNotification(data.message || 'Could not cancel.', 'error');
+    } catch(e) { App.showNotification('Something went wrong.', 'error'); }
+}
+</script>
+{% endblock %}

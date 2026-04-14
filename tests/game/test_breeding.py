@@ -50,6 +50,13 @@ class TestCombinePuppyName:
 # ---------------------------------------------------------------------------
 
 
+@pytest.fixture(autouse=True)
+def _mock_pregnancy_timer():
+    """Auto-mock the pregnancy_timer setter so tests don't hit the real DB."""
+    with patch("src.game.breeding.set_pooch_pregnancy_timer", new=AsyncMock()):
+        yield
+
+
 class TestBreedPooches:
     """Tests for the breed_pooches async function."""
 

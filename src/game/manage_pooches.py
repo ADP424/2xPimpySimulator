@@ -10,8 +10,11 @@ from src.database import (
 )
 from src.database import get_pooch_by_id as db_get_pooch_by_id
 from src.database import (
+    get_pooch_injury_instance_by_id,
     get_pooch_parents,
     give_money_to_owner,
+    list_invisible_pooch_injury_instances,
+    list_invisible_pooch_mutation_instances,
     list_pooch_children,
     list_pooch_injury_instances,
     list_pooch_mutation_instances,
@@ -388,30 +391,12 @@ async def treat_injury(
     tuple[bool, str, int]
         (success, message, cost_charged)
     """
-    # Load the specific instance with eager injury relationship
-    from sqlalchemy import select
-    from sqlalchemy.orm import selectinload
-
-    from src.database import session_scope
-    from src.database.models import PoochInjury as PoochInjuryORM
-
-    injury_severity = None
-    persistence = None
-    last_treated_at = None
-
-    async with session_scope() as session:
-        query = (
-            select(PoochInjuryORM)
-            .options(selectinload(PoochInjuryORM.injury))
-            .where(PoochInjuryORM.id == pooch_injury_id)
-        )
-        result = await session.execute(query)
-        pi = result.scalar_one_or_none()
-        if pi is None:
-            return False, "Injury not found.", 0
-        injury_severity = pi.injury.severity
-        persistence = pi.persistence
-        last_treated_at = pi.last_treated_at
+    pi = await get_pooch_injury_instance_by_id(pooch_injury_id)
+    if pi is None:
+        return False, "Injury not found.", 0
+    injury_severity = pi.injury.severity
+    persistence = pi.persistence
+    last_treated_at = pi.last_treated_at
 
     owner = await get_owner_by_discord_id(owner_discord_id)
     if owner is None:
@@ -459,12 +444,6 @@ async def diagnose_injuries(
     """
     import random as _random
 
-    from sqlalchemy import select
-    from sqlalchemy.orm import selectinload
-
-    from src.database import session_scope
-    from src.database.models import PoochInjury as PoochInjuryORM
-
     owner = await get_owner_by_discord_id(owner_discord_id)
     if owner is None:
         return False, "Owner not found.", []
@@ -473,15 +452,7 @@ async def diagnose_injuries(
         return False, f"Not enough money. Diagnosis costs **${VET_DIAGNOSE_INJURIES_COST}**.", []
 
     rng = _random.Random(rng_seed)
-
-    async with session_scope() as session:
-        query = (
-            select(PoochInjuryORM)
-            .options(selectinload(PoochInjuryORM.injury))
-            .where(PoochInjuryORM.pooch_id == pooch_id, PoochInjuryORM.visible.is_(False))
-        )
-        result = await session.execute(query)
-        invisible_instances = list(result.scalars().all())
+    invisible_instances = await list_invisible_pooch_injury_instances(pooch_id)
 
     await give_money_to_owner(owner_discord_id, -VET_DIAGNOSE_INJURIES_COST)
 
@@ -530,12 +501,6 @@ async def diagnose_mutations(
     """
     import random as _random
 
-    from sqlalchemy import select
-    from sqlalchemy.orm import selectinload
-
-    from src.database import session_scope
-    from src.database.models import PoochMutation as PoochMutationORM
-
     owner = await get_owner_by_discord_id(owner_discord_id)
     if owner is None:
         return False, "Owner not found.", []
@@ -544,15 +509,7 @@ async def diagnose_mutations(
         return False, f"Not enough money. Diagnosis costs **${VET_DIAGNOSE_MUTATIONS_COST}**.", []
 
     rng = _random.Random(rng_seed)
-
-    async with session_scope() as session:
-        query = (
-            select(PoochMutationORM)
-            .options(selectinload(PoochMutationORM.mutation))
-            .where(PoochMutationORM.pooch_id == pooch_id, PoochMutationORM.visible.is_(False))
-        )
-        result = await session.execute(query)
-        invisible_instances = list(result.scalars().all())
+    invisible_instances = await list_invisible_pooch_mutation_instances(pooch_id)
 
     await give_money_to_owner(owner_discord_id, -VET_DIAGNOSE_MUTATIONS_COST)
 
@@ -684,3 +641,73 @@ async def mark_pooch_vet_checked(pooch_id: int) -> None:
 async def list_snapshots_for_pooch(pooch_id: int) -> list:
     """Return all timeline snapshots for a pooch, oldest first."""
     return await db_list_pooch_snapshots(pooch_id)
+
+
+DETAILED_WORKUP_COST = 150
+
+
+async def detailed_workup(owner_discord_id: int, pooch_id: int) -> tuple[bool, str, dict]:
+    """
+    Pricier vet procedure that returns the exact base/effective values for
+    every stat plus a per-source breakdown. Persists the result as a snapshot
+    so the player can review their pooch's history.
+    """
+    from src.database import (
+        list_pooch_breeds,
+        list_pooch_disease_instances,
+        list_pooch_injury_instances,
+        list_pooch_mutation_instances,
+    )
+
+    from .manage_stats import compute_effective_stats
+    from .utils.obfuscation import stat_label
+
+    owner = await get_owner_by_discord_id(owner_discord_id)
+    if owner is None:
+        return False, "Owner not found.", {}
+    if owner.dollars < DETAILED_WORKUP_COST:
+        return False, f"Not enough money. A detailed workup costs **${DETAILED_WORKUP_COST}**.", {}
+
+    pooch = await db_get_pooch_by_id(pooch_id)
+    if pooch is None:
+        return False, "Pooch not found.", {}
+    if pooch.owner_discord_id != owner_discord_id:
+        return False, "That's not your pooch.", {}
+
+    await give_money_to_owner(owner_discord_id, -DETAILED_WORKUP_COST)
+
+    breeds = [pb.breed for pb in (await list_pooch_breeds(pooch_id))]
+    mutations = [pm.mutation for pm in (await list_pooch_mutation_instances(pooch_id))]
+    injuries = [pi.injury for pi in (await list_pooch_injury_instances(pooch_id))]
+    diseases = [pd.disease for pd in (await list_pooch_disease_instances(pooch_id))]
+
+    breakdown = compute_effective_stats(
+        pooch,
+        breeds=breeds,
+        mutations=mutations,
+        injuries=injuries,
+        diseases=diseases,
+        return_breakdown=True,
+    )
+
+    # Format with labels per stat for the UI.
+    report = {}
+    for stat, info in breakdown.items():
+        eff = int(round(info["effective"]))
+        base = int(round(info["base"]))
+        label = stat_label(eff)
+        report[stat] = {
+            "base": base,
+            "effective": eff,
+            "label": label,
+            "sources": info["sources"],
+        }
+
+    # Persist as a snapshot.
+    await create_pooch_snapshot(
+        pooch_id=pooch.id,
+        kind=SNAPSHOT_MEDICAL_EXAM,
+        description=f"{pooch.name} received a Detailed Workup.",
+    )
+
+    return True, "", report
