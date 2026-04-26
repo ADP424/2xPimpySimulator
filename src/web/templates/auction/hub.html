@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+
+{% block title %}Auction House - {{ server_name }}{% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-2 flex-wrap gap-3">
+    <h1 class="text-3xl font-bold">🏛️ Auction House</h1>
+    <div class="flex gap-2">
+        <a href="{{ url_for('auction.create_sale') }}" class="btn btn-primary btn-sm">+ List a Pooch</a>
+        <a href="{{ url_for('auction.create_bounty') }}" class="btn btn-secondary btn-sm">+ Post a Bounty</a>
+    </div>
+</div>
+
+<div role="tablist" class="tabs tabs-border mb-6">
+    <input type="radio" name="auction-tabs" role="tab" class="tab" aria-label="Sales" checked />
+    <div role="tabpanel" class="tab-content pt-4">
+        <div id="sales-loading" class="flex items-center gap-3 text-base-content/50 py-8">
+            <span class="loading loading-spinner loading-md"></span>
+            <span>Loading sale listings...</span>
+        </div>
+        <div id="sales-container" style="display: none;">
+            <div id="sales-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+            <div id="no-sales" class="text-center py-12 text-base-content/50" style="display: none;">
+                <p>No active sale listings in this server.</p>
+            </div>
+        </div>
+    </div>
+
+    <input type="radio" name="auction-tabs" role="tab" class="tab" aria-label="Bounties" />
+    <div role="tabpanel" class="tab-content pt-4">
+        <div id="bounties-loading" class="flex items-center gap-3 text-base-content/50 py-8">
+            <span class="loading loading-spinner loading-md"></span>
+            <span>Loading bounty listings...</span>
+        </div>
+        <div id="bounties-container" style="display: none;">
+            <div id="bounties-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+            <div id="no-bounties" class="text-center py-12 text-base-content/50" style="display: none;">
+                <p>No active bounty listings in this server.</p>
+            </div>
+        </div>
+    </div>
+
+    <input type="radio" name="auction-tabs" role="tab" class="tab" aria-label="My Listings" />
+    <div role="tabpanel" class="tab-content pt-4">
+        <div id="mine-loading" class="flex items-center gap-3 text-base-content/50 py-8">
+            <span class="loading loading-spinner loading-md"></span>
+            <span>Loading your listings...</span>
+        </div>
+        <div id="mine-container" style="display: none;">
+            <h3 class="text-lg font-bold mb-3">My Sale Listings</h3>
+            <div id="my-sales-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6"></div>
+            <div id="no-my-sales" class="text-center py-6 text-base-content/50 mb-6" style="display: none;">
+                <p>You have no active sale listings.</p>
+            </div>
+            <h3 class="text-lg font-bold mb-3">My Bounty Listings</h3>
+            <div id="my-bounties-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+            <div id="no-my-bounties" class="text-center py-6 text-base-content/50" style="display: none;">
+                <p>You have no active bounty listings.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const PAGE_DATA = { serverId: {{ server_id }} };
+let salesLoaded = false, bountiesLoaded = false, mineLoaded = false;
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadSales();
+
+    document.querySelectorAll('input[name="auction-tabs"]').forEach((tab, i) => {
+        tab.addEventListener('change', () => {
+            if (i === 0) loadSales();
+            else if (i === 1) loadBounties();
+            else if (i === 2) loadMine();
+        });
+    });
+});
+
+async function loadSales() {
+    if (salesLoaded) return;
+    try {
+        const resp = await fetch('/api/auctions/sales');
+        const listings = await resp.json();
+        document.getElementById('sales-loading').style.display = 'none';
+        document.getElementById('sales-container').style.display = '';
+        if (listings.length === 0) {
+            document.getElementById('no-sales').style.display = '';
+            return;
+        }
+        document.getElementById('sales-grid').innerHTML = listings.map(createSaleCard).join('');
+        salesLoaded = true;
+    } catch (e) {
+        document.getElementById('sales-loading').innerHTML = '<span class="text-error">Failed to load listings</span>';
+        console.error(e);
+    }
+}
+
+async function loadBounties() {
+    if (bountiesLoaded) return;
+    try {
+        const resp = await fetch('/api/auctions/bounties');
+        const listings = await resp.json();
+        document.getElementById('bounties-loading').style.display = 'none';
+        document.getElementById('bounties-container').style.display = '';
+        if (listings.length === 0) {
+            document.getElementById('no-bounties').style.display = '';
+            return;
+        }
+        document.getElementById('bounties-grid').innerHTML = listings.map(createBountyCard).join('');
+        bountiesLoaded = true;
+    } catch (e) {
+        document.getElementById('bounties-loading').innerHTML = '<span class="text-error">Failed to load bounties</span>';
+        console.error(e);
+    }
+}
+
+async function loadMine() {
+    if (mineLoaded) return;
+    try {
+        const [salesResp, bountiesResp] = await Promise.all([
+            fetch('/api/auctions/sales/mine'),
+            fetch('/api/auctions/bounties/mine'),
+        ]);
+        const mySales = await salesResp.json();
+        const myBounties = await bountiesResp.json();
+
+        document.getElementById('mine-loading').style.display = 'none';
+        document.getElementById('mine-container').style.display = '';
+
+        if (mySales.length === 0) {
+            document.getElementById('no-my-sales').style.display = '';
+        } else {
+            document.getElementById('my-sales-grid').innerHTML = mySales.map(l => createSaleCard(l, true)).join('');
+        }
+
+        if (myBounties.length === 0) {
+            document.getElementById('no-my-bounties').style.display = '';
+        } else {
+            document.getElementById('my-bounties-grid').innerHTML = myBounties.map(l => createBountyCard(l, true)).join('');
+        }
+        mineLoaded = true;
+    } catch (e) {
+        document.getElementById('mine-loading').innerHTML = '<span class="text-error">Failed to load your listings</span>';
+        console.error(e);
+    }
+}
+
+function createSaleCard(listing, showClose = false) {
+    const pooch = listing.pooch;
+    const sexEmoji = pooch.sex === 'female' ? '♀️' : '♂️';
+    const breedsHtml = pooch.breeds.length > 0
+        ? pooch.breeds.map((b, i) =>
+            `<span class="rarity-text-${(b.breed.rarity || '').toLowerCase()}">${escapeHtml(b.breed.name)}${i < pooch.breeds.length - 1 ? ',' : ''}</span>`
+          ).join(' ')
+        : '<span>Unknown</span>';
+
+    const bidInfo = listing.highest_bid !== null
+        ? `<span class="text-success font-semibold">${formatCurrency(listing.highest_bid)}</span> <span class="text-xs text-base-content/50">(${listing.bid_count} bid${listing.bid_count !== 1 ? 's' : ''})</span>`
+        : `<span class="text-base-content/50">No bids yet</span>`;
+
+    const expiresHtml = listing.expires_at
+        ? `<span class="text-xs text-base-content/50">Expires ${new Date(listing.expires_at).toLocaleDateString()}</span>`
+        : `<span class="text-xs text-base-content/50">No expiry</span>`;
+
+    const closeBtn = showClose
+        ? `<button class="btn btn-error btn-xs" onclick="event.preventDefault(); closeSale(${listing.id})">Close Auction</button>`
+        : '';
+
+    return `
+        <a href="/auction/sale/${listing.id}" class="card bg-base-200 shadow-sm hover:-translate-y-1 hover:shadow-lg transition-all text-base-content no-underline h-full">
+            <div class="card-body py-4 px-4 gap-2">
+                <div class="flex justify-between items-center">
+                    <span class="font-bold">${escapeHtml(pooch.name)} ${sexEmoji}</span>
+                    <span class="badge badge-ghost badge-xs">Age ${pooch.age}</span>
+                </div>
+                <div class="text-xs text-base-content/50">
+                    <span>Breeds:</span> <span class="text-base-content/70">${breedsHtml}</span>
+                </div>
+                <div class="flex flex-col gap-1 mt-1">
+                    <div class="text-sm">Min bid: ${formatCurrency(listing.minimum_bid)}</div>
+                    <div class="text-sm">Current: ${bidInfo}</div>
+                    ${expiresHtml}
+                </div>
+                ${closeBtn ? `<div class="mt-auto pt-2">${closeBtn}</div>` : ''}
+            </div>
+        </a>
+    `;
+}
+
+function createBountyCard(listing, showCancel = false) {
+    const criteriaHtml = (listing.criteria || []).map(c => {
+        if (c.type === 'breed') return `<span class="badge badge-outline badge-xs">Breed #${c.breed_id}</span>`;
+        if (c.type === 'mutation') return `<span class="badge badge-outline badge-xs">Mutation #${c.mutation_id}</span>`;
+        if (c.type === 'sex') return `<span class="badge badge-outline badge-xs">${App.format.enumLabel(c.value)}</span>`;
+        if (c.type === 'min_stat') return `<span class="badge badge-outline badge-xs">${App.format.enumLabel(c.stat)} ≥ ${c.threshold}</span>`;
+        if (c.type === 'min_rarity') return `<span class="badge badge-outline badge-xs">${App.format.enumLabel(c.value)}+</span>`;
+        return `<span class="badge badge-outline badge-xs">${c.type}</span>`;
+    }).join(' ');
+
+    const cancelBtn = showCancel
+        ? `<button class="btn btn-error btn-xs" onclick="event.preventDefault(); cancelBounty(${listing.id})">Cancel Bounty</button>`
+        : '';
+
+    return `
+        <a href="/auction/bounty/${listing.id}" class="card bg-base-200 shadow-sm hover:-translate-y-1 hover:shadow-lg transition-all text-base-content no-underline h-full">
+            <div class="card-body py-4 px-4 gap-2">
+                <div class="flex justify-between items-center">
+                    <span class="font-bold">${escapeHtml(listing.title)}</span>
+                    <span class="badge badge-secondary badge-sm">${formatCurrency(listing.escrow_amount)}</span>
+                </div>
+                <div class="flex flex-wrap gap-1 mt-1">${criteriaHtml || '<span class="text-xs text-base-content/50">No criteria</span>'}</div>
+                <div class="text-xs text-base-content/50 mt-1">Posted ${new Date(listing.created_at).toLocaleDateString()}</div>
+                ${cancelBtn ? `<div class="mt-auto pt-2">${cancelBtn}</div>` : ''}
+            </div>
+        </a>
+    `;
+}
+
+async function closeSale(listingId) {
+    if (!confirm('Close this auction? The highest bidder will win.')) return;
+    try {
+        const resp = await fetch(`/api/auctions/sales/${listingId}/close`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+        });
+        const result = await resp.json();
+        if (result.success) {
+            App.queueNotification(result.message, 'success');
+            window.location.reload();
+        } else {
+            App.showNotification(result.message || result.error || 'Failed to close', 'error');
+        }
+    } catch (e) {
+        App.showNotification('Something went wrong.', 'error');
+        console.error(e);
+    }
+}
+
+async function cancelBounty(listingId) {
+    if (!confirm('Cancel this bounty? Your escrow will be refunded.')) return;
+    try {
+        const resp = await fetch(`/api/auctions/bounties/${listingId}/cancel`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+        });
+        const result = await resp.json();
+        if (result.success) {
+            App.queueNotification(result.message, 'success');
+            window.location.reload();
+        } else {
+            App.showNotification(result.message || result.error || 'Failed to cancel', 'error');
+        }
+    } catch (e) {
+        App.showNotification('Something went wrong.', 'error');
+        console.error(e);
+    }
+}
+</script>
+{% endblock %}

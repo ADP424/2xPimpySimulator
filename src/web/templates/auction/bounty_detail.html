@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+
+{% block title %}Bounty - {{ server_name }}{% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-6 flex-wrap gap-3">
+    <h1 class="text-3xl font-bold" id="page-title">Loading...</h1>
+    <a href="{{ url_for('auction.auction_hub') }}" class="btn btn-ghost btn-sm">← Back to Auction House</a>
+</div>
+
+<div id="loading" class="flex items-center gap-3 text-base-content/50 py-8">
+    <span class="loading loading-spinner loading-md"></span>
+    <span>Loading bounty...</span>
+</div>
+
+<div id="bounty-container" style="display: none;">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Bounty details -->
+        <div class="card bg-base-200 shadow-md">
+            <div class="card-body gap-3">
+                <h2 class="card-title">Bounty Details</h2>
+                <div id="bounty-info"></div>
+                <div class="divider my-1"></div>
+                <h3 class="text-sm font-semibold text-base-content/50 uppercase tracking-wide">Criteria</h3>
+                <div id="criteria-list" class="flex flex-col gap-2"></div>
+                <div id="owner-actions" style="display: none;" class="mt-4">
+                    <button class="btn btn-error btn-sm btn-block" onclick="cancelBounty()">Cancel Bounty</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Fulfill panel -->
+        <div id="fulfill-panel" class="card bg-base-200 shadow-md" style="display: none;">
+            <div class="card-body gap-3">
+                <h2 class="card-title">Fulfill This Bounty</h2>
+                <p class="text-sm text-base-content/50">Select a kennel and pooch to sell to the bounty poster.</p>
+
+                <div class="form-control">
+                    <label class="label"><span class="label-text">Kennel</span></label>
+                    <select id="kennel-select" class="select select-bordered" onchange="loadKennelPooches()">
+                        <option value="">Select a kennel...</option>
+                    </select>
+                </div>
+
+                <div id="pooch-select-section" style="display: none;">
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">Pooch</span></label>
+                        <select id="pooch-select" class="select select-bordered" onchange="previewMatch()">
+                            <option value="">Select a pooch...</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="match-preview" style="display: none;" class="mt-3">
+                    <div class="divider my-1"></div>
+                    <h3 class="text-sm font-semibold text-base-content/50 uppercase tracking-wide mb-2">Match Preview</h3>
+                    <div id="match-criteria-list" class="flex flex-col gap-1 text-sm"></div>
+                    <div id="match-payout" class="mt-3 text-lg font-bold"></div>
+                    <button id="fulfill-btn" class="btn btn-primary btn-block mt-3" onclick="fulfillBounty()" style="display: none;">Fulfill Bounty</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const PAGE_DATA = {
+    listingId: {{ listing_id }},
+    serverId: {{ server_id }},
+};
+let currentBounty = null;
+
+document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        const [bountyResp, ownerResp] = await Promise.all([
+            fetch('/api/auctions/bounties'),
+            fetch('/api/owner'),
+        ]);
+        const allBounties = await bountyResp.json();
+        const owner = await ownerResp.json();
+
+        const bounty = allBounties.find(b => b.id === PAGE_DATA.listingId);
+        if (!bounty) {
+            document.getElementById('loading').innerHTML = '<span class="text-error">Bounty not found</span>';
+            return;
+        }
+
+        currentBounty = bounty;
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('bounty-container').style.display = '';
+        document.getElementById('page-title').textContent = `📜 ${escapeHtml(bounty.title)}`;
+
+        const isOwner = bounty.buyer_discord_id === owner.discord_id;
+        renderBountyInfo(bounty);
+
+        if (isOwner) {
+            document.getElementById('owner-actions').style.display = '';
+        } else {
+            document.getElementById('fulfill-panel').style.display = '';
+            loadKennels();
+        }
+    } catch (e) {
+        document.getElementById('loading').innerHTML = '<span class="text-error">Failed to load bounty</span>';
+        console.error(e);
+    }
+});
+
+function renderBountyInfo(bounty) {
+    document.getElementById('bounty-info').innerHTML = `
+        <div class="flex flex-col gap-2 text-sm">
+            <div class="flex justify-between"><span class="text-base-content/50">Escrow</span><span class="font-semibold text-success">${formatCurrency(bounty.escrow_amount)}</span></div>
+            <div class="flex justify-between"><span class="text-base-content/50">Posted</span><span>${new Date(bounty.created_at).toLocaleDateString()}</span></div>
+        </div>
+    `;
+
+    const criteriaList = document.getElementById('criteria-list');
+    criteriaList.innerHTML = (bounty.criteria || []).map(c => {
+        let desc = '';
+        if (c.type === 'breed') desc = `Breed #${c.breed_id} (weight ≥ ${Math.round((c.min_weight || 0) * 100)}%)`;
+        else if (c.type === 'mutation') desc = `Mutation #${c.mutation_id}`;
+        else if (c.type === 'sex') desc = c.value === 'either' ? `Any sex (prefers ${c.preferred_sex})` : `${App.format.enumLabel(c.value)} only`;
+        else if (c.type === 'min_stat') desc = `${App.format.enumLabel(c.stat)} ≥ ${c.threshold}`;
+        else if (c.type === 'min_rarity') desc = `Rarity ≥ ${App.format.enumLabel(c.value)}`;
+        return `
+            <div class="flex justify-between items-center px-3 py-2 rounded-lg bg-base-300">
+                <span class="text-sm">${desc}</span>
+                <span class="badge badge-success badge-sm">${formatCurrency(c.dollar_value)}</span>
+            </div>
+        `;
+    }).join('');
+}
+
+async function loadKennels() {
+    try {
+        const resp = await fetch('/api/kennels');
+        const kennels = await resp.json();
+        const select = document.getElementById('kennel-select');
+        kennels.forEach(k => {
+            const opt = document.createElement('option');
+            opt.value = k.id;
+            opt.textContent = escapeHtml(k.name);
+            select.appendChild(opt);
+        });
+    } catch (e) {
+        console.error('Failed to load kennels:', e);
+    }
+}
+
+async function loadKennelPooches() {
+    const kennelId = document.getElementById('kennel-select').value;
+    const section = document.getElementById('pooch-select-section');
+    const select = document.getElementById('pooch-select');
+    document.getElementById('match-preview').style.display = 'none';
+
+    if (!kennelId) {
+        section.style.display = 'none';
+        return;
+    }
+
+    try {
+        const resp = await fetch(`/api/kennels/${kennelId}/pooches`);
+        const pooches = await resp.json();
+        select.innerHTML = '<option value="">Select a pooch...</option>';
+        pooches.filter(p => p.alive).forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.id;
+            opt.textContent = `${p.name} (${p.sex}, age ${p.age})`;
+            select.appendChild(opt);
+        });
+        section.style.display = '';
+    } catch (e) {
+        console.error('Failed to load pooches:', e);
+    }
+}
+
+async function previewMatch() {
+    const poochId = document.getElementById('pooch-select').value;
+    const preview = document.getElementById('match-preview');
+
+    if (!poochId) {
+        preview.style.display = 'none';
+        return;
+    }
+
+    try {
+        const resp = await fetch(`/api/auctions/bounties/${PAGE_DATA.listingId}/match/${poochId}`);
+        const result = await resp.json();
+
+        preview.style.display = '';
+        const list = document.getElementById('match-criteria-list');
+        list.innerHTML = result.matched_criteria.map(c => {
+            const icon = c.matched ? '✅' : '❌';
+            let desc = '';
+            if (c.type === 'breed') desc = `Breed #${c.breed_id}`;
+            else if (c.type === 'mutation') desc = `Mutation #${c.mutation_id}`;
+            else if (c.type === 'sex') desc = `Sex: ${App.format.enumLabel(c.value)}`;
+            else if (c.type === 'min_stat') desc = `${App.format.enumLabel(c.stat)} ≥ ${c.threshold}`;
+            else if (c.type === 'min_rarity') desc = `Rarity ≥ ${App.format.enumLabel(c.value)}`;
+            return `<div class="flex justify-between items-center">${icon} <span>${desc}</span><span class="${c.matched ? 'text-success' : 'text-error'}">${c.matched ? formatCurrency(c.dollar_value) : '$0'}</span></div>`;
+        }).join('');
+
+        document.getElementById('match-payout').innerHTML = `Payout: <span class="text-success">${formatCurrency(result.payout)}</span>`;
+
+        const btn = document.getElementById('fulfill-btn');
+        btn.style.display = result.payout > 0 ? '' : 'none';
+    } catch (e) {
+        console.error('Failed to preview match:', e);
+    }
+}
+
+async function fulfillBounty() {
+    const poochId = parseInt(document.getElementById('pooch-select').value);
+    if (!poochId) return;
+    if (!confirm('Sell this pooch to fulfill the bounty?')) return;
+
+    try {
+        const resp = await fetch(`/api/auctions/bounties/${PAGE_DATA.listingId}/fulfill`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pooch_id: poochId }),
+        });
+        const result = await resp.json();
+        if (result.success) {
+            App.queueNotification(result.message, 'success');
+            window.location.href = '/auction/';
+        } else {
+            App.showNotification(result.message || result.error || 'Failed to fulfill', 'error');
+        }
+    } catch (e) {
+        App.showNotification('Something went wrong.', 'error');
+        console.error(e);
+    }
+}
+
+async function cancelBounty() {
+    if (!confirm('Cancel this bounty? Your escrow will be refunded.')) return;
+    try {
+        const resp = await fetch(`/api/auctions/bounties/${PAGE_DATA.listingId}/cancel`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+        });
+        const result = await resp.json();
+        if (result.success) {
+            App.queueNotification(result.message, 'success');
+            window.location.href = '/auction/';
+        } else {
+            App.showNotification(result.message || result.error || 'Failed to cancel', 'error');
+        }
+    } catch (e) {
+        App.showNotification('Something went wrong.', 'error');
+        console.error(e);
+    }
+}
+</script>
+{% endblock %}

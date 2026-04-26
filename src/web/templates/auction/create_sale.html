@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}List a Pooch - {{ server_name }}{% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-6 flex-wrap gap-3">
+    <h1 class="text-3xl font-bold">🏛️ List a Pooch for Auction</h1>
+    <a href="{{ url_for('auction.auction_hub') }}" class="btn btn-ghost btn-sm">← Back to Auction House</a>
+</div>
+
+<div class="max-w-lg">
+    <div class="card bg-base-200 shadow-md">
+        <div class="card-body gap-4">
+            <div class="form-control">
+                <label class="label"><span class="label-text">Kennel</span></label>
+                <select id="kennel-select" class="select select-bordered" onchange="loadPooches()">
+                    <option value="">Select a kennel...</option>
+                </select>
+            </div>
+
+            <div id="pooch-section" style="display: none;">
+                <div class="form-control">
+                    <label class="label"><span class="label-text">Pooch</span></label>
+                    <select id="pooch-select" class="select select-bordered">
+                        <option value="">Select a pooch...</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-control">
+                <label class="label"><span class="label-text">Minimum Bid ($)</span></label>
+                <input type="number" id="minimum-bid" class="input input-bordered" min="0" value="0" />
+            </div>
+
+            <div class="form-control">
+                <label class="label"><span class="label-text">Duration (hours, leave empty for no expiry)</span></label>
+                <input type="number" id="duration-hours" class="input input-bordered" min="1" placeholder="Optional" />
+            </div>
+
+            <button class="btn btn-primary btn-block mt-2" onclick="createListing()">Create Listing</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        const resp = await fetch('/api/kennels');
+        const kennels = await resp.json();
+        const select = document.getElementById('kennel-select');
+        kennels.forEach(k => {
+            const opt = document.createElement('option');
+            opt.value = k.id;
+            opt.textContent = escapeHtml(k.name);
+            select.appendChild(opt);
+        });
+    } catch (e) {
+        console.error('Failed to load kennels:', e);
+    }
+});
+
+async function loadPooches() {
+    const kennelId = document.getElementById('kennel-select').value;
+    const section = document.getElementById('pooch-section');
+    const select = document.getElementById('pooch-select');
+
+    if (!kennelId) {
+        section.style.display = 'none';
+        return;
+    }
+
+    try {
+        const resp = await fetch(`/api/kennels/${kennelId}/pooches`);
+        const pooches = await resp.json();
+        select.innerHTML = '<option value="">Select a pooch...</option>';
+        pooches.filter(p => p.alive).forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.id;
+            opt.textContent = `${p.name} (${p.sex}, age ${p.age}, health ${p.health})`;
+            select.appendChild(opt);
+        });
+        section.style.display = '';
+    } catch (e) {
+        console.error('Failed to load pooches:', e);
+    }
+}
+
+async function createListing() {
+    const poochId = parseInt(document.getElementById('pooch-select').value);
+    const minimumBid = parseInt(document.getElementById('minimum-bid').value) || 0;
+    const durationInput = document.getElementById('duration-hours').value;
+    const durationHours = durationInput ? parseInt(durationInput) : null;
+
+    if (!poochId) {
+        App.showNotification('Select a pooch to list.', 'error');
+        return;
+    }
+    if (minimumBid < 0) {
+        App.showNotification('Minimum bid cannot be negative.', 'error');
+        return;
+    }
+    if (durationHours !== null && durationHours <= 0) {
+        App.showNotification('Duration must be at least 1 hour.', 'error');
+        return;
+    }
+
+    try {
+        const resp = await fetch('/api/auctions/sales', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pooch_id: poochId, minimum_bid: minimumBid, duration_hours: durationHours }),
+        });
+        const result = await resp.json();
+        if (result.success) {
+            App.queueNotification(result.message, 'success');
+            window.location.href = '/auction/';
+        } else {
+            App.showNotification(result.message || result.error || 'Failed to create listing', 'error');
+        }
+    } catch (e) {
+        App.showNotification('Something went wrong.', 'error');
+        console.error(e);
+    }
+}
+</script>
+{% endblock %}

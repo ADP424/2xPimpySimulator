@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+
+{% block title %}Auction - {{ server_name }}{% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-6 flex-wrap gap-3">
+    <h1 class="text-3xl font-bold" id="page-title">Loading...</h1>
+    <a href="{{ url_for('auction.auction_hub') }}" class="btn btn-ghost btn-sm">← Back to Auction House</a>
+</div>
+
+<div id="loading" class="flex items-center gap-3 text-base-content/50 py-8">
+    <span class="loading loading-spinner loading-md"></span>
+    <span>Loading auction...</span>
+</div>
+
+<div id="listing-container" style="display: none;">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Pooch info -->
+        <div class="card bg-base-200 shadow-md">
+            <div class="card-body" id="pooch-info"></div>
+        </div>
+
+        <!-- Bidding panel -->
+        <div class="card bg-base-200 shadow-md">
+            <div class="card-body gap-4">
+                <h2 class="card-title">Auction Details</h2>
+                <div id="auction-info"></div>
+                <div id="bid-form-section"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const PAGE_DATA = { listingId: {{ listing_id }} };
+let currentListing = null;
+
+document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        const [listingResp, ownerResp] = await Promise.all([
+            fetch(`/api/auctions/sales/${PAGE_DATA.listingId}`),
+            fetch('/api/owner'),
+        ]);
+        const listing = await listingResp.json();
+        const owner = await ownerResp.json();
+
+        if (listing.error) {
+            document.getElementById('loading').innerHTML = `<span class="text-error">${escapeHtml(listing.error)}</span>`;
+            return;
+        }
+
+        currentListing = listing;
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('listing-container').style.display = '';
+        document.getElementById('page-title').textContent = `🏛️ ${listing.pooch.name}`;
+
+        renderPoochInfo(listing.pooch);
+        renderAuctionInfo(listing, owner);
+    } catch (e) {
+        document.getElementById('loading').innerHTML = '<span class="text-error">Failed to load auction</span>';
+        console.error(e);
+    }
+});
+
+function renderPoochInfo(pooch) {
+    const sexEmoji = pooch.sex === 'female' ? '♀️' : '♂️';
+    const breedsHtml = pooch.breeds.length > 0
+        ? pooch.breeds.map(b =>
+            `<div class="flex items-center gap-2">
+                <span class="rarity-text-${(b.breed.rarity || '').toLowerCase()}">${escapeHtml(b.breed.name)}</span>
+                <span class="text-xs text-base-content/50">${Math.round(b.relative_weight * 100)}%</span>
+            </div>`
+          ).join('')
+        : '<span>Unknown</span>';
+
+    const mutationsHtml = pooch.mutations.length > 0
+        ? pooch.mutations.map(m =>
+            `<span class="badge badge-sm rarity-badge rarity-${(m.rarity || '').toLowerCase()}">${escapeHtml(m.name)}</span>`
+          ).join(' ')
+        : '<span class="text-base-content/50">None visible</span>';
+
+    const statusClass = pooch.status === 'healthy' ? 'text-success' : pooch.status === 'sick' ? 'text-error' : '';
+
+    document.getElementById('pooch-info').innerHTML = `
+        <h2 class="card-title">${escapeHtml(pooch.name)} ${sexEmoji}</h2>
+        <div class="grid grid-cols-2 gap-x-6 gap-y-2 text-sm mt-2">
+            <div><span class="text-base-content/50">Age:</span> ${pooch.age} days</div>
+            <div><span class="text-base-content/50">Health:</span> <span class="${statusClass}">${pooch.health}</span></div>
+            <div><span class="text-base-content/50">Status:</span> <span class="${statusClass}">${App.format.enumLabel(pooch.status)}</span></div>
+            <div><span class="text-base-content/50">Mood:</span> ${App.format.enumLabel(pooch.mood) || '—'}</div>
+            <div><span class="text-base-content/50">Virgin:</span> ${pooch.virgin ? 'Yes' : 'No'}</div>
+            <div><span class="text-base-content/50">Cooldown:</span> ${pooch.breeding_cooldown || 0} days</div>
+        </div>
+        <div class="divider my-2"></div>
+        <h3 class="text-sm font-semibold text-base-content/50 uppercase tracking-wide">Breeds</h3>
+        <div class="flex flex-col gap-1 mt-1">${breedsHtml}</div>
+        <div class="divider my-2"></div>
+        <h3 class="text-sm font-semibold text-base-content/50 uppercase tracking-wide">Mutations</h3>
+        <div class="flex flex-wrap gap-1 mt-1">${mutationsHtml}</div>
+    `;
+}
+
+function renderAuctionInfo(listing, owner) {
+    const isOwner = listing.seller_discord_id === owner.discord_id;
+    const bidInfo = listing.highest_bid !== null
+        ? `${formatCurrency(listing.highest_bid)} (${listing.bid_count} bid${listing.bid_count !== 1 ? 's' : ''})`
+        : 'No bids yet';
+
+    const expiresText = listing.expires_at
+        ? new Date(listing.expires_at).toLocaleString()
+        : 'No expiry';
+
+    document.getElementById('auction-info').innerHTML = `
+        <div class="flex flex-col gap-2 text-sm">
+            <div class="flex justify-between"><span class="text-base-content/50">Minimum Bid</span><span class="font-semibold">${formatCurrency(listing.minimum_bid)}</span></div>
+            <div class="flex justify-between"><span class="text-base-content/50">Current High Bid</span><span class="font-semibold text-success">${bidInfo}</span></div>
+            <div class="flex justify-between"><span class="text-base-content/50">Expires</span><span>${expiresText}</span></div>
+            <div class="flex justify-between"><span class="text-base-content/50">Your Balance</span><span>${formatCurrency(owner.dollars)}</span></div>
+        </div>
+    `;
+
+    const formSection = document.getElementById('bid-form-section');
+
+    if (isOwner) {
+        formSection.innerHTML = `
+            <div class="divider my-2"></div>
+            <p class="text-sm text-base-content/50 mb-2">This is your listing.</p>
+            <button class="btn btn-error btn-sm btn-block" onclick="closeSale()">Close Auction</button>
+        `;
+    } else {
+        const minBid = listing.highest_bid !== null ? listing.highest_bid + 1 : listing.minimum_bid;
+        formSection.innerHTML = `
+            <div class="divider my-2"></div>
+            <div class="form-control">
+                <label class="label"><span class="label-text">Your Bid ($)</span></label>
+                <input type="number" id="bid-amount" class="input input-bordered" min="${minBid}" value="${minBid}" />
+            </div>
+            <button class="btn btn-primary btn-block mt-3" onclick="placeBid()">Place Bid</button>
+        `;
+    }
+}
+
+async function placeBid() {
+    const amount = parseInt(document.getElementById('bid-amount').value);
+    if (!amount || amount <= 0) {
+        App.showNotification('Enter a valid bid amount.', 'error');
+        return;
+    }
+    if (!confirm(`Place a bid of ${formatCurrency(amount)}?`)) return;
+
+    try {
+        const resp = await fetch(`/api/auctions/sales/${PAGE_DATA.listingId}/bid`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ amount }),
+        });
+        const result = await resp.json();
+        if (result.success) {
+            App.queueNotification(result.message, 'success');
+            window.location.reload();
+        } else {
+            App.showNotification(result.message || result.error || 'Bid failed', 'error');
+        }
+    } catch (e) {
+        App.showNotification('Something went wrong.', 'error');
+        console.error(e);
+    }
+}
+
+async function closeSale() {
+    if (!confirm('Close this auction? The highest bidder will win.')) return;
+    try {
+        const resp = await fetch(`/api/auctions/sales/${PAGE_DATA.listingId}/close`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+        });
+        const result = await resp.json();
+        if (result.success) {
+            App.queueNotification(result.message, 'success');
+            window.location.href = '/auction/';
+        } else {
+            App.showNotification(result.message || result.error || 'Failed to close', 'error');
+        }
+    } catch (e) {
+        App.showNotification('Something went wrong.', 'error');
+        console.error(e);
+    }
+}
+</script>
+{% endblock %}

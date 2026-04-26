@@ -40,6 +40,7 @@ def create_app(config: dict | None = None) -> Flask:
 
     # Register blueprints
     from src.web.routes.api import api_bp
+    from src.web.routes.auction import auction_bp
     from src.web.routes.auth import auth_bp
     from src.web.routes.church import church_bp
     from src.web.routes.construction import construction_bp
@@ -52,6 +53,7 @@ def create_app(config: dict | None = None) -> Flask:
     from src.web.routes.vendor import vendor_bp
     from src.web.routes.webhooks import webhooks_bp
 
+    app.register_blueprint(auction_bp, url_prefix="/auction")
     app.register_blueprint(auth_bp, url_prefix="/auth")
     app.register_blueprint(main_bp)
     app.register_blueprint(api_bp, url_prefix="/api")
