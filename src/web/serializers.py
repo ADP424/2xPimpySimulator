@@ -149,6 +149,46 @@ def serialize_other_event(event: Any) -> dict:
     }
 
 
+def serialize_auction_sale_listing(listing: Any) -> dict:
+    """Serialize a game-layer AuctionSaleListing."""
+    return {
+        "id": listing.id,
+        "pooch": serialize_pooch(listing.pooch),
+        "seller_discord_id": listing.seller_discord_id,
+        "server_discord_id": listing.server_discord_id,
+        "minimum_bid": listing.minimum_bid,
+        "created_at": serialize_datetime(listing.created_at),
+        "expires_at": serialize_datetime(listing.expires_at),
+        "is_active": listing.is_active,
+        "highest_bid": listing.highest_bid,
+        "highest_bidder_discord_id": listing.highest_bidder_discord_id,
+        "bid_count": listing.bid_count,
+    }
+
+
+def serialize_auction_bounty_listing(listing: Any) -> dict:
+    """Serialize a game-layer AuctionBountyListing."""
+    return {
+        "id": listing.id,
+        "buyer_discord_id": listing.buyer_discord_id,
+        "server_discord_id": listing.server_discord_id,
+        "title": listing.title,
+        "escrow_amount": listing.escrow_amount,
+        "criteria": listing.criteria,
+        "created_at": serialize_datetime(listing.created_at),
+        "is_active": listing.is_active,
+    }
+
+
+def serialize_bounty_match_result(result: Any) -> dict:
+    """Serialize a BountyMatchResult."""
+    return {
+        "listing_id": result.listing_id,
+        "matched_criteria": result.matched_criteria,
+        "payout": result.payout,
+    }
+
+
 def serialize_day_change_summary(summary: Any) -> dict:
     """Serialize a DayChangeSummary object."""
     return {
