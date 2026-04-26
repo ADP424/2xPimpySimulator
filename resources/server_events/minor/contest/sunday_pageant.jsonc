@@ -1,0 +1,83 @@
+{
+  "name": "Sunday Pageant",
+  "description": "Enter one of your pooches in today's pageant. The healthiest hound wins.",
+  "flavor_text": "Bows, ribbons, and an unreasonable amount of applause.",
+  "severity": "minor",
+  "rarity": "uncommon",
+  "filter": {
+    "min_owners": 1
+  },
+  "menus": {
+    "enter": {
+      "label": "Enter the Pageant",
+      "description": "Submit one of your living pooches to compete.",
+      "max_uses_per_player": 1,
+      "depends_on": [],
+      "options": [
+        {
+          "label": "Enter a pooch",
+          "description": "Pick one living pooch to compete ($10 entry fee).",
+          "filter": {
+            "min_money": 10
+          },
+          "requires": {
+            "pooch": {
+              "filter": {
+                "is_alive": true
+              }
+            }
+          },
+          "actions": [
+            {
+              "action_type": "modify_money",
+              "target_type": "owner",
+              "parameters": {
+                "amount": -10
+              }
+            }
+          ],
+          "scoring": {
+            "aggregate": "max",
+            "sources": [
+              { "type": "pooch_stat", "stat": "base_health", "scale": 1.0, "pivot": 0.0, "direction": 1.0 }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "outcomes": [
+    {
+      "label": "Champion",
+      "message": "Your pooch won the pageant!",
+      "target": "ranked_players",
+      "min_rank": 1,
+      "max_rank": 1,
+      "actions": [
+        {
+          "action_type": "modify_money",
+          "target_type": "owner",
+          "parameters": {
+            "amount": 150
+          }
+        }
+      ]
+    },
+    {
+      "label": "Runner-up",
+      "message": "Your pooch placed as a runner-up.",
+      "target": "ranked_players",
+      "min_rank": 2,
+      "max_rank": 3,
+      "actions": [
+        {
+          "action_type": "modify_money",
+          "target_type": "owner",
+          "parameters": {
+            "amount": 50
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+    "name": "Soul for a Soul", 
+    "description": "You've decided to bargain for your pooch's soul.",
+    "flavor_text": "Good luck.",
+    "severity": "MAJOR",
+    "rarity": "COMMON",
+    "triggered_only": true,
+    "requires_response": true,
+    "response_timeout": 3600,
+    "options": [
+        {
+            "label": "Accept",
+            "description": "Exchange the soul of one pooch for another.",
+            "filter": {
+                "pooches": [
+                    {
+                        "min_count": 1,
+                        "is_alive": true
+                    }
+                ]
+            },
+            "actions": [
+                {
+                    "action_type": "damn_pooch",
+                    "target_type": "pooch",
+                    "parameters": {
+                        "selector": "random",
+                        "filter": {
+                            "is_alive": true
+                        }
+                    }
+                },
+                {
+                    "action_type": "revive_pooch",
+                    "target_type": "pooch",
+                    "parameters": {
+                        "use_saved": "damned_pooch",
+                        "destination": "kennel"
+                    }
+                },
+                {
+                    "action_type": "remove_mutation",
+                    "target_type": "pooch",
+                    "parameters": {
+                        "use_saved": "damned_pooch",
+                        "mutation": "Haunted by Flames"
+                    }
+                }
+            ]
+        },
+        {
+            "label": "Decline Deal",
+            "description": "The price is too steep...",
+            "default": true,
+            "visible": true
+        }
+    ]
+}

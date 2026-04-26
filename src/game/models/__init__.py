@@ -1,18 +1,99 @@
+from __future__ import annotations
+
+from .auction import (
+    AuctionBountyListing,
+    AuctionSaleListing,
+    BountyMatchResult,
+    to_auction_bounty_listing,
+    to_auction_sale_listing,
+)
 from .breed import Breed, to_breed
-from .events.birth_event import BirthEvent
-from .events.day_change_summary import DayChangeSummary
-from .events.death_event import DeathEvent
-from .events.other_event import OtherEvent
+from .disease import Disease, to_disease
+from .events import (
+    BirthEvent,
+    DayChangeSummary,
+    DeathEvent,
+    OtherEvent,
+    OwnerEvent,
+    OwnerEventContext,
+    OwnerEventEntityReference,
+    OwnerEventEntityReferences,
+    OwnerEventHistory,
+    OwnerEventOption,
+    OwnerEventResult,
+    ServerEventContext,
+    ServerEventMenu,
+    ServerEventMenuOption,
+    ServerEventParticipationSummary,
+    ServerEventResolution,
+    StrayEventContext,
+    StrayEventResult,
+    TriggeredOwnerEvent,
+    TriggeredServerEvent,
+    resolve_owner_event_entity_references,
+    to_owner_event,
+    to_owner_event_history,
+    to_owner_event_option,
+    to_server_event_menu,
+    to_server_event_menu_option,
+    to_server_event_participation_summary,
+    to_triggered_owner_event,
+    to_triggered_server_event,
+)
 from .kennel import Kennel, to_kennel
 from .mutation import Mutation, to_mutation
 from .owner import Owner, to_owner
-from .pooch import Pooch, to_pooch
+from .pooch import (
+    Pooch,
+    PoochBreedInfo,
+    PoochDiseaseInfo,
+    PoochInjuryInfo,
+    PoochMutationInfo,
+    apply_stat_params,
+    to_pooch,
+)
 from .server import Server, to_server
 from .vendor import Vendor, to_vendor
 
 __all__ = [
+    "AuctionBountyListing",
+    "AuctionSaleListing",
+    "BountyMatchResult",
+    "to_auction_bounty_listing",
+    "to_auction_sale_listing",
     "Breed",
     "to_breed",
+    "Disease",
+    "to_disease",
+    "BirthEvent",
+    "DayChangeSummary",
+    "DeathEvent",
+    "OtherEvent",
+    "OwnerEvent",
+    "OwnerEventContext",
+    "OwnerEventEntityReference",
+    "OwnerEventEntityReferences",
+    "OwnerEventHistory",
+    "OwnerEventOption",
+    "OwnerEventResult",
+    "TriggeredOwnerEvent",
+    "ServerEventContext",
+    "ServerEventMenu",
+    "ServerEventMenuOption",
+    "ServerEventParticipationSummary",
+    "TriggeredServerEvent",
+    "ServerEventResolution",
+    "StrayEventContext",
+    "StrayEventResult",
+    "resolve_owner_event_entity_references",
+    "to_owner_event",
+    "to_owner_event_history",
+    "to_owner_event_option",
+    "to_triggered_owner_event",
+    "to_server_event_menu",
+    "to_server_event_menu_option",
+    "to_server_event_participation_summary",
+    "to_triggered_server_event",
     "Kennel",
     "to_kennel",
     "Mutation",
@@ -20,13 +101,14 @@ __all__ = [
     "Owner",
     "to_owner",
     "Pooch",
+    "PoochBreedInfo",
+    "PoochDiseaseInfo",
+    "PoochInjuryInfo",
+    "PoochMutationInfo",
     "to_pooch",
     "Server",
     "to_server",
     "Vendor",
     "to_vendor",
-    "BirthEvent",
-    "DayChangeSummary",
-    "DeathEvent",
-    "OtherEvent",
+    "apply_stat_params",
 ]

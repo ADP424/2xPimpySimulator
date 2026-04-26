@@ -1,0 +1,53 @@
+{
+    "name": "Cannibalism Strikes",
+    "description": "One of your cannibal pooches ate another pooch.",
+    "flavor_text": "He must have been hungry.",
+    "severity": "MODERATE",
+    "rarity": "NOVEL",
+    "requires_response": false,
+    "filter": {
+        "kennels": [
+            {
+                "pooches": [
+                    {
+                        "min_count": 1,
+                        "has_all_mutations": ["cannibalism"],
+                        "is_alive": true
+                    },
+                    {
+                        "min_count": 1,
+                        "exclude_mutations": ["cannibalism"],
+                        "is_alive": true
+                    }
+                ]
+            }
+        ]
+    },
+    "actions": [
+        {
+            "action_type": "modify_base_health",
+            "target_type": "pooch",
+            "parameters": {
+                "selector": "random",
+                "min_amount": 1,
+                "max_amount": 2,
+                "filter":{
+                    "has_all_mutations": ["cannibalism"]
+                },
+                "save_as": "cannibal",
+                "save_kennel": true
+            }
+        },
+        {
+            "action_type": "kill_pooch",
+            "target_type": "kennel",
+            "parameters": {
+                "use_saved": "cannibal",
+                "pooch_selector": "random",
+                "pooch_filter": {
+                    "exclude_mutations": ["cannibalism"]
+                }
+            }
+        }
+    ]
+}

@@ -1,0 +1,17 @@
+{
+    "name": "Stray Illness",
+    "severity": "MAJOR",
+    "rarity": "RARE",
+    "filter": {
+        "min_count": 1
+    },
+    "actions": [
+        {
+            "action_type": "injure_pooch",
+            "parameters": {
+                "selector": "random",
+                "injury": "Severe"
+            }
+        }
+    ]
+}

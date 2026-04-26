@@ -1,13 +1,16 @@
 from flask import Blueprint, jsonify, request
 
-from web.async_utils import run_async
-from web.auth_utils import (
+from src.web.async_utils import run_async
+from src.web.auth_utils import (
     get_current_server_id,
     get_current_user_id,
     login_required,
     server_required,
 )
-from web.serializers import (
+from src.web.serializers import (
+    serialize_auction_bounty_listing,
+    serialize_auction_sale_listing,
+    serialize_bounty_match_result,
     serialize_breed,
     serialize_kennel,
     serialize_mutation,
@@ -19,11 +22,17 @@ from web.serializers import (
 api_bp = Blueprint("api", __name__)
 
 
+@api_bp.after_request
+def no_cache(response):
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
 @api_bp.route("/owner")
 @server_required
 def get_owner():
     """Get the current user's owner info for the current server."""
-    from game import get_or_create_owner
+    from src.game import get_or_create_owner
 
     discord_id = get_current_user_id()
     server_id = get_current_server_id()
@@ -36,7 +45,7 @@ def get_owner():
 @login_required
 def get_kennels():
     """Get all kennels owned by the current user."""
-    from game import list_owner_kennels
+    from src.game import list_owner_kennels
 
     discord_id = get_current_user_id()
     kennels = run_async(list_owner_kennels(discord_id))
@@ -47,7 +56,7 @@ def get_kennels():
 @login_required
 def get_kennel_pooches(kennel_id: int):
     """Get all pooches in a specific kennel."""
-    from game import list_kennel_pooches
+    from src.game import list_kennel_pooches
 
     try:
         pooches = run_async(list_kennel_pooches(kennel_id))
@@ -60,7 +69,7 @@ def get_kennel_pooches(kennel_id: int):
 @login_required
 def get_pooch(pooch_id: int):
     """Get detailed info about a specific pooch."""
-    from game import get_pooch_by_id
+    from src.game import get_pooch_by_id
 
     try:
         pooch = run_async(get_pooch_by_id(pooch_id))
@@ -73,7 +82,7 @@ def get_pooch(pooch_id: int):
 @login_required
 def get_pooch_family(pooch_id: int):
     """Get the family of a specific pooch."""
-    from game import get_pooch_family
+    from src.game import get_pooch_family
 
     try:
         family = run_async(get_pooch_family(pooch_id))
@@ -88,11 +97,29 @@ def get_pooch_family(pooch_id: int):
         return jsonify({"error": str(e)}), 404
 
 
+@api_bp.route("/pooches/<int:pooch_id>/family-tree")
+@login_required
+def get_pooch_family_tree(pooch_id: int):
+    """Get the full family tree graph for a pooch."""
+    from game import get_pooch_family_tree
+
+    ancestor_depth = request.args.get("ancestor_depth", 5, type=int)
+    descendant_depth = request.args.get("descendant_depth", 4, type=int)
+    ancestor_depth = min(max(ancestor_depth, 0), 16)
+    descendant_depth = min(max(descendant_depth, 0), 16)
+
+    try:
+        tree = run_async(get_pooch_family_tree(pooch_id, ancestor_depth, descendant_depth))
+        return jsonify(tree)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 404
+
+
 @api_bp.route("/pooches/<int:pooch_id>/buy-price")
 @login_required
 def get_pooch_buy_price(pooch_id: int):
     """Get the buy price of a pooch, optionally from a vendor."""
-    from game import get_pooch_buy_price
+    from src.game import get_pooch_buy_price
 
     vendor_id = request.args.get("vendor_id", type=int)
 
@@ -107,7 +134,7 @@ def get_pooch_buy_price(pooch_id: int):
 @login_required
 def get_pooch_sell_price(pooch_id: int):
     """Get the sell price of a pooch, optionally to a vendor."""
-    from game import get_pooch_sell_price
+    from src.game import get_pooch_sell_price
 
     vendor_id = request.args.get("vendor_id", type=int)
 
@@ -122,8 +149,8 @@ def get_pooch_sell_price(pooch_id: int):
 @login_required
 def breed_pooches():
     """Breed two pooches."""
-    from game import breed_pooches as game_breed_pooches
-    from game import get_pooch_by_id
+    from src.game import breed_pooches as game_breed_pooches
+    from src.game import get_pooch_by_id
 
     data = request.json
     first_pooch_id = data.get("first_pooch_id")
@@ -152,7 +179,7 @@ def breed_pooches():
 @login_required
 def check_incest():
     """Check incest level between two pooches."""
-    from game import calculate_incest_level
+    from src.game import calculate_incest_level
 
     first_id = request.args.get("first_pooch_id", type=int)
     second_id = request.args.get("second_pooch_id", type=int)
@@ -171,7 +198,7 @@ def check_incest():
 @server_required
 def get_vendors():
     """Get all vendors for the current server."""
-    from game import list_server_vendors
+    from src.game import list_server_vendors
 
     server_id = get_current_server_id()
     vendors = run_async(list_server_vendors(server_id))
@@ -182,7 +209,7 @@ def get_vendors():
 @login_required
 def get_vendor(vendor_id: int):
     """Get info about a specific vendor."""
-    from game import get_vendor_by_id
+    from src.game import get_vendor_by_id
 
     try:
         vendor = run_async(get_vendor_by_id(vendor_id))
@@ -195,7 +222,7 @@ def get_vendor(vendor_id: int):
 @login_required
 def get_vendor_pooches(vendor_id: int):
     """Get all pooches for sale by a vendor."""
-    from game import get_pooch_buy_price, list_vendor_pooches
+    from src.game import get_pooch_buy_price, list_vendor_pooches
 
     try:
         pooches = run_async(list_vendor_pooches(vendor_id))
@@ -213,7 +240,7 @@ def get_vendor_pooches(vendor_id: int):
 @login_required
 def buy_pooch(vendor_id: int, pooch_id: int):
     """Buy a pooch from a vendor."""
-    from game import buy_pooch as game_buy_pooch
+    from src.game import buy_pooch as game_buy_pooch
 
     discord_id = get_current_user_id()
 
@@ -228,7 +255,7 @@ def buy_pooch(vendor_id: int, pooch_id: int):
 @login_required
 def sell_pooch_to_vendor(vendor_id: int, pooch_id: int):
     """Sell a pooch to a vendor."""
-    from game import sell_pooch
+    from src.game import sell_pooch
 
     discord_id = get_current_user_id()
 
@@ -243,7 +270,7 @@ def sell_pooch_to_vendor(vendor_id: int, pooch_id: int):
 @login_required
 def get_hell_pooches():
     """List all pooches damned to Hell."""
-    from game import list_hell_pooches
+    from src.game import list_hell_pooches
 
     pooches = run_async(list_hell_pooches())
     return jsonify([serialize_pooch(p) for p in pooches])
@@ -253,7 +280,7 @@ def get_hell_pooches():
 @login_required
 def get_hell_summon_price():
     """Get the bloodskull cost to summon with the given number of rolls."""
-    from game import get_summon_pooch_price
+    from src.game import get_summon_pooch_price
 
     rolls = request.args.get("rolls", 1, type=int)
     price = get_summon_pooch_price(max(rolls, 1))
@@ -264,7 +291,7 @@ def get_hell_summon_price():
 @login_required
 def summon_hell_pooch():
     """Summon a pooch from Hell."""
-    from game import summon_pooch
+    from src.game import summon_pooch
 
     discord_id = get_current_user_id()
     data = request.json or {}
@@ -281,7 +308,7 @@ def summon_hell_pooch():
 @login_required
 def get_bloodskull_value(pooch_id: int):
     """Get the bloodskull sacrifice value of a pooch."""
-    from game import get_pooch_bloodskull_value
+    from src.game import get_pooch_bloodskull_value
 
     try:
         value = run_async(get_pooch_bloodskull_value(pooch_id))
@@ -294,7 +321,7 @@ def get_bloodskull_value(pooch_id: int):
 @login_required
 def sacrifice_pooch_route(pooch_id: int):
     """Sacrifice a pooch to Hell for bloodskulls."""
-    from game import sacrifice_pooch
+    from src.game import sacrifice_pooch
 
     discord_id = get_current_user_id()
 
@@ -309,7 +336,7 @@ def sacrifice_pooch_route(pooch_id: int):
 @login_required
 def get_graveyard():
     """Get all deceased pooches buried by the current user."""
-    from game import list_graveyard_pooches
+    from src.game import list_graveyard_pooches
 
     discord_id = get_current_user_id()
     rows = run_async(list_graveyard_pooches(discord_id))
@@ -325,7 +352,7 @@ def get_graveyard():
 @login_required
 def rename_pooch_route(pooch_id: int):
     """Rename a pooch."""
-    from game import rename_pooch
+    from src.game import rename_pooch
 
     data = request.json or {}
     name = data.get("name", "").strip()
@@ -345,7 +372,7 @@ def rename_pooch_route(pooch_id: int):
 @login_required
 def rename_kennel_route(kennel_id: int):
     """Rename a kennel."""
-    from game import rename_kennel
+    from src.game import rename_kennel
 
     data = request.json or {}
     name = data.get("name", "").strip()
@@ -365,7 +392,7 @@ def rename_kennel_route(kennel_id: int):
 @server_required
 def beg_route():
     """Beg for money at the church."""
-    from game import beg_for_money
+    from src.game import beg_for_money
 
     discord_id = get_current_user_id()
     server_id = get_current_server_id()
@@ -379,11 +406,103 @@ def beg_route():
         return jsonify({"error": str(e)}), 500
 
 
+@api_bp.route("/park/visit", methods=["POST"])
+@server_required
+def park_visit():
+    """Free daily park visit to attract a stray."""
+    from src.game import visit_park
+
+    discord_id = get_current_user_id()
+    server_id = get_current_server_id()
+
+    try:
+        caught, message = run_async(visit_park(server_id, discord_id))
+        return jsonify({"success": caught, "message": message})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@api_bp.route("/park/bone", methods=["POST"])
+@server_required
+def park_use_bone():
+    """Spend a bone for an extra park attempt."""
+    from src.game import spend_bone_at_park
+
+    discord_id = get_current_user_id()
+    server_id = get_current_server_id()
+
+    try:
+        caught, message = run_async(spend_bone_at_park(server_id, discord_id))
+        return jsonify({"success": caught, "message": message})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@api_bp.route("/construction/buy-price")
+@login_required
+def get_kennel_buy_price_route():
+    """Get the price to buy the next kennel for the current user."""
+    from src.game import get_kennel_buy_price
+
+    discord_id = get_current_user_id()
+    price, status = run_async(get_kennel_buy_price(discord_id))
+    return jsonify({"price": price, "status": status})
+
+
+@api_bp.route("/construction/upgrade-price/<int:kennel_id>")
+@login_required
+def get_kennel_upgrade_price_route(kennel_id: int):
+    """Get the price to upgrade a kennel. Verifies the current user owns it."""
+    from src.game import get_kennel_upgrade_price, list_owner_kennels
+
+    discord_id = get_current_user_id()
+    kennels = run_async(list_owner_kennels(discord_id))
+    if not any(k.id == kennel_id for k in kennels):
+        return jsonify({"error": "You don't own that kennel"}), 403
+
+    price, status = run_async(get_kennel_upgrade_price(kennel_id))
+    return jsonify({"price": price, "status": status})
+
+
+@api_bp.route("/construction/buy-kennel", methods=["POST"])
+@login_required
+def buy_kennel_route():
+    """Buy a new kennel for the current user."""
+    from src.game import buy_kennel
+
+    discord_id = get_current_user_id()
+
+    try:
+        success, message = run_async(buy_kennel(discord_id))
+        return jsonify({"success": success, "message": message})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@api_bp.route("/construction/upgrade-kennel/<int:kennel_id>", methods=["POST"])
+@login_required
+def upgrade_kennel_route(kennel_id: int):
+    """Upgrade a kennel's capacity. Verifies the current user owns it."""
+    from src.game import list_owner_kennels, upgrade_kennel
+
+    discord_id = get_current_user_id()
+
+    kennels = run_async(list_owner_kennels(discord_id))
+    if not any(k.id == kennel_id for k in kennels):
+        return jsonify({"error": "You don't own that kennel"}), 403
+
+    try:
+        success, message = run_async(upgrade_kennel(discord_id, kennel_id))
+        return jsonify({"success": success, "message": message})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @api_bp.route("/breeds")
 @login_required
 def get_breeds():
     """Get all breeds."""
-    from game import list_all_breeds
+    from src.game import list_all_breeds
 
     breeds = run_async(list_all_breeds())
     return jsonify([serialize_breed(b) for b in breeds])
@@ -393,7 +512,7 @@ def get_breeds():
 @login_required
 def get_breed(breed_id: int):
     """Get a single breed by ID."""
-    from game import list_all_breeds
+    from src.game import list_all_breeds
 
     breeds = run_async(list_all_breeds())
     for b in breeds:
@@ -406,7 +525,7 @@ def get_breed(breed_id: int):
 @login_required
 def get_mutations():
     """Get all mutations."""
-    from game import list_all_mutations
+    from src.game import list_all_mutations
 
     mutations = run_async(list_all_mutations())
     return jsonify([serialize_mutation(m) for m in mutations])
@@ -416,10 +535,213 @@ def get_mutations():
 @login_required
 def get_mutation(mutation_id: int):
     """Get a single mutation by ID."""
-    from game import list_all_mutations
+    from src.game import list_all_mutations
 
     mutations = run_async(list_all_mutations())
     for m in mutations:
         if int(getattr(m, "id", -1)) == int(mutation_id):
             return jsonify(serialize_mutation(m))
     return jsonify({"error": "Mutation not found"}), 404
+
+
+# ---------------------------------------------------------------------------
+# Auction — Sale Listings
+# ---------------------------------------------------------------------------
+
+
+@api_bp.route("/auctions/sales")
+@server_required
+def get_server_sale_listings():
+    """List all active sale listings for the current server."""
+    from src.game import list_server_sale_listings
+
+    server_id = get_current_server_id()
+    listings = run_async(list_server_sale_listings(server_id))
+    return jsonify([serialize_auction_sale_listing(l) for l in listings])
+
+
+@api_bp.route("/auctions/sales/mine")
+@server_required
+def get_my_sale_listings():
+    """List the current user's active sale listings."""
+    from src.game import list_owner_sale_listings
+
+    discord_id = get_current_user_id()
+    listings = run_async(list_owner_sale_listings(discord_id))
+    return jsonify([serialize_auction_sale_listing(l) for l in listings])
+
+
+@api_bp.route("/auctions/sales/<int:listing_id>")
+@server_required
+def get_sale_listing_detail(listing_id: int):
+    """Get a single sale listing."""
+    from src.game import get_sale_listing
+
+    listing = run_async(get_sale_listing(listing_id))
+    if listing is None:
+        return jsonify({"error": "Listing not found"}), 404
+    return jsonify(serialize_auction_sale_listing(listing))
+
+
+@api_bp.route("/auctions/sales", methods=["POST"])
+@server_required
+def create_sale_listing_route():
+    """Create a new sale listing."""
+    from src.game import create_sale_listing
+
+    discord_id = get_current_user_id()
+    server_id = get_current_server_id()
+    data = request.json or {}
+    pooch_id = data.get("pooch_id")
+    minimum_bid = data.get("minimum_bid", 0)
+    duration_hours = data.get("duration_hours")
+
+    if not pooch_id:
+        return jsonify({"error": "pooch_id is required"}), 400
+    if not isinstance(minimum_bid, int) or minimum_bid < 0:
+        return jsonify({"error": "minimum_bid must be a non-negative integer"}), 400
+
+    try:
+        success, message = run_async(
+            create_sale_listing(discord_id, pooch_id, server_id, minimum_bid, duration_hours)
+        )
+        return jsonify({"success": success, "message": message})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@api_bp.route("/auctions/sales/<int:listing_id>/bid", methods=["POST"])
+@server_required
+def place_bid_route(listing_id: int):
+    """Place a bid on a sale listing."""
+    from src.game import place_bid
+
+    discord_id = get_current_user_id()
+    data = request.json or {}
+    amount = data.get("amount")
+
+    if not isinstance(amount, int) or amount <= 0:
+        return jsonify({"error": "amount must be a positive integer"}), 400
+
+    try:
+        success, message = run_async(place_bid(discord_id, listing_id, amount))
+        return jsonify({"success": success, "message": message})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@api_bp.route("/auctions/sales/<int:listing_id>/close", methods=["POST"])
+@server_required
+def close_sale_listing_route(listing_id: int):
+    """Close a sale listing (owner only)."""
+    from src.game import close_sale_listing
+
+    discord_id = get_current_user_id()
+
+    try:
+        success, message = run_async(close_sale_listing(discord_id, listing_id))
+        return jsonify({"success": success, "message": message})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ---------------------------------------------------------------------------
+# Auction — Bounty Listings
+# ---------------------------------------------------------------------------
+
+
+@api_bp.route("/auctions/bounties")
+@server_required
+def get_server_bounty_listings():
+    """List all active bounty listings for the current server."""
+    from src.game import list_server_bounty_listings
+
+    server_id = get_current_server_id()
+    listings = run_async(list_server_bounty_listings(server_id))
+    return jsonify([serialize_auction_bounty_listing(l) for l in listings])
+
+
+@api_bp.route("/auctions/bounties/mine")
+@server_required
+def get_my_bounty_listings():
+    """List the current user's active bounty listings."""
+    from src.game import list_owner_bounty_listings
+
+    discord_id = get_current_user_id()
+    listings = run_async(list_owner_bounty_listings(discord_id))
+    return jsonify([serialize_auction_bounty_listing(l) for l in listings])
+
+
+@api_bp.route("/auctions/bounties", methods=["POST"])
+@server_required
+def create_bounty_listing_route():
+    """Create a new bounty listing."""
+    from src.game import create_bounty_listing
+
+    discord_id = get_current_user_id()
+    server_id = get_current_server_id()
+    data = request.json or {}
+    title = data.get("title", "Wanted")
+    escrow_amount = data.get("escrow_amount")
+    criteria = data.get("criteria", [])
+
+    if not isinstance(escrow_amount, int) or escrow_amount <= 0:
+        return jsonify({"error": "escrow_amount must be a positive integer"}), 400
+    if not criteria:
+        return jsonify({"error": "At least one criterion is required"}), 400
+
+    try:
+        success, message = run_async(
+            create_bounty_listing(discord_id, server_id, title, escrow_amount, criteria)
+        )
+        return jsonify({"success": success, "message": message})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@api_bp.route("/auctions/bounties/<int:listing_id>/match/<int:pooch_id>")
+@server_required
+def evaluate_bounty_match_route(listing_id: int, pooch_id: int):
+    """Evaluate how well a pooch matches a bounty's criteria."""
+    from src.game import evaluate_bounty_match
+
+    try:
+        result = run_async(evaluate_bounty_match(listing_id, pooch_id))
+        return jsonify(serialize_bounty_match_result(result))
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@api_bp.route("/auctions/bounties/<int:listing_id>/fulfill", methods=["POST"])
+@server_required
+def fulfill_bounty_route(listing_id: int):
+    """Fulfill a bounty listing by selling a pooch."""
+    from src.game import fulfill_bounty
+
+    discord_id = get_current_user_id()
+    data = request.json or {}
+    pooch_id = data.get("pooch_id")
+
+    if not pooch_id:
+        return jsonify({"error": "pooch_id is required"}), 400
+
+    try:
+        success, message = run_async(fulfill_bounty(discord_id, listing_id, pooch_id))
+        return jsonify({"success": success, "message": message})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@api_bp.route("/auctions/bounties/<int:listing_id>/cancel", methods=["POST"])
+@server_required
+def cancel_bounty_listing_route(listing_id: int):
+    """Cancel a bounty listing (owner only)."""
+    from src.game import cancel_bounty_listing
+
+    discord_id = get_current_user_id()
+
+    try:
+        success, message = run_async(cancel_bounty_listing(discord_id, listing_id))
+        return jsonify({"success": success, "message": message})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

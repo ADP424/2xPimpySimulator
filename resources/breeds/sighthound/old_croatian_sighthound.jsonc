@@ -1,0 +1,11 @@
+{
+    "name": "Old Croatian Sighthound",
+    "alt_name": "Old Bosnian Sighthound",
+    "description": "The Old Croatian Sighthound is an extinct breed of sighthound from the countries of Croatia and Bosnia and Herzegovina.",
+    "rarity": "REMARKABLE",
+    "parameters": {
+        "sold_by_vendors": false
+    },
+    "min_size": 14,
+    "max_size": 22
+}

@@ -1,0 +1,11 @@
+{
+    "name": "Mexican lapdog",
+    "alt_name": "Ytzcuinte Potzotli",
+    "description": "he Mexican lapdog is an extinct breed of lap dog originating in Mexico. Noted for its small size, it was the smallest known dog breed.",
+    "rarity": "EXTRAORDINARY",
+    "parameters": {
+        "sold_by_vendors": false
+    },
+    "min_size": 1,
+    "max_size": 1
+}

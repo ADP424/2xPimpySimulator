@@ -1,0 +1,17 @@
+{
+    "name": "Phocomelia",
+    "alt_name": "Missing Leg Syndrome",
+    "description": "This pooch has a severely shortened or missing leg.",
+    "heritability": 0.1,
+    "health_impact": "HARMFUL",
+    "rarity": "NOVEL",
+    "parameters": {
+        "incompatible_mutations": [
+            "Extreme Phocomelia"
+        ],
+        "cuteness_add": 1,
+        "dexterity_mult": 0.70,
+        "strength_mult": 0.80,
+        "size_mult": 0.95
+    }
+}

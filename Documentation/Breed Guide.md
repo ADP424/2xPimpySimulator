@@ -4,23 +4,21 @@
 
 ### JSON
 
-Breeds are structured within resources/breeds.json, like:
-```json
-"[category]": {
+Breeds are structured within resources/breeds/**/*.jsonc, like:
+```jsonc
+{
     "[breed name]": {
         "alt_name": "string",
         "description": "string",
         "rarity": "string",
-        "advanced_options": {
+        "min_size": "int",
+        "max_size": "int",
+        "parameters": {
             "[option]": "string/float/int/list"
         }
-    },
-    ...
+    }
 }
 ```
-
-#### Category
-This is the name of the category the breed belongs to (for example, "miniature poodle" and "toy poodle" are both types of poodles). There can be any number of breeds in a category.
 
 #### Breed Name
 The common name of the breed, i.e. the main one that it should be referred to as.
@@ -42,20 +40,50 @@ How relatively likely/unlikely it is for a pooch to get this breed when generate
 - EXTRAORDINARY (5)
 - UNIQUE (1)
 
-#### Advanced Options
-An object representing more complex options for the breed (more information in "Advanced Options Guide").
+#### `min_size` / `max_size` : `int`
+
+Define the upper and lower bounds for a pooch's size with this breed. `min_size` and `max_size` are averaged across all of a pooch's breeds and rounded to the nearest integer. At the moment of a pooch's creation, it's assigned a size within the averaged (`min_size`, `max_size`) range. After that, it acts like any other pooch stat. The baseline for `min_size` is 8 and the baseline for `max_size` is 12.
+
+Mirum here. I'm trying to have the size go off of a 10 being ~40 pounds. Every point being around 4 pounds.
+
+#### Parameters
+An object representing more complex options for the breed (more information in "Parameters Guide").
 
 
-# Advanced Options Guide
+# Parameters Guide
 
-## Aquisition Options
+## Aquisition
 
-### `born_from_ritual` : `bool (int)`
+### `born_from_ritual` : `bool`
 Whether the breed can show up in pooches created by spending bloodskulls on the altar.
-- `1`: The breed can show up in pooches created from sacrifice. This is the default.
-- `0`: The breed will not show up in pooches created from sacrifice.
+- `true`: The breed can show up in pooches created from sacrifice. This is the default.
+- `false`: The breed will not show up in pooches created from sacrifice.
 
-### `sold_by_vendors` : `bool (int)`
+### `sold_by_vendors` : `bool`
 Whether the breed can show up on pooches generated to be sold by vendors or not.
-- `1`: The breed can show up in vendor pooches. This is the default.
-- `0`: The breed will not show up in vendor pooches.
+- `true`: The breed can show up in vendor pooches. This is the default.
+- `false`: The breed will not show up in vendor pooches.
+
+### `seasons` : `list[string]`
+Which seasons this breed can appear in when randomly generated (e.g. for vendor pooches, strays, event-created pooches). Case-insensitive. Valid values: `spring`, `summer`, `autumn`, `winter`.
+- If omitted, the breed can appear in all seasons. This is the default.
+- Example: `["autumn", "winter"]` — this breed only appears in autumn and winter.
+
+## Stats
+
+Stat modifiers adjust the effective value of a pooch's stats based on its breed composition. Each breed's contribution is weighted by its relative proportion in the pooch (e.g. a 50% husky with `strength_add: 4` contributes +2 strength). The add modifier is applied before the mult modifier.
+
+The following `_add` (int) and `_mult` (float) parameters are available for each stat:
+
+| Stat | Add parameter | Mult parameter |
+|------|--------------|----------------|
+| Base Health | `base_health_add` | `base_health_mult` |
+| Strength | `strength_add` | `strength_mult` |
+| Cuteness | `cuteness_add` | `cuteness_mult` |
+| Fluffiness | `fluffiness_add` | `fluffiness_mult` |
+| Intelligence | `intelligence_add` | `intelligence_mult` |
+| Dexterity | `dexterity_add` | `dexterity_mult` |
+| Fertility | `fertility_add` | `fertility_mult` |
+| Aggressiveness | `aggressiveness_add` | `aggressiveness_mult` |
+| Constitution | `constitution_add` | `constitution_mult` |
+| Size | `size_add` | `size_mult` |

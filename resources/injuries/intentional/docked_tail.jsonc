@@ -1,0 +1,12 @@
+{
+    "name": "Docked Tail",
+    "health_impact": "NEUTRAL",
+    "severity": "trivial",
+    "description": "This pooch's tail has been shortened.",
+    "parameters": {
+        "fluffiness_add": -1, 
+        "dexterity_add": -2,
+        "fertility_add": -1,
+        "strength_add": 1
+    }
+}

@@ -18,6 +18,7 @@ def serialize_breed(breed: Any) -> dict:
         "category": breed.category,
         "description": breed.description,
         "rarity": breed.rarity,
+        "parameters": getattr(breed, "parameters", {}),
     }
 
 
@@ -34,6 +35,7 @@ def serialize_mutation(mutation: Any) -> dict:
         "rarity": mutation.rarity,
         "affects_females": mutation.affects_females,
         "affects_males": mutation.affects_males,
+        "parameters": getattr(mutation, "parameters", {}),
     }
 
 
@@ -41,8 +43,12 @@ def serialize_owner(owner: Any) -> dict:
     """Serialize an Owner object."""
     return {
         "discord_id": owner.discord_id,
+        "discord_name": owner.discord_name,
         "dollars": owner.dollars,
         "bloodskulls": owner.bloodskulls,
+        "bones": owner.bones,
+        "begged_today": owner.begged_today,
+        "visited_park_today": owner.visited_park_today,
     }
 
 
@@ -82,11 +88,14 @@ def serialize_pooch(pooch: Any, include_relations: bool = True) -> dict:
         "birthday": serialize_datetime(pooch.birthday),
         "health": pooch.health,
         "status": pooch.status,
+        "mood": pooch.mood,
     }
 
     if include_relations:
         data["breeds"] = [serialize_pooch_breed_info(b) for b in pooch.breeds]
-        data["mutations"] = [serialize_mutation(m) for m in pooch.mutations]
+        data["mutations"] = [serialize_mutation(pm.mutation) for pm in pooch.mutations if pm.visible]
+        if pooch.owner is not None:
+            data["owner"] = serialize_owner(pooch.owner)
 
     return data
 
@@ -100,11 +109,14 @@ def serialize_vendor(vendor: Any) -> dict:
         "price_markup": vendor.price_markup,
         "stock_count": vendor.stock_count,
         "desired_mutations": [],
+        "desired_breeds": [],
     }
 
-    for mutation in [vendor.desired_mutation_1, vendor.desired_mutation_2, vendor.desired_mutation_3]:
-        if mutation:
-            data["desired_mutations"].append(serialize_mutation(mutation))
+    for mutation in vendor.desired_mutations:
+        data["desired_mutations"].append(serialize_mutation(mutation))
+
+    for breed in vendor.desired_breeds:
+        data["desired_breeds"].append(serialize_breed(breed))
 
     return data
 
@@ -134,6 +146,46 @@ def serialize_other_event(event: Any) -> dict:
         "type": "other",
         "pooch": serialize_pooch(event.pooch, include_relations=False),
         "message": event.message,
+    }
+
+
+def serialize_auction_sale_listing(listing: Any) -> dict:
+    """Serialize a game-layer AuctionSaleListing."""
+    return {
+        "id": listing.id,
+        "pooch": serialize_pooch(listing.pooch),
+        "seller_discord_id": listing.seller_discord_id,
+        "server_discord_id": listing.server_discord_id,
+        "minimum_bid": listing.minimum_bid,
+        "created_at": serialize_datetime(listing.created_at),
+        "expires_at": serialize_datetime(listing.expires_at),
+        "is_active": listing.is_active,
+        "highest_bid": listing.highest_bid,
+        "highest_bidder_discord_id": listing.highest_bidder_discord_id,
+        "bid_count": listing.bid_count,
+    }
+
+
+def serialize_auction_bounty_listing(listing: Any) -> dict:
+    """Serialize a game-layer AuctionBountyListing."""
+    return {
+        "id": listing.id,
+        "buyer_discord_id": listing.buyer_discord_id,
+        "server_discord_id": listing.server_discord_id,
+        "title": listing.title,
+        "escrow_amount": listing.escrow_amount,
+        "criteria": listing.criteria,
+        "created_at": serialize_datetime(listing.created_at),
+        "is_active": listing.is_active,
+    }
+
+
+def serialize_bounty_match_result(result: Any) -> dict:
+    """Serialize a BountyMatchResult."""
+    return {
+        "listing_id": result.listing_id,
+        "matched_criteria": result.matched_criteria,
+        "payout": result.payout,
     }
 
 

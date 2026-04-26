@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 from typing import Optional, Protocol
 
 import discord
 from discord.ui import Button, View
 
-from bot.constants import VIEW_TIMEOUT
-from bot.ui.util import edit_interaction
+from src.bot.constants import VIEW_TIMEOUT
+from src.bot.ui.util import edit_interaction
 
 
 class PageSource(Protocol):

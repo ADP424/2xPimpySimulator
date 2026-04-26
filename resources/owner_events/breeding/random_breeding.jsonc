@@ -1,0 +1,56 @@
+{
+    "name": "Random Breeding",
+    "description": "Two of your pooches bred without permission.",
+    "flavor_text": "Maybe you should throw them in cages.",
+    "severity": "MODERATE",
+    "rarity": "NOVEL",
+    "requires_response": false,
+    "filter": {
+        "kennels": [
+            {
+                "pooches": [
+                    { 
+                        "sex": "male",
+                        "max_breeding_cooldown": 0
+                    },
+                    { 
+                        "sex": "female",
+                        "max_breeding_cooldown": 0
+                    }
+                ]
+            }
+        ]
+    },
+    "actions": [
+        {
+            "action_type": "breed_pooches",
+            "target_type": "kennel",
+            "parameters": {
+                "selector": "random",
+                "filter": {
+                    "pooches": [
+                        { 
+                            "sex": "male",
+                            "max_breeding_cooldown": 0
+                        },
+                        { 
+                            "sex": "female",
+                            "max_breeding_cooldown": 0
+                        }
+                    ]
+                },
+
+                "first_pooch_selector": "random",
+                "first_filter": {
+                    "sex": "male",
+                    "max_breeding_cooldown": 0
+                },
+                "second_pooch_selector": "random",
+                "second_filter": {
+                    "sex": "female",
+                    "max_breeding_cooldown": 0
+                }
+            }
+        }
+    ]
+}

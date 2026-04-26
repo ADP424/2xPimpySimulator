@@ -1,8 +1,43 @@
+import random
 from typing import Optional
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import and_, delete, func, or_, select
 
-from .models import KennelPooch, Pooch, PoochPregnancy, Vendor, VendorPoochForSale
+from src.database.models.enums.health_impact_weight import HealthImpactWeight
+
+_RARITY_ORDER = ["common", "uncommon", "novel", "rare", "unprecedented", "remarkable", "extraordinary", "unique"]
+_HEALTH_IMPACT_ORDER = [
+    "instant_death",
+    "fatal",
+    "brutal",
+    "severe",
+    "unhealthy",
+    "harmful",
+    "neutral",
+    "helpful",
+    "healthy",
+    "great",
+    "fantastic",
+    "brilliant",
+    "immortality",
+]
+
+from .models import (
+    AuctionBid,
+    Breed,
+    Kennel,
+    KennelPooch,
+    Mutation,
+    Pooch,
+    PoochBreed,
+    PoochDisease,
+    PoochDiseaseImmunity,
+    PoochMutation,
+    PoochPregnancy,
+    StrayPooch,
+    Vendor,
+    VendorPoochForSale,
+)
 from .session import session_scope
 
 
@@ -68,6 +103,33 @@ async def delete_pooch(pooch_id: int) -> Optional[Pooch]:
     return pooch
 
 
+async def delete_kennel(kennel_id: int) -> Optional[Kennel]:
+    """
+    Delete a kennel from the database (cascade deletes its KennelPooch rows).
+
+    Parameters
+    ----------
+    kennel_id: int
+        The ID of the kennel to delete.
+
+    Returns
+    -------
+    Kennel, optional
+        The deleted Kennel ORM object, or None if not found.
+    """
+
+    async with session_scope() as session:
+        response = await session.execute(select(Kennel).where(Kennel.id == kennel_id))
+        kennel = response.scalar_one_or_none()
+        if kennel is None:
+            return None
+
+        await session.delete(kennel)
+        await session.flush()
+
+    return kennel
+
+
 async def delete_pregnancy(mother_id: int, fetus_id: int) -> Optional[Pooch]:
     """
     Delete a pooch pregnancy instance.
@@ -129,6 +191,40 @@ async def delete_random_vendor(server_discord_id: int) -> Optional[Vendor]:
         await session.flush()
 
         return vendor
+
+
+async def remove_mutation_from_pooch(pooch_id: int, mutation_id: int) -> Optional[PoochMutation]:
+    """
+    Remove a mutation from a pooch.
+
+    Parameters
+    ----------
+    pooch_id: int
+        The ID of the pooch to remove the mutation from.
+
+    mutation_id: int
+        The ID of the mutation to remove.
+
+    Returns
+    -------
+    PoochMutation, optional
+        The removed PoochMutation relationship, or None if it didn't exist.
+    """
+
+    async with session_scope() as session:
+        query = select(PoochMutation).where(
+            and_(
+                PoochMutation.pooch_id == pooch_id,
+                PoochMutation.mutation_id == mutation_id,
+            )
+        )
+        result = await session.execute(query)
+        pooch_mutation = result.scalar_one_or_none()
+
+        if pooch_mutation is not None:
+            await session.delete(pooch_mutation)
+
+        return pooch_mutation
 
 
 async def remove_pooch_from_kennel(pooch_id: int) -> Pooch:
@@ -209,3 +305,256 @@ async def remove_pooch_from_vendor_stock(vendor_id: int, pooch_id: int) -> Optio
         )
 
     return pooch
+
+
+async def remove_pooch_from_strays(pooch_id: int) -> Optional[StrayPooch]:
+    """
+    Remove the given pooch from the stray pool.
+
+    Parameters
+    ----------
+    pooch_id: int
+        The ID of the stray pooch to remove.
+
+    Returns
+    -------
+    StrayPooch, optional
+        The removed StrayPooch ORM object, or None if it wasn't in the stray pool.
+    """
+
+    async with session_scope() as session:
+        stray = await session.get(StrayPooch, pooch_id)
+        if stray is None:
+            return None
+        await session.delete(stray)
+        return stray
+
+
+async def remove_breed_from_pooch(pooch_id: int, breed_id: int) -> Optional[PoochBreed]:
+    """Remove a specific breed from a pooch by breed ID. Returns the removed row or None."""
+
+    async with session_scope() as session:
+        row = (
+            await session.execute(
+                select(PoochBreed).where(PoochBreed.pooch_id == pooch_id, PoochBreed.breed_id == breed_id)
+            )
+        ).scalar_one_or_none()
+        if row is None:
+            return None
+        await session.delete(row)
+        return row
+
+
+async def remove_random_breed_from_pooch(
+    pooch_id: int,
+    rng: Optional[random.Random] = None,
+    min_rarity: Optional[str] = None,
+    max_rarity: Optional[str] = None,
+) -> Optional[PoochBreed]:
+    """
+    Remove a random breed from a pooch.
+
+    Parameters
+    ----------
+    pooch_id: int
+        The ID of the pooch to remove a breed from.
+
+    rng: Random, optional
+        The random generator to use for selection.
+
+    min_rarity: str, optional
+        Minimum rarity to allow when selecting (inclusive).
+
+    max_rarity: str, optional
+        Maximum rarity to allow when selecting (inclusive).
+
+    Returns
+    -------
+    PoochBreed, optional
+        The removed PoochBreed relationship, or None if the pooch had no breeds.
+    """
+
+    rng = rng if rng is not None else random.Random()
+
+    async with session_scope() as session:
+        query = select(PoochBreed).join(Breed, Breed.id == PoochBreed.breed_id).where(PoochBreed.pooch_id == pooch_id)
+        if min_rarity is not None and min_rarity.lower() in _RARITY_ORDER:
+            min_idx = _RARITY_ORDER.index(min_rarity.lower())
+            query = query.where(Breed.rarity.in_(_RARITY_ORDER[min_idx:]))
+        if max_rarity is not None and max_rarity.lower() in _RARITY_ORDER:
+            max_idx = _RARITY_ORDER.index(max_rarity.lower())
+            query = query.where(Breed.rarity.in_(_RARITY_ORDER[: max_idx + 1]))
+
+        result = await session.execute(query)
+        breeds = list(result.scalars().all())
+
+        if not breeds:
+            return None
+
+        selected = rng.choice(breeds)
+        await session.delete(selected)
+        return selected
+
+
+async def remove_random_mutation_from_pooch(
+    pooch_id: int,
+    rng: Optional[random.Random] = None,
+    positive: bool = True,
+    negative: bool = True,
+    neutral: bool = True,
+    min_rarity: Optional[str] = None,
+    max_rarity: Optional[str] = None,
+    min_health_impact: Optional[str] = None,
+    max_health_impact: Optional[str] = None,
+) -> Optional[PoochMutation]:
+    """
+    Remove a random mutation from a pooch.
+
+    Parameters
+    ----------
+    pooch_id: int
+        The ID of the pooch to remove a mutation from.
+
+    rng: Random, optional
+        The random generator to use for selection.
+
+    positive: bool
+        Whether to include positive health impact mutations.
+
+    negative: bool
+        Whether to include negative health impact mutations.
+
+    neutral: bool
+        Whether to include neutral health impact mutations.
+
+    min_rarity: str, optional
+        Minimum rarity to allow (inclusive).
+
+    max_rarity: str, optional
+        Maximum rarity to allow (inclusive).
+
+    min_health_impact: str, optional
+        Minimum health_impact to allow (inclusive).
+
+    max_health_impact: str, optional
+        Maximum health_impact to allow (inclusive).
+
+    Returns
+    -------
+    PoochMutation, optional
+        The removed PoochMutation relationship, or None if the pooch had no mutations.
+    """
+
+    rng = rng if rng is not None else random.Random()
+
+    async with session_scope() as session:
+        weight_conditions = []
+        if positive:
+            weight_conditions.append(HealthImpactWeight.weight > 0)
+        if negative:
+            weight_conditions.append(HealthImpactWeight.weight < 0)
+        if neutral:
+            weight_conditions.append(HealthImpactWeight.weight == 0)
+
+        if not weight_conditions:
+            return None
+
+        query = (
+            select(PoochMutation)
+            .join(Mutation, Mutation.id == PoochMutation.mutation_id)
+            .join(HealthImpactWeight, HealthImpactWeight.health_impact == Mutation.health_impact)
+            .where(
+                and_(
+                    PoochMutation.pooch_id == pooch_id,
+                    or_(*weight_conditions),
+                )
+            )
+        )
+        if min_rarity is not None and min_rarity.lower() in _RARITY_ORDER:
+            min_idx = _RARITY_ORDER.index(min_rarity.lower())
+            query = query.where(Mutation.rarity.in_(_RARITY_ORDER[min_idx:]))
+        if max_rarity is not None and max_rarity.lower() in _RARITY_ORDER:
+            max_idx = _RARITY_ORDER.index(max_rarity.lower())
+            query = query.where(Mutation.rarity.in_(_RARITY_ORDER[: max_idx + 1]))
+        if min_health_impact is not None and min_health_impact.lower() in _HEALTH_IMPACT_ORDER:
+            min_idx = _HEALTH_IMPACT_ORDER.index(min_health_impact.lower())
+            query = query.where(Mutation.health_impact.in_(_HEALTH_IMPACT_ORDER[min_idx:]))
+        if max_health_impact is not None and max_health_impact.lower() in _HEALTH_IMPACT_ORDER:
+            max_idx = _HEALTH_IMPACT_ORDER.index(max_health_impact.lower())
+            query = query.where(Mutation.health_impact.in_(_HEALTH_IMPACT_ORDER[: max_idx + 1]))
+
+        result = await session.execute(query)
+        mutations = list(result.scalars().all())
+
+        if not mutations:
+            return None
+
+        selected = rng.choice(mutations)
+        await session.delete(selected)
+        return selected
+
+
+async def remove_auction_bid(bid_id: int) -> bool:
+    """Delete a specific bid row by ID. Returns True if a row was deleted."""
+    async with session_scope() as session:
+        bid = await session.get(AuctionBid, bid_id)
+        if bid is None:
+            return False
+        await session.delete(bid)
+        return True
+
+
+async def remove_disease_from_pooch(pooch_id: int, disease_id: int) -> Optional[PoochDisease]:
+    """
+    Remove a disease from a pooch.
+
+    Parameters
+    ----------
+    pooch_id: int
+        The ID of the pooch to remove the disease from.
+
+    disease_id: int
+        The ID of the disease to remove.
+
+    Returns
+    -------
+    PoochDisease, optional
+        The removed PoochDisease relationship, or None if it didn't exist.
+    """
+
+    async with session_scope() as session:
+        query = select(PoochDisease).where(
+            and_(
+                PoochDisease.pooch_id == pooch_id,
+                PoochDisease.disease_id == disease_id,
+            )
+        )
+        result = await session.execute(query)
+        pooch_disease = result.scalar_one_or_none()
+
+        if pooch_disease is not None:
+            await session.delete(pooch_disease)
+
+        return pooch_disease
+
+
+async def remove_expired_disease_immunities(current_day: int) -> int:
+    """
+    Remove all disease immunity records that have expired. Returns count removed.
+
+    Parameters
+    ----------
+    current_day: int
+        The current global day number.
+
+    Returns
+    -------
+    int
+        The number of expired immunity records deleted.
+    """
+
+    async with session_scope() as session:
+        result = await session.execute(
+            delete(PoochDiseaseImmunity).where(PoochDiseaseImmunity.immune_until_day <= current_day)
+        )
+        return result.rowcount

@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+
 class PoochNotFound(Exception):
     """
     Exception raised when a pooch corresponding to an ID isn't found.

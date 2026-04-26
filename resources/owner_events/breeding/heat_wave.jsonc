@@ -1,0 +1,32 @@
+{
+    "name": "Heat Wave 😳",
+    "description": "One of your pooches just became very eager to breed.",
+    "flavor_text": "You wonder what set it off...",
+    "severity": "MINOR",
+    "rarity": "UNCOMMON",
+    "requires_response": false,
+    "filter": {
+        "pooches": [
+            {
+                "min_count": 1,
+                "is_alive": true,
+                "min_breeding_cooldown": 1
+            }
+        ]
+    },
+    "actions": [
+        {
+            "action_type": "modify_breeding_cooldown",
+            "target_type": "pooch",
+            "parameters": {
+                "amount": 0,
+                "mode": "set",
+                "selector": "random",
+                "filter": {
+                    "is_alive": true,
+                    "min_breeding_cooldown": 1
+                }
+            }
+        }
+    ]
+}

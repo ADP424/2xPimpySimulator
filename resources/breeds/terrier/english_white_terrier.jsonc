@@ -1,0 +1,11 @@
+{
+    "name": "English White Terrier",
+    "alt_name": "Old English Terrier",
+    "description": "The English White Terrier is an extinct breed of dog. English White Terrier is the failed show ring name of a pricked-ear form of the white fox-working terriers that have existed in Great Britain since the late 18th century.",
+    "rarity": "REMARKABLE",
+    "parameters": {
+        "sold_by_vendors": false
+    },
+    "min_size": 4,
+    "max_size": 5
+}

@@ -1,0 +1,39 @@
+{
+    "name": "Ascension",
+    "description": "You come back to your kennel and find all but one of your pooches dead.",
+    "flavor_text": "Something feels off about them.",
+    "severity": "CATASTROPHIC",
+    "rarity": "UNIQUE",
+    "requires_response": false,
+    "filter": {
+        "kennels": [
+            {
+                "min_count": 1,
+                "min_pooches": 5
+            }
+        ]
+    },
+    "actions": [
+        {
+            "action_type": "kill_pooch",
+            "target_type": "kennel",
+            "parameters": {
+                "selector": "random",
+                "filter": {
+                    "min_pooches": 5
+                },
+                "save_excluded_as": "god_pooch",
+                "pooch_selector": "random_exclude",
+                "pooch_count": 1
+            }
+        },
+        {
+            "action_type": "add_mutation",
+            "target_type": "pooch",
+            "parameters": {
+                "use_saved": "god_pooch",
+                "mutation": "God Syndrome"
+            }
+        }
+    ]
+}

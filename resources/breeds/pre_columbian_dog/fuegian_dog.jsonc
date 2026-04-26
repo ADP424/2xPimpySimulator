@@ -1,0 +1,11 @@
+{
+    "name": "Fuegian dog",
+    "alt_name": "Patagonian Dog",
+    "description": "The Fuegian dog is an extinct type of canine. The Fuegian dog was bred and domesticated from the South American culpeo, also known as the culpeo fox.",
+    "rarity": "EXTRAORDINARY",
+    "parameters": {
+        "sold_by_vendors": false
+    },
+    "min_size": 3,
+    "max_size": 8
+}

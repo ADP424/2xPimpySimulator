@@ -1,22 +1,38 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 import discord
 from discord.ui import Button, Select, View
 
-from bot.ui.util import edit_interaction, reply_to_interacted_message
-from game.models import Mutation
+from src.bot.ui.util import edit_interaction, reply_to_interacted_message
+
+if TYPE_CHECKING:
+    from src.game.models import Mutation
 
 
 def build_mutation_info_embed(mutation: Mutation) -> discord.Embed:
+    """
+    Build mutation info embed.
+
+    Parameters
+    ----------
+    mutation: Any
+        The `mutation` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `build_mutation_info_embed`.
+    """
+
     embed = discord.Embed(title=mutation.name, description=mutation.description)
     embed.add_field(name="Also Known As", value=mutation.alt_name or "—", inline=True)
     embed.add_field(name="Category", value=mutation.category or "—", inline=True)
-    embed.add_field(name="Rarity", value=str(mutation.rarity).capitalize(), inline=True)
-    embed.add_field(name="Health Impact", value=str(mutation.health_impact).replace("_", " ").capitalize(), inline=True)
-    embed.add_field(name="Heritability", value=f"{int(round(mutation.heritability * 100))}%", inline=True)
+    embed.add_field(name="Rarity", value=mutation.rarity.capitalize(), inline=True)
+    embed.add_field(name="Health Impact", value=mutation.health_impact.replace("_", " ").capitalize(), inline=True)
+    embed.add_field(name="Heritability", value=f"{round(mutation.heritability * 100)}%", inline=True)
     embed.add_field(
         name="Affects",
         value=(

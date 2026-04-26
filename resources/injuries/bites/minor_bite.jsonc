@@ -1,0 +1,14 @@
+{
+    "name": "Minor Bite",
+    "health_impact": "HARMFUL",
+    "severity": "minor",
+    "description": "This pooch has a minor bite wound.",
+    "parameters": {
+        "persistence": 12,
+        "strength_add": -1
+    },
+    "treated": {
+        "health_impact": "NEUTRAL",
+        "description": "This pooch has a treated minor bite wound."
+    }
+}

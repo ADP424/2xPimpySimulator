@@ -1,0 +1,111 @@
+{
+    "name": "Infernal Return", 
+    "description": "The demon lords have dragged your pooch back to Hell. Prepare to bargain for its life.",
+    "flavor_text": "The Devil has caught up this one.",
+    "severity": "MAJOR",
+    "rarity": "NOVEL",
+    "requires_response": true,
+    "response_timeout": 3600,
+    "filter": {
+        "pooches": [
+            { 
+                "min_count": 1,
+                "is_alive": true,
+                "has_all_mutations": ["Haunted by Flames"]
+            }
+        ]
+    },
+    "actions": [
+        {
+            "action_type": "damn_pooch",
+            "target_type": "pooch",
+            "parameters": {
+                "selector": "random",
+                "filter": {
+                    "is_alive": true,
+                    "has_all_mutations": ["Haunted by Flames"]
+                },
+                "save_as": "damned_pooch"
+            }
+        }
+    ],
+    "options": [
+        {
+            "label": "Bargain",
+            "description": "Bargain with the demons for your pooch's return.",
+            "outcomes": [
+                {
+                    "chance": 0.2,
+                    "message": "The demon requests the soul of another pooch in its place.",
+                    "actions": [
+                        {
+                            "action_type": "start_event",
+                            "target_type": "owner",
+                            "parameters": {
+                                "event": "Soul for a Soul"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "chance": 0.2,
+                    "message": "The demon requests a payment of bloodskulls.",
+                    "actions": [
+                        {
+                            "action_type": "start_event",
+                            "target_type": "owner",
+                            "parameters": {
+                                "event": "Soul for a Bloodskull"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "chance": 0.2,
+                    "message": "The demon requests the chance to sow chaos.",
+                    "actions": [
+                        {
+                            "action_type": "start_event",
+                            "target_type": "owner",
+                            "parameters": {
+                                "event": "Soul for a Sow"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "chance": 0.2,
+                    "message": "The demon requests the chance to transform the pooch's being.",
+                    "actions": [
+                        {
+                            "action_type": "start_event",
+                            "target_type": "owner",
+                            "parameters": {
+                                "event": "Soul for a Saint Bernard"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "chance": 0.2,
+                    "message": "The demon requests the fertility of the pooch.",
+                    "actions": [
+                        {
+                            "action_type": "start_event",
+                            "target_type": "owner",
+                            "parameters": {
+                                "event": "Soul for a Sperm"
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "label": "Give them up",
+            "description": "Let your pooch burn in Hell.",
+            "default": true,
+            "visible": true
+        }
+    ]
+}

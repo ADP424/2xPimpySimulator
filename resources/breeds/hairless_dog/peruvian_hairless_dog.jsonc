@@ -1,0 +1,12 @@
+{
+    "name": "Peruvian Hairless Dog",
+    "alt_name": "Inca Hairless Dog",
+    "description": "The Peruvian Hairless Dog or Perro Sin Pelo del Perú is a Peruvian breed of hairless dog. It is the only living breed of dog indigenous to Peru.",
+    "rarity": "UNCOMMON",
+    "parameters": {
+        "fluffiness_mult": 0.1,
+        "strength_add": -1
+    },
+    "min_size": 2,
+    "max_size": 14
+}

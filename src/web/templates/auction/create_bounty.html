@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+
+{% block title %}Post a Bounty - {{ server_name }}{% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-6 flex-wrap gap-3">
+    <h1 class="text-3xl font-bold">📜 Post a Bounty</h1>
+    <a href="{{ url_for('auction.auction_hub') }}" class="btn btn-ghost btn-sm">← Back to Auction House</a>
+</div>
+
+<div class="max-w-lg">
+    <div class="card bg-base-200 shadow-md">
+        <div class="card-body gap-4">
+            <div class="form-control">
+                <label class="label"><span class="label-text">Title</span></label>
+                <input type="text" id="bounty-title" class="input input-bordered" value="Wanted" maxlength="100" />
+            </div>
+
+            <div class="form-control">
+                <label class="label"><span class="label-text">Escrow Amount ($)</span></label>
+                <input type="number" id="escrow-amount" class="input input-bordered" min="1" value="100" />
+                <label class="label"><span class="label-text-alt text-base-content/50">This amount is held until the bounty is fulfilled or cancelled.</span></label>
+            </div>
+
+            <div class="divider my-1">Criteria</div>
+            <p class="text-sm text-base-content/50">Add criteria that a pooch must match. Each matched criterion pays its dollar value to the seller.</p>
+
+            <div id="criteria-list" class="flex flex-col gap-3"></div>
+
+            <div class="flex gap-2 flex-wrap">
+                <button class="btn btn-outline btn-xs" onclick="addCriterion('sex')">+ Sex</button>
+                <button class="btn btn-outline btn-xs" onclick="addCriterion('min_stat')">+ Min Stat</button>
+                <button class="btn btn-outline btn-xs" onclick="addCriterion('min_rarity')">+ Min Rarity</button>
+                <button class="btn btn-outline btn-xs" onclick="addCriterion('breed')">+ Breed</button>
+                <button class="btn btn-outline btn-xs" onclick="addCriterion('mutation')">+ Mutation</button>
+            </div>
+
+            <button class="btn btn-primary btn-block mt-4" onclick="createBounty()">Post Bounty</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let criterionIndex = 0;
+let allBreeds = [];
+let allMutations = [];
+
+const STATS = ['strength', 'cuteness', 'fluffiness', 'intelligence', 'dexterity', 'fertility', 'aggressiveness', 'constitution', 'size'];
+const RARITIES = ['common', 'uncommon', 'novel', 'rare', 'unprecedented', 'remarkable', 'extraordinary', 'unique'];
+
+document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        const [bResp, mResp] = await Promise.all([fetch('/api/breeds'), fetch('/api/mutations')]);
+        allBreeds = await bResp.json();
+        allMutations = await mResp.json();
+    } catch (e) {
+        console.error('Failed to load breeds/mutations:', e);
+    }
+});
+
+function addCriterion(type) {
+    const idx = criterionIndex++;
+    const list = document.getElementById('criteria-list');
+    const div = document.createElement('div');
+    div.id = `criterion-${idx}`;
+    div.className = 'card bg-base-300 p-3';
+    div.dataset.type = type;
+
+    let fieldsHtml = '';
+
+    if (type === 'sex') {
+        fieldsHtml = `
+            <div class="form-control">
+                <label class="label py-0"><span class="label-text text-xs">Sex</span></label>
+                <select class="select select-bordered select-sm" data-field="value" onchange="togglePreferred(${idx}, this.value)">
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="either">Either</option>
+                </select>
+            </div>
+            <div id="preferred-${idx}" style="display: none;" class="form-control">
+                <label class="label py-0"><span class="label-text text-xs">Preferred Sex</span></label>
+                <select class="select select-bordered select-sm" data-field="preferred_sex">
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                </select>
+            </div>
+        `;
+    } else if (type === 'min_stat') {
+        fieldsHtml = `
+            <div class="form-control">
+                <label class="label py-0"><span class="label-text text-xs">Stat</span></label>
+                <select class="select select-bordered select-sm" data-field="stat">
+                    ${STATS.map(s => `<option value="${s}">${App.format.enumLabel(s)}</option>`).join('')}
+                </select>
+            </div>
+            <div class="form-control">
+                <label class="label py-0"><span class="label-text text-xs">Minimum</span></label>
+                <input type="number" class="input input-bordered input-sm" data-field="threshold" min="0" value="10" />
+            </div>
+        `;
+    } else if (type === 'min_rarity') {
+        fieldsHtml = `
+            <div class="form-control">
+                <label class="label py-0"><span class="label-text text-xs">Minimum Rarity</span></label>
+                <select class="select select-bordered select-sm" data-field="value">
+                    ${RARITIES.map(r => `<option value="${r}">${App.format.enumLabel(r)}</option>`).join('')}
+                </select>
+            </div>
+        `;
+    } else if (type === 'breed') {
+        fieldsHtml = `
+            <div class="form-control">
+                <label class="label py-0"><span class="label-text text-xs">Breed</span></label>
+                <select class="select select-bordered select-sm" data-field="breed_id">
+                    ${allBreeds.map(b => `<option value="${b.id}">${escapeHtml(b.name)}</option>`).join('')}
+                </select>
+            </div>
+            <div class="form-control">
+                <label class="label py-0"><span class="label-text text-xs">Min Weight (0-1)</span></label>
+                <input type="number" class="input input-bordered input-sm" data-field="min_weight" min="0.01" max="1" step="0.01" value="0.25" />
+            </div>
+        `;
+    } else if (type === 'mutation') {
+        fieldsHtml = `
+            <div class="form-control">
+                <label class="label py-0"><span class="label-text text-xs">Mutation</span></label>
+                <select class="select select-bordered select-sm" data-field="mutation_id">
+                    ${allMutations.map(m => `<option value="${m.id}">${escapeHtml(m.name)}</option>`).join('')}
+                </select>
+            </div>
+        `;
+    }
+
+    div.innerHTML = `
+        <div class="flex justify-between items-center mb-2">
+            <span class="badge badge-outline badge-sm">${App.format.enumLabel(type)}</span>
+            <button class="btn btn-ghost btn-xs text-error" onclick="document.getElementById('criterion-${idx}').remove()">Remove</button>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+            ${fieldsHtml}
+            <div class="form-control">
+                <label class="label py-0"><span class="label-text text-xs">Value ($)</span></label>
+                <input type="number" class="input input-bordered input-sm" data-field="dollar_value" min="1" value="25" />
+            </div>
+        </div>
+    `;
+
+    list.appendChild(div);
+}
+
+function togglePreferred(idx, value) {
+    document.getElementById(`preferred-${idx}`).style.display = value === 'either' ? '' : 'none';
+}
+
+function collectCriteria() {
+    const criteria = [];
+    document.querySelectorAll('#criteria-list > div').forEach(div => {
+        const type = div.dataset.type;
+        const c = { type };
+        div.querySelectorAll('[data-field]').forEach(el => {
+            const field = el.dataset.field;
+            let val = el.value;
+            if (['dollar_value', 'threshold', 'breed_id', 'mutation_id'].includes(field)) {
+                val = parseInt(val);
+            } else if (field === 'min_weight') {
+                val = parseFloat(val);
+            }
+            c[field] = val;
+        });
+        criteria.push(c);
+    });
+    return criteria;
+}
+
+async function createBounty() {
+    const title = document.getElementById('bounty-title').value.trim() || 'Wanted';
+    const escrowAmount = parseInt(document.getElementById('escrow-amount').value);
+    const criteria = collectCriteria();
+
+    if (!escrowAmount || escrowAmount <= 0) {
+        App.showNotification('Escrow amount must be positive.', 'error');
+        return;
+    }
+    if (criteria.length === 0) {
+        App.showNotification('Add at least one criterion.', 'error');
+        return;
+    }
+
+    try {
+        const resp = await fetch('/api/auctions/bounties', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title, escrow_amount: escrowAmount, criteria }),
+        });
+        const result = await resp.json();
+        if (result.success) {
+            App.queueNotification(result.message, 'success');
+            window.location.href = '/auction/';
+        } else {
+            App.showNotification(result.message || result.error || 'Failed to create bounty', 'error');
+        }
+    } catch (e) {
+        App.showNotification('Something went wrong.', 'error');
+        console.error(e);
+    }
+}
+</script>
+{% endblock %}

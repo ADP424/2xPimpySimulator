@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+
 class OwnerNotFound(Exception):
     """
     Exception raised when an owner corresponding to a Discord ID isn't found.

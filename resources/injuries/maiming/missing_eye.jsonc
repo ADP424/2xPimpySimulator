@@ -1,0 +1,22 @@
+{
+    "name": "Missing Eye",
+    "health_impact": "UNHEALTHY",
+    "severity": "major",
+    "description": "This pooch is missing an eye.",
+    "parameters": {
+        "max_duplicates": 2,
+        "dexterity_add": -1,
+        "cuteness_add": -1,
+        "stacks": [
+            {
+                "min_count": 2,
+                "dexterity_add": -5,
+                "dexterity_mult": 0.5
+            }
+        ]
+    },
+    "treated": {
+        "health_impact": "NEUTRAL",
+        "description": "This pooch is missing an eye but has received medical treatment."
+    }
+}

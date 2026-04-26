@@ -1,0 +1,16 @@
+{
+    "name": "Breed Added",
+    "severity": "MINOR",
+    "rarity": "NOVEL",
+    "filter": {
+        "min_count": 1
+    },
+   "actions": [
+        {
+            "action_type": "add_breed",
+            "parameters": {
+                "weight": 0.33
+            }
+        }
+    ]
+}

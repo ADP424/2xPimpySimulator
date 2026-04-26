@@ -1,0 +1,16 @@
+{
+    "name": "Hit By a Train",
+    "severity": "MODERATE",
+    "rarity": "RARE",
+    "filter": {
+        "min_count": 1
+    },
+   "actions": [
+        {
+            "action_type": "kill_pooch",
+            "parameters": {
+                "selector": "random"
+            }
+        }
+    ]
+}

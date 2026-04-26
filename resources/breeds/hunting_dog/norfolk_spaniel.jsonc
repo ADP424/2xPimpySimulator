@@ -1,0 +1,9 @@
+{
+    "name": "Norfolk Spaniel",
+    "alt_name": "Shropshire Spaniel",
+    "description": "The Norfolk Spaniel is a breed of dog which has been extinct since the early 20th century. It was originally thought to have originated from the work of one of the Dukes of Norfolk, but this theory was disproven after being in doubt during the later part of the 19th century.",
+    "rarity": "REMARKABLE",
+    "parameters": {
+        "sold_by_vendors": false
+    }
+}

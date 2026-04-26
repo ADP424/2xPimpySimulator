@@ -1,0 +1,17 @@
+{
+    "name": "Hypodontia",
+    "alt_name": "Sparse Teeth",
+    "description": "This pooch is missing some teeth.",
+    "heritability": 0.25,
+    "health_impact": "NEUTRAL",
+    "rarity": "COMMON",
+    "parameters": {
+        "incompatible_mutations": [
+            "Oligodontia",
+            "Sharkodontia"
+        ],
+        "strength_add": -2,
+        "cuteness_add": -1,
+        "aggressiveness_add": -1
+    }
+}

@@ -1,0 +1,15 @@
+{
+    "name": "Immunoglobulin Deficiency",
+    "alt_name": "Antibody Deficiency",
+    "description": "This pooch's antibodies are off duty.",
+    "heritability": 0.25,
+    "health_impact": "UNHEALTHY",
+    "rarity": "RARE",
+    "visible": false,
+    "invisible_messages": [
+        "This pooch is often sick."
+    ],
+    "parameters": {
+        "constitution_mult": 0.7
+    }
+}

@@ -1,0 +1,50 @@
+{
+    "name": "Soul for a Sow", 
+    "description": "You've decided to bargain for your pooch's soul.",
+    "flavor_text": "Good luck.",
+    "severity": "MAJOR",
+    "rarity": "COMMON",
+    "triggered_only": true,
+    "requires_response": true,
+    "response_timeout": 3600,
+    "options": [
+        {
+            "label": "Accept",
+            "description": "Mutate your pooches for this pooch's soul.",
+            "actions": [
+                {
+                    "action_type": "revive_pooch",
+                    "target_type": "pooch",
+                    "parameters": {
+                        "use_saved": "damned_pooch",
+                        "destination": "kennel"
+                    }
+                },
+                {
+                    "action_type": "remove_mutation",
+                    "target_type": "pooch",
+                    "parameters": {
+                        "use_saved": "damned_pooch",
+                        "mutation": "Haunted by Flames"
+                    }
+                },
+                {
+                    "action_type": "add_mutation",
+                    "target_type": "pooch",
+                    "parameters": {
+                        "selector": "all",
+                        "filter": {
+                            "is_alive": true
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "label": "Decline Deal",
+            "description": "The price is too steep...",
+            "default": true,
+            "visible": true
+        }
+    ]
+}

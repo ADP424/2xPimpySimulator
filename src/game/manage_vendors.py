@@ -1,25 +1,28 @@
-from typing import Optional
+from __future__ import annotations
 
-from database import (
+from typing import TYPE_CHECKING, Optional
+
+from src.database import (
     add_pooch_to_kennel,
-    get_mutation_by_id,
     get_owner_by_discord_id,
 )
-from database import get_pooch_by_id as db_get_pooch_by_id
-from database import (
+from src.database import get_pooch_by_id as db_get_pooch_by_id
+from src.database import (
     get_pooch_health,
 )
-from database import get_vendor_by_id as db_get_vendor_by_id
-from database import (
+from src.database import get_vendor_by_id as db_get_vendor_by_id
+from src.database import (
     give_money_to_owner,
     list_kennels_for_owner,
     list_pooch_breeds,
     list_pooch_mutations,
     list_pooches_for_kennel,
+    list_vendor_desired_breeds,
+    list_vendor_desired_mutations,
     list_vendor_pooch_stock,
 )
-from database import list_vendors as db_list_vendors
-from database import (
+from src.database import list_vendors as db_list_vendors
+from src.database import (
     remove_pooch_from_kennel,
     remove_pooch_from_vendor_stock,
     transfer_pooch_to_owner,
@@ -29,21 +32,22 @@ from database import (
 from .constants import (
     BASE_POOCH_DOLLAR_VALUE,
     BREED_RARITY_TO_POOCH_VALUE_MULT,
-    POOCH_BASE_HEALTH_RANGE,
     POOCH_DOLLAR_VALUE_LOSS_BY_AGE,
     POOCH_DOLLAR_VALUE_LOSS_BY_HEALTH_BELOW_AVERAGE,
+    POOCH_STAT_RANGE,
     VENDOR_DESIRED_MUTATION_MULT,
+    VENDOR_PURE_BREED_MAX_MULT,
+    VENDOR_PURE_BREED_THRESHOLD,
 )
-from .exceptions.pooch_not_found import PoochNotFound
-from .exceptions.vendor_not_found import VendorNotFound
-from .models import Pooch, Vendor, to_pooch, to_vendor
+from .exceptions import PoochNotFound, VendorNotFound
+from .manage_auctions import cancel_listing_for_pooch
+from .models import to_pooch, to_vendor
+
+if TYPE_CHECKING:
+    from .models import Pooch, Vendor
 
 
-async def buy_pooch(
-    owner_discord_id: int,
-    vendor_id: int,
-    pooch_id: int,
-) -> tuple[bool, str]:
+async def buy_pooch(owner_discord_id: int, vendor_id: int, pooch_id: int) -> tuple[bool, str]:
     """
     Have the given owner purchase the given pooch from the given vendor.
     Fails with a specific error message if:
@@ -98,13 +102,28 @@ async def buy_pooch(
         return (False, "That pooch is no longer available from this vendor.")
 
     await give_money_to_owner(owner_discord_id, -price)
+    await cancel_listing_for_pooch(pooch_id)
     await transfer_pooch_to_owner(pooch_id, owner_discord_id)
     await add_pooch_to_kennel(target_kennel.id, pooch_id)
 
     return (True, f"You purchased {pooch.name} for ${price}!")
 
 
-async def _get_pooch_base_price(pooch_id: int) -> int:
+async def get_pooch_base_price(pooch_id: int) -> int:
+    """
+    Get pooch base price.
+
+    Parameters
+    ----------
+    pooch_id: Any
+        The `pooch_id` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `get_pooch_base_price`.
+    """
+
     pooch = await db_get_pooch_by_id(pooch_id)
     if pooch is None:
         raise PoochNotFound(pooch_id)
@@ -114,7 +133,7 @@ async def _get_pooch_base_price(pooch_id: int) -> int:
 
     # Health loss reduces a pooch's value (or increases if its health is higher than average)
     pooch_health: int = await get_pooch_health(pooch.id)
-    average_base_health = (POOCH_BASE_HEALTH_RANGE[1] - POOCH_BASE_HEALTH_RANGE[0]) / 2
+    average_base_health = (POOCH_STAT_RANGE[1] - POOCH_STAT_RANGE[0]) / 2
     price = price - (POOCH_DOLLAR_VALUE_LOSS_BY_HEALTH_BELOW_AVERAGE * (average_base_health - pooch_health))
 
     # Mutations have advanced options that affect a pooch's value
@@ -122,8 +141,8 @@ async def _get_pooch_base_price(pooch_id: int) -> int:
     mutation_price_add = 0
     mutation_price_mult = 1
     for mutation in pooch_mutations:
-        mutation_price_add += mutation.advanced_options.get("dollar_value_add", 0.0)
-        mutation_price_mult *= mutation.advanced_options.get("dollar_value_mult", 1.0)
+        mutation_price_add += mutation.parameters.get("dollar_value_add", 0.0)
+        mutation_price_mult *= mutation.parameters.get("dollar_value_mult", 1.0)
     price = max(price + mutation_price_add, 0)
     price *= mutation_price_mult
 
@@ -133,6 +152,15 @@ async def _get_pooch_base_price(pooch_id: int) -> int:
     for breed, weight in pooch_breeds:
         breed_price_mult += weight * BREED_RARITY_TO_POOCH_VALUE_MULT[breed.rarity]
     price *= breed_price_mult
+
+    # Pure-breed bonus: linearly scale from 1x at VENDOR_PURE_BREED_THRESHOLD to
+    # VENDOR_PURE_BREED_MAX_MULT at 100% dominant breed
+    if pooch_breeds:
+        dominant_weight = max(w for _, w in pooch_breeds)
+        if dominant_weight > VENDOR_PURE_BREED_THRESHOLD:
+            t = (dominant_weight - VENDOR_PURE_BREED_THRESHOLD) / (1.0 - VENDOR_PURE_BREED_THRESHOLD)
+            pure_breed_mult = 1.0 + t * (VENDOR_PURE_BREED_MAX_MULT - 1.0)
+            price *= pure_breed_mult
 
     return max(round(price), 0)
 
@@ -156,7 +184,7 @@ async def get_pooch_buy_price(pooch_id: int, vendor_id: Optional[int] = None) ->
         The value of the pooch in dollars, optionally augmented by the given vendor.
     """
 
-    price = await _get_pooch_base_price(pooch_id)
+    price = await get_pooch_base_price(pooch_id)
 
     if vendor_id is not None:
         vendor = await db_get_vendor_by_id(vendor_id)
@@ -186,21 +214,25 @@ async def get_pooch_sell_price(pooch_id: int, vendor_id: Optional[int] = None) -
         The value of the pooch in dollars, optionally augmented by the given vendor.
     """
 
-    price = await _get_pooch_base_price(pooch_id)
+    price = await get_pooch_base_price(pooch_id)
 
     if vendor_id is not None:
+
         vendor = await db_get_vendor_by_id(vendor_id)
         if vendor is None:
             raise VendorNotFound(vendor_id)
-        pooch_mutation_ids = [mutation.id for mutation in (await list_pooch_mutations(pooch_id))]
-        desired_mutations = [
-            await get_mutation_by_id(vendor.desired_mutation_1),
-            await get_mutation_by_id(vendor.desired_mutation_2),
-            await get_mutation_by_id(vendor.desired_mutation_3),
-        ]
-        for mutation in [mutation for mutation in desired_mutations if mutation is not None]:
+
+        pooch_mutation_ids = {mutation.id for mutation in (await list_pooch_mutations(pooch_id))}
+        desired_mutations = await list_vendor_desired_mutations(vendor_id)
+        for mutation in desired_mutations:
             if mutation.id in pooch_mutation_ids:
                 price *= VENDOR_DESIRED_MUTATION_MULT
+
+        pooch_breed_weights = {breed.id: weight for breed, weight in (await list_pooch_breeds(pooch_id))}
+        desired_breeds = await list_vendor_desired_breeds(vendor_id)
+        for breed in desired_breeds:
+            if breed.id in pooch_breed_weights:
+                price *= 1.0 + pooch_breed_weights[breed.id]
 
     return round(price)
 
@@ -310,6 +342,7 @@ async def sell_pooch(owner_discord_id: int, vendor_id: int, pooch_id: int) -> tu
         return (False, "That pooch is dead.")
 
     await give_money_to_owner(owner_discord_id, price)
+    await cancel_listing_for_pooch(pooch.id)
     await transfer_pooch_to_vendor(pooch.id, vendor_id)
     await remove_pooch_from_kennel(pooch.id)
 

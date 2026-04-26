@@ -1,0 +1,8 @@
+{
+    "name": "Toy Poodle",
+    "alt_name": "Duck Dog",
+    "description": "The newest breed of poodle, developed in the 20th century. They weigh just 4-6 pounds and are under 10 inches tall. You frequently see them riding around in their owners' handbags.",
+    "rarity": "COMMON",
+    "min_size": 1,
+    "max_size": 2
+}

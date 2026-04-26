@@ -1,0 +1,11 @@
+{
+    "name": "Turnspit dog",
+    "alt_name": "Turnespete",
+    "description": "The turnspit dog was a short-legged, long-bodied dog bred to run on a wheel, called a turnspit or dog wheel, to turn meat.",
+    "rarity": "REMARKABLE",
+    "parameters": {
+        "sold_by_vendors": false
+    },
+    "min_size": 8,
+    "max_size": 12
+}

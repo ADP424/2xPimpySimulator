@@ -1,0 +1,13 @@
+{
+    "name": "Ichthyosis", // TODO: Add more of these (there are a lot)(Maybe 2). Prob going to change this to Ichthyosis Vulgaris (95% of cases)
+    "alt_name": "Scale Disease",
+    "description": "This pooch has certain reptillian qualities to it.",
+    "heritability": 0.4,
+    "health_impact": "NEUTRAL",
+    "rarity": "UNPRECEDENTED",
+    "parameters": {
+        "dollar_value_add": 50,
+        "cuteness_add": -1,
+        "fluffiness_add": -1
+    }
+}

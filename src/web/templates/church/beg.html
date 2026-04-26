@@ -87,20 +87,23 @@ async function doBeg() {
         resultSection.style.display = 'block';
 
         if (result.success) {
+            App.haptics.trigger('success');
             resultAlert.className = 'alert alert-success text-sm';
-            resultAlert.textContent = result.message;
+            resultAlert.innerHTML = '<span>' + escapeHtml(result.message).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>') + '</span>';
             const dollarsEl = document.getElementById('owner-dollars');
             const newTotal = parseInt(dollarsEl.dataset.raw || '0') + result.amount;
             dollarsEl.dataset.raw = newTotal;
             dollarsEl.textContent = formatCurrency(newTotal);
             document.getElementById('eligible-section').style.display = 'none';
         } else {
+            App.haptics.trigger('warning');
             resultAlert.className = 'alert alert-warning text-sm';
-            resultAlert.textContent = result.message;
+            resultAlert.innerHTML = '<span>' + escapeHtml(result.message).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>') + '</span>';
             btn.disabled = false;
             btn.classList.remove('loading');
         }
     } catch (e) {
+        App.haptics.trigger('error');
         App.showNotification('Something went wrong.', 'error');
         btn.disabled = false;
         btn.classList.remove('loading');

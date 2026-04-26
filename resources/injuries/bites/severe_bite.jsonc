@@ -1,0 +1,16 @@
+{
+    "name": "Severe Bite",
+    "health_impact": "SEVERE",
+    "severity": "major",
+    "description": "This pooch has a deep, severe bite wound.",
+    "parameters": {
+        "persistence": 48,
+        "strength_add": -4,
+        "dexterity_add": -2,
+        "constitution_add": -1
+    },
+    "treated": {
+        "health_impact": "UNHEALTHY",
+        "description": "This pooch has a treated severe bite wound."
+    }
+}

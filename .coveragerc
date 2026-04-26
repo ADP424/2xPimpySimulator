@@ -1,6 +1,7 @@
 [run]
 omit =
     **/__init__.py
-    src/bot.py
-    src/CONSTANTS.py
-    src/model/enums.py
+    constants.py
+    main.py
+    src/logger.py
+    src/web/*

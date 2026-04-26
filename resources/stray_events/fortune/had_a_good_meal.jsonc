@@ -1,0 +1,18 @@
+{
+    "name": "Had a Good Meal",
+    "severity": "MINOR",
+    "rarity": "UNCOMMON",
+    "filter": {
+        "min_count": 1
+    },
+   "actions": [
+        {
+            "action_type": "modify_base_health",
+            "parameters": {
+                "selector": "random",
+                "min_amount": 1,
+                "max_amount": 3
+            }
+        }
+    ]
+}

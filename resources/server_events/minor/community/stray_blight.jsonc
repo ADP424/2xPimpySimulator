@@ -1,0 +1,21 @@
+{
+  "name": "Stray Blight",
+  "description": "A sickness sweeps through the town's stray population, sapping their strength.",
+  "flavor_text": "The strays whimper in the alleyways.",
+  "severity": "minor",
+  "rarity": "common",
+  "filter": {
+    "min_strays": 1
+  },
+  "actions": [
+    {
+      "action_type": "injure_pooch",
+      "target_type": "server",
+      "parameters": {
+        "pool": "stray",
+        "selector": "all",
+        "injury": "Minor"
+      }
+    }
+  ]
+}

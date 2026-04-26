@@ -28,3 +28,15 @@ profile = "black"
 
 [tool.pytest.ini_options]
 addopts = "--cov=src --cov-report=term-missing --cov-config=.coveragerc"
+asyncio_mode = "auto"
+markers = [
+    "contract: marks tests as contract/integration tests",
+    "integration: marks tests as integration tests requiring external services",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning:discord",
+    "ignore::DeprecationWarning:discord\\..*",
+    "ignore:.*iscoroutinefunction.*:DeprecationWarning",
+    "ignore::RuntimeWarning:asyncio",
+    "ignore:coroutine.*was never awaited:RuntimeWarning",
+]

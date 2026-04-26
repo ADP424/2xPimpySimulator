@@ -1,0 +1,113 @@
+{
+    "name": "Fish or Cheese",
+    "description": "A strange woman apears. She asks you, \"Fish or Cheese?\"",
+    "flavor_text": "She doesn't seem to respond to anything but cheese or fish.",
+    "severity": "MINOR",
+    "rarity": "UNCOMMON",
+    "requires_response": true,
+    "response_timeout": 5,
+    "filter": {
+        "pooches": [
+            {
+                "min_count": 1,
+                "is_alive": true
+            }
+        ]
+    },
+    "options": [
+
+        {
+            "label": "Say fish.",
+            "description": "Fish.",
+            "filter": {
+                "min_bloodskulls": 1
+            },
+            "actions": [
+                {
+                    "action_type": "modify_bloodskulls",
+                    "target_type": "owner",
+                    "parameters": {
+                        "amount": -1
+                    }
+                }
+            ]
+        },
+        {
+            "label": "Say cheese.",
+            "description": "Cheese.",
+            "filter": {
+                "min_money": 10
+            },
+            "actions": [
+                {
+                    "action_type": "modify_money",
+                    "target_type": "owner",
+                    "parameters": {
+                        "amount": -10
+                    }
+                }
+            ]
+        },
+        {
+            "label": "Call the cops.",
+            "description": "You don't like the look of her or her questions.",
+            "actions": [
+                {
+                    "action_type": "injure_pooch",
+                    "target_type": "pooch",
+                    "parameters": {
+                        "selector": "random",
+                        "filter": {
+                            "is_alive": true
+                        },
+                        "injury": "Minor"
+                    }
+                }
+            ]
+        },
+        {
+            "label": "Ignore the woman.",
+            "description": "She frowns and leaves you her curse.",
+            "default": true,
+            "visible": false,
+            "actions": [
+                {
+                    "action_type": "injure_pooch",
+                    "target_type": "pooch",
+                    "parameters": {
+                        "selector": "random",
+                        "filter": {
+                            "is_alive": true
+                        },
+                        "injury": "Minor"
+                    }
+                },
+                {
+                    "action_type": "add_mutation",
+                    "target_type": "pooch",
+                    "parameters": {
+                        "selector": "random",
+                        "filter": {
+                            "is_alive": true
+                        },
+                        "mutation": "Dissociative Identity Disorder"
+                    }
+                },
+                {
+                    "action_type": "modify_bloodskulls",
+                    "target_type": "owner",
+                    "parameters": {
+                        "amount": -1
+                    }
+                },
+                {
+                    "action_type": "modify_money",
+                    "target_type": "owner",
+                    "parameters": {
+                        "amount": -10
+                    }
+                }
+            ]
+        }
+    ]
+}

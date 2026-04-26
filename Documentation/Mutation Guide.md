@@ -4,25 +4,24 @@
 
 ### JSON
 
-Mutations are structured within resources/mutations.json, like:
-```json
-"[category]": {
+Mutations are structured within resources/mutations/**/*.jsonc, like:
+```jsonc
+{
     "[mutation name]": {
         "alt_name": "string",
         "description": "string",
         "heritability": "float",
         "health_impact": "string",
         "rarity": "string",
-        "advanced_options": {
+        "visible": "bool",
+        "invisible_messages": ["string", "..."],
+        "reveal_chance": "float",
+        "parameters": {
             "[option]": "string/float/int/list"
         }
-    },
-    ...
+    }
 }
 ```
-
-#### Category
-This is the name of the category the mutation belongs to (for example, "autism" and "schizophrenia" are both neurodevelopmental conditions). There can be any number of mutations in a category.
 
 #### Mutation Name
 The common name of the mutation, i.e. the main one that it should be referred to as.
@@ -38,85 +37,159 @@ A floating point number between 0.0 and 1.0 (inclusive) representing the chance 
 
 #### Health Impact
 The positive/negative severity of the health impact the mutation has on the dog with it, written in all caps. There are 13 categories of health impact corresponding to different levels of numerical impact. For reference, a pooch has an average of 10 base health.
-- INSTANT_DEATH (-1000)
-- FATAL (-5)
-- BRUTAL (-4)
-- SEVERE (-3)
-- UNHEALTHY (-2)
-- HARMFUL (-1)
-- NEUTRAL (0)
-- HELPFUL (+1)
-- HEALTHY (+2)
-- GREAT (+3)
-- FANTASTIC (+4)
-- BRILLIANT (+5)
-- IMMORTALITY (+1000)
+- `INSTANT_DEATH` (-1000)
+- `FATAL` (-5)
+- `BRUTAL` (-4)
+- `SEVERE` (-3)
+- `UNHEALTHY` (-2)
+- `HARMFUL` (-1)
+- `NEUTRAL` (0)
+- `HELPFUL` (+1)
+- `HEALTHY` (+2)
+- `GREAT` (+3)
+- `FANTASTIC` (+4)
+- `BRILLIANT` (+5)
+- `IMMORTALITY` (+1000)
 
 #### Rarity
 How relatively likely/unlikely it is for a pooch to develop this mutation. There are eight categories of rarity corresponding to different levels of relative abundance. For example, "COMMON" has a relative abundance of 1000, while "RARE" has a relative abundance of 50, meaning a common mutation is 20 times more likely to show up compared to a rare one.
-- COMMON (1000)
-- UNCOMMON (250)
-- NOVEL (100)
-- RARE (50)
-- UNPRECEDENTED (25)
-- REMARKABLE (10)
-- EXTRAORDINARY (5)
-- UNIQUE (1)
+- `COMMON` (1000)
+- `UNCOMMON` (250)
+- `NOVEL` (100)
+- `RARE` (50)
+- `UNPRECEDENTED` (25)
+- `REMARKABLE` (10)
+- `EXTRAORDINARY` (5)
+- `UNIQUE` (1)
 
-#### Advanced Options
-An object representing more complex options for the mutatation (more information in "Advanced Options Guide").
+#### Visible
+Whether this mutation is shown to the player on the pooch info screen. Defaults to `true`.
+- `true`: The mutation name appears in the pooch's mutation list and is accessible via the dropdown. This is the default.
+- `false`: The mutation is hidden. Its name is never shown to the player. If `invisible_messages` is provided, one message is randomly chosen when the mutation is applied and shown in the mutation list in place of the name (the same message is always shown for that pooch). If no `invisible_messages` are provided, the mutation is entirely silent — the player sees nothing. An invisible mutation can be permanently revealed via the vet clinic's "Diagnose Mutations" procedure.
+
+#### Invisible Messages
+A list of possible symptom messages to display for this mutation when it is invisible (`"visible": false`). Formatted the same as the description — written as if describing the pooch (e.g. `"This pooch seems sluggish."`). One message is chosen at random when the mutation is applied to a pooch and is shown persistently for that pooch. Only used when `"visible": false`; has no effect on visible mutations.
+- If omitted (or `"visible"` is `true`), nothing special happens. This is the default.
+- Example: `"invisible_messages": ["This pooch seems sluggish.", "This pooch tires easily."]`
+
+#### Reveal Chance
+The probability (0.0–1.0) that the vet clinic's "Diagnose Mutations" procedure successfully reveals this mutation. Defaults to `1.0` (always revealed). Only has an effect when `"visible": false`.
+- `1.0`: The mutation is always revealed when diagnosed. This is the default.
+- `0.5`: There is a 50% chance the diagnosis reveals this mutation.
+- `0.0`: The mutation can never be revealed by diagnosis.
+
+#### Parameters
+An object representing more complex options for the mutatation (more information in "Parameters Guide").
 
 
-# Advanced Options Guide
+# Parameters Guide
 
-## Breeding Options
+## Aquisition
+
+### `born_from_ritual` : `bool`
+Whether the mutation can show up in pooches created by spending bloodskulls on the altar.
+- `true`: The mutation can show up in pooches created from sacrifice. This is the default.
+- `false`: The mutation will not show up in pooches created from sacrifice.
+
+### `sold_by_vendors` : `bool`
+Whether the mutation can show up on pooches generated to be sold by vendors or not.
+- `true`: The mutation can show up in vendor pooches. This is the default.
+- `false`: The mutation will not show up in vendor pooches.
+
+### `seasons` : `list[string]`
+Which seasons this mutation can appear in when randomly assigned (e.g. for vendor pooches, strays, event-created pooches). Case-insensitive. Valid values: `spring`, `summer`, `autumn`, `winter`.
+- If omitted, the mutation can appear in all seasons. This is the default.
+- Example: `["spring"]` — this mutation only appears in spring.
+
+## Breeding
 
 ### `breeding_cooldown` : `int`
 How many more/fewer age cycles before the pooch can breed again. Added to the base breeding cooldown.
 
 
-## Death Options
+## Death
 
 ### `death_message` : `string`
 A custom message to replace the standard one with when the pooch dies of this mutation.
 - "[pooch]" is replaced by the name of the pooch with the mutation.
 
-### `impact_message` : `string`
-A custom message to replace the standard one with when this mutation impacts another pooch with an `on_death` effect.
-- "[pooch]" is replaced with the name of the pooch with the mutation.
-- "[victim]" is replaced with the name of the pooch affected by the mutation.
+### `on_death_triggers` : `list[object]`
+A list of on-death trigger objects. Each trigger defines an effect that fires when the pooch dies. Multiple triggers are supported; each is evaluated independently. Example:
+```jsonc
+"on_death_triggers": [
+    {
+        "on_death": "kill",
+        "on_death_targets": "all",
+        "impact_message": "[victim] was killed in [pooch]'s explosion."
+    },
+    {
+        "on_death": "send_to_hell",
+        "always_on_death": true,
+        "on_death_chance": 0.5,
+        "impact_message": "[pooch] was dragged to hell."
+    }
+]
+```
 
-### `on_death` : `string`
-An effect the pooch has on its targets when it dies (see `on_death_targets`).
-- `kill`: Causes every target to immediately die.
-- `spread`: Causes every target to immediately inherit this mutation.
-- `spread_all`: Causes every target to immediately inherit ALL mutations the pooch with this mutation has.
+Each trigger object supports the following fields:
 
-### `on_death_chance` : `float`
-The chance, as a float between 0 and 1, inclusive, that the `on_death` effect will happen.
-This chance is rolled individually for each member in the `on_death_targets`.
-The chance is 1.0 (100%) by default.
+#### `on_death` : `string`
+An effect the pooch has when it dies.
+- `kill`: Causes every target to immediately die (see `on_death_targets`).
+- `spread`: Causes every target to immediately inherit this mutation (see `on_death_targets`).
+- `spread_all`: Causes every target to immediately inherit ALL mutations the pooch has (see `on_death_targets`).
+- `send_to_hell`: Sends the dead pooch itself to hell instead of the graveyard.
 
-### `always_on_death` : `bool (int)`
-Whether the `on_death` effect should always trigger or only trigger if the mutation is the one that killed the pooch.
-- `0`: The `on_death` will only trigger if it was this mutation that killed the pooch. This is the default.
-- `1`: The `on_death` will trigger when the pooch dies, no matter what kills it.
-
-### `on_death_targets` : `string`
-If the pooch has an on_death impact, who are the targets?
+#### `on_death_targets` : `string`
+Who the effect targets. Not used by `send_to_hell`.
 - `none`: No targets. This is the default.
 - `all`: Every other pooch in the kennel is a target.
 - `random`: A random pooch in the kennel is a target.
 
+#### `on_death_chance` : `float`
+The chance, as a float between 0 and 1, inclusive, that this trigger fires.
+For target-based effects, the chance is rolled independently per target.
+The chance is 1.0 (100%) by default.
 
-## Heritability Options
+#### `always_on_death` : `bool`
+Whether this trigger fires regardless of what killed the pooch, or only if this mutation was the cause of death.
+- `false`: Only triggers if this mutation killed the pooch. This is the default.
+- `true`: Triggers whenever the pooch dies, no matter what kills it.
+
+#### `impact_message` : `string`
+A custom message when this trigger fires.
+- "[pooch]" is replaced with the name of the pooch with the mutation.
+- "[victim]" is replaced with the name of the target pooch (for target-based effects).
+
+
+## Heritability
 
 ### `incompatible_mutations` : `list[string]`
 A list of names of other mutations the pooch cannot get if they have this mutation.<br>
 You can also list mutation categories here.
 
 
-## Value Options
+## Stats
+
+Stat modifiers adjust the effective value of a pooch's stats. The add modifier is applied before the mult modifier, and all mutations stack (adds sum, mults multiply together).
+
+The following `_add` (int) and `_mult` (float) parameters are available for each stat:
+
+| Stat | Add parameter | Mult parameter |
+|------|--------------|----------------|
+| Base Health | `base_health_add` | `base_health_mult` |
+| Strength | `strength_add` | `strength_mult` |
+| Cuteness | `cuteness_add` | `cuteness_mult` |
+| Fluffiness | `fluffiness_add` | `fluffiness_mult` |
+| Intelligence | `intelligence_add` | `intelligence_mult` |
+| Dexterity | `dexterity_add` | `dexterity_mult` |
+| Fertility | `fertility_add` | `fertility_mult` |
+| Aggressiveness | `aggressiveness_add` | `aggressiveness_mult` |
+| Constitution | `constitution_add` | `constitution_mult` |
+| Size | `size_add` | `size_mult` |
+
+
+## Value
 
 ### `bloodskull_value_add` : `int`
 A number to add to the pooch's bloodskull value (before multiplication).

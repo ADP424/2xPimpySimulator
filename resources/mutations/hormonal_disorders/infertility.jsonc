@@ -1,0 +1,18 @@
+{
+    "name": "Infertility",
+    "alt_name": "None Babies Disease",
+    "description": "This pooch cannot produce the sauce necessary for babies.",
+    "heritability": 0.0,
+    "health_impact": "NEUTRAL",
+    "rarity": "RARE",
+    "visible": false,
+    "parameters": {
+        "breeding_cooldown": 9999,
+        "dollar_value_mult": 0.1,
+        "incompatible_mutations": [
+            "Polycystic Ovary Syndrome",
+            "Severe Polycystic Ovary Syndrome"
+        ],
+        "fertility_mult": 0.0
+    }
+}

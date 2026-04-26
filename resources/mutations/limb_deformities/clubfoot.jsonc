@@ -1,0 +1,16 @@
+{
+    "name": "Clubfoot",
+    "alt_name": "Talipes Equinovarus",
+    "description": "This pooch walks funny.",
+    "heritability": 0.1,
+    "health_impact": "HARMFUL",
+    "rarity": "UNCOMMON",
+    "parameters": {
+        "incompatible_mutations": [
+            "Extreme Phocomelia"
+        ],
+        "cuteness_add": -1,
+        "dexterity_add": -2,
+        "strength_add": -1
+    }
+}

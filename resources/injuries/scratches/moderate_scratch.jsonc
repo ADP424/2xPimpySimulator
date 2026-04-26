@@ -1,0 +1,15 @@
+{
+    "name": "Moderate Scratch",
+    "health_impact": "HARMFUL",
+    "severity": "minor",
+    "description": "This pooch has several painful scratches.",
+    "parameters": {
+        "persistence": 12,
+        "cuteness_add": -2,
+        "dexterity_add": -1
+    },
+    "treated": {
+        "health_impact": "NEUTRAL",
+        "description": "This pooch has treated moderate scratches."
+    }
+}

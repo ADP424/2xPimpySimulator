@@ -131,6 +131,7 @@ function setupFilters() {
             document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
             this.classList.add('active');
             currentFilter = this.dataset.filter;
+            App.haptics.trigger('selection');
             renderPooches();
         });
     });
@@ -139,6 +140,7 @@ function setupFilters() {
 function selectPooch(poochId) {
     const pooch = pooches.find(p => p.id === poochId);
     if (!pooch || !pooch.alive || pooch.breeding_cooldown > 0) return;
+    App.haptics.trigger('light');
 
     // Clear previous breeding result when making a new selection
     const breedResult = document.getElementById('breed-result');
@@ -255,6 +257,7 @@ function setupBreedButton() {
             const result = await response.json();
 
             if (result.success) {
+                App.haptics.trigger('success');
                 const resultDiv = document.getElementById('breed-result');
                 resultDiv.innerHTML = `
                     <div role="alert" class="alert alert-success">
@@ -284,10 +287,12 @@ function setupBreedButton() {
                 renderPooches();
 
             } else {
+                App.haptics.trigger('error');
                 document.getElementById('breed-result').innerHTML = `<div role="alert" class="alert alert-error text-sm"><span>${escapeHtml(result.error || result.message)}</span></div>`;
                 document.getElementById('breed-result').style.display = 'block';
             }
         } catch (error) {
+            App.haptics.trigger('error');
             document.getElementById('breed-result').innerHTML = `<div role="alert" class="alert alert-error text-sm"><span>Breeding failed: ${error.message}</span></div>`;
             document.getElementById('breed-result').style.display = 'block';
         }

@@ -1,0 +1,11 @@
+{
+    "name": "Jonangi",
+    "alt_name": "Jonangi Jagilam",
+    "description": "The Jonangi is an indigenous dog breed from India. Primarily found in Andhra Pradesh, parts of Karnataka, and along the eastern coast from West Bengal to Tamil Nadu.",
+    "rarity": "NOVEL",
+    "parameters": {
+        "fluffiness_mult": 0.1
+    },
+    "min_size": 11,
+    "max_size": 21
+}

@@ -1,6 +1,6 @@
 from flask import Blueprint, g, render_template
 
-from web.auth_utils import server_required
+from src.web.auth_utils import server_required
 
 info_bp = Blueprint("info", __name__)
 

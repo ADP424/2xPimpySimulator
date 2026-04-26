@@ -1,0 +1,17 @@
+{
+    "name": "Acral Lick Dermatitis",
+    "alt_name": "Lick Granuloma",
+    "description": "This pooch can't stop licking itself.",
+    "heritability": 0.05,
+    "health_impact": "HARMFUL",
+    "rarity": "UNCOMMON",
+    "visible": false,
+    "invisible_messages": [
+        "This pooch frequently licks itself."
+    ],
+    "parameters": {
+        "fluffiness_add": -1,
+        "cuteness_add": -2,
+        "constitution_add": -1
+    }
+}

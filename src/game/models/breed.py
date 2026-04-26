@@ -1,6 +1,10 @@
-from dataclasses import dataclass
+from __future__ import annotations
 
-from database.models import Breed as BreedORM
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.database.models import Breed as BreedORM
 
 
 @dataclass(frozen=True)
@@ -13,9 +17,27 @@ class Breed:
     description: str
 
     rarity: str
+    min_size: int
+    max_size: int
+
+    parameters: dict = field(default_factory=dict)
 
 
 async def to_breed(breed: BreedORM) -> Breed:
+    """
+    Convert an ORM Breed object to a game Breed object.
+
+    Parameters
+    ----------
+    breed: Breed
+        The Breed object to convert.
+
+    Returns
+    -------
+    Breed
+        The converted Breed dataclass object.
+    """
+
     return Breed(
         id=breed.id,
         name=breed.name,
@@ -23,4 +45,7 @@ async def to_breed(breed: BreedORM) -> Breed:
         category=breed.category,
         description=breed.description,
         rarity=breed.rarity,
+        min_size=breed.min_size,
+        max_size=breed.max_size,
+        parameters=breed.parameters or {},
     )

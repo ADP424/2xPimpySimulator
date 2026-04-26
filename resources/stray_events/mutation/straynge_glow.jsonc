@@ -1,0 +1,16 @@
+{
+    "name": "Straynge Glow",
+    "severity": "MODERATE",
+    "rarity": "UNCOMMON",
+    "filter": {
+        "min_count": 1
+    },
+    "actions": [
+        {
+            "action_type": "add_mutation",
+            "parameters": {
+                "selector": "random"
+            }
+        }
+    ]
+}

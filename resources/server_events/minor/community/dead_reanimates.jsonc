@@ -1,0 +1,43 @@
+{
+  "name": "Dead Reanimates",
+  "description": "A recently deceased pooch stirs back to life and wanders into town as a young stray.",
+  "flavor_text": "Something cold scratches at the gate.",
+  "severity": "major",
+  "rarity": "rare",
+  "filter": {
+    "min_dead": 1
+  },
+  "actions": [
+    {
+      "action_type": "revive_pooch",
+      "target_type": "server",
+      "parameters": {
+        "pool": "dead",
+        "selector": "random",
+        "count": 1,
+        "destination": "town",
+        "save_as": "revenant"
+      }
+    },
+    {
+      "action_type": "set_pooch_age",
+      "target_type": "server",
+      "parameters": {
+        "pool": "saved",
+        "use_saved": "revenant",
+        "selector": "all",
+        "age": 3
+      }
+    },
+    {
+      "action_type": "add_mutation",
+      "target_type": "server",
+      "parameters": {
+        "pool": "saved",
+        "use_saved": "revenant",
+        "selector": "all",
+        "mutations": ["Sent by Death"] // TODO: I'd like sent by Death to be only the pooch in black event. We can make another mutation for these events
+      }
+    }
+  ]
+}

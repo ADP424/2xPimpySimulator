@@ -1,0 +1,17 @@
+{
+    "name": "Sharkodontia",
+    "alt_name": "Chompular Bititis",
+    "description": "Thousands and thousands, rows and rows...",
+    "heritability": 0.25,
+    "health_impact": "NEUTRAL",
+    "rarity": "REMARKABLE",
+    "parameters": {
+        "incompatible_mutations": [
+            "Hypodontia",
+            "Oligodontia"
+        ],
+        "strength_add": 2,
+        "aggressiveness_add": 3,
+        "cuteness_add": -2
+    }
+}

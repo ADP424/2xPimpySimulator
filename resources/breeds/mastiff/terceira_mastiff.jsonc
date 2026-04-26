@@ -1,0 +1,11 @@
+{
+    "name": "Terceira Mastiff",
+    "alt_name": "Rabo Torto",
+    "description": "The Terceira Mastiff came from the island of Terceira, located in the Azores, which is the only island where this dog has ever existed and where it was employed as a house guardian.",
+    "rarity": "REMARKABLE",
+    "parameters": {
+        "sold_by_vendors": false
+    },
+    "min_size": 10,
+    "max_size": 16
+}

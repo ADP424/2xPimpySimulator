@@ -1,0 +1,16 @@
+{
+    "name": "Severe Scratch",
+    "health_impact": "UNHEALTHY",
+    "severity": "moderate",
+    "description": "This pooch has deep, severe scratches across its body.",
+    "parameters": {
+        "persistence": 24,
+        "cuteness_add": -3,
+        "dexterity_add": -2,
+        "aggressiveness_add": -1
+    },
+    "treated": {
+        "health_impact": "HARMFUL",
+        "description": "This pooch has treated severe scratches."
+    }
+}

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from sqlalchemy.dialects.postgresql import ENUM
 
 HEALTH_IMPACT = ENUM(
@@ -15,5 +17,5 @@ HEALTH_IMPACT = ENUM(
     "brilliant",
     "immortality",
     name="health_impact",
-    create_type=False,
+    create_type=True,
 )

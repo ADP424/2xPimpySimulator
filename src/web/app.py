@@ -1,11 +1,12 @@
 import atexit
 import os
+from datetime import timedelta
 
 from flask import Flask
 from flask_session import Session
 from flask_socketio import SocketIO
 
-from web.async_utils import AsyncBridge
+from src.web.async_utils import AsyncBridge
 
 socketio = SocketIO(async_mode="threading")
 
@@ -25,7 +26,8 @@ def create_app(config: dict | None = None) -> Flask:
         SESSION_COOKIE_NAME="pooch_breeder_session",
         SESSION_TYPE="filesystem",
         SESSION_FILE_DIR=os.path.join(os.path.dirname(__file__), ".flask_session"),
-        SESSION_PERMANENT=False,
+        SESSION_PERMANENT=True,
+        PERMANENT_SESSION_LIFETIME=timedelta(days=30),
     )
 
     Session(app)
@@ -37,30 +39,36 @@ def create_app(config: dict | None = None) -> Flask:
     socketio.init_app(app, cors_allowed_origins="*")
 
     # Register blueprints
-    from web.routes.api import api_bp
-    from web.routes.auth import auth_bp
-    from web.routes.church import church_bp
-    from web.routes.graveyard import graveyard_bp
-    from web.routes.info import info_bp
-    from web.routes.kennel import kennel_bp
-    from web.routes.main import main_bp
-    from web.routes.pooch import pooch_bp
-    from web.routes.vendor import vendor_bp
-    from web.routes.webhooks import webhooks_bp
+    from src.web.routes.api import api_bp
+    from src.web.routes.auction import auction_bp
+    from src.web.routes.auth import auth_bp
+    from src.web.routes.church import church_bp
+    from src.web.routes.construction import construction_bp
+    from src.web.routes.graveyard import graveyard_bp
+    from src.web.routes.info import info_bp
+    from src.web.routes.kennel import kennel_bp
+    from src.web.routes.main import main_bp
+    from src.web.routes.park import park_bp
+    from src.web.routes.pooch import pooch_bp
+    from src.web.routes.vendor import vendor_bp
+    from src.web.routes.webhooks import webhooks_bp
 
+    app.register_blueprint(auction_bp, url_prefix="/auction")
     app.register_blueprint(auth_bp, url_prefix="/auth")
     app.register_blueprint(main_bp)
     app.register_blueprint(api_bp, url_prefix="/api")
     app.register_blueprint(church_bp, url_prefix="/church")
+    app.register_blueprint(construction_bp, url_prefix="/construction")
     app.register_blueprint(graveyard_bp, url_prefix="/graveyard")
     app.register_blueprint(kennel_bp, url_prefix="/kennel")
+    app.register_blueprint(park_bp, url_prefix="/park")
     app.register_blueprint(pooch_bp, url_prefix="/pooch")
     app.register_blueprint(vendor_bp, url_prefix="/vendor")
     app.register_blueprint(info_bp, url_prefix="/info")
     app.register_blueprint(webhooks_bp, url_prefix="/webhook")
 
     # Register WebSocket events
-    from web.events import register_events
+    from src.web.events import register_events
 
     register_events(socketio)
 

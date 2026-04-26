@@ -1,0 +1,12 @@
+{
+    "name": "Neutered",
+    "health_impact": "NEUTRAL",
+    "severity": "trivial",
+    "description": "This pooch has had it's reproductive organs removed.",
+    "parameters": {
+        "aggressiveness_add": -1, // TODO have it so an injurie is auto treated for ingurys done by the vet. Also have a boolean for if they can happen randomly. Also have them able to show up on vender dogs.
+        "constitution_add": 1,
+        "fertility_mult": 0.0
+        // TODO "dollar_value_mult": 0.4
+    }
+}

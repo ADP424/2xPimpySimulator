@@ -1,0 +1,18 @@
+{
+    "name": "Brittle Bone Disease",
+    "alt_name": "Osteogenesis Imperfecta",
+    "description": "This pooch's body is ready to snap at any second.",
+    "heritability": 0.2,
+    "health_impact": "SEVERE",
+    "rarity": "NOVEL",
+    "visible": false,
+    "invisible_messages": [
+        "This pooch appears weak.",
+        "This pooch appears thin."
+    ],
+    "parameters": {
+        "aggressiveness_add": -1,
+        "strength_add": -3,
+        "constitution_mult": 0.9
+    }
+}

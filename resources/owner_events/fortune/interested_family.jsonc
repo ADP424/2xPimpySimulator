@@ -1,0 +1,105 @@
+{
+    "name": "Interested Family",
+    "description": "A family is intrested in one of your pooches.",
+    "flavor_text": "They are willing to pay extra!",
+    "severity": "MINOR",
+    "rarity": "COMMON",
+    "requires_response": true,
+    "response_timeout": 7200,
+    "filter": {
+        "pooches": [
+            {
+                "min_count": 1,
+                "is_alive": true
+            }
+        ]
+    },
+    "actions": [
+        {
+            "action_type": "select_pooch",
+            "target_type": "pooch",
+            "parameters": {
+                "selector": "random",
+                "filter": {
+                    "is_alive": true
+                },
+                "save_as": "chosen_pooch",
+                "featured": true
+            }
+        }
+    ],
+    "options": [
+        {
+            "label": "Sell the pooch to the family.",
+            "description": "Sell the pooch for 3x the normal value",
+            "actions": [
+                {
+                    "action_type": "sell_pooch",
+                    "target_type": "pooch",
+                    "parameters": {
+                        "use_saved": "chosen_pooch",
+                        "value_multiplier": 3.0
+                    }
+                }
+            ]
+        },
+        {
+            "label": "Try to haggle with them for a better price.",
+            "description": "This might increese the amount of money you get but they could also walk out on you.",
+            "outcomes": [
+                {
+                    "chance": 0.1,
+                    "message": "You manage to sell the pooche for 5x the value.",
+                    "actions": [
+                        {
+                            "action_type": "sell_pooch",
+                            "target_type": "pooch",
+                            "parameters": {
+                                "use_saved": "chosen_pooch",
+                                "value_multiplier": 5.0
+                            }
+                        }
+                    ]
+                },
+                {
+                    "chance": 0.3,
+                    "message": "You manage to sell the pooche for 4x the value.",
+                    "actions": [
+                        {
+                            "action_type": "sell_pooch",
+                            "target_type": "pooch",
+                            "parameters": {
+                                "use_saved": "chosen_pooch",
+                                "value_multiplier": 4.0
+                            }
+                        }
+                    ]
+                },
+                {
+                    "chance": 0.3,
+                    "message": "They won't budge.",
+                    "actions": [
+                        {
+                            "action_type": "sell_pooch",
+                            "target_type": "pooch",
+                            "parameters": {
+                                "use_saved": "chosen_pooch",
+                                "value_multiplier": 3.0
+                            }
+                        }
+                    ]
+                },
+                {
+                    "chance": 0.3,
+                    "message": "They walked away. The deal is off."
+                }
+            ]
+        },
+        {
+            "label": "Decline their offer.",
+            "description": "You need this pooch more then they do.",
+            "default": true,
+            "visible": true
+        }
+    ]
+}

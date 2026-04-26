@@ -1,25 +1,52 @@
 import asyncio
 import os
+import random
 from datetime import datetime, time, timedelta
 from typing import TYPE_CHECKING
 from zoneinfo import ZoneInfo
 
 import discord
 
-from game import get_event_channel, run_day_change
-from logger import get_logger
+from src.bot.ui import (
+    ServerEventParticipationView,
+    build_server_event_embed,
+    build_server_event_resolution_embed,
+    make_status_view,
+)
+from src.game import (
+    get_event_channel,
+    list_all_owners,
+    run_daily_server_event_cycle,
+    run_day_change,
+    set_server_event_message_id,
+    update_owner_names,
+)
+from src.logger import get_logger
 
-from .ui.day_change_status import make_status_view
 from .webhooks import post_day_change_webhooks
 
 if TYPE_CHECKING:
-    from game.models import DayChangeSummary
+    from src.game.models import DayChangeSummary, StrayEventResult
 
 
 logger = get_logger("bot/day_change_loop")
 
 
-def _ensure_controls(bot: discord.Client):
+def ensure_controls(bot: discord.Client):
+    """
+    Ensure controls.
+
+    Parameters
+    ----------
+    bot: Any
+        The `bot` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `ensure_controls`.
+    """
+
     paused_event = getattr(bot, "_day_change_paused_event", None)
     if not isinstance(paused_event, asyncio.Event):
         paused_event = asyncio.Event()
@@ -40,13 +67,27 @@ def _ensure_controls(bot: discord.Client):
 
 
 def is_day_change_paused(bot: discord.Client) -> bool:
-    paused_event, _, _ = _ensure_controls(bot)
+    """
+    Is day change paused.
+
+    Parameters
+    ----------
+    bot: Any
+        The `bot` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `is_day_change_paused`.
+    """
+
+    paused_event, _, _ = ensure_controls(bot)
     return not paused_event.is_set()
 
 
 async def set_day_change_paused(bot: discord.Client, paused: bool) -> bool:
     """Set pause state. Returns the new paused state."""
-    paused_event, _, _ = _ensure_controls(bot)
+    paused_event, _, _ = ensure_controls(bot)
     if paused:
         paused_event.clear()
     else:
@@ -56,11 +97,43 @@ async def set_day_change_paused(bot: discord.Client, paused: bool) -> bool:
 
 async def trigger_manual_day_change(bot: discord.Client):
     """Trigger one immediate day change (even if paused)."""
-    _, manual_queue, _ = _ensure_controls(bot)
+    _, manual_queue, _ = ensure_controls(bot)
     manual_queue.put_nowait(1)
 
 
+async def fetch_and_update_names(bot: discord.Client):
+    """Resolve Discord display names for all owners and pass them to the game layer."""
+    owners = await list_all_owners()
+    names: dict[int, str] = {}
+    for owner in owners:
+        try:
+            user = bot.get_user(owner.discord_id) or await bot.fetch_user(owner.discord_id)
+            names[owner.discord_id] = user.display_name
+        except discord.NotFound:
+            logger.warning(f"Owner {owner.discord_id} not found on Discord, skipping name update")
+        except discord.HTTPException as e:
+            logger.warning(f"Failed to fetch user {owner.discord_id}: {e}")
+    await update_owner_names(names)
+
+
 async def post_day_change_summaries(bot: discord.Client, summaries: dict[int, DayChangeSummary]):
+    """
+    Post day change summaries.
+
+    Parameters
+    ----------
+    bot: Any
+        The `bot` value.
+
+    summaries: Any
+        The `summaries` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `post_day_change_summaries`.
+    """
+
     for server_discord_id, summary in summaries.items():
         channel_id = await get_event_channel(server_discord_id)
         if not channel_id:
@@ -73,7 +146,7 @@ async def post_day_change_summaries(bot: discord.Client, summaries: dict[int, Da
                 channel = await bot.fetch_channel(channel_id)
             except Exception:
                 logger.info(
-                    f"Couldn't find event channel with ID '{channel_id}' for server with ID '{server_discord_id}'."
+                    f"Couldn't find event channel with ID '{channel_id}' for server with ID '{server_discord_id}'. "
                     "Skipping summaries..."
                 )
                 continue
@@ -103,25 +176,206 @@ async def post_day_change_summaries(bot: discord.Client, summaries: dict[int, Da
         await channel.send(**send_kwargs)
 
 
-async def day_change_runner(bot: discord.Client, stage: str, tz: str = "America/New_York"):
+async def post_server_event_notifications(bot: discord.Client, owner_events: dict[int, object]):
+    """
+    Post server event notifications.
+
+    Parameters
+    ----------
+    bot: Any
+        The `bot` value.
+
+    owner_events: Any
+        The `owner_events` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `post_server_event_notifications`.
+    """
+
+    for server_discord_id, event in owner_events.items():
+        channel_id = await get_event_channel(server_discord_id)
+        if not channel_id:
+            continue
+
+        channel = bot.get_channel(channel_id)
+        if channel is None:
+            try:
+                channel = await bot.fetch_channel(channel_id)
+            except Exception:
+                continue
+
+        has_menus = bool(event.menus)
+        message = await channel.send(
+            embed=await build_server_event_embed(event, include_viewer_status=False),
+            view=ServerEventParticipationView(event.occurrence_id, event.server_discord_id, has_menus=has_menus),
+        )
+        await set_server_event_message_id(event.occurrence_id, message.id)
+        bot.add_view(
+            ServerEventParticipationView(event.occurrence_id, event.server_discord_id, has_menus=has_menus),
+            message_id=message.id,
+        )
+
+
+async def post_server_event_resolutions(bot: discord.Client, resolutions: list[object]):
+    """
+    Post server event resolutions.
+
+    Parameters
+    ----------
+    bot: Any
+        The `bot` value.
+
+    resolutions: Any
+        The `resolutions` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `post_server_event_resolutions`.
+    """
+
+    for resolution in resolutions:
+        channel_id = await get_event_channel(resolution.server_discord_id)
+        if not channel_id:
+            continue
+
+        channel = bot.get_channel(channel_id)
+        if channel is None:
+            try:
+                channel = await bot.fetch_channel(channel_id)
+            except Exception:
+                continue
+
+        await channel.send(embed=await build_server_event_resolution_embed(resolution))
+
+
+_SEASON_EMOJI = {
+    "spring": "🌸",
+    "summer": "☀️",
+    "autumn": "🍂",
+    "winter": "❄️",
+}
+
+
+async def post_season_change_notifications(bot: discord.Client, season_advances: dict[int, str]) -> None:
+    """Post a season-change announcement to each server's event channel."""
+    for server_discord_id, new_season in season_advances.items():
+        channel_id = await get_event_channel(server_discord_id)
+        if not channel_id:
+            continue
+
+        channel = bot.get_channel(channel_id)
+        if channel is None:
+            try:
+                channel = await bot.fetch_channel(channel_id)
+            except Exception:
+                continue
+
+        emoji = _SEASON_EMOJI.get(new_season, "")
+        embed = discord.Embed(
+            title=f"{emoji} The season has changed!",
+            description=f"It is now **{new_season.capitalize()}**.",
+            color=discord.Color.green(),
+        )
+        await channel.send(embed=embed)
+
+
+async def post_stray_event_summaries(
+    bot: discord.Client,
+    stray_results: dict[int, list[tuple[str, StrayEventResult]]],
+) -> None:
+    """Post stray event results to each server's event channel (dev only)."""
+    for server_discord_id, events in stray_results.items():
+        channel_id = await get_event_channel(server_discord_id)
+        if not channel_id:
+            continue
+
+        channel = bot.get_channel(channel_id)
+        if channel is None:
+            try:
+                channel = await bot.fetch_channel(channel_id)
+            except Exception:
+                continue
+
+        lines = []
+        for event_name, result in events:
+            parts = [f"**[stray event]** `{event_name}`"]
+            if result.pooches_affected:
+                parts.append(f"affected: {result.pooches_affected}")
+            if result.pooches_killed:
+                parts.append(f"killed: {result.pooches_killed}")
+            if result.pooches_created:
+                parts.append(f"created: {result.pooches_created}")
+            lines.append(" | ".join(parts))
+
+        if lines:
+            await channel.send("\n".join(lines))
+
+
+async def day_change_runner(
+    bot: discord.Client, stage: str, tz: str = "America/New_York", skip_startup_day_change: bool = False
+):
+    """
+    Day change runner.
+
+    Parameters
+    ----------
+    bot: Any
+        The `bot` value.
+
+    stage: Any
+        The `stage` value.
+
+    tz: Any
+        The `tz` value.
+
+    skip_startup_day_change: Any
+        The `skip_startup_day_change` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `day_change_runner`.
+    """
+
     zone = ZoneInfo(tz)
-    paused_event, manual_queue, run_lock = _ensure_controls(bot)
+    paused_event, manual_queue, run_lock = ensure_controls(bot)
 
     async def run_once():
         logger.info("Changing day...")
-        summaries = await run_day_change(rng_seed=int.from_bytes(os.urandom(8)))
+        summaries, stray_results = await run_day_change(rng_seed=int.from_bytes(os.urandom(8)))
         await post_day_change_summaries(bot, summaries)
         await post_day_change_webhooks(summaries)
+        if stage == "dev":
+            await post_stray_event_summaries(bot, stray_results)
+        try:
+            await fetch_and_update_names(bot)
+        except Exception:
+            logger.exception("Failed to update owner display names")
+
+        server_events, resolutions, season_advances = await run_daily_server_event_cycle(
+            rng=random.Random(int.from_bytes(os.urandom(8)))
+        )
+        await post_server_event_resolutions(bot, resolutions)
+        if season_advances:
+            await post_season_change_notifications(bot, season_advances)
+        await post_server_event_notifications(bot, server_events)
 
     bot._day_change_run_once = run_once
 
     logger.info(f"Beginning day change loop as {stage.upper()}...")
 
-    async with run_lock:
-        try:
-            await run_once()
-        except Exception:
-            logger.exception("Startup day change failed")
+    if not skip_startup_day_change:
+        async with run_lock:
+            try:
+                await run_once()
+            except Exception as exception:
+                logger.exception("Startup day change failed")
+                logger.exception(exception)
+                if stage == "dev":
+                    raise exception
 
     while True:
         manual_task = asyncio.create_task(manual_queue.get())
@@ -163,8 +417,10 @@ async def day_change_runner(bot: discord.Client, stage: str, tz: str = "America/
             async with run_lock:
                 try:
                     await run_once()
-                except Exception:
-                    logger.exception("Manual day change failed")
+                except Exception as exception:
+                    logger.exception(f"Manual day change failed: {exception}")
+                    if stage == "dev":
+                        raise exception
             continue
 
         if not paused_event.is_set():
@@ -173,5 +429,7 @@ async def day_change_runner(bot: discord.Client, stage: str, tz: str = "America/
         async with run_lock:
             try:
                 await run_once()
-            except Exception:
-                logger.exception("Scheduled day change failed")
+            except Exception as exception:
+                logger.exception(f"Scheduled day change failed: {exception}")
+                if stage == "dev":
+                    raise exception

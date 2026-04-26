@@ -59,8 +59,26 @@ function createVendorCard(vendor) {
     const markupPct = Math.round((vendor.price_markup - 1) * 100);
     const markupClass = markupPct > 20 ? 'text-error' : markupPct < 0 ? 'text-success' : '';
 
+    const wantsMutationsHtml = vendor.desired_mutations && vendor.desired_mutations.length > 0
+        ? `<div class="flex flex-wrap gap-1 items-center">
+               <span class="text-xs text-base-content/50 shrink-0">Wants Mutations:</span>
+               ${vendor.desired_mutations.map((m, i) =>
+                   `<span class="text-xs rarity-text-${(m.rarity || '').toLowerCase()}">✨ ${escapeHtml(m.name)}${i < vendor.desired_mutations.length - 1 ? ',' : ''}</span>`
+               ).join(' ')}
+           </div>`
+        : '';
+    const wantsBreedsHtml = vendor.desired_breeds && vendor.desired_breeds.length > 0
+        ? `<div class="flex flex-wrap gap-1 items-center">
+               <span class="text-xs text-base-content/50 shrink-0">Wants Breeds:</span>
+               ${vendor.desired_breeds.map((b, i) =>
+                   `<span class="text-xs rarity-text-${(b.rarity || '').toLowerCase()}">🐾 ${escapeHtml(b.name)}${i < vendor.desired_breeds.length - 1 ? ',' : ''}</span>`
+               ).join(' ')}
+           </div>`
+        : '';
+    const wantsHtml = wantsMutationsHtml + wantsBreedsHtml;
+
     return `
-        <a href="/vendor/${vendor.id}" class="card bg-base-200 shadow-md hover:-translate-y-1 hover:shadow-lg transition-all text-base-content no-underline">
+        <a href="/vendor/${vendor.id}" class="card bg-base-200 shadow-md hover:-translate-y-1 hover:shadow-lg transition-all text-base-content no-underline h-full">
             <div class="card-body gap-3">
                 <div class="flex justify-between items-start">
                     <h3 class="card-title text-lg">🏪 ${escapeHtml(vendor.name)}</h3>
@@ -76,7 +94,8 @@ function createVendorCard(vendor) {
                         <span class="font-semibold ${markupClass}">${formatMarkup(vendor.price_markup)}</span>
                     </div>
                 </div>
-                <div class="card-actions mt-2">
+                ${wantsHtml}
+                <div class="card-actions mt-auto">
                     <span class="btn btn-primary btn-sm btn-block">Browse Pooches →</span>
                 </div>
             </div>

@@ -1,0 +1,11 @@
+{
+    "name": "Molossian Hound",
+    "alt_name": "Epirus Mastiff",
+    "description": "The Molossus is an extinct dog breed from Ancient Greece.",
+    "rarity": "EXTRAORDINARY",
+    "parameters": {
+        "sold_by_vendors": false
+    },
+    "min_size": 20,
+    "max_size": 35
+}

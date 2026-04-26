@@ -1,28 +1,62 @@
+from __future__ import annotations
+
 import discord
 from discord.ui import Button, Select, View
 
-from bot.constants import VIEW_TIMEOUT
-from bot.ui.util import (
+from src.bot.constants import VIEW_TIMEOUT
+from src.bot.ui.util import (
     InteractionResponder,
     mention,
 )
-from game import get_or_create_owner
+from src.game import get_or_create_owner
 
-from .components.paginator import PaginatorView
+from .components import PaginatorView
 from .graveyard import GraveyardPageSource
 from .kennels import KennelsPageSource
 
 
 async def build_home_content(guild_id: int, user_id: int) -> str:
+    """
+    Build home content.
+
+    Parameters
+    ----------
+    guild_id: Any
+        The `guild_id` value.
+
+    user_id: Any
+        The `user_id` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `build_home_content`.
+    """
+
     owner = await get_or_create_owner(guild_id, user_id)
     return (
         f"**{mention(owner.discord_id)}'s Home**\n"
         f"You have ${owner.dollars}.\n"
-        f"You have {owner.bloodskulls} bloodskulls."
+        f"You have {owner.bloodskulls} bloodskulls.\n"
+        f"You have {owner.bones} bone(s)."
     )
 
 
 async def send_home_menu(interaction: discord.Interaction):
+    """
+    Send home menu.
+
+    Parameters
+    ----------
+    interaction: Any
+        The `interaction` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `send_home_menu`.
+    """
+
     r = InteractionResponder(interaction, ephemeral=False)
     if interaction.guild_id is None:
         await r.reply(content="This must be used in a server.")

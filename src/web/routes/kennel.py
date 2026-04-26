@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template
 
-from web.auth_utils import get_current_user_id, login_required
+from src.web.auth_utils import get_current_user_id, login_required
 
 kennel_bp = Blueprint("kennel", __name__)
 

@@ -1,0 +1,49 @@
+{
+    "name": "Soul for a Saint Bernard", 
+    "description": "You've decided to bargain for your pooch's soul.",
+    "flavor_text": "Good luck.",
+    "severity": "MAJOR",
+    "rarity": "COMMON",
+    "triggered_only": true,
+    "requires_response": true,
+    "response_timeout": 3600,
+    "options": [
+        {
+            "label": "Accept",
+            "description": "Dilute your pooch with additional breeds in exchange for its soul.",
+            "actions": [
+                {
+                    "action_type": "add_breed",
+                    "target_type": "pooch",
+                    "parameters": {
+                        "use_saved": "damned_pooch",
+                        "weight": 0.5,
+                        "max_rarity": "common"
+                    }
+                },
+                {
+                    "action_type": "revive_pooch",
+                    "target_type": "pooch",
+                    "parameters": {
+                        "use_saved": "damned_pooch",
+                        "destination": "kennel"
+                    }
+                },
+                {
+                    "action_type": "remove_mutation",
+                    "target_type": "pooch",
+                    "parameters": {
+                        "use_saved": "damned_pooch",
+                        "mutation": "Haunted by Flames"
+                    }
+                }
+            ]
+        },
+        {
+            "label": "Decline Deal",
+            "description": "The price is too steep...",
+            "default": true,
+            "visible": true
+        }
+    ]
+}

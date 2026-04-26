@@ -1,0 +1,19 @@
+{
+    "name": "Extreme Phocomelia",
+    "alt_name": "Nugget Syndrome",
+    "description": "Every one of this pooch's legs are severely shortened or missing.",
+    "heritability": 0.1,
+    "health_impact": "UNHEALTHY",
+    "rarity": "UNPRECEDENTED",
+    "parameters": {
+        "dollar_value_mult": 0.5,
+        "incompatible_mutations": [
+            "Clubfoot",
+            "Phocomelia"
+        ],
+        "dexterity_mult": 0.0,
+        "strength_mult": 0.1,
+        "fertility_mult": 0.8,
+        "size_mult": 0.8
+    }
+}

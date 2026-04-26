@@ -1,4 +1,5 @@
 asyncpg
+json5
 numpy
 psycopg
 psycopg-binary

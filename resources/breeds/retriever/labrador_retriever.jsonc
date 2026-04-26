@@ -1,0 +1,8 @@
+{
+    "name": "Labrador Retriever",
+    "alt_name": "Labrador",
+    "description": "The Labrador Retriever, also known simply as the Labrador or Lab, is a British breed of retriever gun dog.",
+    "rarity": "COMMON",
+    "min_size": 14,
+    "max_size": 20
+}

@@ -1,0 +1,23 @@
+{
+    "name": "Blood Pact",
+    "alt_name": "Sanguis Contractus",
+    "description": "This pooch has mystical powers, and a scar on its paw.",
+    "heritability": 0.0,
+    "health_impact": "HEALTHY",
+    "rarity": "REMARKABLE",
+    "visible": false,
+    "invisible_messages": [
+        "This pooch is cursed."
+    ],
+    "parameters": {
+        "bloodskull_value_mult": 3,
+        "strength_add": 1,
+        "cuteness_add": 1,
+        "fluffiness_add": 1,
+        "intelligence_add": 1,
+        "dexterity_add": 1,
+        "fertility_add": 1,
+        "aggressiveness_add": 1,
+        "constitution_add": 1
+    }
+}

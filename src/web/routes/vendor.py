@@ -1,6 +1,6 @@
 from flask import Blueprint, g, render_template
 
-from web.auth_utils import login_required, server_required
+from src.web.auth_utils import login_required, server_required
 
 vendor_bp = Blueprint("vendor", __name__)
 

@@ -1,0 +1,11 @@
+{
+    "name": "Norman Hound",
+    "alt_name": "No Hound",
+    "description": "The Norman Hound was said to have excellent scenting abilities, great stamina and a magnificent voice, but was extremely slow; a pack usually took between six and eight hours to hunt a stag.",
+    "rarity": "REMARKABLE",
+    "parameters": {
+        "sold_by_vendors": false
+    },
+    "min_size": 12,
+    "max_size": 20
+}

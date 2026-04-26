@@ -1,0 +1,11 @@
+{
+    "name": "Toy Trawler Spaniel",
+    "alt_name": "Miniature Trawler Spaniel",
+    "description": "The Toy Trawler Spaniel is an extinct breed of Spaniel which physically was similar to the King Charles Spaniel of the 16th century. It is considered to have descended from the original King Charles Spaniel, and the older variety of the Sussex Spaniel. It was employed as a sports dog first before becoming a toy and show dog.",
+    "rarity": "REMARKABLE",
+    "parameters": {
+        "sold_by_vendors": false
+    },
+    "min_size": 3,
+    "max_size": 5
+}

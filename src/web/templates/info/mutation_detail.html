@@ -61,6 +61,14 @@
                             <span class="info-label">Also Known As</span>
                             <span class="info-value" id="mutation-alt-name"></span>
                         </div>
+                        <div class="info-item">
+                            <span class="info-label">Sold by Vendors</span>
+                            <span class="info-value" id="mutation-sold-by-vendors"></span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Born from Ritual</span>
+                            <span class="info-value" id="mutation-born-from-ritual"></span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -104,6 +112,17 @@ document.addEventListener('DOMContentLoaded', async function() {
         if (mutation.affects_females) affects.push('Females');
         if (mutation.affects_males) affects.push('Males');
         document.getElementById('mutation-affects').textContent = affects.length ? affects.join(', ') : 'None';
+
+        const opts = mutation.parameters || {};
+        const soldByVendors = opts.sold_by_vendors !== 0;
+        document.getElementById('mutation-sold-by-vendors').innerHTML = soldByVendors
+            ? '<span class="badge badge-success">Yes</span>'
+            : '<span class="badge badge-error">No</span>';
+
+        const bornFromRitual = opts.born_from_ritual !== 0;
+        document.getElementById('mutation-born-from-ritual').innerHTML = bornFromRitual
+            ? '<span class="badge badge-success">Yes</span>'
+            : '<span class="badge badge-error">No</span>';
 
     } catch (error) {
         document.getElementById('loading').innerHTML = '<span class="text-error">Failed to load mutation details</span>';

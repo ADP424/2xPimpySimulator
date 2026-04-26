@@ -1,12 +1,14 @@
+from __future__ import annotations
+
 import discord
 from discord.ui import Button, Select, View
 
-from bot.constants import VIEW_TIMEOUT
-from bot.ui.util import InteractionResponder
+from src.bot.constants import VIEW_TIMEOUT
+from src.bot.ui.util import InteractionResponder
 
 from .church import ChurchView
-from .components.paginator import PaginatorView
-from .vendors import VendorsPageSource
+from .marketplace import MarketplaceView
+from .park import ParkView
 from .vet_clinic import VetClinicView
 
 
@@ -22,9 +24,10 @@ class TownNavigationSelect(Select):
         super().__init__(
             placeholder="Navigate the Town",
             options=[
-                discord.SelectOption(label="Vendors", value="vendors"),
+                discord.SelectOption(label="Marketplace", value="marketplace"),
                 discord.SelectOption(label="Veterinary Clinic", value="vet"),
                 discord.SelectOption(label="Church", value="church"),
+                discord.SelectOption(label="Park", value="park"),
             ],
             row=0,
         )
@@ -35,15 +38,9 @@ class TownNavigationSelect(Select):
             option.default = option.value == self.values[0]
         await r.edit(view=self.view)
 
-        if self.values[0] == "vendors":
-            source = VendorsPageSource(server_discord_id=interaction.guild_id, owner_discord_id=interaction.user.id)
-            view = PaginatorView(source, owner_discord_id=interaction.user.id)
-            content, embed = await view.build_first_page()
-            await r.reply(
-                content=content if content is not None else "**Vendor Stalls**",
-                embed=embed,
-                view=view,
-            )
+        if self.values[0] == "marketplace":
+            view = MarketplaceView(server_discord_id=interaction.guild_id, owner_discord_id=interaction.user.id)
+            await r.reply(content="**Marketplace**", view=view)
 
         if self.values[0] == "vet":
             view = VetClinicView(owner_discord_id=interaction.user.id)
@@ -52,6 +49,10 @@ class TownNavigationSelect(Select):
         if self.values[0] == "church":
             view = ChurchView(server_discord_id=interaction.guild_id, owner_discord_id=interaction.user.id)
             await r.reply(content="**Welcome to the Church**", view=view)
+
+        if self.values[0] == "park":
+            view = ParkView(server_discord_id=interaction.guild_id, owner_discord_id=interaction.user.id)
+            await r.reply(content="**Welcome to the Park**", view=view)
 
 
 class HomeButton(Button):

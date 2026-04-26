@@ -1,0 +1,28 @@
+{
+    "name": "Strange Glow",
+    "description": "Your pooch ate something strange, and now it's glowing.",
+    "flavor_text": "Maybe don't let them eat things off the ground...",
+    "severity": "MODERATE",
+    "rarity": "NOVEL",
+    "requires_response": false,
+    "filter": {
+        "pooches": [
+            {
+                "min_count": 1,
+                "is_alive": true
+            }
+        ]
+    },
+    "actions": [
+        {
+            "action_type": "add_mutation",
+            "target_type": "pooch",
+            "parameters": {
+                "selector": "random",
+                "filter": {
+                    "is_alive": true
+                }
+            }
+        }
+    ]
+}

@@ -1,0 +1,13 @@
+{
+    "name": "5D Retriever",
+    "alt_name": "REDACTED",
+    "description": "Retrieves game from the 4th and 5th dimensions.",
+    "rarity": "UNIQUE",
+     "parameters": { 
+        "dexerity_add": 10,
+        "intelligence_add": 5,
+        "constitution_add": 1
+    },
+    "min_size": 7,
+    "max_size": 11
+}

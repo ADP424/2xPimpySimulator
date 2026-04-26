@@ -1,9 +1,23 @@
 from discord import Interaction, app_commands
 
-from ..ui.home import HomeView, build_home_content
+from src.bot.ui import HomeView, build_home_content
 
 
 def register_home_command(tree: app_commands.CommandTree):
+    """
+    Register home command.
+
+    Parameters
+    ----------
+    tree: Any
+        The `tree` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `register_home_command`.
+    """
+
     @tree.command(name="home", description="Home sweet home...")
     async def home(interaction: Interaction):
         if interaction.guild_id is None or interaction.channel_id is None:

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from sqlalchemy.dialects.postgresql import ENUM
 
 RARITY = ENUM(
@@ -10,5 +12,5 @@ RARITY = ENUM(
     "extraordinary",
     "unique",
     name="rarity",
-    create_type=False,
+    create_type=True,
 )

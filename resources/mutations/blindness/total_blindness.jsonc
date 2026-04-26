@@ -1,0 +1,23 @@
+{
+    "name": "Total Blindness",
+    "alt_name": "Congenital Blindness",
+    "description": "This pooch has never known what it's like to see.",
+    "heritability": 0.25,
+    "health_impact": "NEUTRAL",
+    "rarity": "RARE",
+    "visible": false,
+    "invisible_messages": [
+        "This pooch cannot see."
+    ],
+    "parameters": {
+        "dollar_value_add": -50,
+        "incompatible_mutations": [
+            "Cataracts",
+            "Partial Blindness",
+            "Schizophrenia"
+        ],
+        "cuteness_add": -1,
+        "strength_add": -3,
+        "fertility_mult": 0.8
+    }
+}

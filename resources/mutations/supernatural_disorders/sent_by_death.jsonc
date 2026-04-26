@@ -1,0 +1,16 @@
+{
+    "name": "Sent by Death",
+    "alt_name": "Poochus Reaperus",
+    "description": "This pooch has been sent by death to save the living.",
+    "heritability": 0.0,
+    "health_impact": "HEALTHY",
+    "rarity": "UNIQUE",
+    "parameters": {
+        "bloodskull_value_mult": 0.0,
+        "sold_by_vendors": false,
+        "born_from_ritual": false,
+        "fluffiness_mult": 0.1,
+        "aggressiveness_mult": 0.1,
+        "constitution_mult": 2.0
+    }
+}

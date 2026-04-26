@@ -1,0 +1,15 @@
+{
+    "name": "Cataracts",
+    "alt_name": "Lenticular Sclerosis",
+    "description": "This pooch has some annoying eye floaters, limiting its vision.",
+    "heritability": 0.15,
+    "health_impact": "NEUTRAL",
+    "rarity": "UNCOMMON",
+    "parameters": {
+        "incompatible_mutations": [
+            "Partial Blindness",
+            "Total Blindness"
+        ],
+        "strength_add": -1
+    }
+}

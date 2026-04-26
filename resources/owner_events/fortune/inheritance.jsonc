@@ -1,0 +1,18 @@
+{
+    "name": "Inheritance",
+    "description": "A distant relative has died and left you money in their will.",
+    "flavor_text": "You didn't even know Great Aunt Mildred had pooches...",
+    "severity": "MODERATE",
+    "rarity": "RARE",
+    "requires_response": false,
+    "actions": [
+        {
+            "action_type": "modify_money",
+            "target_type": "owner",
+            "parameters": {
+                "min_amount": 100,
+                "max_amount": 500
+            }
+        }
+    ]
+}

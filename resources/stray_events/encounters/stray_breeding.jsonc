@@ -1,0 +1,34 @@
+{
+    "name": "Stray Breeding",
+    "severity": "MODERATE",
+    "rarity": "COMMON",
+    "filter": {
+        "pooches": [
+            { 
+                "sex": "male",
+                "max_breeding_cooldown": 0
+            },
+            { 
+                "sex": "female",
+                "max_breeding_cooldown": 0
+            }
+        ]
+    },
+   "actions": [
+        {
+            "action_type": "breed_pooches",
+            "parameters": {
+                "first_pooch_selector": "random",
+                "first_filter": {
+                    "sex": "male",
+                    "max_breeding_cooldown": 0
+                },
+                "second_pooch_selector": "random",
+                "second_filter": {
+                    "sex": "female",
+                    "max_breeding_cooldown": 0
+                }
+            }
+        }
+    ]
+}

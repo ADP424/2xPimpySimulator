@@ -1,9 +1,32 @@
+from __future__ import annotations
+
 # Pooch Lifecycle
 MIN_HEALTH_FOR_DEATH_CHANCE = 5
 POOCH_HEALTH_LOSS_STARTING_AGE = 5
 DEATH_CHANCE_PER_HEALTH_UNDER_MIN = 0.2
-POOCH_BASE_HEALTH_RANGE = (8, 12)
-POOCH_BREEDING_COOLDOWN = 2
+POOCH_STAT_RANGE = (8, 12)
+POOCH_BREEDING_COOLDOWN = 10
+BREEDING_COOLDOWN_HOURLY_FERTILITY_DIVISOR = 50
+INJURY_PERSISTENCE_HOURLY_CONSTITUTION_DIVISOR = 50
+
+# All heritable pooch stats (all use POOCH_STAT_RANGE)
+# The size range is determined by breeds, so that's why it's not included here
+POOCH_STATS = [
+    "strength",
+    "cuteness",
+    "fluffiness",
+    "intelligence",
+    "dexterity",
+    "fertility",
+    "aggressiveness",
+    "constitution",
+]
+
+# Breed Inheritance
+SHARED_BREED_WEIGHT_BONUS = 1.5  # multiplier applied to a breed weight when both parents share that breed
+BREED_NOISE_RANGE = (0.75, 1.5)  # random noise multiplier applied to each breed weight during inheritance
+
+# Baby
 POOCH_FETAL_AGE = -1
 TWINS_CHANCE = 0.25
 TRIPLETS_CHANCE = 0.05
@@ -11,7 +34,7 @@ NUM_INCEST_MUTATION_ROLLS = 3
 
 # Vendor Creation
 NUM_VENDORS_PER_SERVER = 3
-VENDOR_POOCH_STOCK_COUNT_RANGE = (2, 5)
+VENDOR_POOCH_STOCK_COUNT_RANGE = (3, 5)
 
 # Vendor Pooch Creation
 VENDOR_POOCH_AGE_RANGE = (0, 5)
@@ -37,19 +60,80 @@ POOCH_DOLLAR_VALUE_LOSS_BY_AGE = 5
 POOCH_DOLLAR_VALUE_LOSS_BY_HEALTH_BELOW_AVERAGE = 5
 VENDOR_DESIRED_MUTATION_MULT = 2
 
+# Vendor Pure-Breed Pricing
+# A pooch whose dominant breed makes up <= this fraction of its total weight gets no bonus (1x).
+# At 100% it gets VENDOR_PURE_BREED_MAX_MULT. The range scales linearly between the two.
+VENDOR_PURE_BREED_THRESHOLD = 0.5
+VENDOR_PURE_BREED_MAX_MULT = 2.0
+
 # Sacrifice Value
 BASE_POOCH_BLOODSKULL_VALUE = 8
 POOCH_BLOODSKULL_VIRGINITY_MULT = 2
 POOCH_BLOODSKULL_VALUE_LOSS_BY_HEALTH_BELOW_AVERAGE = 1
 
 # Pooch Summoning
-BASE_POOCH_SUMMON_PRICE = 10
-BLOODSKULL_PRICE_PER_POOCH_SUMMON_ROLL = 2
-NUM_BREEDS_PER_SUMMON_POOCH_RANGE = (1, 3)
+BASE_POOCH_SUMMON_PRICE = 20
+BLOODSKULL_PRICE_PER_POOCH_SUMMON_ROLL = 1
+NUM_BREEDS_PER_SUMMON_POOCH_RANGE = (2, 3)
+
+# Owner Event System Constants
+EVENT_HOURLY_TRIGGER_CHANCE = 0.15
+EVENT_MAX_ACTIVE_PER_OWNER = 5
+EVENT_DEFAULT_TIMEOUT_HOURS = 24
+
+# Kennel Purchasing / Upgrades
+KENNEL_BASE_PRICE = 250
+MAX_KENNELS = 5
+KENNEL_UPGRADE_BASE_CAPACITY = 10
+KENNEL_UPGRADE_CAPACITY_PER_UPGRADE = 5
+KENNEL_MAX_POOCH_LIMIT = 25
+KENNEL_UPGRADE_PRICE_PER_5 = 200  # cost per 5-pooch increment above 5
 
 # Church Begging
-BEG_DOLLARS_RANGE = (5, 25)
+BEG_DOLLARS_RANGE = (10, 25)
 BEG_MAX_DOLLARS = 50
+
+# Strays
+PARK_STRAY_CATCH_DIVISOR = 5
+STRAY_EVENT_TRIGGER_CHANCE = 0.5
+
+# Fight Mechanics
+FIGHT_ROUNDS = 3
+FIGHT_ATTACK_STRENGTH_WEIGHT = 0.2
+FIGHT_ATTACK_SIZE_STENGTH_WEIGHT = 0.1
+FIGHT_ATTACK_DEXTERITY_WEIGHT = 0.1
+FIGHT_ATTACK_AGGRESSIVENESS_WEIGHT = 0.2
+FIGHT_DEFENSE_STRENGTH_WEIGHT = 0.2
+FIGHT_DEFENSE_DEXTERITY_WEIGHT = 0.1
+FIGHT_DEFENSE_CONSTITUTION_WEIGHT = 0.2
+FIGHT_RANDOM_MULTIPLIER_RANGE = (0.5, 1.5)
+FIGHT_DEFENDER_STRENGTH_BONUS = 0
+
+# Per-round strength loss due to fatigue.
+# Effective loss = FIGHT_STRENGTH_LOSS_PER_ROUND / (1 + constitution * FIGHT_CONSTITUTION_FATIGUE_REDUCTION)
+# At constitution=10: loss = 2 / (1 + 10*0.05) = 2 / 1.5 ≈ 1.33 → rounds to 1
+# At constitution=20: loss = 2 / (1 + 20*0.05) = 2 / 2.0 = 1 → rounds to 1
+# At constitution=1:  loss = 2 / (1 + 1*0.05)  = 2 / 1.05 ≈ 1.9 → rounds to 2
+FIGHT_STRENGTH_LOSS_PER_ROUND = 2
+FIGHT_CONSTITUTION_FATIGUE_REDUCTION = 0.05
+
+# Damage thresholds for fight injury selection
+FIGHT_SEVERE_BITE_DAMAGE_THRESHOLD = 8
+FIGHT_MODERATE_BITE_DAMAGE_THRESHOLD = 4
+
+# Probability of a bite injury vs scratch injury per fight round
+FIGHT_INJURY_BITE_CHANCE = 0.6
+
+# Vet treatment costs: cost = VET_TREATMENT_BASE_COST + VET_TREATMENT_SEVERITY_COST_PER_LEVEL * severity_level
+VET_TREATMENT_BASE_COST = 10
+VET_TREATMENT_SEVERITY_COST_PER_LEVEL = 5
+
+# How much persistence is reduced per vet treatment
+VET_TREATMENT_PERSISTENCE_REDUCTION = 10
+
+# Vet diagnosis costs (flat fee per procedure)
+VET_DIAGNOSE_INJURIES_COST = 25
+VET_DIAGNOSE_MUTATIONS_COST = 50
 
 # Other
 MAX_NAME_LENGTH = 100

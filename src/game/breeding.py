@@ -4,7 +4,7 @@ import random
 from collections import deque
 from typing import Optional
 
-from database import (
+from src.database import (
     add_mutation_to_pooch,
     add_pooch_breeds,
     create_pooch,
@@ -15,24 +15,43 @@ from database import (
     list_pooch_children,
     list_pooch_mutations,
     list_pooch_siblings,
-    set_pooch_breeding_cooldown,
+    reset_pooch_breeding_cooldown,
     set_pooch_parentage,
     set_pooch_virgin,
 )
 
 from .constants import (
+    BREED_NOISE_RANGE,
     NUM_INCEST_MUTATION_ROLLS,
-    POOCH_BASE_HEALTH_RANGE,
     POOCH_BREEDING_COOLDOWN,
     POOCH_FETAL_AGE,
+    POOCH_STATS,
+    SHARED_BREED_WEIGHT_BONUS,
     TRIPLETS_CHANCE,
     TWINS_CHANCE,
 )
-from .exceptions.pooch_not_found import PoochNotFound
-from .utils import get_pooch_mutation_advanced_option_total
+from .exceptions import PoochNotFound
+from .manage_diseases import handle_breeding_diseases
 
 
-def _combine_puppy_name(father_name: str, mother_name: str) -> str:
+def combine_puppy_name(father_name: str, mother_name: str) -> str:
+    """
+    Combine puppy name.
+
+    Parameters
+    ----------
+    father_name: Any
+        The `father_name` value.
+
+    mother_name: Any
+        The `mother_name` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `combine_puppy_name`.
+    """
+
     father_name = father_name
     mother_name = mother_name
     left = father_name[: max(len(father_name) // 2, 1)]
@@ -41,7 +60,13 @@ def _combine_puppy_name(father_name: str, mother_name: str) -> str:
     return name
 
 
-async def breed_pooches(first_pooch_id: int, second_pooch_id: int, rng_seed: Optional[int] = None) -> list[int]:
+async def breed_pooches(
+    first_pooch_id: int,
+    second_pooch_id: int,
+    rng_seed: Optional[int] = None,
+    skip_validation: bool = False,
+    return_disease_events: bool = False,
+) -> list[int] | tuple[list[int], list[tuple[int, str, str]]]:
     """
     Breed two pooches and create a fetus in the mother.
 
@@ -56,10 +81,14 @@ async def breed_pooches(first_pooch_id: int, second_pooch_id: int, rng_seed: Opt
     rng_seed: int, optional
         The seed to use to randomize random values with.
 
+    skip_validation: bool, default : False
+        Whether to skip validation (like pooches being different sexes, on breeding cooldown, etc.) or not.
+
     Returns
     -------
-    list[int]
-        A list of the new pooch IDs.
+    list[int] | tuple[list[int], list[tuple[int, str, str]]]
+        The new puppy IDs. When ``return_disease_events`` is True, returns a
+        ``(puppy_ids, disease_events)`` tuple instead.
 
     Raises
     ------
@@ -74,12 +103,12 @@ async def breed_pooches(first_pooch_id: int, second_pooch_id: int, rng_seed: Opt
 
     first_pooch = await get_pooch_by_id(first_pooch_id)
     second_pooch = await get_pooch_by_id(second_pooch_id)
-    if first_pooch is None:
+    if first_pooch is None and not skip_validation:
         raise PoochNotFound(first_pooch_id)
-    if second_pooch is None:
+    if second_pooch is None and not skip_validation:
         raise PoochNotFound(second_pooch_id)
 
-    if first_pooch.sex == second_pooch.sex:
+    if first_pooch.sex == second_pooch.sex and not skip_validation:
         raise ValueError("Pooches must be different sexes to breed.")
 
     if first_pooch.sex == "male":
@@ -87,21 +116,11 @@ async def breed_pooches(first_pooch_id: int, second_pooch_id: int, rng_seed: Opt
     else:
         father, mother = second_pooch, first_pooch
 
-    if father.breeding_cooldown > 0 or mother.breeding_cooldown > 0:
+    if (father.breeding_cooldown > 0 or mother.breeding_cooldown > 0) and not skip_validation:
         raise ValueError("One or both pooches are still on breeding cooldown.")
 
-    await set_pooch_breeding_cooldown(
-        father.id,
-        max(
-            POOCH_BREEDING_COOLDOWN + await get_pooch_mutation_advanced_option_total(father.id, "breeding_cooldown"), 0
-        ),
-    )
-    await set_pooch_breeding_cooldown(
-        mother.id,
-        max(
-            POOCH_BREEDING_COOLDOWN + await get_pooch_mutation_advanced_option_total(mother.id, "breeding_cooldown"), 0
-        ),
-    )
+    await reset_pooch_breeding_cooldown(father.id, base_cooldown=POOCH_BREEDING_COOLDOWN)
+    await reset_pooch_breeding_cooldown(mother.id, base_cooldown=POOCH_BREEDING_COOLDOWN)
     await set_pooch_virgin(father.id, False)
     await set_pooch_virgin(mother.id, False)
 
@@ -122,17 +141,28 @@ async def breed_pooches(first_pooch_id: int, second_pooch_id: int, rng_seed: Opt
 
     puppies: list[int] = []
 
+    def _inherit_stat(parent_a: int, parent_b: int) -> int:
+        lo = min(parent_a, parent_b)
+        hi = max(parent_a, parent_b)
+        return max(0, rng.randint(lo - 1, hi + 1))
+
     for _ in range(litter_size):
-        puppy_name = _combine_puppy_name(father.name, mother.name)
+        puppy_name = combine_puppy_name(father.name, mother.name)
+        inherited_base_health = _inherit_stat(father.base_health, mother.base_health)
+        inherited_stats = {stat: _inherit_stat(getattr(father, stat), getattr(mother, stat)) for stat in POOCH_STATS}
+        inherited_size = _inherit_stat(father.size, mother.size)
         puppy = await create_pooch(
             owner_discord_id=mother.owner_discord_id,
             name=puppy_name,
             age=POOCH_FETAL_AGE,
-            base_health=rng.randint(POOCH_BASE_HEALTH_RANGE[0], POOCH_BASE_HEALTH_RANGE[1]),
+            base_health=inherited_base_health,
+            size=inherited_size,
+            **inherited_stats,
             rng=rng,
         )
 
-        await set_pooch_parentage(puppy.id, father_id=father.id, mother_id=mother.id)
+        effective_father_id = None if father.id == mother.id else father.id
+        await set_pooch_parentage(puppy.id, father_id=effective_father_id, mother_id=mother.id)
         await create_pooch_pregnancy(mother.id, puppy.id)
 
         # The child gets 50% of the breeds from each parent (normalized first)
@@ -150,17 +180,32 @@ async def breed_pooches(first_pooch_id: int, second_pooch_id: int, rng_seed: Opt
             for breed_id, weight in mother_breeds.items():
                 merged[breed_id] = merged.get(breed_id, 0.0) + (0.5 * (weight / mother_total) * budget)
 
-        scalar = 1 / min(merged.values())
+        # Boost breeds shared by both parents
+        shared_breeds = set(father_breeds) & set(mother_breeds)
+        for breed_id in shared_breeds:
+            if breed_id in merged:
+                merged[breed_id] *= SHARED_BREED_WEIGHT_BONUS
 
-        int_weights: dict[int, int] = {}
-        for breed_id, weight in merged.items():
-            int_weight = round(scalar * weight)
-            if int_weight <= 0 and weight > 0:
-                int_weight = 1
-            if int_weight > 0:
-                int_weights[breed_id] = int_weight
+        # Apply random noise to each breed weight
+        for breed_id in merged:
+            merged[breed_id] *= rng.uniform(*BREED_NOISE_RANGE)
 
-        await add_pooch_breeds(puppy.id, int_weights)
+        if merged:
+            scalar = 1 / min(merged.values())
+
+            int_weights: dict[int, int] = {}
+            for breed_id, weight in merged.items():
+                int_weight = round(scalar * weight)
+                if int_weight <= 0 and weight > 0:
+                    int_weight = 1
+                if int_weight > 0:
+                    int_weights[breed_id] = int_weight
+
+            # Drop breeds whose weight is less than 1% of the total
+            total_weight = sum(int_weights.values())
+            int_weights = {bid: w for bid, w in int_weights.items() if w / total_weight >= 0.01}
+
+            await add_pooch_breeds(puppy.id, int_weights)
 
         # The child has a chance to inherit mutations equal to the mutation's heritability,
         # or double that if both parents have it
@@ -179,20 +224,48 @@ async def breed_pooches(first_pooch_id: int, second_pooch_id: int, rng_seed: Opt
             if incest_level > 0 and rng.random() < incest_level:
                 await add_mutation_to_pooch(puppy.id, rng=rng)
 
-        await set_pooch_breeding_cooldown(
-            puppy.id,
-            max(
-                POOCH_BREEDING_COOLDOWN + await get_pooch_mutation_advanced_option_total(puppy.id, "breeding_cooldown"),
-                0,
-            ),
-        )
+        await reset_pooch_breeding_cooldown(puppy.id, base_cooldown=POOCH_BREEDING_COOLDOWN)
 
         puppies.append(puppy.id)
 
+    # Disease transmission during breeding (STDs and inheritance)
+    from src.database import get_current_season
+
+    _season = await get_current_season()
+    disease_events = await handle_breeding_diseases(
+        father_id=father.id,
+        mother_id=mother.id,
+        puppy_ids=puppies,
+        season=_season,
+        rng=rng,
+    )
+
+    if return_disease_events:
+        return puppies, disease_events
     return puppies
 
 
 async def calculate_incest_level(first_pooch_id: int, second_pooch_id: int, max_depth: int = 8) -> float:
+    """
+    Calculate incest level.
+
+    Parameters
+    ----------
+    first_pooch_id: Any
+        The `first_pooch_id` value.
+
+    second_pooch_id: Any
+        The `second_pooch_id` value.
+
+    max_depth: Any
+        The `max_depth` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `calculate_incest_level`.
+    """
+
     if first_pooch_id == second_pooch_id:
         return 1.0
 

@@ -1,0 +1,26 @@
+{
+    "name": "God Syndrome",
+    "alt_name": "Jesus Poochicus",
+    "description": "This pooch can't die, on Dog.",
+    "heritability": 0.0,
+    "health_impact": "IMMORTALITY",
+    "rarity": "UNIQUE",
+    "visible": false,
+    "invisible_messages": [
+        "This pooch has a divine aura."
+    ],
+    "reveal_chance": 0.0,
+    "parameters": {
+        "strength_mult": 1.33,
+        "intelligence_mult": 1.33,
+        "dexterity_mult": 1.33,
+        "constitution_mult": 5.0,
+        "on_death_triggers": [
+            {
+                "on_death": "spread",
+                "on_death_targets": "random",
+                "always_on_death": true
+            }
+        ]
+    }
+}

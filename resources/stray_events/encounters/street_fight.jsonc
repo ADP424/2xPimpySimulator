@@ -1,0 +1,101 @@
+{
+    "name": "Street Fight",
+    "severity": "MAJOR",
+    "rarity": "COMMON",
+    "filter": {
+        "min_count": 2
+    },
+    "actions": [
+        // Select two distinct fighters from the stray pool and save them for outcome stat weighting
+        {
+            "action_type": "select_pooch",
+            "parameters": {
+                "selector": "random",
+                "save_as": "fighter_a"
+            }
+        },
+        {
+            "action_type": "select_pooch",
+            "parameters": {
+                "selector": "random",
+                "save_as": "fighter_b"
+            }
+        }
+    ],
+    "outcomes": [
+        // Fighter A dominates — A takes minor damage, B takes heavy damage
+        {
+            "chance": 0.35,
+            "stat_weights": [
+                { "stat": "strength",       "pooch": "fighter_a", "scale": 0.04, "pivot": 10, "direction":  1 },
+                { "stat": "aggressiveness", "pooch": "fighter_a", "scale": 0.03, "pivot": 10, "direction":  1 },
+                { "stat": "size",           "pooch": "fighter_a", "scale": 0.02, "pivot": 10, "direction":  1 },
+                { "stat": "strength",       "pooch": "fighter_b", "scale": 0.04, "pivot": 10, "direction": -1 },
+                { "stat": "size",           "pooch": "fighter_b", "scale": 0.03, "pivot": 10, "direction": -1 }
+            ],
+            "actions": [
+                {
+                    "action_type": "injure_pooch",
+                    "parameters": {
+                        "use_saved": "fighter_a",
+                        "injury": "Minor"
+                    }
+                },
+                {
+                    "action_type": "injure_pooch",
+                    "parameters": {
+                        "use_saved": "fighter_b",
+                        "injury": "Brutal"
+                    }
+                }
+            ]
+        },
+        // Fighter B dominates — mirror of the above
+        {
+            "chance": 0.35,
+            "stat_weights": [
+                { "stat": "strength",       "pooch": "fighter_b", "scale": 0.04, "pivot": 10, "direction":  1 },
+                { "stat": "aggressiveness", "pooch": "fighter_b", "scale": 0.03, "pivot": 10, "direction":  1 },
+                { "stat": "size",           "pooch": "fighter_b", "scale": 0.02, "pivot": 10, "direction":  1 },
+                { "stat": "strength",       "pooch": "fighter_a", "scale": 0.04, "pivot": 10, "direction": -1 },
+                { "stat": "size",           "pooch": "fighter_a", "scale": 0.03, "pivot": 10, "direction": -1 }
+            ],
+            "actions": [
+                {
+                    "action_type": "injure_pooch",
+                    "parameters": {
+                        "use_saved": "fighter_b",
+                        "injury": "Minor"
+                    }
+                },
+                {
+                    "action_type": "injure_pooch",
+                    "parameters": {
+                        "use_saved": "fighter_a",
+                        "injury": "Brutal"
+                    }
+                }
+            ]
+        },
+        // Draw — both take moderate damage; fixed chance, unaffected by stats
+        {
+            "chance": 0.30,
+            "actions": [
+                {
+                    "action_type": "injure_pooch",
+                    "parameters": {
+                        "use_saved": "fighter_a",
+                        "injury": "Severe"
+                    }
+                },
+                {
+                    "action_type": "injure_pooch",
+                    "parameters": {
+                        "use_saved": "fighter_b",
+                        "injury": "Severe"
+                    }
+                }
+            ]
+        }
+    ]
+}

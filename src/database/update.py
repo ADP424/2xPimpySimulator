@@ -1,9 +1,33 @@
-from typing import Optional
+import random
+from datetime import datetime, timezone
+from typing import Any, Optional
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 
-from .constants import POOCH_HEALTH_LOSS_STARTING_AGE
-from .models import Kennel, Owner, Pooch, Server
+from .constants import POOCH_BREEDING_COOLDOWN, POOCH_HEALTH_LOSS_STARTING_AGE
+from .models import (
+    SNAPSHOT_BIRTH,
+    SNAPSHOT_DEATH,
+    SNAPSHOT_OWNERSHIP,
+    AuctionBountyListing,
+    AuctionSaleListing,
+    Breed,
+    EventOccurrence,
+    GlobalState,
+    Injury,
+    Kennel,
+    Mutation,
+    Owner,
+    Pooch,
+    PoochBreed,
+    PoochDisease,
+    PoochInjury,
+    PoochMutation,
+    PoochSnapshot,
+    Server,
+    ServerEventOccurrence,
+    ServerEventParticipation,
+)
 from .session import session_scope
 
 
@@ -33,11 +57,188 @@ async def age_pooch(pooch_id: int, health_loss_starting_age: int = POOCH_HEALTH_
         if pooch is None:
             return None
 
+        was_fetal = pooch.age == -1
         pooch.age += 1
         if pooch.age > health_loss_starting_age:
             pooch.health_loss_age += 1
 
+        if was_fetal:
+            session.add(
+                PoochSnapshot(
+                    pooch_id=pooch_id,
+                    kind=SNAPSHOT_BIRTH,
+                    description=f"{pooch.name} was born.",
+                    snapshot_at=datetime.now(timezone.utc),
+                )
+            )
+
     return pooch
+
+
+async def tick_hourly_breeding_cooldowns(fertility_divisor: float, rng_seed: Optional[int] = None) -> int:
+    """
+    For each living pooch whose breeding_cooldown > 0, roll a chance equal to
+    (fertility / fertility_divisor) to decrement the cooldown by 1.
+
+    Parameters
+    ----------
+    fertility_divisor: float
+        Divisor applied to each pooch's fertility stat to compute the per-hour
+        decrement chance.
+
+    rng_seed: int, optional
+        Seed for the random number generator.
+
+    Returns
+    -------
+    int
+        The number of pooches whose cooldown was decremented.
+    """
+
+    rng = random.Random(rng_seed)
+
+    async with session_scope() as session:
+        query = select(Pooch).where(Pooch.alive.is_(True), Pooch.breeding_cooldown > 0)
+        pooches = (await session.execute(query)).scalars().all()
+
+        decremented = 0
+        for pooch in pooches:
+            mutations = (
+                (
+                    await session.execute(
+                        select(Mutation)
+                        .join(PoochMutation, PoochMutation.mutation_id == Mutation.id)
+                        .where(PoochMutation.pooch_id == pooch.id)
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            breed_rows = (
+                await session.execute(
+                    select(Breed, PoochBreed.weight)
+                    .join(PoochBreed, PoochBreed.breed_id == Breed.id)
+                    .where(PoochBreed.pooch_id == pooch.id)
+                )
+            ).all()
+
+            effective_fertility = float(pooch.fertility)
+            mut_add = sum(m.parameters.get("fertility_add", 0) for m in mutations)
+            mut_mult = 1.0
+            for m in mutations:
+                mut_mult *= m.parameters.get("fertility_mult", 1.0)
+            effective_fertility = (effective_fertility + mut_add) * mut_mult
+
+            total_weight = sum(w for _, w in breed_rows)
+            if total_weight > 0:
+                breed_add = sum(b.parameters.get("fertility_add", 0) * (w / total_weight) for b, w in breed_rows)
+                breed_mult = sum(b.parameters.get("fertility_mult", 1.0) * (w / total_weight) for b, w in breed_rows)
+                effective_fertility = (effective_fertility + breed_add) * breed_mult
+
+            chance = round(effective_fertility) / fertility_divisor
+            if rng.random() < chance:
+                pooch.breeding_cooldown = max(pooch.breeding_cooldown - 1, 0)
+                decremented += 1
+
+    return decremented
+
+
+async def tick_hourly_injury_persistence(constitution_divisor: float, rng_seed: Optional[int] = None) -> int:
+    """
+    For each living pooch, roll a constitution-based chance to decrement the persistence
+    counter on each of their injuries that has one. When persistence reaches 0 the injury
+    is removed.
+
+    Chance per injury instance = constitution / constitution_divisor.
+
+    Parameters
+    ----------
+    constitution_divisor: float
+        Divisor applied to the pooch's effective constitution to compute the per-hour
+        decrement chance.
+
+    rng_seed: int, optional
+        Seed for the random number generator.
+
+    Returns
+    -------
+    int
+        The number of injury instances whose persistence was decremented (including removals).
+    """
+
+    rng = random.Random(rng_seed)
+
+    async with session_scope() as session:
+        query = (
+            select(PoochInjury)
+            .join(Pooch, Pooch.id == PoochInjury.pooch_id)
+            .join(Injury, Injury.id == PoochInjury.injury_id)
+            .where(Pooch.alive.is_(True), PoochInjury.persistence.is_not(None))
+        )
+        injury_instances = (await session.execute(query)).scalars().all()
+
+        if not injury_instances:
+            return 0
+
+        # Gather unique pooch ids and fetch their stats + modifiers in bulk
+        pooch_ids = list({pi.pooch_id for pi in injury_instances})
+        pooches = {
+            p.id: p for p in (await session.execute(select(Pooch).where(Pooch.id.in_(pooch_ids)))).scalars().all()
+        }
+        mutations_by_pooch: dict[int, list] = {pid: [] for pid in pooch_ids}
+        for m, pid in (
+            await session.execute(
+                select(Mutation, PoochMutation.pooch_id)
+                .join(PoochMutation, PoochMutation.mutation_id == Mutation.id)
+                .where(PoochMutation.pooch_id.in_(pooch_ids))
+            )
+        ).all():
+            mutations_by_pooch[pid].append(m)
+        breed_rows_by_pooch: dict[int, list] = {pid: [] for pid in pooch_ids}
+        for b, w, pid in (
+            await session.execute(
+                select(Breed, PoochBreed.weight, PoochBreed.pooch_id)
+                .join(PoochBreed, PoochBreed.breed_id == Breed.id)
+                .where(PoochBreed.pooch_id.in_(pooch_ids))
+            )
+        ).all():
+            breed_rows_by_pooch[pid].append((b, w))
+
+        # Cache effective constitution per pooch
+        effective_constitution: dict[int, float] = {}
+        for pid in pooch_ids:
+            pooch = pooches[pid]
+            ec = float(pooch.constitution)
+            mutations = mutations_by_pooch[pid]
+            mut_add = sum(m.parameters.get("constitution_add", 0) for m in mutations)
+            mut_mult = 1.0
+            for m in mutations:
+                mut_mult *= m.parameters.get("constitution_mult", 1.0)
+            ec = (ec + mut_add) * mut_mult
+            breed_rows = breed_rows_by_pooch[pid]
+            total_weight = sum(w for _, w in breed_rows)
+            if total_weight > 0:
+                breed_add = sum(b.parameters.get("constitution_add", 0) * (w / total_weight) for b, w in breed_rows)
+                breed_mult = sum(b.parameters.get("constitution_mult", 1.0) * (w / total_weight) for b, w in breed_rows)
+                ec = (ec + breed_add) * breed_mult
+            effective_constitution[pid] = ec
+
+        decremented = 0
+        to_delete: list[int] = []
+        for pi in injury_instances:
+            chance = round(effective_constitution[pi.pooch_id]) / constitution_divisor
+            if rng.random() < chance:
+                pi.persistence -= 1
+                decremented += 1
+                if pi.persistence <= 0:
+                    to_delete.append(pi.id)
+
+        for pi_id in to_delete:
+            pi = await session.get(PoochInjury, pi_id)
+            if pi is not None:
+                await session.delete(pi)
+
+    return decremented
 
 
 async def decrement_pooch_breeding_cooldown(pooch_id: int) -> Optional[Pooch]:
@@ -65,6 +266,36 @@ async def decrement_pooch_breeding_cooldown(pooch_id: int) -> Optional[Pooch]:
         pooch.breeding_cooldown = max(pooch.breeding_cooldown - 1, 0)
 
     return pooch
+
+
+async def update_owner_discord_name(owner_discord_id: int, discord_name: str) -> Optional[Owner]:
+    """
+    Update the cached Discord display name for the given owner.
+
+    Parameters
+    ----------
+    owner_discord_id: int
+        The Discord ID of the owner to update.
+
+    discord_name: str
+        The new Discord display name.
+
+    Returns
+    -------
+    Owner, optional
+        The updated Owner ORM object, or None if the owner wasn't found.
+    """
+
+    async with session_scope() as session:
+        query = select(Owner).where(Owner.discord_id == owner_discord_id)
+        owner = (await session.execute(query)).scalar_one_or_none()
+
+        if owner is None:
+            return None
+
+        owner.discord_name = discord_name
+
+    return owner
 
 
 async def give_bloodskulls_to_owner(owner_discord_id: int, bloodskulls: int) -> Optional[Owner]:
@@ -97,6 +328,36 @@ async def give_bloodskulls_to_owner(owner_discord_id: int, bloodskulls: int) -> 
     return owner
 
 
+async def give_bones_to_owner(owner_discord_id: int, bones: int) -> Optional[Owner]:
+    """
+    Add a number to the given owner's `bones`.
+
+    Parameters
+    ----------
+    owner_discord_id: int
+        The Discord ID of the owner to give the bones to.
+
+    bones: int
+        The number of bones to give to the owner (negative to spend).
+
+    Returns
+    -------
+    Owner, optional
+        The Owner ORM object the bones were added to, or None if no owner with the given Discord ID was found.
+    """
+
+    async with session_scope() as session:
+        query = select(Owner).where(Owner.discord_id == owner_discord_id)
+        owner = (await session.execute(query)).scalar_one_or_none()
+
+        if owner is None:
+            return None
+
+        owner.bones += bones
+
+    return owner
+
+
 async def give_money_to_owner(owner_discord_id: int, dollars: int) -> Optional[Owner]:
     """
     Add an amount of money to the given owner's `dollars`.
@@ -123,6 +384,177 @@ async def give_money_to_owner(owner_discord_id: int, dollars: int) -> Optional[O
             return None
 
         owner.dollars += dollars
+
+    return owner
+
+
+async def modify_kennel_pooch_limit(kennel_id: int, amount: int) -> Optional[Kennel]:
+    """
+    Modify a kennel's pooch limit by a given amount.
+
+    Parameters
+    ----------
+    kennel_id: int
+        The ID of the kennel to modify.
+
+    amount: int
+        The amount to add to pooch limit (can be negative) to a minimum of 1.
+
+    Returns
+    -------
+    Kennel, optional
+        The updated Kennel, or None if not found.
+    """
+
+    async with session_scope() as session:
+        query = select(Kennel).where(Kennel.id == kennel_id)
+        result = await session.execute(query)
+        kennel = result.scalar_one_or_none()
+
+        if kennel is None:
+            return None
+
+        new_limit = max(1, kennel.pooch_limit + amount)
+        kennel.pooch_limit = new_limit
+
+        await session.flush()
+        return kennel
+
+
+async def modify_pooch_age(
+    pooch_id: int,
+    amount: int,
+    health_loss_starting_age: int = POOCH_HEALTH_LOSS_STARTING_AGE,
+) -> Optional[Pooch]:
+    """
+    Modify a pooch's age by a given amount.
+
+    Parameters
+    ----------
+    pooch_id: int
+        The ID of the pooch to modify.
+
+    amount: int
+        The amount to add to age (can be negative) to a minimum of 0.
+
+    health_loss_starting_age: int
+        The age at which a pooch starts losing health from age.
+
+    Returns
+    -------
+    Pooch, optional
+        The updated Pooch, or None if not found.
+    """
+
+    async with session_scope() as session:
+        query = select(Pooch).where(Pooch.id == pooch_id)
+        result = await session.execute(query)
+        pooch = result.scalar_one_or_none()
+
+        if pooch is None:
+            return None
+
+        pooch.age = max(0, pooch.age + amount)
+        pooch.health_loss_age = max(0, pooch.age - health_loss_starting_age)
+
+        await session.flush()
+        return pooch
+
+
+async def modify_pooch_base_health(pooch_id: int, amount: int) -> Optional[Pooch]:
+    """
+    Modify a pooch's base health by a given amount.
+
+    Parameters
+    ----------
+    pooch_id: int
+        The ID of the pooch to modify.
+
+    amount: int
+        The amount to add to base health (can be negative) to a minimum of 0.
+
+    Returns
+    -------
+    Pooch, optional
+        The updated Pooch, or None if not found.
+    """
+
+    async with session_scope() as session:
+        query = select(Pooch).where(Pooch.id == pooch_id)
+        result = await session.execute(query)
+        pooch = result.scalar_one_or_none()
+
+        if pooch is None:
+            return None
+
+        new_health = max(0, pooch.base_health + amount)
+        pooch.base_health = new_health
+
+        await session.flush()
+        return pooch
+
+
+async def set_pooch_base_health(pooch_id: int, health: int) -> Optional[Pooch]:
+    """Set a pooch's base health to a specific value (minimum 0)."""
+
+    async with session_scope() as session:
+        query = select(Pooch).where(Pooch.id == pooch_id)
+        result = await session.execute(query)
+        pooch = result.scalar_one_or_none()
+
+        if pooch is None:
+            return None
+
+        pooch.base_health = max(0, health)
+
+        await session.flush()
+        return pooch
+
+
+async def set_pooch_age(pooch_id: int, age: int) -> Optional[Pooch]:
+    """Set a pooch's age to a specific value (minimum 0)."""
+
+    async with session_scope() as session:
+        query = select(Pooch).where(Pooch.id == pooch_id)
+        result = await session.execute(query)
+        pooch = result.scalar_one_or_none()
+
+        if pooch is None:
+            return None
+
+        pooch.age = max(0, age)
+        pooch.health_loss_age = max(0, age - POOCH_HEALTH_LOSS_STARTING_AGE)
+
+        await session.flush()
+        return pooch
+
+
+async def set_owner_dollars(owner_discord_id: int, dollars: int) -> Optional[Owner]:
+    """Set an owner's dollars to a specific value."""
+
+    async with session_scope() as session:
+        query = select(Owner).where(Owner.discord_id == owner_discord_id)
+        owner = (await session.execute(query)).scalar_one_or_none()
+
+        if owner is None:
+            return None
+
+        owner.dollars = dollars
+
+    return owner
+
+
+async def set_owner_bloodskulls(owner_discord_id: int, bloodskulls: int) -> Optional[Owner]:
+    """Set an owner's bloodskulls to a specific value."""
+
+    async with session_scope() as session:
+        query = select(Owner).where(Owner.discord_id == owner_discord_id)
+        owner = (await session.execute(query)).scalar_one_or_none()
+
+        if owner is None:
+            return None
+
+        owner.bloodskulls = bloodskulls
 
     return owner
 
@@ -207,6 +639,49 @@ async def reset_begged_today() -> int:
         return len(owners)
 
 
+async def respond_to_active_owner_event(
+    active_owner_event_id: int,
+    option_id: Optional[int],
+    result_summary: dict[str, Any] = None,
+) -> Optional[EventOccurrence]:
+    """
+    Record a response to an active event.
+
+    Parameters
+    ----------
+    active_owner_event_id: int
+        The ID of the active event being responded to.
+
+    option_id: int, optional
+        The ID of the option selected (None if no option selected).
+
+    result_summary: dict, optional
+        Summary of what happened as a result.
+
+    Returns
+    -------
+    EventOccurrence, optional
+        The updated EventOccurrence, or None if not found.
+    """
+
+    if result_summary is None:
+        result_summary = {}
+
+    async with session_scope() as session:
+        query = (
+            update(EventOccurrence)
+            .where(EventOccurrence.id == active_owner_event_id, EventOccurrence.archived.is_(False))
+            .values(
+                responded_at=datetime.now(timezone.utc),
+                selected_option_id=option_id,
+                result_summary=result_summary,
+            )
+            .returning(EventOccurrence)
+        )
+        result = await session.execute(query)
+        return result.scalar_one_or_none()
+
+
 async def set_event_channel_discord_id(server_discord_id: int, channel_discord_id: int) -> Optional[Server]:
     """
     Set the channel for automated events to be sent to for the server with the given Discord ID.
@@ -232,6 +707,122 @@ async def set_event_channel_discord_id(server_discord_id: int, channel_discord_i
             server.event_channel_discord_id = channel_discord_id
 
     return server
+
+
+_SEASON_CYCLE = ["spring", "summer", "autumn", "winter"]
+
+_GLOBAL_STATE_ID = 1
+
+
+async def get_current_season() -> str:
+    """Return the current global season, defaulting to 'spring' if the row doesn't exist yet."""
+    async with session_scope() as session:
+        row = await session.get(GlobalState, _GLOBAL_STATE_ID)
+        if row is None:
+            return "spring"
+        return (row.current_season or "spring").strip().lower()
+
+
+async def advance_global_season() -> str:
+    """Advance the global season to the next one in the cycle and return the new season name."""
+    async with session_scope() as session:
+        row = await session.get(GlobalState, _GLOBAL_STATE_ID)
+        if row is None:
+            row = GlobalState(id=_GLOBAL_STATE_ID, current_season="spring")
+            session.add(row)
+        current = (row.current_season or "spring").strip().lower()
+        try:
+            idx = _SEASON_CYCLE.index(current)
+        except ValueError:
+            idx = 0
+        new_season = _SEASON_CYCLE[(idx + 1) % len(_SEASON_CYCLE)]
+        row.current_season = new_season
+    return new_season
+
+
+async def set_kennel_pooch_limit(kennel_id: int, limit: int) -> Optional[Kennel]:
+    """
+    Set a kennel's pooch limit to a specific value.
+
+    Parameters
+    ----------
+    kennel_id: int
+        The ID of the kennel to modify.
+
+    limit: int
+        The new pooch limit (minimum 1).
+
+    Returns
+    -------
+    Kennel, optional
+        The updated Kennel, or None if not found.
+    """
+
+    async with session_scope() as session:
+        query = select(Kennel).where(Kennel.id == kennel_id)
+        result = await session.execute(query)
+        kennel = result.scalar_one_or_none()
+
+        if kennel is None:
+            return None
+
+        kennel.pooch_limit = max(1, limit)
+
+        await session.flush()
+        return kennel
+
+
+async def modify_kennel_upgrade_tier(kennel_id: int, amount: int) -> Optional[Kennel]:
+    """
+    Modify a kennel's upgrade tier by a given amount (can be negative).
+
+    Parameters
+    ----------
+    kennel_id: int
+        The ID of the kennel to modify.
+
+    amount: int
+        The amount to add to the upgrade tier (can be negative, minimum 0).
+
+    Returns
+    -------
+    Kennel, optional
+        The updated Kennel, or None if not found.
+    """
+
+    async with session_scope() as session:
+        query = select(Kennel).where(Kennel.id == kennel_id)
+        result = await session.execute(query)
+        kennel = result.scalar_one_or_none()
+
+        if kennel is None:
+            return None
+
+        kennel.upgrade_tier = max(0, kennel.upgrade_tier + amount)
+
+        await session.flush()
+        return kennel
+
+
+async def reset_visited_park_today() -> int:
+    """Reset every owner's `visited_park_today` flag to False."""
+    async with session_scope() as session:
+        query = select(Owner)
+        owners = (await session.execute(query)).scalars().all()
+        for owner in owners:
+            owner.visited_park_today = False
+        return len(owners)
+
+
+async def set_owner_visited_park_today(owner_discord_id: int, visited: bool = True) -> Optional[Owner]:
+    """Set the `visited_park_today` flag for the owner with the given Discord ID."""
+    async with session_scope() as session:
+        query = select(Owner).where(Owner.discord_id == owner_discord_id)
+        owner = (await session.execute(query)).scalar_one_or_none()
+        if owner is None:
+            return None
+        owner.visited_park_today = visited
+    return owner
 
 
 async def set_owner_begged_today(owner_discord_id: int, begged_today: bool = True) -> Optional[Owner]:
@@ -264,6 +855,222 @@ async def set_owner_begged_today(owner_discord_id: int, begged_today: bool = Tru
     return owner
 
 
+async def modify_pooch_strength(pooch_id: int, amount: int) -> Optional[Pooch]:
+    """Modify a pooch's strength by a given amount (minimum 0)."""
+
+    async with session_scope() as session:
+        pooch = (await session.execute(select(Pooch).where(Pooch.id == pooch_id))).scalar_one_or_none()
+        if pooch is None:
+            return None
+        pooch.strength = max(0, pooch.strength + amount)
+        await session.flush()
+    return pooch
+
+
+async def set_pooch_strength(pooch_id: int, value: int) -> Optional[Pooch]:
+    """Set a pooch's strength to a specific value (minimum 0)."""
+
+    async with session_scope() as session:
+        pooch = (await session.execute(select(Pooch).where(Pooch.id == pooch_id))).scalar_one_or_none()
+        if pooch is None:
+            return None
+        pooch.strength = max(0, value)
+        await session.flush()
+    return pooch
+
+
+async def modify_pooch_cuteness(pooch_id: int, amount: int) -> Optional[Pooch]:
+    """Modify a pooch's cuteness by a given amount (minimum 0)."""
+
+    async with session_scope() as session:
+        pooch = (await session.execute(select(Pooch).where(Pooch.id == pooch_id))).scalar_one_or_none()
+        if pooch is None:
+            return None
+        pooch.cuteness = max(0, pooch.cuteness + amount)
+        await session.flush()
+    return pooch
+
+
+async def set_pooch_cuteness(pooch_id: int, value: int) -> Optional[Pooch]:
+    """Set a pooch's cuteness to a specific value (minimum 0)."""
+
+    async with session_scope() as session:
+        pooch = (await session.execute(select(Pooch).where(Pooch.id == pooch_id))).scalar_one_or_none()
+        if pooch is None:
+            return None
+        pooch.cuteness = max(0, value)
+        await session.flush()
+    return pooch
+
+
+async def modify_pooch_fluffiness(pooch_id: int, amount: int) -> Optional[Pooch]:
+    """Modify a pooch's fluffiness by a given amount (minimum 0)."""
+
+    async with session_scope() as session:
+        pooch = (await session.execute(select(Pooch).where(Pooch.id == pooch_id))).scalar_one_or_none()
+        if pooch is None:
+            return None
+        pooch.fluffiness = max(0, pooch.fluffiness + amount)
+        await session.flush()
+    return pooch
+
+
+async def set_pooch_fluffiness(pooch_id: int, value: int) -> Optional[Pooch]:
+    """Set a pooch's fluffiness to a specific value (minimum 0)."""
+
+    async with session_scope() as session:
+        pooch = (await session.execute(select(Pooch).where(Pooch.id == pooch_id))).scalar_one_or_none()
+        if pooch is None:
+            return None
+        pooch.fluffiness = max(0, value)
+        await session.flush()
+    return pooch
+
+
+async def modify_pooch_intelligence(pooch_id: int, amount: int) -> Optional[Pooch]:
+    """Modify a pooch's intelligence by a given amount (minimum 0)."""
+
+    async with session_scope() as session:
+        pooch = (await session.execute(select(Pooch).where(Pooch.id == pooch_id))).scalar_one_or_none()
+        if pooch is None:
+            return None
+        pooch.intelligence = max(0, pooch.intelligence + amount)
+        await session.flush()
+    return pooch
+
+
+async def set_pooch_intelligence(pooch_id: int, value: int) -> Optional[Pooch]:
+    """Set a pooch's intelligence to a specific value (minimum 0)."""
+
+    async with session_scope() as session:
+        pooch = (await session.execute(select(Pooch).where(Pooch.id == pooch_id))).scalar_one_or_none()
+        if pooch is None:
+            return None
+        pooch.intelligence = max(0, value)
+        await session.flush()
+    return pooch
+
+
+async def modify_pooch_dexterity(pooch_id: int, amount: int) -> Optional[Pooch]:
+    """Modify a pooch's dexterity by a given amount (minimum 0)."""
+
+    async with session_scope() as session:
+        pooch = (await session.execute(select(Pooch).where(Pooch.id == pooch_id))).scalar_one_or_none()
+        if pooch is None:
+            return None
+        pooch.dexterity = max(0, pooch.dexterity + amount)
+        await session.flush()
+    return pooch
+
+
+async def set_pooch_dexterity(pooch_id: int, value: int) -> Optional[Pooch]:
+    """Set a pooch's dexterity to a specific value (minimum 0)."""
+
+    async with session_scope() as session:
+        pooch = (await session.execute(select(Pooch).where(Pooch.id == pooch_id))).scalar_one_or_none()
+        if pooch is None:
+            return None
+        pooch.dexterity = max(0, value)
+        await session.flush()
+    return pooch
+
+
+async def modify_pooch_fertility(pooch_id: int, amount: int) -> Optional[Pooch]:
+    """Modify a pooch's fertility by a given amount (minimum 0)."""
+
+    async with session_scope() as session:
+        pooch = (await session.execute(select(Pooch).where(Pooch.id == pooch_id))).scalar_one_or_none()
+        if pooch is None:
+            return None
+        pooch.fertility = max(0, pooch.fertility + amount)
+        await session.flush()
+    return pooch
+
+
+async def set_pooch_fertility(pooch_id: int, value: int) -> Optional[Pooch]:
+    """Set a pooch's fertility to a specific value (minimum 0)."""
+
+    async with session_scope() as session:
+        pooch = (await session.execute(select(Pooch).where(Pooch.id == pooch_id))).scalar_one_or_none()
+        if pooch is None:
+            return None
+        pooch.fertility = max(0, value)
+        await session.flush()
+    return pooch
+
+
+async def modify_pooch_aggressiveness(pooch_id: int, amount: int) -> Optional[Pooch]:
+    """Modify a pooch's aggressiveness by a given amount (minimum 0)."""
+
+    async with session_scope() as session:
+        pooch = (await session.execute(select(Pooch).where(Pooch.id == pooch_id))).scalar_one_or_none()
+        if pooch is None:
+            return None
+        pooch.aggressiveness = max(0, pooch.aggressiveness + amount)
+        await session.flush()
+    return pooch
+
+
+async def set_pooch_aggressiveness(pooch_id: int, value: int) -> Optional[Pooch]:
+    """Set a pooch's aggressiveness to a specific value (minimum 0)."""
+
+    async with session_scope() as session:
+        pooch = (await session.execute(select(Pooch).where(Pooch.id == pooch_id))).scalar_one_or_none()
+        if pooch is None:
+            return None
+        pooch.aggressiveness = max(0, value)
+        await session.flush()
+    return pooch
+
+
+async def modify_pooch_constitution(pooch_id: int, amount: int) -> Optional[Pooch]:
+    """Modify a pooch's constitution by a given amount (minimum 0)."""
+
+    async with session_scope() as session:
+        pooch = (await session.execute(select(Pooch).where(Pooch.id == pooch_id))).scalar_one_or_none()
+        if pooch is None:
+            return None
+        pooch.constitution = max(0, pooch.constitution + amount)
+        await session.flush()
+    return pooch
+
+
+async def set_pooch_constitution(pooch_id: int, value: int) -> Optional[Pooch]:
+    """Set a pooch's constitution to a specific value (minimum 0)."""
+
+    async with session_scope() as session:
+        pooch = (await session.execute(select(Pooch).where(Pooch.id == pooch_id))).scalar_one_or_none()
+        if pooch is None:
+            return None
+        pooch.constitution = max(0, value)
+        await session.flush()
+    return pooch
+
+
+async def modify_pooch_breeding_cooldown(pooch_id: int, amount: int) -> Optional[Pooch]:
+    """Modify a pooch's breeding cooldown by a given amount (minimum 0)."""
+
+    async with session_scope() as session:
+        pooch = (await session.execute(select(Pooch).where(Pooch.id == pooch_id))).scalar_one_or_none()
+        if pooch is None:
+            return None
+        pooch.breeding_cooldown = max(0, pooch.breeding_cooldown + amount)
+        await session.flush()
+    return pooch
+
+
+async def set_pooch_alive(pooch_id: int) -> Optional[Pooch]:
+    """Set a pooch to alive (alive=True)."""
+
+    async with session_scope() as session:
+        pooch = (await session.execute(select(Pooch).where(Pooch.id == pooch_id))).scalar_one_or_none()
+        if pooch is None:
+            return None
+        pooch.alive = True
+        await session.flush()
+    return pooch
+
+
 async def set_pooch_breeding_cooldown(pooch_id: int, cooldown: int) -> Optional[Pooch]:
     """
     Set the breeding cooldown of a pooch, to a minimum of 0.
@@ -292,6 +1099,52 @@ async def set_pooch_breeding_cooldown(pooch_id: int, cooldown: int) -> Optional[
     return pooch
 
 
+async def reset_pooch_breeding_cooldown(
+    pooch_id: int,
+    base_cooldown: int = POOCH_BREEDING_COOLDOWN,
+    multiplier: float = 1.0,
+) -> Optional[Pooch]:
+    """
+    Reset a pooch's breeding cooldown to its natural value, accounting for any mutation-based
+    adjustments to the cooldown. The final value is `base_cooldown + sum(breeding_cooldown params)`,
+    multiplied by `multiplier` and rounded to the nearest integer, clamped to a minimum of 0.
+
+    Parameters
+    ----------
+    pooch_id: int
+        The ID of the pooch whose cooldown to reset.
+
+    base_cooldown: int, default : `POOCH_BREEDING_COOLDOWN`
+        The base cooldown before mutation adjustments are applied.
+
+    multiplier: float, default : 1.0
+        A scalar applied to the final cooldown. Pass 0.5 to give vendor pooches half cooldown.
+
+    Returns
+    -------
+    Pooch, optional
+        The updated Pooch, or None if not found.
+    """
+
+    async with session_scope() as session:
+        query = select(Pooch).where(Pooch.id == pooch_id)
+        pooch = (await session.execute(query)).scalar_one_or_none()
+        if pooch is None:
+            return None
+
+        mutation_query = (
+            select(Mutation)
+            .join(PoochMutation, PoochMutation.mutation_id == Mutation.id)
+            .where(PoochMutation.pooch_id == pooch_id)
+        )
+        mutations = (await session.execute(mutation_query)).scalars().all()
+        cooldown_add = sum(m.parameters.get("breeding_cooldown", 0) for m in mutations)
+        raw = (base_cooldown + cooldown_add) * multiplier
+        pooch.breeding_cooldown = max(round(raw), 0)
+
+    return pooch
+
+
 async def set_pooch_dead(pooch_id: int) -> Optional[Pooch]:
     """
     Set the pooch with the given ID to dead.
@@ -316,6 +1169,14 @@ async def set_pooch_dead(pooch_id: int) -> Optional[Pooch]:
             return None
 
         pooch.alive = False
+        session.add(
+            PoochSnapshot(
+                pooch_id=pooch_id,
+                kind=SNAPSHOT_DEATH,
+                description=f"{pooch.name} passed away.",
+                snapshot_at=datetime.now(timezone.utc),
+            )
+        )
 
     return pooch
 
@@ -375,6 +1236,44 @@ async def transfer_pooch_to_owner(pooch_id: int, owner_discord_id: int) -> Optio
 
         pooch.owner_discord_id = owner_discord_id
         pooch.vendor_id = None
+        session.add(
+            PoochSnapshot(
+                pooch_id=pooch_id,
+                kind=SNAPSHOT_OWNERSHIP,
+                description=f"{pooch.name} was taken in by a new owner.",
+                snapshot_at=datetime.now(timezone.utc),
+            )
+        )
+
+    return pooch
+
+
+async def update_pooch_mood(pooch_id: int, mood: str | None) -> Optional[Pooch]:
+    """
+    Set the mood of a pooch.
+
+    Parameters
+    ----------
+    pooch_id: int
+        The ID of the pooch to update.
+
+    mood: str or None
+        The new mood value, or None to clear it.
+
+    Returns
+    -------
+    Pooch, optional
+        The updated Pooch ORM object, or None if the pooch wasn't found.
+    """
+
+    async with session_scope() as session:
+        query = select(Pooch).where(Pooch.id == pooch_id)
+        pooch = (await session.execute(query)).scalar_one_or_none()
+
+        if pooch is None:
+            return None
+
+        pooch.mood = mood
 
     return pooch
 
@@ -406,5 +1305,448 @@ async def transfer_pooch_to_vendor(pooch_id: int, vendor_id: int) -> Optional[Po
 
         pooch.vendor_id = vendor_id
         pooch.owner_discord_id = None
+        session.add(
+            PoochSnapshot(
+                pooch_id=pooch_id,
+                kind=SNAPSHOT_OWNERSHIP,
+                description=f"{pooch.name} was transferred to a vendor.",
+                snapshot_at=datetime.now(timezone.utc),
+            )
+        )
 
     return pooch
+
+
+async def remove_pooch_from_owner(pooch_id: int) -> Optional[Pooch]:
+    """
+    Clear the owner and vendor association from a pooch (e.g. sold to a private buyer).
+
+    Parameters
+    ----------
+    pooch_id: int
+        The ID of the pooch to disassociate.
+
+    Returns
+    -------
+    Pooch, optional
+        The updated Pooch ORM object, or None if the pooch wasn't found.
+    """
+
+    async with session_scope() as session:
+        query = select(Pooch).where(Pooch.id == pooch_id)
+        pooch = (await session.execute(query)).scalar_one_or_none()
+
+        if pooch is None:
+            return None
+
+        pooch.owner_discord_id = None
+        pooch.vendor_id = None
+        session.add(
+            PoochSnapshot(
+                pooch_id=pooch_id,
+                kind=SNAPSHOT_OWNERSHIP,
+                description=f"{pooch.name} was sold to a private buyer.",
+                snapshot_at=datetime.now(timezone.utc),
+            )
+        )
+
+    return pooch
+
+
+async def update_active_event_result(
+    active_owner_event_id: int, result_summary: dict[str, Any]
+) -> Optional[EventOccurrence]:
+    """
+    Update the result summary of an active event.
+
+    Parameters
+    ----------
+    active_owner_event_id: int
+        The ID of the active event to update.
+
+    result_summary: dict[str, Any]
+        The result summary to set.
+
+    Returns
+    -------
+    EventOccurrence, optional
+        The updated EventOccurrence, or None if not found.
+    """
+
+    async with session_scope() as session:
+        query = (
+            update(EventOccurrence)
+            .where(EventOccurrence.id == active_owner_event_id, EventOccurrence.archived.is_(False))
+            .values(result_summary=result_summary)
+            .returning(EventOccurrence)
+        )
+        result = await session.execute(query)
+        return result.scalar_one_or_none()
+
+
+async def update_active_event_context(active_owner_event_id: int, context: dict[str, Any]) -> Optional[EventOccurrence]:
+    """
+    Update the context of an active event.
+
+    Used to persist named slots written by trigger-time actions so they are
+    available when the player responds or the event expires.
+
+    Parameters
+    ----------
+    active_owner_event_id: int
+        The ID of the active event to update.
+
+    context: dict[str, Any]
+        The updated context to store.
+
+    Returns
+    -------
+    EventOccurrence, optional
+        The updated EventOccurrence, or None if not found.
+    """
+
+    async with session_scope() as session:
+        query = (
+            update(EventOccurrence)
+            .where(EventOccurrence.id == active_owner_event_id, EventOccurrence.archived.is_(False))
+            .values(context=context)
+            .returning(EventOccurrence)
+        )
+        result = await session.execute(query)
+        return result.scalar_one_or_none()
+
+
+async def set_server_event_occurrence_message_discord_id(
+    occurrence_id: int, message_discord_id: int | None
+) -> Optional[ServerEventOccurrence]:
+    """
+    Set server event occurrence message discord id.
+
+    Parameters
+    ----------
+    occurrence_id: Any
+        The `occurrence_id` value.
+
+    message_discord_id: Any
+        The `message_discord_id` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `set_server_event_occurrence_message_discord_id`.
+    """
+
+    async with session_scope() as session:
+        query = select(ServerEventOccurrence).where(ServerEventOccurrence.id == occurrence_id)
+        occurrence = (await session.execute(query)).scalar_one_or_none()
+        if occurrence is None:
+            return None
+        occurrence.message_discord_id = message_discord_id
+        await session.flush()
+        return occurrence
+
+
+async def update_server_event_occurrence_context(
+    occurrence_id: int, context: dict[str, Any]
+) -> Optional[ServerEventOccurrence]:
+    """Replace the shared context blob on an active occurrence (for mid-event state updates)."""
+
+    async with session_scope() as session:
+        query = select(ServerEventOccurrence).where(ServerEventOccurrence.id == occurrence_id)
+        occurrence = (await session.execute(query)).scalar_one_or_none()
+        if occurrence is None:
+            return None
+        # Use flag_modified so SQLAlchemy detects the mutation
+        from sqlalchemy.orm.attributes import flag_modified
+
+        occurrence.context = dict(context)
+        flag_modified(occurrence, "context")
+        await session.flush()
+        return occurrence
+
+
+async def resolve_server_event_occurrence(
+    occurrence_id: int, result_summary: dict[str, Any] | None = None
+) -> Optional[ServerEventOccurrence]:
+    """
+    Resolve server event occurrence.
+
+    Parameters
+    ----------
+    occurrence_id: Any
+        The `occurrence_id` value.
+
+    result_summary: Any
+        The `result_summary` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `resolve_server_event_occurrence`.
+    """
+
+    async with session_scope() as session:
+        query = select(ServerEventOccurrence).where(ServerEventOccurrence.id == occurrence_id)
+        occurrence = (await session.execute(query)).scalar_one_or_none()
+        if occurrence is None:
+            return None
+        occurrence.result_summary = result_summary or {}
+        occurrence.resolved_at = datetime.now(timezone.utc)
+        occurrence.archived = True
+        await session.flush()
+        return occurrence
+
+
+async def finalize_server_event_participation(
+    participation_id: int,
+    resolution_result: dict[str, Any] | None = None,
+    score: float | None = None,
+    rank: int | None = None,
+) -> Optional[ServerEventParticipation]:
+    """
+    Finalize server event participation.
+
+    Parameters
+    ----------
+    participation_id: Any
+        The `participation_id` value.
+
+    resolution_result: Any
+        The `resolution_result` value.
+
+    score: Any
+        The `score` value.
+
+    rank: Any
+        The `rank` value.
+
+    Returns
+    -------
+    Any
+        The result of calling `finalize_server_event_participation`.
+    """
+
+    async with session_scope() as session:
+        query = select(ServerEventParticipation).where(ServerEventParticipation.id == participation_id)
+        participation = (await session.execute(query)).scalar_one_or_none()
+        if participation is None:
+            return None
+        participation.resolution_result = resolution_result or {}
+        participation.score = score
+        participation.rank = rank
+        await session.flush()
+        return participation
+
+
+async def close_auction_sale_listing(
+    listing_id: int,
+    winning_bidder_discord_id: Optional[int],
+    winning_bid_amount: Optional[int],
+) -> Optional[AuctionSaleListing]:
+    """Mark a sale listing as closed, recording the winner (if any)."""
+    async with session_scope() as session:
+        listing = await session.get(AuctionSaleListing, listing_id)
+        if listing is None:
+            return None
+        listing.is_active = False
+        listing.closed_at = datetime.now(timezone.utc)
+        listing.winning_bidder_discord_id = winning_bidder_discord_id
+        listing.winning_bid_amount = winning_bid_amount
+        await session.flush()
+        return listing
+
+
+async def cancel_auction_bounty_listing(listing_id: int) -> Optional[AuctionBountyListing]:
+    """Mark a bounty listing as cancelled. Does NOT refund escrow — caller handles that."""
+    async with session_scope() as session:
+        listing = await session.get(AuctionBountyListing, listing_id)
+        if listing is None:
+            return None
+        listing.is_active = False
+        listing.cancelled_at = datetime.now(timezone.utc)
+        await session.flush()
+        return listing
+
+
+async def fulfill_auction_bounty_listing(
+    listing_id: int,
+    fulfilled_by_discord_id: int,
+    fulfilled_pooch_id: int,
+) -> Optional[AuctionBountyListing]:
+    """Mark a bounty listing as fulfilled."""
+    async with session_scope() as session:
+        listing = await session.get(AuctionBountyListing, listing_id)
+        if listing is None:
+            return None
+        listing.is_active = False
+        listing.fulfilled_at = datetime.now(timezone.utc)
+        listing.fulfilled_by_discord_id = fulfilled_by_discord_id
+        listing.fulfilled_pooch_id = fulfilled_pooch_id
+        await session.flush()
+        return listing
+
+
+async def treat_pooch_injury(pooch_injury_id: int) -> Optional[PoochInjury]:
+    """
+    Mark a PoochInjury as treated and record the timestamp.
+
+    Returns the updated PoochInjury, or None if not found.
+    """
+    async with session_scope() as session:
+        pi = await session.get(PoochInjury, pooch_injury_id)
+        if pi is None:
+            return None
+        pi.treated = True
+        pi.last_treated_at = datetime.now(timezone.utc)
+        await session.flush()
+    return pi
+
+
+async def reduce_pooch_injury_persistence(pooch_injury_id: int, amount: int = 10) -> Optional[PoochInjury]:
+    """
+    Reduce the persistence of a PoochInjury by the given amount, removing it if it hits 0.
+
+    Returns the updated (or deleted) PoochInjury, or None if not found.
+    """
+    async with session_scope() as session:
+        pi = await session.get(PoochInjury, pooch_injury_id)
+        if pi is None:
+            return None
+        if pi.persistence is not None:
+            pi.persistence = max(0, pi.persistence - amount)
+            if pi.persistence <= 0:
+                await session.delete(pi)
+                return None
+        await session.flush()
+    return pi
+
+
+async def reveal_pooch_mutation(pooch_id: int, mutation_id: int) -> bool:
+    """
+    Mark a PoochMutation as visible. Returns True if the row was found and updated.
+    """
+    async with session_scope() as session:
+        pm = await session.get(PoochMutation, (pooch_id, mutation_id))
+        if pm is None:
+            return False
+        pm.visible = True
+        await session.flush()
+    return True
+
+
+async def reveal_pooch_injury(pooch_injury_id: int) -> bool:
+    """
+    Mark a PoochInjury instance as visible. Returns True if the row was found and updated.
+    """
+    async with session_scope() as session:
+        pi = await session.get(PoochInjury, pooch_injury_id)
+        if pi is None:
+            return False
+        pi.visible = True
+        await session.flush()
+    return True
+
+
+async def set_pooch_vet_checked(pooch_id: int, checked: bool = True) -> bool:
+    """
+    Set the vet_checked flag on a pooch. Returns True if the pooch was found and updated.
+    """
+    async with session_scope() as session:
+        pooch = await session.get(Pooch, pooch_id)
+        if pooch is None:
+            return False
+        pooch.vet_checked = checked
+        await session.flush()
+    return True
+
+
+async def treat_pooch_disease(pooch_disease_id: int) -> Optional[PoochDisease]:
+    """
+    Mark a PoochDisease as treated and record the timestamp.
+
+    Returns the updated PoochDisease, or None if not found.
+    """
+    async with session_scope() as session:
+        pd = await session.get(PoochDisease, pooch_disease_id)
+        if pd is None:
+            return None
+        pd.treated = True
+        await session.flush()
+    return pd
+
+
+async def reveal_pooch_disease(pooch_disease_id: int) -> Optional[PoochDisease]:
+    """
+    Make a hidden PoochDisease visible.
+
+    Returns the updated PoochDisease, or None if not found.
+    """
+    async with session_scope() as session:
+        pd = await session.get(PoochDisease, pooch_disease_id)
+        if pd is None:
+            return None
+        pd.visible = True
+        await session.flush()
+    return pd
+
+
+async def update_kennel_messiness(kennel_id: int, amount: int) -> Optional[int]:
+    """
+    Add the given amount to the kennel's messiness (can be negative). Returns the new value.
+
+    Parameters
+    ----------
+    kennel_id: int
+        The ID of the kennel to update.
+    amount: int
+        The amount to add to messiness (can be negative).
+
+    Returns
+    -------
+    int, optional
+        The new messiness value, or None if the kennel wasn't found.
+    """
+    async with session_scope() as session:
+        kennel = await session.get(Kennel, kennel_id)
+        if kennel is None:
+            return None
+        kennel.messiness = max(0, kennel.messiness + amount)
+        await session.flush()
+    return kennel.messiness
+
+
+async def set_kennel_messiness(kennel_id: int, value: int) -> Optional[int]:
+    """
+    Set the kennel's messiness to the given value. Returns the new value.
+
+    Parameters
+    ----------
+    kennel_id: int
+        The ID of the kennel to update.
+    value: int
+        The value to set messiness to.
+
+    Returns
+    -------
+    int, optional
+        The new messiness value, or None if the kennel wasn't found.
+    """
+    async with session_scope() as session:
+        kennel = await session.get(Kennel, kennel_id)
+        if kennel is None:
+            return None
+        kennel.messiness = max(0, value)
+        await session.flush()
+    return kennel.messiness
+
+
+async def increment_global_day() -> int:
+    """Increment the global day counter by 1 and return the new value."""
+    async with session_scope() as session:
+        row = await session.get(GlobalState, _GLOBAL_STATE_ID)
+        if row is None:
+            row = GlobalState(id=_GLOBAL_STATE_ID, current_season="spring", current_day=0)
+            session.add(row)
+        row.current_day += 1
+        await session.flush()
+    return row.current_day

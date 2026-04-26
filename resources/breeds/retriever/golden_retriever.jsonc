@@ -1,0 +1,8 @@
+{
+    "name": "Golden Retriever",
+    "alt_name": "Flat-coated Retriever, Golden",
+    "description": "The Golden Retriever is a Scottish breed of retriever dog of medium-large size. It is characterised by a gentle and affectionate nature and a striking golden coat.",
+    "rarity": "COMMON",
+    "min_size": 14,
+    "max_size": 19
+}

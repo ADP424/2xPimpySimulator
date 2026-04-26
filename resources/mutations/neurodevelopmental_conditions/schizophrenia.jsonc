@@ -1,0 +1,18 @@
+{
+    "name": "Schizophrenia",
+    "alt_name": "Split Mind",
+    "description": "This pooch barks when the mailman isn't there.",
+    "heritability": 0.4,
+    "health_impact": "HARMFUL",
+    "rarity": "RARE",
+    "visible": false,
+    "invisible_messages": [
+        "This pooch seems panicky."
+    ],
+    "parameters": {
+        "incompatible_mutations": [
+            "Total Blindness"
+        ],
+        "aggressiveness_add": 2
+    }
+}

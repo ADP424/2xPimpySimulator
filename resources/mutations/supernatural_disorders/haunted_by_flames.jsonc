@@ -1,0 +1,21 @@
+{
+    "name": "Haunted by Flames",
+    "alt_name": "Escaped Hell",
+    "description": "This pooch has escaped from hell but will forever feel its burn.",
+    "heritability": 0.0,
+    "health_impact": "HARMFUL",
+    "rarity": "UNPRECEDENTED",
+    "parameters": {
+        "bloodskull_value_mult": 1.1,
+        "born_from_ritual": false,
+        "dexterity_add": 3,
+        "on_death_triggers": [
+            {
+                "on_death": "send_to_hell",
+                "on_death_chance": 0.33,
+                "always_on_death": true,
+                "impact_message": "[pooch] was dragged back to hell."
+            }
+        ]
+    }
+}

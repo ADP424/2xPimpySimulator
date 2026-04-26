@@ -1,0 +1,14 @@
+{
+    "name": "Mark of the Beast",
+    "alt_name": "Markus Satanus",
+    "description": "This pooch has seen Hell, and it has made its mark.",
+    "heritability": 0.25,
+    "health_impact": "HELPFUL",
+    "rarity": "COMMON",
+    "parameters": {
+        "bloodskull_value_mult": 0.25,
+        "sold_by_vendors": false,
+        "born_from_ritual": false,
+        "cuteness_mult": 0.9
+    }
+}

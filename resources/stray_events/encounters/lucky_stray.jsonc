@@ -1,0 +1,14 @@
+{
+    "name": "Lucky Stray",
+    "severity": "MINOR",
+    "rarity": "RARE",
+    "actions": [
+        {
+            "action_type": "create_pooch",
+            "parameters": {
+                "base_health": 20,
+                "age": 0
+            }
+        }
+    ]
+}

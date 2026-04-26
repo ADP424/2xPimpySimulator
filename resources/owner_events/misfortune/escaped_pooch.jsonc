@@ -1,0 +1,106 @@
+{
+    "name": "Escaped Pooch",
+    "description": "One of your pooches has escaped from the kennel and is now lost amongst the strays!",
+    "flavor_text": "Quick, what do you do!?",
+    "severity": "MAJOR",
+    "rarity": "UNCOMMON",
+    "requires_response": true,
+    "response_timeout": 3600,
+    "filter": {
+        "kennels": [
+            {
+                "min_count": 1,
+                "min_pooches": 1
+            }
+        ]
+    },
+    "actions": [
+        {
+            "action_type": "release_stray",
+            "target_type": "pooch",
+            "parameters": {
+                "selector": "random",
+                "filter": {
+                    "location": "kennel"
+                },
+                "save_as": "escapee"
+            }
+        }
+    ],
+    "options": [
+        {
+            "label": "Hire a search party",
+            "description": "Pay $100 to hire professionals to find your pooch. However, if another player already found your pooch as a stray, there's nothing they can do.",
+            "filter": {
+                "min_money": 100
+            },
+            "actions": [
+                {
+                    "action_type": "modify_money",
+                    "target_type": "owner",
+                    "parameters": {
+                        "amount": -100
+                    }
+                }
+            ],
+            "outcomes": [
+                {
+                    "chance": 0.9,
+                    "message": "The professionals found your pooch. Phew!",
+                    "actions": [
+                        {
+                            "action_type": "receive_stray",
+                            "target_type": "pooch",
+                            "parameters": {
+                                "use_saved": "escapee"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "chance": 0.1,
+                    "message": "Even the professionals couldn't find them, though you managed to haggle for a partial refund...",
+                    "actions": [
+                        {
+                            "action_type": "modify_money",
+                            "target_type": "owner",
+                            "parameters": {
+                                "min_amount": 25,
+                                "max_amount": 50
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "label": "Search yourself",
+            "description": "Spend time searching. There's a strong chance you won't find them...",
+            "outcomes": [
+                {
+                    "chance": 0.4,
+                    "message": "You found your lost pooch!",
+                    "actions": [
+                        {
+                            "action_type": "receive_stray",
+                            "target_type": "pooch",
+                            "parameters": {
+                                "use_saved": "escapee"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "chance": 0.6,
+                    "message": "You couldn't find your pooch anywhere..."
+                }
+            ]
+        },
+        {
+            "label": "Give up",
+            "description": "Accept that they're gone...",
+            "default": true,
+            "visible": true
+        }
+    ]
+}

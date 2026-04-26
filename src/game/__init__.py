@@ -1,14 +1,75 @@
+from __future__ import annotations
+
 from .breeding import (
     breed_pooches,
     calculate_incest_level,
+    combine_puppy_name,
 )
 from .change_day import (
+    death_roll,
+    refresh_moods,
     run_day_change,
+)
+from .events.owner_events import (
+    get_active_events_for_owner,
+    get_event_history,
+    get_pending_event,
+    list_all_owner_events,
+    process_expired_events,
+    respond_to_event,
+    run_hourly_event_check,
+    trigger_event_by_name,
+    trigger_random_event,
+    trigger_specific_event,
+)
+from .events.server_events import (
+    get_active_server_event,
+    list_active_server_events,
+    participate_in_server_event,
+    run_daily_server_event_cycle,
+    set_server_event_message_id,
+    trigger_daily_server_event,
+    trigger_server_event_by_name,
+)
+from .events.stray_events import (
+    run_daily_stray_event_check,
+    trigger_stray_event_by_name,
+)
+from .manage_auctions import (
+    cancel_bounty_listing,
+    cancel_listing_for_pooch,
+    close_sale_listing,
+    create_bounty_listing,
+    create_sale_listing,
+    evaluate_bounty_match,
+    fulfill_bounty,
+    get_sale_listing,
+    list_owner_bounty_listings,
+    list_owner_sale_listings,
+    list_server_bounty_listings,
+    list_server_sale_listings,
+    place_bid,
+    process_expired_sale_listings,
+)
+from .manage_diseases import (
+    clean_kennel,
+    diagnose_diseases,
+    get_diagnose_diseases_cost,
+    get_disease_treatment_cost,
+    get_pooch_disease_instances,
+    run_daily_disease_tick,
+    treat_disease,
+)
+from .manage_global import (
+    advance_season,
+    get_season,
 )
 from .manage_graveyard import (
     list_graveyard_pooches,
 )
 from .manage_hell import (
+    conjure_pooch,
+    get_conjure_pooch_price,
     get_pooch_bloodskull_value,
     get_summon_pooch_price,
     list_hell_pooches,
@@ -16,19 +77,43 @@ from .manage_hell import (
     summon_pooch,
 )
 from .manage_kennels import (
+    add_pooch_to_kennel,
+    buy_kennel,
+    get_kennel_buy_price,
+    get_kennel_upgrade_price,
     list_kennel_pooches,
     rename_kennel,
+    upgrade_kennel,
 )
 from .manage_owners import (
     add_money,
     beg_for_money,
+    cast_out_pooch,
     get_or_create_owner,
+    list_all_owners,
     list_owner_kennels,
+    spend_bone_at_park,
+    update_owner_names,
+    visit_park,
 )
 from .manage_pooches import (
+    MEDICAL_EXAM_COST,
+    diagnose_injuries,
+    diagnose_mutations,
+    get_diagnose_injuries_cost,
+    get_diagnose_mutations_cost,
     get_pooch_by_id,
     get_pooch_family,
+    get_pooch_family_tree,
+    get_pooch_injury_instances,
+    get_treatment_cost,
+    list_snapshots_for_pooch,
+    mark_pooch_vet_checked,
+    medical_exam,
     rename_pooch,
+    run_hourly_breeding_cooldown_check,
+    run_hourly_injury_persistence_check,
+    treat_injury,
 )
 from .manage_servers import (
     get_event_channel,
@@ -36,11 +121,18 @@ from .manage_servers import (
     set_event_channel,
 )
 from .manage_static import (
+    get_breed_by_id,
+    get_disease_by_id,
+    get_injury_by_id,
+    get_mutation_by_id,
     list_all_breeds,
+    list_all_diseases,
+    list_all_injuries,
     list_all_mutations,
 )
 from .manage_vendors import (
     buy_pooch,
+    get_pooch_base_price,
     get_pooch_buy_price,
     get_pooch_sell_price,
     get_vendor_by_id,
@@ -55,33 +147,111 @@ __all__ = [
     "calculate_incest_level",
     # Day change commands
     "run_day_change",
+    # Event commands
+    "list_all_owner_events",
+    "get_active_events_for_owner",
+    "get_pending_event",
+    "trigger_event_by_name",
+    "trigger_random_event",
+    "trigger_specific_event",
+    "respond_to_event",
+    "process_expired_events",
+    "run_hourly_event_check",
+    "get_event_history",
+    # Global commands
+    "advance_season",
+    "get_season",
     # Graveyard commands
     "list_graveyard_pooches",
     # Hell / ritual commands
+    "conjure_pooch",
+    "get_conjure_pooch_price",
     "get_pooch_bloodskull_value",
     "get_summon_pooch_price",
     "list_hell_pooches",
     "sacrifice_pooch",
     "summon_pooch",
     # Kennel commands
+    "buy_kennel",
+    "get_kennel_buy_price",
+    "get_kennel_upgrade_price",
     "list_kennel_pooches",
     "rename_kennel",
+    "upgrade_kennel",
     # Owner commands
     "add_money",
     "beg_for_money",
+    "cast_out_pooch",
     "get_or_create_owner",
+    "list_all_owners",
     "list_owner_kennels",
+    "spend_bone_at_park",
+    "update_owner_names",
+    "visit_park",
     # Pooch commands
+    "MEDICAL_EXAM_COST",
+    "diagnose_injuries",
+    "diagnose_mutations",
+    "get_diagnose_injuries_cost",
+    "get_diagnose_mutations_cost",
     "get_pooch_by_id",
     "get_pooch_family",
+    "get_pooch_family_tree",
+    "get_pooch_injury_instances",
+    "get_treatment_cost",
+    "list_snapshots_for_pooch",
+    "mark_pooch_vet_checked",
+    "medical_exam",
+    "treat_injury",
     "rename_pooch",
+    "run_hourly_breeding_cooldown_check",
+    "run_hourly_injury_persistence_check",
+    # Stray event commands
+    "run_daily_stray_event_check",
+    "trigger_stray_event_by_name",
     # Server commands
     "get_event_channel",
     "get_or_create_server",
     "set_event_channel",
+    "get_active_server_event",
+    "list_active_server_events",
+    "participate_in_server_event",
+    "run_daily_server_event_cycle",
+    "set_server_event_message_id",
+    "trigger_daily_server_event",
+    "trigger_server_event_by_name",
+    # Disease commands
+    "clean_kennel",
+    "diagnose_diseases",
+    "get_diagnose_diseases_cost",
+    "get_disease_treatment_cost",
+    "get_pooch_disease_instances",
+    "run_daily_disease_tick",
+    "treat_disease",
     # Static listing commands
+    "get_breed_by_id",
+    "get_disease_by_id",
+    "get_injury_by_id",
+    "get_mutation_by_id",
     "list_all_breeds",
+    "list_all_diseases",
+    "list_all_injuries",
     "list_all_mutations",
+    # Auction house commands
+    "cancel_bounty_listing",
+    "cancel_listing_for_pooch",
+    "close_sale_listing",
+    "create_bounty_listing",
+    "create_sale_listing",
+    "evaluate_bounty_match",
+    "fulfill_bounty",
+    "get_sale_listing",
+    "list_owner_bounty_listings",
+    "list_owner_sale_listings",
+    "list_server_bounty_listings",
+    "list_server_sale_listings",
+    "place_bid",
+    "process_expired_sale_listings",
     # Vendor commands
     "buy_pooch",
     "get_pooch_buy_price",
@@ -90,4 +260,9 @@ __all__ = [
     "list_server_vendors",
     "list_vendor_pooches",
     "sell_pooch",
+    "refresh_moods",
+    "combine_puppy_name",
+    "death_roll",
+    "add_pooch_to_kennel",
+    "get_pooch_base_price",
 ]

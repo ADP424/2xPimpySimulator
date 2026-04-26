@@ -1,0 +1,9 @@
+{
+    "name": "Bullenbeisser",
+    "alt_name": "German Bulldog",
+    "description": "An extinct breed of dog known for its strength and agility. It is an ancestor of both the modern Boxer and the English bulldog.",
+    "rarity": "REMARKABLE",
+    "parameters": {
+        "sold_by_vendors": false
+    }
+}

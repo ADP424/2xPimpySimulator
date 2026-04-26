@@ -1,0 +1,38 @@
+{
+    "name": "Scavenge",
+    "severity": "MINOR",
+    "rarity": "COMMON",
+    "filter": {
+        "min_count": 1
+    },
+    "outcomes": [
+        {
+            "chance": 0.5,
+            "actions": [
+                {
+                    "action_type": "modify_base_health",
+                    "parameters": {
+                        "selector": "random",
+                        "min_amount": 1,
+                        "max_amount": 3
+                    }
+                }
+            ]
+        },
+        {
+            "chance": 0.3
+        },
+        {
+            "chance": 0.2,
+            "actions": [
+                {
+                    "action_type": "injure_pooch",
+                    "parameters": {
+                        "selector": "random",
+                        "injury": "Minor"
+                    }
+                }
+            ]
+        }
+    ]
+}

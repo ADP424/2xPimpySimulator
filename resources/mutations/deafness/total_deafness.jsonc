@@ -1,0 +1,20 @@
+{
+    "name": "Total Deafness",
+    "alt_name": "Congenital Hearing Loss",
+    "description": "This pooch is not afraid of thunder.",
+    "heritability": 0.25,
+    "health_impact": "NEUTRAL",
+    "rarity": "NOVEL",
+    "visible": false,
+    "invisible_messages": [
+        "This pooch never responds to your calls."
+    ],
+    "parameters": {
+        "dollar_value_add": -30,
+        "incompatible_mutations": [
+            "Partial Deafness"
+        ],
+        "intelligence_mult": 0.5,
+        "strength_add": -2
+    }
+}

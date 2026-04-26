@@ -1,0 +1,116 @@
+{
+    "name": "Touch of Midas",
+    "description": "One of your pooches has been turned into a golden statue.",
+    "flavor_text": "This could be very lucrative.",
+    "severity": "MAJOR",
+    "rarity": "REMARKABLE",
+    "requires_response": true,
+    "response_timeout": 7200,
+    "filter": {
+        "pooches": [
+            {
+                "min_count": 1,
+                "is_alive": true
+            }
+        ]
+    },
+    "actions": [
+        {
+            "action_type": "select_pooch",
+            "target_type": "pooch",
+            "parameters": {
+                "selector": "random",
+                "filter": {
+                    "is_alive": true
+                },
+                "save_as": "touched_pooch",
+                "featured": true
+            }
+        }
+    ],
+    "options": [
+        {
+            "label": "Sell them",
+            "description": "Sell the pooch for 10x the normal value.",
+            "default": true,
+            "visible": true,
+            "actions": [
+                {
+                    "action_type": "sell_pooch",
+                    "target_type": "pooch",
+                    "parameters": {
+                        "use_saved": "touched_pooch",
+                        "value_multiplier": 10.0
+                    }
+                }
+            ]
+        },
+        {
+            "label": "Try to save them!",
+            "description": "This might save the pooch, but it will lower its value if failed.",
+            "outcomes": [
+                {
+                    "chance": 0.8,
+                    "message": "You couldn't do it. Guess you'll have to sell them.",
+                    "actions": [
+                        {
+                            "action_type": "sell_pooch",
+                            "target_type": "pooch",
+                            "parameters": {
+                                "use_saved": "touched_pooch",
+                                "value_multiplier": 8.0
+                            }
+                        }
+                    ]
+                },
+                {
+                    "chance": 0.2,
+                    "message": "Your pooch recovered without side effects!"
+                }
+            ]
+        },
+        {
+            "label": "Try to save them with demonic powers!",
+            "description": "This might save the pooch, but it will significantly lower its value if failed.",
+            "filter": {
+                "min_bloodskulls": 6
+            },
+            "outcomes": [
+                {
+                    "chance": 0.4,
+                    "message": "You couldn't do it. Guess you'll have to sell them.",
+                    "actions": [
+                        {
+                            "action_type": "sell_pooch",
+                            "target_type": "pooch",
+                            "parameters": {
+                                "use_saved": "touched_pooch",
+                                "value_multiplier": 4.0
+                            }
+                        },
+                        {
+                            "action_type": "modify_bloodskulls",
+                            "target_type": "owner",
+                            "parameters": {
+                                "amount": -6
+                            }
+                        }
+                    ]
+                },
+                {
+                    "chance": 0.6,
+                    "message": "Your pooch recovered without side effects!",
+                    "actions": [
+                        {
+                            "action_type": "modify_bloodskulls",
+                            "target_type": "owner",
+                            "parameters": {
+                                "amount": -6
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
