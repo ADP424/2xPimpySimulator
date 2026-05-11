@@ -117,3 +117,127 @@ class TestBreedMateView:
 
             msg = mock_r.reply.call_args[1]["content"]
             assert "Twins" in msg or "2" in msg
+
+    async def test_mate_distraction_notification(self):
+        pooch = _make_pooch(id=1, name="Mama", sex="female")
+        intended = _make_pooch(id=2, name="Papa", sex="male")
+        actual = _make_pooch(id=3, name="Bruno", sex="male")
+        view = BreedMateView(pooch=pooch, mates=[intended, actual])
+
+        interaction = MagicMock()
+        mock_puppies = [MagicMock()]
+
+        with (
+            patch.object(type(view.select), "values", new_callable=lambda: property(lambda self: ["2"])),
+            patch("src.bot.ui.breeding.select_actual_mate", new_callable=AsyncMock, return_value=actual),
+            patch("src.bot.ui.breeding.breed_pooches", new_callable=AsyncMock, return_value=(mock_puppies, [])),
+            patch("src.bot.ui.breeding.InteractionResponder") as MockResponder,
+        ):
+            mock_r = MagicMock()
+            mock_r.edit = AsyncMock()
+            mock_r.reply = AsyncMock()
+            MockResponder.return_value = mock_r
+            await view._on_select(interaction)
+
+        msg = mock_r.reply.call_args[1]["content"]
+        assert "got distracted" in msg.lower()
+        assert "Bruno" in msg
+
+    async def test_no_distraction_when_same_mate(self):
+        pooch = _make_pooch(id=1, name="Mama", sex="female")
+        mate = _make_pooch(id=2, name="Papa", sex="male")
+        view = BreedMateView(pooch=pooch, mates=[mate])
+
+        interaction = MagicMock()
+        mock_puppies = [MagicMock()]
+
+        with (
+            patch.object(type(view.select), "values", new_callable=lambda: property(lambda self: ["2"])),
+            patch("src.bot.ui.breeding.select_actual_mate", new_callable=AsyncMock, return_value=mate),
+            patch("src.bot.ui.breeding.breed_pooches", new_callable=AsyncMock, return_value=(mock_puppies, [])),
+            patch("src.bot.ui.breeding.InteractionResponder") as MockResponder,
+        ):
+            mock_r = MagicMock()
+            mock_r.edit = AsyncMock()
+            mock_r.reply = AsyncMock()
+            MockResponder.return_value = mock_r
+            await view._on_select(interaction)
+
+        msg = mock_r.reply.call_args[1]["content"]
+        assert "distracted" not in msg.lower()
+
+    async def test_disease_events_spread_appended(self):
+        pooch = _make_pooch(id=1, name="Mama", sex="female")
+        mate = _make_pooch(id=2, name="Papa", sex="male")
+        view = BreedMateView(pooch=pooch, mates=[mate])
+
+        interaction = MagicMock()
+        mock_puppies = [MagicMock()]
+        disease_events = [(1, "Kennel Cough", "spread")]
+
+        with (
+            patch.object(type(view.select), "values", new_callable=lambda: property(lambda self: ["2"])),
+            patch("src.bot.ui.breeding.select_actual_mate", new_callable=AsyncMock, return_value=mate),
+            patch(
+                "src.bot.ui.breeding.breed_pooches", new_callable=AsyncMock, return_value=(mock_puppies, disease_events)
+            ),
+            patch("src.bot.ui.breeding.InteractionResponder") as MockResponder,
+        ):
+            mock_r = MagicMock()
+            mock_r.edit = AsyncMock()
+            mock_r.reply = AsyncMock()
+            MockResponder.return_value = mock_r
+            await view._on_select(interaction)
+
+        msg = mock_r.reply.call_args[1]["content"]
+        assert "exposed to Kennel Cough" in msg
+
+    async def test_disease_events_inherited_appended(self):
+        pooch = _make_pooch(id=1, name="Mama", sex="female")
+        mate = _make_pooch(id=2, name="Papa", sex="male")
+        view = BreedMateView(pooch=pooch, mates=[mate])
+
+        interaction = MagicMock()
+        mock_puppies = [MagicMock()]
+        disease_events = [(99, "Parvovirus", "inherited")]
+
+        with (
+            patch.object(type(view.select), "values", new_callable=lambda: property(lambda self: ["2"])),
+            patch("src.bot.ui.breeding.select_actual_mate", new_callable=AsyncMock, return_value=mate),
+            patch(
+                "src.bot.ui.breeding.breed_pooches", new_callable=AsyncMock, return_value=(mock_puppies, disease_events)
+            ),
+            patch("src.bot.ui.breeding.InteractionResponder") as MockResponder,
+        ):
+            mock_r = MagicMock()
+            mock_r.edit = AsyncMock()
+            mock_r.reply = AsyncMock()
+            MockResponder.return_value = mock_r
+            await view._on_select(interaction)
+
+        msg = mock_r.reply.call_args[1]["content"]
+        assert "inherited Parvovirus" in msg
+
+    async def test_disease_events_empty_no_extra_lines(self):
+        pooch = _make_pooch(id=1, name="Mama", sex="female")
+        mate = _make_pooch(id=2, name="Papa", sex="male")
+        view = BreedMateView(pooch=pooch, mates=[mate])
+
+        interaction = MagicMock()
+        mock_puppies = [MagicMock()]
+
+        with (
+            patch.object(type(view.select), "values", new_callable=lambda: property(lambda self: ["2"])),
+            patch("src.bot.ui.breeding.select_actual_mate", new_callable=AsyncMock, return_value=mate),
+            patch("src.bot.ui.breeding.breed_pooches", new_callable=AsyncMock, return_value=(mock_puppies, [])),
+            patch("src.bot.ui.breeding.InteractionResponder") as MockResponder,
+        ):
+            mock_r = MagicMock()
+            mock_r.edit = AsyncMock()
+            mock_r.reply = AsyncMock()
+            MockResponder.return_value = mock_r
+            await view._on_select(interaction)
+
+        msg = mock_r.reply.call_args[1]["content"]
+        assert "exposed" not in msg
+        assert "inherited" not in msg
