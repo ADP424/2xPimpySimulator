@@ -9,6 +9,15 @@ def serialize_datetime(dt: datetime | None) -> str | None:
     return dt.isoformat()
 
 
+# The only catalog parameters players may see; the rest are hidden stat modifiers.
+_PUBLIC_PARAMETER_KEYS = ("sold_by_vendors", "born_from_ritual")
+
+
+def _public_parameters(entity: Any) -> dict:
+    parameters = getattr(entity, "parameters", None) or {}
+    return {key: parameters[key] for key in _PUBLIC_PARAMETER_KEYS if key in parameters}
+
+
 def serialize_breed(breed: Any) -> dict:
     """Serialize a Breed object."""
     return {
@@ -18,7 +27,7 @@ def serialize_breed(breed: Any) -> dict:
         "category": breed.category,
         "description": breed.description,
         "rarity": breed.rarity,
-        "parameters": getattr(breed, "parameters", {}),
+        "parameters": _public_parameters(breed),
     }
 
 
@@ -35,7 +44,7 @@ def serialize_mutation(mutation: Any) -> dict:
         "rarity": mutation.rarity,
         "affects_females": mutation.affects_females,
         "affects_males": mutation.affects_males,
-        "parameters": getattr(mutation, "parameters", {}),
+        "parameters": _public_parameters(mutation),
     }
 
 
@@ -52,6 +61,14 @@ def serialize_owner(owner: Any) -> dict:
     }
 
 
+def serialize_public_owner(owner: Any) -> dict:
+    """Serialize another player as seen by everyone: identity only, never balances."""
+    return {
+        "discord_id": owner.discord_id,
+        "discord_name": owner.discord_name,
+    }
+
+
 def serialize_kennel(kennel: Any) -> dict:
     """Serialize a Kennel object."""
     return {
@@ -59,6 +76,7 @@ def serialize_kennel(kennel: Any) -> dict:
         "owner_discord_id": kennel.owner_discord_id,
         "name": kennel.name,
         "pooch_limit": kennel.pooch_limit,
+        "messiness": kennel.messiness,
     }
 
 
@@ -70,32 +88,69 @@ def serialize_pooch_breed_info(info: Any) -> dict:
     }
 
 
+def serialize_injury_brief(injury: Any) -> dict:
+    """Serialize the public summary of a catalog Injury (as shown on a pooch)."""
+    return {
+        "id": injury.id,
+        "name": injury.name,
+        "severity": injury.severity,
+        "rarity": injury.rarity,
+    }
+
+
+def serialize_disease_brief(disease: Any) -> dict:
+    """Serialize the public summary of a catalog Disease (as shown on a pooch)."""
+    return {
+        "id": disease.id,
+        "name": disease.name,
+        "health_impact": disease.health_impact,
+        "rarity": disease.rarity,
+    }
+
+
+def _hidden_symptoms(instances: list) -> list[str]:
+    """Symptoms of hidden conditions; never their names, ids or rarity."""
+    return [inst.displayed_symptom for inst in instances if not inst.visible and inst.displayed_symptom]
+
+
 def serialize_pooch(pooch: Any, include_relations: bool = True) -> dict:
-    """Serialize a Pooch object."""
+    """
+    Serialize a Pooch object as any player may see it.
+
+    Exact health and breeding cooldown stay hidden (the bot shows only status labels), and hidden
+    mutations, injuries and diseases appear only as their displayed symptoms.
+    """
     data = {
         "id": pooch.id,
         "name": pooch.name,
         "age": pooch.age,
         "sex": pooch.sex,
-        "base_health": pooch.base_health,
-        "health_loss_age": pooch.health_loss_age,
-        "breeding_cooldown": pooch.breeding_cooldown,
         "alive": pooch.alive,
         "virgin": pooch.virgin,
         "owner_discord_id": pooch.owner_discord_id,
         "vendor_id": pooch.vendor_id,
         "created_at": serialize_datetime(pooch.created_at),
         "birthday": serialize_datetime(pooch.birthday),
-        "health": pooch.health,
         "status": pooch.status,
+        "breeding_status": pooch.breeding_status,
+        "can_breed": pooch.can_breed,
         "mood": pooch.mood,
     }
 
     if include_relations:
         data["breeds"] = [serialize_pooch_breed_info(b) for b in pooch.breeds]
         data["mutations"] = [serialize_mutation(pm.mutation) for pm in pooch.mutations if pm.visible]
+        data["injuries"] = [serialize_injury_brief(pi.injury) for pi in pooch.injuries if pi.visible]
+        data["diseases"] = [
+            {**serialize_disease_brief(pd.disease), "treated": pd.treated} for pd in pooch.diseases if pd.visible
+        ]
+        data["mutation_symptoms"] = _hidden_symptoms(pooch.mutations)
+        data["injury_symptoms"] = _hidden_symptoms(pooch.injuries)
+        data["disease_symptoms"] = _hidden_symptoms(pooch.diseases)
         if pooch.owner is not None:
-            data["owner"] = serialize_owner(pooch.owner)
+            data["owner"] = serialize_public_owner(pooch.owner)
+        if pooch.vendor is not None:
+            data["vendor"] = {"id": pooch.vendor.id, "name": pooch.vendor.name}
 
     return data
 

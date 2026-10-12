@@ -91,7 +91,7 @@ function renderPooches() {
     container.innerHTML = filtered.map(pooch => {
         const isSelected = (selectedSlot1 && selectedSlot1.id === pooch.id) ||
                           (selectedSlot2 && selectedSlot2.id === pooch.id);
-        const canBreed = pooch.alive && pooch.breeding_cooldown === 0;
+        const canBreed = pooch.can_breed;
 
         return `
             <div class="card bg-base-200 shadow-sm pooch-select-card ${isSelected ? 'selected' : ''} ${!canBreed ? 'disabled' : ''}"
@@ -104,7 +104,7 @@ function renderPooches() {
                     </div>
                     <div class="text-xs text-base-content/50 flex gap-3">
                         <span>Age: ${pooch.age}</span>
-                        ${pooch.breeding_cooldown > 0 ? `<span class="text-warning">⏳ ${pooch.breeding_cooldown}d</span>` : ''}
+                        ${pooch.alive && !pooch.can_breed ? `<span class="text-warning">⏳ ${App.format.breedingStatus(pooch.breeding_status)}</span>` : ''}
                     </div>
                 </div>
             </div>
@@ -119,7 +119,7 @@ function filterPooches(pooches, filter) {
         case 'male':
             return pooches.filter(p => p.sex === 'male');
         case 'ready':
-            return pooches.filter(p => p.alive && p.breeding_cooldown === 0);
+            return pooches.filter(p => p.can_breed);
         default:
             return pooches;
     }
@@ -139,7 +139,7 @@ function setupFilters() {
 
 function selectPooch(poochId) {
     const pooch = pooches.find(p => p.id === poochId);
-    if (!pooch || !pooch.alive || pooch.breeding_cooldown > 0) return;
+    if (!pooch || !pooch.can_breed) return;
     App.haptics.trigger('light');
 
     // Clear previous breeding result when making a new selection

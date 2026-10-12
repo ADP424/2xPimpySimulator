@@ -158,9 +158,9 @@ function createPoochCard(pooch) {
                     <div class="flex gap-2">
                         <span class="shrink-0">Mutations:</span><span class="text-base-content/70">${mutationsHtml}</span>
                     </div>
-                    ${pooch.breeding_cooldown > 0 ? `
+                    ${pooch.alive && !pooch.can_breed ? `
                     <div class="flex gap-2 text-warning">
-                        <span class="shrink-0">Cooldown:</span><span>${pooch.breeding_cooldown} days</span>
+                        <span class="shrink-0">Breeding:</span><span>${App.format.breedingStatus(pooch.breeding_status)}</span>
                     </div>
                     ` : ''}
                 </div>

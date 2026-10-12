@@ -78,7 +78,7 @@ async function loadPooches() {
         pooches.filter(p => p.alive).forEach(p => {
             const opt = document.createElement('option');
             opt.value = p.id;
-            opt.textContent = `${p.name} (${p.sex}, age ${p.age}, health ${p.health})`;
+            opt.textContent = `${p.name} (${p.sex}, age ${p.age}, ${App.format.enumLabel(p.status)})`;
             select.appendChild(opt);
         });
         section.style.display = '';

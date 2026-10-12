@@ -155,6 +155,14 @@ const App = {
             if (!str) return '—';
             return str.charAt(0).toUpperCase() + str.slice(1);
         },
+
+        /**
+         * Breeding status label for a pooch's `breeding_status` key, matching the bot's labels.
+         */
+        breedingStatus(status) {
+            const labels = { in_heat: 'In Heat', heating_up: 'Heating Up', cooled: 'Cooled' };
+            return labels[status] || '—';
+        },
     },
 
     /**

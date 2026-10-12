@@ -87,11 +87,10 @@ function renderPoochInfo(pooch) {
         <h2 class="card-title">${escapeHtml(pooch.name)} ${sexEmoji}</h2>
         <div class="grid grid-cols-2 gap-x-6 gap-y-2 text-sm mt-2">
             <div><span class="text-base-content/50">Age:</span> ${pooch.age} days</div>
-            <div><span class="text-base-content/50">Health:</span> <span class="${statusClass}">${pooch.health}</span></div>
             <div><span class="text-base-content/50">Status:</span> <span class="${statusClass}">${App.format.enumLabel(pooch.status)}</span></div>
             <div><span class="text-base-content/50">Mood:</span> ${App.format.enumLabel(pooch.mood) || '—'}</div>
             <div><span class="text-base-content/50">Virgin:</span> ${pooch.virgin ? 'Yes' : 'No'}</div>
-            <div><span class="text-base-content/50">Cooldown:</span> ${pooch.breeding_cooldown || 0} days</div>
+            <div><span class="text-base-content/50">Breeding:</span> ${App.format.breedingStatus(pooch.breeding_status)}</div>
         </div>
         <div class="divider my-2"></div>
         <h3 class="text-sm font-semibold text-base-content/50 uppercase tracking-wide">Breeds</h3>
