@@ -44,6 +44,17 @@ class TriggeredOwnerEvent:
             return False
         return datetime.now(timezone.utc) > self.expires_at
 
+    @property
+    def featured_pooch_id(self) -> int | None:
+        """The first pooch in the slot the event features, if it names one."""
+        extra = self.context.extra_data
+        slot_name = extra.get("_featured_pooch_slot")
+        if not isinstance(slot_name, str) or not slot_name:
+            return None
+        slot = extra.get(slot_name, {})
+        pooch_ids = slot.get("pooch_ids", []) if isinstance(slot, dict) else []
+        return pooch_ids[0] if pooch_ids else None
+
 
 async def to_triggered_owner_event(event_occurrence: EventOccurrenceORM) -> TriggeredOwnerEvent:
     """

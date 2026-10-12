@@ -63,6 +63,38 @@ class TestTriggeredOwnerEventIsExpired:
         assert event.is_expired is True
 
 
+class TestTriggeredOwnerEventFeaturedPooch:
+    def _event(self, extra_data: dict) -> TriggeredOwnerEvent:
+        context = OwnerEventContext(owner_discord_id=1)
+        context.extra_data.update(extra_data)
+        return TriggeredOwnerEvent(
+            active_owner_event_id=1,
+            event_id=1,
+            name="Test",
+            category="test",
+            description="desc",
+            flavor_text="flavor",
+            severity="low",
+            requires_response=False,
+            response_timeout=0,
+            expires_at=None,
+            context=context,
+        )
+
+    def test_first_pooch_in_featured_slot(self):
+        event = self._event({"_featured_pooch_slot": "target", "target": {"pooch_ids": [7, 8]}})
+        assert event.featured_pooch_id == 7
+
+    def test_none_without_slot(self):
+        assert self._event({}).featured_pooch_id is None
+
+    def test_none_when_slot_empty(self):
+        assert self._event({"_featured_pooch_slot": "target", "target": {"pooch_ids": []}}).featured_pooch_id is None
+
+    def test_none_when_slot_malformed(self):
+        assert self._event({"_featured_pooch_slot": "target", "target": "oops"}).featured_pooch_id is None
+
+
 class TestToTriggeredOwnerEvent:
     def _make_event_occurrence(self, *, requires_response=False, result_summary=None, context_dict=None):
         occ = MagicMock()

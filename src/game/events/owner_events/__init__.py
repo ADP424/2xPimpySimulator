@@ -6,6 +6,7 @@ from .coordinator import (
     execute_event_actions,
     execute_single_action,
 )
+from .describe import OwnerEventResultDescription, describe_owner_event_result
 from .outcome import choose_option_outcome
 from .public import (
     get_active_events_for_owner,
@@ -41,4 +42,6 @@ __all__ = [
     "choose_option_outcome",
     "get_target_kennel_ids",
     "get_target_pooch_ids",
+    "OwnerEventResultDescription",
+    "describe_owner_event_result",
 ]

@@ -11,6 +11,8 @@ from .change_day import (
     run_day_change,
 )
 from .events.owner_events import (
+    OwnerEventResultDescription,
+    describe_owner_event_result,
     get_active_events_for_owner,
     get_event_history,
     get_pending_event,
@@ -155,6 +157,8 @@ __all__ = [
     "run_day_change",
     # Event commands
     "list_all_owner_events",
+    "OwnerEventResultDescription",
+    "describe_owner_event_result",
     "get_active_events_for_owner",
     "get_pending_event",
     "trigger_event_by_name",
