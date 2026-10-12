@@ -24,7 +24,11 @@ from .events.owner_events import (
 )
 from .events.server_events import (
     get_active_server_event,
+    get_menu_uses_left,
+    get_use_count_per_menu,
+    get_used_menu_names,
     list_active_server_events,
+    menu_is_available,
     participate_in_server_event,
     run_daily_server_event_cycle,
     set_server_event_message_id,
@@ -218,7 +222,11 @@ __all__ = [
     "get_or_create_server",
     "set_event_channel",
     "get_active_server_event",
+    "get_menu_uses_left",
+    "get_use_count_per_menu",
+    "get_used_menu_names",
     "list_active_server_events",
+    "menu_is_available",
     "participate_in_server_event",
     "run_daily_server_event_cycle",
     "set_server_event_message_id",

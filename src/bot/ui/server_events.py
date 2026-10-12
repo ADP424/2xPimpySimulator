@@ -7,10 +7,14 @@ import discord
 from src.game import (
     get_active_server_event,
     get_event_channel,
+    get_menu_uses_left,
     get_or_create_owner,
+    get_use_count_per_menu,
+    get_used_menu_names,
     list_active_server_events,
     list_kennel_pooches,
     list_owner_kennels,
+    menu_is_available,
     participate_in_server_event,
 )
 from src.game.models import Pooch
@@ -96,34 +100,20 @@ def discord_timestamp(value: datetime | None, style: str = "R") -> str:
     return f"<t:{int(value.timestamp())}:{style}>"
 
 
+def _viewer_submissions(event: TriggeredServerEvent) -> list[dict] | None:
+    if event.viewer_participation is None:
+        return None
+    return event.viewer_participation.submissions
+
+
 def _get_used_menu_names(event: TriggeredServerEvent) -> set[str]:
     """Return menu names already submitted by the viewer."""
-    if event.viewer_participation is None:
-        return set()
-    return {str(sub.get("menu_name", "")) for sub in (event.viewer_participation.submissions or [])}
+    return get_used_menu_names(_viewer_submissions(event))
 
 
 def _get_use_count_per_menu(event: TriggeredServerEvent) -> dict[str, int]:
     """Return a count of how many times each menu has been used by the viewer."""
-    counts: dict[str, int] = {}
-    if event.viewer_participation is not None:
-        for sub in event.viewer_participation.submissions or []:
-            name = str(sub.get("menu_name", ""))
-            counts[name] = counts.get(name, 0) + 1
-    return counts
-
-
-def menu_is_available(menu: ServerEventMenu, used_names: set[str], use_counts: dict[str, int]) -> bool:
-    """Return True if the viewer can currently use this menu."""
-    # depends_on: all prerequisite menu names must have been used
-    for req in menu.depends_on:
-        if req not in used_names:
-            return False
-    # max_uses_per_player: -1 = unlimited
-    if menu.max_uses_per_player >= 0:
-        if use_counts.get(menu.name, 0) >= menu.max_uses_per_player:
-            return False
-    return True
+    return get_use_count_per_menu(_viewer_submissions(event))
 
 
 def _format_menu_line(menu: ServerEventMenu, available: bool, uses_left: int | None) -> str:
@@ -233,10 +223,7 @@ async def build_server_event_embed(event: TriggeredServerEvent, include_viewer_s
         menu_lines: list[str] = []
         for menu in event.menus:
             available = menu_is_available(menu, used_names, use_counts)
-            uses_left: int | None = None
-            if menu.max_uses_per_player >= 0:
-                uses_left = menu.max_uses_per_player - use_counts.get(menu.name, 0)
-            menu_lines.append(_format_menu_line(menu, available, uses_left))
+            menu_lines.append(_format_menu_line(menu, available, get_menu_uses_left(menu, use_counts)))
         embed.add_field(
             name="How to participate",
             value=truncate("\n".join(menu_lines)),

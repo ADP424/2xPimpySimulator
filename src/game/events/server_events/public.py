@@ -35,6 +35,12 @@ from src.logger import get_logger
 
 from .arena import handle_arena_action
 from .coordinator import build_owner_event_context
+from .menus import (
+    get_missing_menu_prerequisite,
+    get_use_count_per_menu,
+    get_used_menu_names,
+    is_menu_exhausted,
+)
 
 logger = get_logger("game/events/server_events/public")
 
@@ -142,24 +148,14 @@ async def participate_in_server_event(
     menu = option.menu
 
     existing_participation = await get_server_event_participation(occurrence_id, owner_discord_id)
-    used_menu_names: set[str] = set()
-    if existing_participation is not None:
-        for sub in list(existing_participation.submissions or []):
-            used_menu_names.add(str(sub.get("menu_name", "")))
+    submissions = existing_participation.submissions if existing_participation is not None else None
 
-    for required_menu_name in list(menu.depends_on or []):
-        if required_menu_name not in used_menu_names:
-            return False, f"You must use the '{required_menu_name}' menu first.", None
+    missing_menu_name = get_missing_menu_prerequisite(menu, get_used_menu_names(submissions))
+    if missing_menu_name is not None:
+        return False, f"You must use the '{missing_menu_name}' menu first.", None
 
-    max_uses = menu.max_uses_per_player
-    if max_uses >= 0:
-        uses_this_menu = (
-            sum(1 for sub in list(existing_participation.submissions or []) if sub.get("menu_name") == menu.name)
-            if existing_participation
-            else 0
-        )
-        if uses_this_menu >= max_uses:
-            return False, f"You have used the '{menu.label}' menu the maximum number of times.", None
+    if is_menu_exhausted(menu, get_use_count_per_menu(submissions)):
+        return False, f"You have used the '{menu.label}' menu the maximum number of times.", None
 
     if option.filter:
         if not await check_owner_event_filter_for_owner(owner_discord_id, option.filter):

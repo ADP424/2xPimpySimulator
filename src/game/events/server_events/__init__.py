@@ -15,6 +15,14 @@ from .coordinator import (
     trigger_daily_server_event,
     trigger_server_event_by_name,
 )
+from .menus import (
+    get_menu_uses_left,
+    get_missing_menu_prerequisite,
+    get_use_count_per_menu,
+    get_used_menu_names,
+    is_menu_exhausted,
+    menu_is_available,
+)
 from .public import (
     get_active_server_event,
     list_active_server_events,
@@ -48,4 +56,10 @@ __all__ = [
     "matches_rank",
     "roll_outcome_chance",
     "build_owner_event_context",
+    "get_menu_uses_left",
+    "get_missing_menu_prerequisite",
+    "get_use_count_per_menu",
+    "get_used_menu_names",
+    "is_menu_exhausted",
+    "menu_is_available",
 ]
