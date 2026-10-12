@@ -3,7 +3,12 @@ from types import SimpleNamespace
 
 import pytest
 
-from src.game.models import Pooch, PoochBreedInfo, apply_stat_params
+from src.game.models import (
+    Pooch,
+    PoochBreedInfo,
+    apply_stat_params,
+    get_breeding_status,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -336,6 +341,27 @@ class TestPoochStatus:
     def test_healthy_just_below_old(self):
         p = _make_pooch(alive=True, age=11, health=10)
         assert p.status == "healthy"
+
+
+class TestPoochBreedingStatus:
+    @pytest.mark.parametrize(
+        "cooldown, expected",
+        [(0, "in_heat"), (1, "heating_up"), (5, "heating_up"), (6, "cooled"), (10, "cooled")],
+    )
+    def test_get_breeding_status(self, cooldown, expected):
+        assert get_breeding_status(cooldown) == expected
+
+    def test_breeding_status_property(self):
+        assert _make_pooch(breeding_cooldown=3).breeding_status == "heating_up"
+
+    def test_can_breed_when_alive_and_in_heat(self):
+        assert _make_pooch(alive=True, breeding_cooldown=0).can_breed is True
+
+    def test_cannot_breed_on_cooldown(self):
+        assert _make_pooch(alive=True, breeding_cooldown=1).can_breed is False
+
+    def test_cannot_breed_when_dead(self):
+        assert _make_pooch(alive=False, breeding_cooldown=0).can_breed is False
 
 
 # ===========================================================================

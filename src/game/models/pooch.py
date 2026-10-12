@@ -15,6 +15,7 @@ from src.database import (
     list_pooch_mutations,
 )
 
+from ..constants import BREEDING_COOLDOWN_HEATING_UP_THRESHOLD
 from .breed import to_breed
 from .mutation import to_mutation
 from .owner import to_owner
@@ -116,6 +117,23 @@ class Pooch:
         elif self.health <= 5:
             return "sick"
         return "healthy"
+
+    @property
+    def breeding_status(self) -> str:
+        return get_breeding_status(self.breeding_cooldown)
+
+    @property
+    def can_breed(self) -> bool:
+        return self.alive and self.breeding_cooldown == 0
+
+
+def get_breeding_status(cooldown: int) -> str:
+    """Return "in_heat", "heating_up" or "cooled" for a breeding cooldown."""
+    if cooldown == 0:
+        return "in_heat"
+    if cooldown <= BREEDING_COOLDOWN_HEATING_UP_THRESHOLD:
+        return "heating_up"
+    return "cooled"
 
 
 def apply_stat_params(

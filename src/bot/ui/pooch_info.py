@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Optional, Sequence
 import discord
 from discord.ui import Button, Select, View
 
-from src.bot.constants import BREEDING_COOLDOWN_HEATING_UP_THRESHOLD, VIEW_TIMEOUT
+from src.bot.constants import VIEW_TIMEOUT
 from src.bot.ui.util import (
     InteractionResponder,
     mention,
@@ -25,7 +25,7 @@ from src.game import (
     get_pooch_family,
     list_snapshots_for_pooch,
 )
-from src.game.models import Mutation, PoochBreedInfo
+from src.game.models import Mutation, PoochBreedInfo, get_breeding_status
 
 from .components import (
     PageSource,
@@ -236,6 +236,13 @@ class _DiseaseSelect(Select):
         await r.reply(embed=embed)
 
 
+_BREEDING_STATUS_LABELS = {
+    "in_heat": "In Heat",
+    "heating_up": "Heating Up",
+    "cooled": "Cooled",
+}
+
+
 class PoochInfoView(View):
     def __init__(
         self, *, server: Optional[Server], pooch: Pooch, owner: Optional[Owner], timeout: float = VIEW_TIMEOUT
@@ -252,11 +259,7 @@ class PoochInfoView(View):
 
     @staticmethod
     def _format_breeding_status(cooldown: int) -> str:
-        if cooldown == 0:
-            return "In Heat"
-        if cooldown <= BREEDING_COOLDOWN_HEATING_UP_THRESHOLD:
-            return "Heating Up"
-        return "Cooled"
+        return _BREEDING_STATUS_LABELS[get_breeding_status(cooldown)]
 
     @staticmethod
     def _format_size(size: int) -> str:

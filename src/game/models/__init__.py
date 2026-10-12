@@ -50,6 +50,7 @@ from .pooch import (
     PoochInjuryInfo,
     PoochMutationInfo,
     apply_stat_params,
+    get_breeding_status,
     to_pooch,
 )
 from .server import Server, to_server
@@ -105,6 +106,7 @@ __all__ = [
     "PoochDiseaseInfo",
     "PoochInjuryInfo",
     "PoochMutationInfo",
+    "get_breeding_status",
     "to_pooch",
     "Server",
     "to_server",
