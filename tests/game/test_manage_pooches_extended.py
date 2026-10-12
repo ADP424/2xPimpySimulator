@@ -15,7 +15,9 @@ from src.game.manage_pooches import (
     get_diagnose_injuries_cost,
     get_diagnose_mutations_cost,
     get_pooch_family,
+    get_public_injury_label,
     get_treatment_cost,
+    is_injury_treated_today,
     list_snapshots_for_pooch,
     mark_pooch_vet_checked,
     medical_exam,
@@ -352,6 +354,31 @@ class TestMedicalExam:
 # ---------------------------------------------------------------------------
 # treat_injury
 # ---------------------------------------------------------------------------
+
+
+class TestInjuryHelpers:
+    def test_visible_injury_shows_real_name(self):
+        pi = SimpleNamespace(visible=True, injury=SimpleNamespace(name="Sprain"), displayed_symptom="a limp")
+        assert get_public_injury_label(pi) == "Sprain"
+
+    def test_hidden_injury_uses_displayed_symptom(self):
+        pi = SimpleNamespace(visible=False, injury=SimpleNamespace(name="Sprain"), displayed_symptom="a limp")
+        assert get_public_injury_label(pi) == "a limp"
+
+    def test_hidden_injury_without_symptom_uses_generic_label(self):
+        pi = SimpleNamespace(visible=False, injury=SimpleNamespace(name="Sprain"), displayed_symptom=None)
+        assert get_public_injury_label(pi) == "a mysterious injury"
+
+    def test_never_treated(self):
+        assert is_injury_treated_today(SimpleNamespace(last_treated_at=None)) is False
+
+    def test_treated_today_naive_datetime(self):
+        now_naive = datetime.now(timezone.utc).replace(tzinfo=None)
+        assert is_injury_treated_today(SimpleNamespace(last_treated_at=now_naive)) is True
+
+    def test_treated_on_earlier_day(self):
+        earlier = datetime(2020, 1, 1, tzinfo=timezone.utc)
+        assert is_injury_treated_today(SimpleNamespace(last_treated_at=earlier)) is False
 
 
 class TestTreatInjury:

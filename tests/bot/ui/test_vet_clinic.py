@@ -136,3 +136,37 @@ class TestMutationListPageSource:
             view.add_item = MagicMock()
             content, embed = await source.render(view, 0)
             assert "Blindness" in embed.description
+
+
+@pytest.mark.contract
+class TestTreatInjurySelectView:
+    def _make_pi(self, id, name, visible, symptom=None):
+        from types import SimpleNamespace
+
+        return SimpleNamespace(
+            id=id,
+            injury=SimpleNamespace(name=name, severity="minor"),
+            visible=visible,
+            displayed_symptom=symptom,
+            last_treated_at=None,
+            treated=False,
+            persistence=3,
+        )
+
+    async def test_hidden_injury_shows_symptom_not_name(self):
+        from types import SimpleNamespace
+
+        from src.bot.ui.vet_clinic import _TreatInjurySelectView
+
+        instances = [
+            self._make_pi(1, "Sprain", visible=True),
+            self._make_pi(2, "Internal Bleeding", visible=False, symptom="a pale gum"),
+        ]
+        view = _TreatInjurySelectView(100, SimpleNamespace(id=5, name="Rex"), instances)
+        embed = await view.build_embed()
+        labels = [opt.label for opt in view._select.options]
+
+        assert "Sprain" in embed.description
+        assert "a pale gum" in embed.description
+        assert "Internal Bleeding" not in embed.description
+        assert labels == ["Sprain", "a pale gum"]

@@ -341,6 +341,23 @@ def get_treatment_cost(severity: str) -> int:
     return VET_TREATMENT_BASE_COST + VET_TREATMENT_SEVERITY_COST_PER_LEVEL * level
 
 
+def get_public_injury_label(pi: PoochInjury) -> str:
+    """Return the injury name if it is visible, otherwise the symptom the owner sees."""
+    if pi.visible:
+        return pi.injury.name
+    return pi.displayed_symptom or "a mysterious injury"
+
+
+def is_injury_treated_today(pi: PoochInjury) -> bool:
+    """Return True if the injury was already treated on the current UTC day."""
+    if pi.last_treated_at is None:
+        return False
+    last = pi.last_treated_at
+    if last.tzinfo is None:
+        last = last.replace(tzinfo=timezone.utc)
+    return last.date() == datetime.now(timezone.utc).date()
+
+
 async def get_pooch_injury_instances(pooch_id: int) -> list[PoochInjury]:
     """
     Return the PoochInjury join records for the given pooch (including treatment state).
@@ -401,14 +418,8 @@ async def treat_injury(
 
     cost = get_treatment_cost(pi.injury.severity)
 
-    # Check if already treated today
-    if pi.last_treated_at is not None:
-        now = datetime.now(timezone.utc)
-        last = pi.last_treated_at
-        if last.tzinfo is None:
-            last = last.replace(tzinfo=timezone.utc)
-        if last.date() == now.date():
-            return False, "This injury has already been treated today.", 0
+    if is_injury_treated_today(pi):
+        return False, "This injury has already been treated today.", 0
 
     if owner.dollars < cost:
         return False, f"Not enough money. Treatment costs **${cost}**.", 0

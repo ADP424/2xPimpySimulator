@@ -24,7 +24,9 @@ from src.game import (
     get_disease_treatment_cost,
     get_pooch_disease_instances,
     get_pooch_injury_instances,
+    get_public_injury_label,
     get_treatment_cost,
+    is_injury_treated_today,
     list_all_breeds,
     list_all_diseases,
     list_all_injuries,
@@ -421,25 +423,12 @@ class _TreatInjurySelectView(View):
         self._injury_instances = injury_instances
         self._selected_pi: Optional[object] = None
 
-        from datetime import datetime, timezone
-
-        now = datetime.now(timezone.utc)
-
         options = []
         for pi in injury_instances[:DISCORD_SELECT_MAX_OPTIONS]:
             injury = pi.injury
             cost = get_treatment_cost(injury.severity)
-            already_treated_today = (
-                pi.last_treated_at is not None
-                and (
-                    pi.last_treated_at.replace(tzinfo=timezone.utc)
-                    if pi.last_treated_at.tzinfo is None
-                    else pi.last_treated_at
-                ).date()
-                == now.date()
-            )
-            label = injury.name
-            if already_treated_today:
+            label = get_public_injury_label(pi)
+            if is_injury_treated_today(pi):
                 label += " (treated today)"
             desc = f"${cost} · Severity: {injury.severity.capitalize()}"
             if pi.persistence is not None:
@@ -462,26 +451,16 @@ class _TreatInjurySelectView(View):
         self.add_item(self._treat_button)
 
     async def build_embed(self) -> discord.Embed:
-        from datetime import datetime, timezone
-
-        now = datetime.now(timezone.utc)
         embed = discord.Embed(title=f"Treat {self._pooch.name}'s Injuries")
         lines = []
         for pi in self._injury_instances:
-            injury = pi.injury
-            cost = get_treatment_cost(injury.severity)
-            already_treated_today = (
-                pi.last_treated_at is not None
-                and (
-                    pi.last_treated_at.replace(tzinfo=timezone.utc)
-                    if pi.last_treated_at.tzinfo is None
-                    else pi.last_treated_at
-                ).date()
-                == now.date()
-            )
-            status = " *(treated today)*" if already_treated_today else (" *(treated)*" if pi.treated else "")
+            cost = get_treatment_cost(pi.injury.severity)
+            if is_injury_treated_today(pi):
+                status = " *(treated today)*"
+            else:
+                status = " *(treated)*" if pi.treated else ""
             persistence_str = f", persistence: {pi.persistence}" if pi.persistence is not None else ""
-            lines.append(f"**{injury.name}**{status} — ${cost}{persistence_str}")
+            lines.append(f"**{get_public_injury_label(pi)}**{status} — ${cost}{persistence_str}")
         embed.description = "\n".join(lines) if lines else "No injuries."
         embed.set_footer(text="Treating reduces persistence. Once per injury per day.")
         return embed
