@@ -14,6 +14,9 @@ from src.database import (
     get_current_season,
     get_owner_by_discord_id,
     get_owner_server,
+)
+from src.database import get_pooch_by_id as db_get_pooch_by_id
+from src.database import (
     get_random_breed_ids,
     give_bones_to_owner,
     give_money_to_owner,
@@ -360,18 +363,35 @@ async def spend_bone_at_park(
     return await _attempt_catch_stray(server_discord_id, owner_discord_id, rng)
 
 
-async def cast_out_pooch(pooch_id: int, server_discord_id: int) -> None:
+async def cast_out_pooch(owner_discord_id: int, pooch_id: int, server_discord_id: int) -> tuple[bool, str]:
     """
-    Cast out pooch.
+    Cast out a pooch the owner owns, sending it to the server's strays.
 
     Parameters
     ----------
-    pooch_id: Any
-        The `pooch_id` value.
+    owner_discord_id: int
+        The Discord ID of the owner casting the pooch out.
 
-    server_discord_id: Any
-        The `server_discord_id` value.
+    pooch_id: int
+        The ID of the pooch to cast out.
+
+    server_discord_id: int
+        The Discord ID of the server whose strays the pooch joins.
+
+    Returns
+    -------
+    tuple[bool, str]
+        (success, message)
     """
+
+    pooch = await db_get_pooch_by_id(pooch_id)
+    if pooch is None:
+        return False, "Pooch not found."
+    if pooch.owner_discord_id != owner_discord_id:
+        return False, "That's not your pooch."
+    if not pooch.alive:
+        return False, "You can't cast out a dead pooch."
 
     await cancel_listing_for_pooch(pooch_id)
     await add_pooch_to_strays(pooch_id, server_discord_id)
+    return True, f"{pooch.name} has been cast out."

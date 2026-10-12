@@ -344,9 +344,37 @@ class TestSpendBoneAtPark:
 class TestCastOutPooch:
     @patch("src.game.manage_owners.add_pooch_to_strays", new_callable=AsyncMock)
     @patch("src.game.manage_owners.cancel_listing_for_pooch", new_callable=AsyncMock)
-    async def test_cast_out_adds_to_strays(self, mock_cancel, mock_add_stray):
-        await cast_out_pooch(1, 200)
+    @patch("src.game.manage_owners.db_get_pooch_by_id", new_callable=AsyncMock)
+    async def test_cast_out_adds_to_strays(self, mock_get_pooch, mock_cancel, mock_add_stray):
+        mock_get_pooch.return_value = make_pooch(pooch_id=1, name="Rex", owner_discord_id=100)
+        success, msg = await cast_out_pooch(100, 1, 200)
+        assert success is True
+        assert msg == "Rex has been cast out."
+        mock_cancel.assert_awaited_once_with(1)
         mock_add_stray.assert_awaited_once_with(1, 200)
+
+    @patch("src.game.manage_owners.add_pooch_to_strays", new_callable=AsyncMock)
+    @patch("src.game.manage_owners.cancel_listing_for_pooch", new_callable=AsyncMock)
+    @patch("src.game.manage_owners.db_get_pooch_by_id", new_callable=AsyncMock)
+    async def test_not_your_pooch(self, mock_get_pooch, mock_cancel, mock_add_stray):
+        mock_get_pooch.return_value = make_pooch(pooch_id=1, owner_discord_id=100)
+        assert await cast_out_pooch(999, 1, 200) == (False, "That's not your pooch.")
+        mock_cancel.assert_not_awaited()
+        mock_add_stray.assert_not_awaited()
+
+    @patch("src.game.manage_owners.add_pooch_to_strays", new_callable=AsyncMock)
+    @patch("src.game.manage_owners.cancel_listing_for_pooch", new_callable=AsyncMock)
+    @patch("src.game.manage_owners.db_get_pooch_by_id", new_callable=AsyncMock)
+    async def test_dead_pooch_rejected(self, mock_get_pooch, mock_cancel, mock_add_stray):
+        mock_get_pooch.return_value = make_pooch(pooch_id=1, alive=False, owner_discord_id=100)
+        assert await cast_out_pooch(100, 1, 200) == (False, "You can't cast out a dead pooch.")
+        mock_cancel.assert_not_awaited()
+        mock_add_stray.assert_not_awaited()
+
+    @patch("src.game.manage_owners.db_get_pooch_by_id", new_callable=AsyncMock)
+    async def test_pooch_not_found(self, mock_get_pooch):
+        mock_get_pooch.return_value = None
+        assert await cast_out_pooch(100, 1, 200) == (False, "Pooch not found.")
 
 
 # ---------------------------------------------------------------------------

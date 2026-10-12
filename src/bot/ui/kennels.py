@@ -217,14 +217,16 @@ class KennelPageControls:
         r = InteractionResponder(interaction)
         if self.selected_pooch is None:
             return
-        pooch_name = self.selected_pooch.name
-        await cast_out_pooch(self.selected_pooch.id, self.server_discord_id)
+        success, message = await cast_out_pooch(self.owner_discord_id, self.selected_pooch.id, self.server_discord_id)
+        if not success:
+            await r.reply(content=message)
+            return
 
         parent_view = self.select.view
         if isinstance(parent_view, PaginatorView):
             await parent_view.refresh(interaction)
 
-        await r.reply(content=f"{pooch_name} has been cast out.")
+        await r.reply(content=message)
 
 
 class _RenameKennelModal(discord.ui.Modal):

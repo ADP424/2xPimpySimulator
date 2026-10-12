@@ -144,7 +144,11 @@ class TestKennelPageControls:
         interaction.channel.send = AsyncMock()
 
         with (
-            patch("src.bot.ui.kennels.cast_out_pooch", new_callable=AsyncMock) as mock_cast,
+            patch(
+                "src.bot.ui.kennels.cast_out_pooch",
+                new_callable=AsyncMock,
+                return_value=(True, "Bad Dog has been cast out."),
+            ) as mock_cast,
             patch("src.bot.ui.kennels.InteractionResponder") as MockResponder,
         ):
             mock_r = MagicMock()
@@ -153,7 +157,34 @@ class TestKennelPageControls:
             controls.select._view = MagicMock()
             await controls._on_cast_out(interaction)
 
-            mock_cast.assert_called_once_with(1, 200)
+            mock_cast.assert_called_once_with(100, 1, 200)
+            mock_r.reply.assert_awaited_once_with(content="Bad Dog has been cast out.")
+
+    async def test_cast_out_failure_shows_message_without_refresh(self):
+        kennel = _make_kennel()
+        pooch = _make_pooch(id=1, name="Bad Dog")
+        controls = KennelPageControls(server_discord_id=200, owner_discord_id=100, kennel=kennel, pooches=[pooch])
+        controls.selected_pooch = pooch
+        interaction = MagicMock()
+
+        with (
+            patch(
+                "src.bot.ui.kennels.cast_out_pooch",
+                new_callable=AsyncMock,
+                return_value=(False, "That's not your pooch."),
+            ),
+            patch("src.bot.ui.kennels.InteractionResponder") as MockResponder,
+        ):
+            mock_r = MagicMock()
+            mock_r.reply = AsyncMock()
+            MockResponder.return_value = mock_r
+            parent_view = MagicMock()
+            parent_view.refresh = AsyncMock()
+            controls.select._view = parent_view
+            await controls._on_cast_out(interaction)
+
+            mock_r.reply.assert_awaited_once_with(content="That's not your pooch.")
+            parent_view.refresh.assert_not_awaited()
 
     async def test_on_info_when_no_selection_skips(self):
         kennel = _make_kennel()
