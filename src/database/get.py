@@ -1590,6 +1590,30 @@ async def get_disease_health_impact(disease_id: int) -> Optional[int]:
     return response.scalar_one_or_none()
 
 
+async def get_pooch_injury_instance(pooch_injury_id: int) -> Optional[PoochInjury]:
+    """Fetch a PoochInjury join record by ID, with its injury and pooch relationships eagerly loaded."""
+    async with session_scope() as session:
+        query = (
+            select(PoochInjury)
+            .options(selectinload(PoochInjury.injury), selectinload(PoochInjury.pooch))
+            .where(PoochInjury.id == pooch_injury_id)
+        )
+        response = await session.execute(query)
+    return response.scalar_one_or_none()
+
+
+async def get_pooch_disease_instance(pooch_disease_id: int) -> Optional[PoochDisease]:
+    """Fetch a PoochDisease join record by ID, with its disease and pooch relationships eagerly loaded."""
+    async with session_scope() as session:
+        query = (
+            select(PoochDisease)
+            .options(selectinload(PoochDisease.disease), selectinload(PoochDisease.pooch))
+            .where(PoochDisease.id == pooch_disease_id)
+        )
+        response = await session.execute(query)
+    return response.scalar_one_or_none()
+
+
 _GET_GLOBAL_STATE_ID = 1
 
 

@@ -463,3 +463,58 @@ async def test_get_highest_bid_for_listing_returns_none_when_no_bids():
         result = await get_highest_bid_for_listing(999)
 
     assert result is None
+
+
+# ---------------------------------------------------------------------------
+# get_pooch_injury_instance / get_pooch_disease_instance
+# ---------------------------------------------------------------------------
+
+
+async def test_get_pooch_injury_instance_returns_instance():
+    """When the PoochInjury exists, it should be returned."""
+    fake_pi = SimpleNamespace(id=3, pooch_id=1, injury=SimpleNamespace(name="Sprain"), pooch=SimpleNamespace(id=1))
+    scope_cls, _ = _mock_session_scope(scalar_result=fake_pi)
+
+    with patch("src.database.get.session_scope", return_value=scope_cls()):
+        from src.database import get_pooch_injury_instance
+
+        result = await get_pooch_injury_instance(3)
+
+    assert result is fake_pi
+
+
+async def test_get_pooch_injury_instance_returns_none():
+    """When the PoochInjury does not exist, None should be returned."""
+    scope_cls, _ = _mock_session_scope(scalar_result=None)
+
+    with patch("src.database.get.session_scope", return_value=scope_cls()):
+        from src.database import get_pooch_injury_instance
+
+        result = await get_pooch_injury_instance(999)
+
+    assert result is None
+
+
+async def test_get_pooch_disease_instance_returns_instance():
+    """When the PoochDisease exists, it should be returned."""
+    fake_pd = SimpleNamespace(id=4, pooch_id=1, disease=SimpleNamespace(name="Flu"), pooch=SimpleNamespace(id=1))
+    scope_cls, _ = _mock_session_scope(scalar_result=fake_pd)
+
+    with patch("src.database.get.session_scope", return_value=scope_cls()):
+        from src.database import get_pooch_disease_instance
+
+        result = await get_pooch_disease_instance(4)
+
+    assert result is fake_pd
+
+
+async def test_get_pooch_disease_instance_returns_none():
+    """When the PoochDisease does not exist, None should be returned."""
+    scope_cls, _ = _mock_session_scope(scalar_result=None)
+
+    with patch("src.database.get.session_scope", return_value=scope_cls()):
+        from src.database import get_pooch_disease_instance
+
+        result = await get_pooch_disease_instance(999)
+
+    assert result is None
