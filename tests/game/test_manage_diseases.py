@@ -12,7 +12,11 @@ from src.game.manage_diseases import (
     MESSINESS_CONTRACTION_MULT,
     MUTATION_PREDISPOSITION_MULT,
     TREATMENT_RECOVERY_BONUS,
+    VET_DIAGNOSE_DISEASES_COST,
+    VET_DISEASE_TREATMENT_BASE_COST,
+    diagnose_diseases,
     get_public_disease_label,
+    treat_disease,
     try_breed_spread_disease,
     try_contract_disease,
     try_inherit_disease,
@@ -795,6 +799,85 @@ class TestPublicDiseaseLabel:
         pd = make_pooch_disease(disease=disease, visible=False)
         pd.displayed_symptom = None
         assert get_public_disease_label(pd) == "a mysterious illness"
+
+
+class TestTreatDisease:
+    def _make_pd(self, owner_discord_id=1, treated=False, treatable=True, curable=True):
+        pd = make_pooch_disease(disease=make_disease(treatable=treatable, curable=curable), treated=treated)
+        pd.pooch = SimpleNamespace(owner_discord_id=owner_discord_id)
+        return pd
+
+    @pytest.mark.asyncio
+    @patch("src.game.manage_diseases.get_pooch_disease_instance", new_callable=AsyncMock)
+    async def test_disease_not_found(self, mock_get_pd):
+        mock_get_pd.return_value = None
+        assert await treat_disease(1, 99) == (False, "Disease not found.", 0)
+
+    @pytest.mark.asyncio
+    @patch("src.game.manage_diseases.give_money_to_owner", new_callable=AsyncMock)
+    @patch("src.game.manage_diseases.get_pooch_disease_instance", new_callable=AsyncMock)
+    async def test_not_your_pooch(self, mock_get_pd, mock_give):
+        mock_get_pd.return_value = self._make_pd(owner_discord_id=1)
+        assert await treat_disease(2, 5) == (False, "That's not your pooch.", 0)
+        mock_give.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    @patch("src.game.manage_diseases.get_pooch_disease_instance", new_callable=AsyncMock)
+    async def test_already_treated(self, mock_get_pd):
+        mock_get_pd.return_value = self._make_pd(treated=True)
+        success, msg, _ = await treat_disease(1, 5)
+        assert success is False
+        assert "already been treated" in msg
+
+    @pytest.mark.asyncio
+    @patch("src.game.manage_diseases.treat_pooch_disease", new_callable=AsyncMock)
+    @patch("src.game.manage_diseases.give_money_to_owner", new_callable=AsyncMock)
+    @patch("src.game.manage_diseases.get_owner_by_discord_id", new_callable=AsyncMock)
+    @patch("src.game.manage_diseases.get_pooch_disease_instance", new_callable=AsyncMock)
+    async def test_success_charges_cost(self, mock_get_pd, mock_get_owner, mock_give, mock_treat):
+        mock_get_pd.return_value = self._make_pd()
+        mock_get_owner.return_value = SimpleNamespace(dollars=1000)
+        success, _, cost = await treat_disease(1, 5)
+        assert success is True
+        assert cost == VET_DISEASE_TREATMENT_BASE_COST
+        mock_give.assert_awaited_once_with(1, -VET_DISEASE_TREATMENT_BASE_COST)
+        mock_treat.assert_awaited_once_with(5)
+
+
+class TestDiagnoseDiseases:
+    @pytest.mark.asyncio
+    @patch("src.game.manage_diseases.give_money_to_owner", new_callable=AsyncMock)
+    @patch("src.game.manage_diseases.get_pooch_by_id", new_callable=AsyncMock)
+    @patch("src.game.manage_diseases.get_owner_by_discord_id", new_callable=AsyncMock)
+    async def test_not_your_pooch(self, mock_get_owner, mock_get_pooch, mock_give):
+        mock_get_owner.return_value = SimpleNamespace(dollars=1000)
+        mock_get_pooch.return_value = SimpleNamespace(owner_discord_id=1)
+        assert await diagnose_diseases(2, 1) == (False, "That's not your pooch.", [])
+        mock_give.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    @patch("src.game.manage_diseases.reveal_pooch_disease", new_callable=AsyncMock)
+    @patch("src.game.manage_diseases.list_pooch_disease_instances", new_callable=AsyncMock)
+    @patch("src.game.manage_diseases.give_money_to_owner", new_callable=AsyncMock)
+    @patch("src.game.manage_diseases.get_pooch_by_id", new_callable=AsyncMock)
+    @patch("src.game.manage_diseases.get_owner_by_discord_id", new_callable=AsyncMock)
+    async def test_reveals_only_hidden_diseases(
+        self, mock_get_owner, mock_get_pooch, mock_give, mock_list, mock_reveal
+    ):
+        mock_get_owner.return_value = SimpleNamespace(dollars=1000)
+        mock_get_pooch.return_value = SimpleNamespace(owner_discord_id=1)
+        hidden = make_pooch_disease(disease=make_disease(name="Mange", reveal_chance=1.0), visible=False)
+        hidden.id = 11
+        shown = make_pooch_disease(disease=make_disease(name="Flu", reveal_chance=1.0), visible=True)
+        shown.id = 12
+        mock_list.return_value = [hidden, shown]
+
+        success, _, revealed = await diagnose_diseases(1, 1, rng_seed=0)
+
+        assert success is True
+        assert revealed == ["Mange"]
+        mock_reveal.assert_awaited_once_with(11)
+        mock_give.assert_awaited_once_with(1, -VET_DIAGNOSE_DISEASES_COST)
 
 
 class TestAdditionalDiseaseLogic:

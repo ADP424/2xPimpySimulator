@@ -11,6 +11,7 @@ from src.database import (
     get_owner_by_discord_id,
     get_pooch_by_id,
     get_pooch_constitution,
+    get_pooch_disease_instance,
     give_money_to_owner,
     list_all_diseases,
     list_kennels_for_owner,
@@ -258,12 +259,6 @@ async def diagnose_diseases(
 ) -> tuple[bool, str, list[str]]:
     import random as _random
 
-    from sqlalchemy import select
-    from sqlalchemy.orm import selectinload
-
-    from src.database import session_scope
-    from src.database.models import PoochDisease as PoochDiseaseORM
-
     owner = await get_owner_by_discord_id(owner_discord_id)
     if owner is None:
         return False, "Owner not found.", []
@@ -276,13 +271,7 @@ async def diagnose_diseases(
         return False, f"Not enough money. Diagnosis costs **${VET_DIAGNOSE_DISEASES_COST}**.", []
 
     rng_inst = _random.Random(rng_seed)
-    async with session_scope() as session:
-        query = (
-            select(PoochDiseaseORM)
-            .options(selectinload(PoochDiseaseORM.disease))
-            .where(PoochDiseaseORM.pooch_id == pooch_id, PoochDiseaseORM.visible.is_(False))
-        )
-        invisible_instances = list((await session.execute(query)).scalars().all())
+    invisible_instances = [pd for pd in await list_pooch_disease_instances(pooch_id) if not pd.visible]
 
     await give_money_to_owner(owner_discord_id, -VET_DIAGNOSE_DISEASES_COST)
     revealed: list[str] = []
@@ -294,25 +283,12 @@ async def diagnose_diseases(
 
 
 async def treat_disease(owner_discord_id: int, pooch_disease_id: int) -> tuple[bool, str, int]:
-    from sqlalchemy import select
-    from sqlalchemy.orm import selectinload
+    pd = await get_pooch_disease_instance(pooch_disease_id)
+    if pd is None:
+        return False, "Disease not found.", 0
+    disease = pd.disease
 
-    from src.database import session_scope
-    from src.database.models import PoochDisease as PoochDiseaseORM
-
-    async with session_scope() as session:
-        query = (
-            select(PoochDiseaseORM)
-            .options(selectinload(PoochDiseaseORM.disease), selectinload(PoochDiseaseORM.pooch))
-            .where(PoochDiseaseORM.id == pooch_disease_id)
-        )
-        pd = (await session.execute(query)).scalar_one_or_none()
-        if pd is None:
-            return False, "Disease not found.", 0
-        disease = pd.disease
-        pooch = pd.pooch
-
-    if pooch.owner_discord_id != owner_discord_id:
+    if pd.pooch.owner_discord_id != owner_discord_id:
         return False, "That's not your pooch.", 0
     if pd.treated:
         return False, "This disease has already been treated.", 0

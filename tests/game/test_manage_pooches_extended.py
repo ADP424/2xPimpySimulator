@@ -2,7 +2,7 @@
 
 from datetime import datetime, timezone
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -246,9 +246,23 @@ class TestMedicalExam:
             aggressiveness=7,
             constitution=10,
             size=10,
+            owner_discord_id=1,
         )
         defaults.update(overrides)
         return SimpleNamespace(**defaults)
+
+    @patch("src.game.manage_pooches.give_money_to_owner", new_callable=AsyncMock)
+    @patch("src.game.manage_pooches.get_owner_by_discord_id", new_callable=AsyncMock)
+    async def test_not_your_pooch(self, mock_get_owner, mock_give_money):
+        mock_get_owner.return_value = make_owner(discord_id=2, dollars=1000)
+        pooch = self._make_game_pooch(owner_discord_id=1)
+
+        success, msg, report = await medical_exam(2, pooch)
+
+        assert success is False
+        assert msg == "That's not your pooch."
+        assert report == {}
+        mock_give_money.assert_not_awaited()
 
     @patch("src.game.manage_pooches.create_pooch_snapshot", new_callable=AsyncMock)
     @patch("src.game.manage_pooches.give_money_to_owner", new_callable=AsyncMock)
@@ -341,41 +355,44 @@ class TestMedicalExam:
 
 
 class TestTreatInjury:
-    def _make_session_ctx(self, pi):
-        """Return a context manager mock whose scalar result is pi."""
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none = MagicMock(return_value=pi)
-
-        mock_session = AsyncMock()
-        mock_session.execute = AsyncMock(return_value=mock_result)
-
-        ctx = MagicMock()
-        ctx.__aenter__ = AsyncMock(return_value=mock_session)
-        ctx.__aexit__ = AsyncMock(return_value=False)
-        return ctx
+    def _make_pi(self, severity="minor", persistence=5, last_treated_at=None, owner_discord_id=1):
+        return SimpleNamespace(
+            injury=SimpleNamespace(severity=severity),
+            persistence=persistence,
+            last_treated_at=last_treated_at,
+            pooch=SimpleNamespace(owner_discord_id=owner_discord_id),
+        )
 
     @patch("src.game.manage_pooches.reduce_pooch_injury_persistence", new_callable=AsyncMock)
     @patch("src.game.manage_pooches.treat_pooch_injury", new_callable=AsyncMock)
     @patch("src.game.manage_pooches.give_money_to_owner", new_callable=AsyncMock)
     @patch("src.game.manage_pooches.get_owner_by_discord_id", new_callable=AsyncMock)
-    @patch("src.database.session_scope")
-    async def test_injury_not_found(self, mock_scope, mock_get_owner, mock_give, mock_treat, mock_reduce):
-        mock_scope.return_value = self._make_session_ctx(None)
+    @patch("src.game.manage_pooches.get_pooch_injury_instance", new_callable=AsyncMock)
+    async def test_injury_not_found(self, mock_get_pi, mock_get_owner, mock_give, mock_treat, mock_reduce):
+        mock_get_pi.return_value = None
 
         success, msg, cost = await treat_injury(1, 99)
         assert success is False
         assert "not found" in msg.lower()
         assert cost == 0
 
+    @patch("src.game.manage_pooches.give_money_to_owner", new_callable=AsyncMock)
     @patch("src.game.manage_pooches.get_owner_by_discord_id", new_callable=AsyncMock)
-    @patch("src.database.session_scope")
-    async def test_owner_not_found(self, mock_scope, mock_get_owner):
-        pi = SimpleNamespace(
-            injury=SimpleNamespace(severity="minor"),
-            persistence=5,
-            last_treated_at=None,
-        )
-        mock_scope.return_value = self._make_session_ctx(pi)
+    @patch("src.game.manage_pooches.get_pooch_injury_instance", new_callable=AsyncMock)
+    async def test_not_your_pooch(self, mock_get_pi, mock_get_owner, mock_give):
+        mock_get_pi.return_value = self._make_pi(owner_discord_id=1)
+        mock_get_owner.return_value = make_owner(discord_id=2, dollars=1000)
+
+        success, msg, cost = await treat_injury(2, 1)
+        assert success is False
+        assert msg == "That's not your pooch."
+        assert cost == 0
+        mock_give.assert_not_awaited()
+
+    @patch("src.game.manage_pooches.get_owner_by_discord_id", new_callable=AsyncMock)
+    @patch("src.game.manage_pooches.get_pooch_injury_instance", new_callable=AsyncMock)
+    async def test_owner_not_found(self, mock_get_pi, mock_get_owner):
+        mock_get_pi.return_value = self._make_pi()
         mock_get_owner.return_value = None
 
         success, msg, cost = await treat_injury(1, 1)
@@ -383,14 +400,9 @@ class TestTreatInjury:
         assert "Owner not found" in msg
 
     @patch("src.game.manage_pooches.get_owner_by_discord_id", new_callable=AsyncMock)
-    @patch("src.database.session_scope")
-    async def test_insufficient_funds(self, mock_scope, mock_get_owner):
-        pi = SimpleNamespace(
-            injury=SimpleNamespace(severity="catastrophic"),  # cost = 45
-            persistence=5,
-            last_treated_at=None,
-        )
-        mock_scope.return_value = self._make_session_ctx(pi)
+    @patch("src.game.manage_pooches.get_pooch_injury_instance", new_callable=AsyncMock)
+    async def test_insufficient_funds(self, mock_get_pi, mock_get_owner):
+        mock_get_pi.return_value = self._make_pi(severity="catastrophic")  # cost = 45
         mock_get_owner.return_value = make_owner(dollars=10)  # less than 45
 
         success, msg, cost = await treat_injury(1, 1)
@@ -402,14 +414,9 @@ class TestTreatInjury:
     @patch("src.game.manage_pooches.treat_pooch_injury", new_callable=AsyncMock)
     @patch("src.game.manage_pooches.give_money_to_owner", new_callable=AsyncMock)
     @patch("src.game.manage_pooches.get_owner_by_discord_id", new_callable=AsyncMock)
-    @patch("src.database.session_scope")
-    async def test_success_charges_correct_cost(self, mock_scope, mock_get_owner, mock_give, mock_treat, mock_reduce):
-        pi = SimpleNamespace(
-            injury=SimpleNamespace(severity="minor"),  # cost = 20
-            persistence=5,
-            last_treated_at=None,
-        )
-        mock_scope.return_value = self._make_session_ctx(pi)
+    @patch("src.game.manage_pooches.get_pooch_injury_instance", new_callable=AsyncMock)
+    async def test_success_charges_correct_cost(self, mock_get_pi, mock_get_owner, mock_give, mock_treat, mock_reduce):
+        mock_get_pi.return_value = self._make_pi(severity="minor")  # cost = 20
         mock_get_owner.return_value = make_owner(dollars=100)
 
         success, msg, cost = await treat_injury(1, 1)
@@ -418,15 +425,9 @@ class TestTreatInjury:
         mock_give.assert_awaited_once_with(1, -20)
 
     @patch("src.game.manage_pooches.get_owner_by_discord_id", new_callable=AsyncMock)
-    @patch("src.database.session_scope")
-    async def test_already_treated_today(self, mock_scope, mock_get_owner):
-        today = datetime.now(timezone.utc)
-        pi = SimpleNamespace(
-            injury=SimpleNamespace(severity="minor"),
-            persistence=5,
-            last_treated_at=today,
-        )
-        mock_scope.return_value = self._make_session_ctx(pi)
+    @patch("src.game.manage_pooches.get_pooch_injury_instance", new_callable=AsyncMock)
+    async def test_already_treated_today(self, mock_get_pi, mock_get_owner):
+        mock_get_pi.return_value = self._make_pi(last_treated_at=datetime.now(timezone.utc))
         mock_get_owner.return_value = make_owner(dollars=1000)
 
         success, msg, cost = await treat_injury(1, 1)
@@ -437,14 +438,11 @@ class TestTreatInjury:
     @patch("src.game.manage_pooches.treat_pooch_injury", new_callable=AsyncMock)
     @patch("src.game.manage_pooches.give_money_to_owner", new_callable=AsyncMock)
     @patch("src.game.manage_pooches.get_owner_by_discord_id", new_callable=AsyncMock)
-    @patch("src.database.session_scope")
-    async def test_no_persistence_skips_reduction(self, mock_scope, mock_get_owner, mock_give, mock_treat, mock_reduce):
-        pi = SimpleNamespace(
-            injury=SimpleNamespace(severity="minor"),
-            persistence=None,
-            last_treated_at=None,
-        )
-        mock_scope.return_value = self._make_session_ctx(pi)
+    @patch("src.game.manage_pooches.get_pooch_injury_instance", new_callable=AsyncMock)
+    async def test_no_persistence_skips_reduction(
+        self, mock_get_pi, mock_get_owner, mock_give, mock_treat, mock_reduce
+    ):
+        mock_get_pi.return_value = self._make_pi(persistence=None)
         mock_get_owner.return_value = make_owner(dollars=100)
 
         success, _, _ = await treat_injury(1, 1)
@@ -499,21 +497,6 @@ class TestGetPoochFamily:
 
 
 class TestDiagnoseInjuries:
-    def _make_session_ctx_with_items(self, items):
-        mock_scalars = MagicMock()
-        mock_scalars.all.return_value = items
-
-        mock_result = MagicMock()
-        mock_result.scalars.return_value = mock_scalars
-
-        mock_session = AsyncMock()
-        mock_session.execute = AsyncMock(return_value=mock_result)
-
-        ctx = MagicMock()
-        ctx.__aenter__ = AsyncMock(return_value=mock_session)
-        ctx.__aexit__ = AsyncMock(return_value=False)
-        return ctx
-
     @patch("src.game.manage_pooches.get_owner_by_discord_id", new_callable=AsyncMock)
     async def test_owner_not_found(self, mock_get_owner):
         mock_get_owner.return_value = None
@@ -521,12 +504,26 @@ class TestDiagnoseInjuries:
         assert success is False
         assert "Owner not found" in msg
 
+    @patch("src.game.manage_pooches.db_get_pooch_by_id", new_callable=AsyncMock)
     @patch("src.game.manage_pooches.get_owner_by_discord_id", new_callable=AsyncMock)
-    async def test_insufficient_funds(self, mock_get_owner):
+    async def test_insufficient_funds(self, mock_get_owner, mock_db_get):
         mock_get_owner.return_value = make_owner(dollars=0)
+        mock_db_get.return_value = SimpleNamespace(name="Buddy", owner_discord_id=1)
         success, msg, revealed = await diagnose_injuries(1, 1)
         assert success is False
         assert "Not enough money" in msg
+
+    @patch("src.game.manage_pooches.give_money_to_owner", new_callable=AsyncMock)
+    @patch("src.game.manage_pooches.db_get_pooch_by_id", new_callable=AsyncMock)
+    @patch("src.game.manage_pooches.get_owner_by_discord_id", new_callable=AsyncMock)
+    async def test_not_your_pooch(self, mock_get_owner, mock_db_get, mock_give):
+        mock_get_owner.return_value = make_owner(discord_id=2, dollars=1000)
+        mock_db_get.return_value = SimpleNamespace(name="Buddy", owner_discord_id=1)
+        success, msg, revealed = await diagnose_injuries(2, 1)
+        assert success is False
+        assert msg == "That's not your pooch."
+        assert revealed == []
+        mock_give.assert_not_awaited()
 
     @patch("src.game.manage_pooches.create_pooch_snapshot", new_callable=AsyncMock)
     @patch("src.game.manage_pooches.set_pooch_vet_checked", new_callable=AsyncMock)
@@ -535,10 +532,8 @@ class TestDiagnoseInjuries:
     @patch("src.game.manage_pooches.reveal_pooch_injury", new_callable=AsyncMock)
     @patch("src.game.manage_pooches.give_money_to_owner", new_callable=AsyncMock)
     @patch("src.game.manage_pooches.get_owner_by_discord_id", new_callable=AsyncMock)
-    @patch("src.database.session_scope")
     async def test_success_reveals_injury(
         self,
-        mock_scope,
         mock_get_owner,
         mock_give,
         mock_reveal,
@@ -548,16 +543,16 @@ class TestDiagnoseInjuries:
         mock_snapshot,
     ):
         mock_get_owner.return_value = make_owner(dollars=100)
-        # One invisible injury with reveal_chance=1.0
+        # One invisible injury with reveal_chance=1.0, plus an already-visible one that must be skipped
         inj = SimpleNamespace(id=7, injury=SimpleNamespace(id=7, name="Bite", reveal_chance=1.0), visible=False)
-        mock_scope.return_value = self._make_session_ctx_with_items([inj])
-        mock_db_get.return_value = SimpleNamespace(name="Buddy")
-        mock_list_inj.return_value = [SimpleNamespace(injury_id=7, visible=True)]
+        seen = SimpleNamespace(id=8, injury=SimpleNamespace(id=8, name="Bruise", reveal_chance=1.0), visible=True)
+        mock_db_get.return_value = SimpleNamespace(name="Buddy", owner_discord_id=1)
+        mock_list_inj.side_effect = [[inj, seen], [SimpleNamespace(injury_id=7, visible=True)]]
 
         success, msg, revealed = await diagnose_injuries(1, 1, rng_seed=42)
 
         assert success is True
-        assert "Bite" in revealed
+        assert revealed == ["Bite"]
         mock_reveal.assert_awaited_once_with(7)
 
     @patch("src.game.manage_pooches.create_pooch_snapshot", new_callable=AsyncMock)
@@ -567,10 +562,8 @@ class TestDiagnoseInjuries:
     @patch("src.game.manage_pooches.reveal_pooch_injury", new_callable=AsyncMock)
     @patch("src.game.manage_pooches.give_money_to_owner", new_callable=AsyncMock)
     @patch("src.game.manage_pooches.get_owner_by_discord_id", new_callable=AsyncMock)
-    @patch("src.database.session_scope")
     async def test_injury_not_revealed_when_chance_zero(
         self,
-        mock_scope,
         mock_get_owner,
         mock_give,
         mock_reveal,
@@ -581,9 +574,8 @@ class TestDiagnoseInjuries:
     ):
         mock_get_owner.return_value = make_owner(dollars=100)
         inj = SimpleNamespace(id=7, injury=SimpleNamespace(id=7, name="Scratch", reveal_chance=0.0), visible=False)
-        mock_scope.return_value = self._make_session_ctx_with_items([inj])
-        mock_db_get.return_value = SimpleNamespace(name="Buddy")
-        mock_list_inj.return_value = []
+        mock_db_get.return_value = SimpleNamespace(name="Buddy", owner_discord_id=1)
+        mock_list_inj.side_effect = [[inj], []]
 
         success, _, revealed = await diagnose_injuries(1, 1, rng_seed=0)
 
@@ -598,21 +590,6 @@ class TestDiagnoseInjuries:
 
 
 class TestDiagnoseMutations:
-    def _make_session_ctx_with_items(self, items):
-        mock_scalars = MagicMock()
-        mock_scalars.all.return_value = items
-
-        mock_result = MagicMock()
-        mock_result.scalars.return_value = mock_scalars
-
-        mock_session = AsyncMock()
-        mock_session.execute = AsyncMock(return_value=mock_result)
-
-        ctx = MagicMock()
-        ctx.__aenter__ = AsyncMock(return_value=mock_session)
-        ctx.__aexit__ = AsyncMock(return_value=False)
-        return ctx
-
     @patch("src.game.manage_pooches.get_owner_by_discord_id", new_callable=AsyncMock)
     async def test_owner_not_found(self, mock_get_owner):
         mock_get_owner.return_value = None
@@ -620,12 +597,26 @@ class TestDiagnoseMutations:
         assert success is False
         assert "Owner not found" in msg
 
+    @patch("src.game.manage_pooches.db_get_pooch_by_id", new_callable=AsyncMock)
     @patch("src.game.manage_pooches.get_owner_by_discord_id", new_callable=AsyncMock)
-    async def test_insufficient_funds(self, mock_get_owner):
+    async def test_insufficient_funds(self, mock_get_owner, mock_db_get):
         mock_get_owner.return_value = make_owner(dollars=0)
+        mock_db_get.return_value = SimpleNamespace(name="Buddy", owner_discord_id=1)
         success, msg, revealed = await diagnose_mutations(1, 1)
         assert success is False
         assert "Not enough money" in msg
+
+    @patch("src.game.manage_pooches.give_money_to_owner", new_callable=AsyncMock)
+    @patch("src.game.manage_pooches.db_get_pooch_by_id", new_callable=AsyncMock)
+    @patch("src.game.manage_pooches.get_owner_by_discord_id", new_callable=AsyncMock)
+    async def test_not_your_pooch(self, mock_get_owner, mock_db_get, mock_give):
+        mock_get_owner.return_value = make_owner(discord_id=2, dollars=1000)
+        mock_db_get.return_value = SimpleNamespace(name="Buddy", owner_discord_id=1)
+        success, msg, revealed = await diagnose_mutations(2, 1)
+        assert success is False
+        assert msg == "That's not your pooch."
+        assert revealed == []
+        mock_give.assert_not_awaited()
 
     @patch("src.game.manage_pooches.create_pooch_snapshot", new_callable=AsyncMock)
     @patch("src.game.manage_pooches.set_pooch_vet_checked", new_callable=AsyncMock)
@@ -634,10 +625,8 @@ class TestDiagnoseMutations:
     @patch("src.game.manage_pooches.reveal_pooch_mutation", new_callable=AsyncMock)
     @patch("src.game.manage_pooches.give_money_to_owner", new_callable=AsyncMock)
     @patch("src.game.manage_pooches.get_owner_by_discord_id", new_callable=AsyncMock)
-    @patch("src.database.session_scope")
     async def test_success_reveals_mutation(
         self,
-        mock_scope,
         mock_get_owner,
         mock_give,
         mock_reveal,
@@ -647,10 +636,11 @@ class TestDiagnoseMutations:
         mock_snapshot,
     ):
         mock_get_owner.return_value = make_owner(dollars=200)
-        pm = SimpleNamespace(pooch_id=1, mutation_id=3, mutation=SimpleNamespace(name="Albinism", reveal_chance=1.0))
-        mock_scope.return_value = self._make_session_ctx_with_items([pm])
-        mock_db_get.return_value = SimpleNamespace(name="Buddy")
-        mock_list_mut.return_value = [SimpleNamespace(mutation_id=3, visible=True)]
+        pm = SimpleNamespace(
+            pooch_id=1, mutation_id=3, mutation=SimpleNamespace(name="Albinism", reveal_chance=1.0), visible=False
+        )
+        mock_db_get.return_value = SimpleNamespace(name="Buddy", owner_discord_id=1)
+        mock_list_mut.side_effect = [[pm], [SimpleNamespace(mutation_id=3, visible=True)]]
 
         success, _, revealed = await diagnose_mutations(1, 1, rng_seed=42)
 

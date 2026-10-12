@@ -10,6 +10,7 @@ from src.database import (
 )
 from src.database import get_pooch_by_id as db_get_pooch_by_id
 from src.database import (
+    get_pooch_injury_instance,
     get_pooch_parents,
     give_money_to_owner,
     list_pooch_children,
@@ -388,41 +389,22 @@ async def treat_injury(
     tuple[bool, str, int]
         (success, message, cost_charged)
     """
-    # Load the specific instance with eager injury relationship
-    from sqlalchemy import select
-    from sqlalchemy.orm import selectinload
-
-    from src.database import session_scope
-    from src.database.models import PoochInjury as PoochInjuryORM
-
-    injury_severity = None
-    persistence = None
-    last_treated_at = None
-
-    async with session_scope() as session:
-        query = (
-            select(PoochInjuryORM)
-            .options(selectinload(PoochInjuryORM.injury))
-            .where(PoochInjuryORM.id == pooch_injury_id)
-        )
-        result = await session.execute(query)
-        pi = result.scalar_one_or_none()
-        if pi is None:
-            return False, "Injury not found.", 0
-        injury_severity = pi.injury.severity
-        persistence = pi.persistence
-        last_treated_at = pi.last_treated_at
+    pi = await get_pooch_injury_instance(pooch_injury_id)
+    if pi is None:
+        return False, "Injury not found.", 0
+    if pi.pooch.owner_discord_id != owner_discord_id:
+        return False, "That's not your pooch.", 0
 
     owner = await get_owner_by_discord_id(owner_discord_id)
     if owner is None:
         return False, "Owner not found.", 0
 
-    cost = get_treatment_cost(injury_severity)
+    cost = get_treatment_cost(pi.injury.severity)
 
     # Check if already treated today
-    if last_treated_at is not None:
+    if pi.last_treated_at is not None:
         now = datetime.now(timezone.utc)
-        last = last_treated_at
+        last = pi.last_treated_at
         if last.tzinfo is None:
             last = last.replace(tzinfo=timezone.utc)
         if last.date() == now.date():
@@ -433,7 +415,7 @@ async def treat_injury(
 
     await give_money_to_owner(owner_discord_id, -cost)
     await treat_pooch_injury(pooch_injury_id)
-    if persistence is not None:
+    if pi.persistence is not None:
         await reduce_pooch_injury_persistence(pooch_injury_id, VET_TREATMENT_PERSISTENCE_REDUCTION)
 
     return True, f"Treatment successful. Charged **${cost}**.", cost
@@ -459,29 +441,21 @@ async def diagnose_injuries(
     """
     import random as _random
 
-    from sqlalchemy import select
-    from sqlalchemy.orm import selectinload
-
-    from src.database import session_scope
-    from src.database.models import PoochInjury as PoochInjuryORM
-
     owner = await get_owner_by_discord_id(owner_discord_id)
     if owner is None:
         return False, "Owner not found.", []
+    pooch_orm = await db_get_pooch_by_id(pooch_id)
+    if pooch_orm is None:
+        return False, "Pooch not found.", []
+    if pooch_orm.owner_discord_id != owner_discord_id:
+        return False, "That's not your pooch.", []
 
     if owner.dollars < VET_DIAGNOSE_INJURIES_COST:
         return False, f"Not enough money. Diagnosis costs **${VET_DIAGNOSE_INJURIES_COST}**.", []
 
     rng = _random.Random(rng_seed)
 
-    async with session_scope() as session:
-        query = (
-            select(PoochInjuryORM)
-            .options(selectinload(PoochInjuryORM.injury))
-            .where(PoochInjuryORM.pooch_id == pooch_id, PoochInjuryORM.visible.is_(False))
-        )
-        result = await session.execute(query)
-        invisible_instances = list(result.scalars().all())
+    invisible_instances = [pi for pi in await list_pooch_injury_instances(pooch_id) if not pi.visible]
 
     await give_money_to_owner(owner_discord_id, -VET_DIAGNOSE_INJURIES_COST)
 
@@ -497,12 +471,10 @@ async def diagnose_injuries(
     # Snapshot: record all currently visible injury IDs after diagnosis
     all_instances = await list_pooch_injury_instances(pooch_id)
     visible_injury_ids = [pi.injury_id for pi in all_instances if pi.visible]
-    pooch_orm = await db_get_pooch_by_id(pooch_id)
-    pooch_name = pooch_orm.name if pooch_orm else "Unknown"
     await create_pooch_snapshot(
         pooch_id=pooch_id,
         kind=SNAPSHOT_VET_INJURIES,
-        description=f"{pooch_name} had their injuries examined by a vet.",
+        description=f"{pooch_orm.name} had their injuries examined by a vet.",
         snapshot_at=datetime.now(timezone.utc),
         entity_ids=visible_injury_ids or None,
     )
@@ -530,29 +502,21 @@ async def diagnose_mutations(
     """
     import random as _random
 
-    from sqlalchemy import select
-    from sqlalchemy.orm import selectinload
-
-    from src.database import session_scope
-    from src.database.models import PoochMutation as PoochMutationORM
-
     owner = await get_owner_by_discord_id(owner_discord_id)
     if owner is None:
         return False, "Owner not found.", []
+    pooch_orm = await db_get_pooch_by_id(pooch_id)
+    if pooch_orm is None:
+        return False, "Pooch not found.", []
+    if pooch_orm.owner_discord_id != owner_discord_id:
+        return False, "That's not your pooch.", []
 
     if owner.dollars < VET_DIAGNOSE_MUTATIONS_COST:
         return False, f"Not enough money. Diagnosis costs **${VET_DIAGNOSE_MUTATIONS_COST}**.", []
 
     rng = _random.Random(rng_seed)
 
-    async with session_scope() as session:
-        query = (
-            select(PoochMutationORM)
-            .options(selectinload(PoochMutationORM.mutation))
-            .where(PoochMutationORM.pooch_id == pooch_id, PoochMutationORM.visible.is_(False))
-        )
-        result = await session.execute(query)
-        invisible_instances = list(result.scalars().all())
+    invisible_instances = [pm for pm in await list_pooch_mutation_instances(pooch_id) if not pm.visible]
 
     await give_money_to_owner(owner_discord_id, -VET_DIAGNOSE_MUTATIONS_COST)
 
@@ -568,12 +532,10 @@ async def diagnose_mutations(
     # Snapshot: record all currently visible mutation IDs after diagnosis
     all_mut_instances = await list_pooch_mutation_instances(pooch_id)
     visible_mutation_ids = [pm.mutation_id for pm in all_mut_instances if pm.visible]
-    pooch_orm = await db_get_pooch_by_id(pooch_id)
-    pooch_name = pooch_orm.name if pooch_orm else "Unknown"
     await create_pooch_snapshot(
         pooch_id=pooch_id,
         kind=SNAPSHOT_VET_MUTATIONS,
-        description=f"{pooch_name} had their mutations examined by a vet.",
+        description=f"{pooch_orm.name} had their mutations examined by a vet.",
         snapshot_at=datetime.now(timezone.utc),
         entity_ids=visible_mutation_ids or None,
     )
@@ -649,6 +611,8 @@ async def medical_exam(owner_discord_id: int, pooch: "Pooch") -> tuple[bool, str
     owner = await get_owner_by_discord_id(owner_discord_id)
     if owner is None:
         return False, "Owner not found.", {}
+    if pooch.owner_discord_id != owner_discord_id:
+        return False, "That's not your pooch.", {}
     if owner.dollars < MEDICAL_EXAM_COST:
         return False, f"Not enough money. A medical exam costs **${MEDICAL_EXAM_COST}**.", {}
 
