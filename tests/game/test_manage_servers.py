@@ -6,6 +6,8 @@ from unittest.mock import AsyncMock, patch
 from src.game import (
     get_event_channel,
     get_or_create_server,
+    get_server,
+    list_servers,
     set_event_channel,
 )
 from tests.conftest import make_server
@@ -97,3 +99,37 @@ class TestSetEventChannel:
         await set_event_channel(200, 11111)
         await set_event_channel(200, 22222)
         assert mock_set.call_count == 2
+
+
+# ---------------------------------------------------------------------------
+# get_server / list_servers
+# ---------------------------------------------------------------------------
+
+
+class TestGetServer:
+    @patch("src.game.manage_servers.get_server_by_discord_id", new_callable=AsyncMock)
+    async def test_returns_converted_server(self, mock_get):
+        mock_get.return_value = make_server(discord_id=200)
+
+        result = await get_server(200)
+
+        assert result.discord_id == 200
+        mock_get.assert_awaited_once_with(200)
+
+    @patch("src.game.manage_servers.create_server", new_callable=AsyncMock)
+    @patch("src.game.manage_servers.get_server_by_discord_id", new_callable=AsyncMock)
+    async def test_returns_none_without_creating(self, mock_get, mock_create):
+        mock_get.return_value = None
+
+        assert await get_server(200) is None
+        mock_create.assert_not_awaited()
+
+
+class TestListServers:
+    @patch("src.game.manage_servers.db_list_servers", new_callable=AsyncMock)
+    async def test_converts_every_server(self, mock_list):
+        mock_list.return_value = [make_server(discord_id=1), make_server(discord_id=2)]
+
+        result = await list_servers()
+
+        assert [s.discord_id for s in result] == [1, 2]

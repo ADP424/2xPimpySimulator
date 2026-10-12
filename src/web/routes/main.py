@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from flask import Blueprint, g, redirect, render_template, session, url_for
 
-from src.database import get_server_by_discord_id, list_servers
 from src.web.async_utils import run_async
 from src.web.auth_utils import get_current_user_id, login_required, server_required
 from src.web.discord_oauth import get_guild_dicts_from_session
@@ -12,6 +11,7 @@ main_bp = Blueprint("main", __name__)
 
 def _get_known_server_ids() -> set[int]:
     """Return the set of server IDs that exist in the game database."""
+    from src.game import list_servers
 
     servers = run_async(list_servers())
     return {int(s.discord_id) for s in servers}
@@ -79,15 +79,16 @@ def set_server(server_id: int):
     if server is None:
         return "You are not a member of this server (or the bot has not interacted with it).", 403
 
+    from src.game import get_or_create_owner, get_server
+
     # Ensure the server exists in the DB (should be true if it's in available_servers)
-    if run_async(get_server_by_discord_id(server_id)) is None:
+    if run_async(get_server(server_id)) is None:
         return "Server not initialized by the bot yet.", 404
 
     session["current_server_id"] = server_id
     session["current_server_name"] = server["name"]
 
     # Ensure owner exists for this server
-    from src.game import get_or_create_owner
 
     discord_id = get_current_user_id()
     if discord_id is not None:

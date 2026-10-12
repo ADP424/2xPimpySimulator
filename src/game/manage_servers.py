@@ -5,6 +5,9 @@ from typing import TYPE_CHECKING, Optional
 from src.database import (
     create_server,
     get_server_by_discord_id,
+)
+from src.database import list_servers as db_list_servers
+from src.database import (
     set_event_channel_discord_id,
 )
 
@@ -36,6 +39,40 @@ async def get_event_channel(server_discord_id: int) -> Optional[int]:
     if server.event_channel_discord_id is not None:
         return server.event_channel_discord_id
     return None
+
+
+async def get_server(server_discord_id: int) -> Optional[Server]:
+    """
+    Get the server with the given Discord ID, without creating it.
+
+    Parameters
+    ----------
+    server_discord_id: int
+        The Discord ID of the server to get.
+
+    Returns
+    -------
+    Server, optional
+        The Server, or None if the bot has never registered it.
+    """
+
+    server = await get_server_by_discord_id(server_discord_id)
+    if server is None:
+        return None
+    return await to_server(server)
+
+
+async def list_servers() -> list[Server]:
+    """
+    List every server the bot has registered.
+
+    Returns
+    -------
+    list[Server]
+        All known servers.
+    """
+
+    return [await to_server(server) for server in await db_list_servers()]
 
 
 async def get_or_create_server(server_discord_id: int) -> Server:

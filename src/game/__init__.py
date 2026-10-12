@@ -137,6 +137,8 @@ from .manage_pooches import (
 from .manage_servers import (
     get_event_channel,
     get_or_create_server,
+    get_server,
+    list_servers,
     set_event_channel,
 )
 from .manage_static import (
@@ -243,6 +245,8 @@ __all__ = [
     # Server commands
     "get_event_channel",
     "get_or_create_server",
+    "get_server",
+    "list_servers",
     "set_event_channel",
     "get_active_server_event",
     "get_menu_uses_left",
