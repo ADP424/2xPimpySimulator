@@ -11,21 +11,22 @@ from src.bot.ui.util import (
     InteractionResponder,
     mention,
 )
-from src.database.models.main.relationships.pooch_snapshot import (
+from src.game import (
     SNAPSHOT_BIRTH,
     SNAPSHOT_DEATH,
     SNAPSHOT_MEDICAL_EXAM,
     SNAPSHOT_OWNERSHIP,
     SNAPSHOT_VET_INJURIES,
     SNAPSHOT_VET_MUTATIONS,
-)
-from src.game import (
-    get_injury_by_id,
-    get_mutation_by_id,
     get_pooch_family,
-    list_snapshots_for_pooch,
+    get_pooch_timeline,
 )
-from src.game.models import Mutation, PoochBreedInfo, get_breeding_status
+from src.game.models import (
+    Mutation,
+    PoochBreedInfo,
+    PoochTimelineEntry,
+    get_breeding_status,
+)
 
 from .components import (
     PageSource,
@@ -433,12 +434,12 @@ class PoochInfoView(View):
 
     async def _on_timeline(self, interaction: discord.Interaction):
         r = InteractionResponder(interaction)
-        snapshots = await list_snapshots_for_pooch(self.pooch.id)
-        if not snapshots:
+        entries = await get_pooch_timeline(self.pooch.id)
+        if not entries:
             re = InteractionResponder(interaction, ephemeral=True)
             await re.reply(content=f"No timeline entries found for {self.pooch.name}.")
             return
-        source = _TimelinePageSource(pooch=self.pooch, snapshots=snapshots)
+        source = _TimelinePageSource(pooch=self.pooch, entries=entries)
         view = PaginatorView(source, owner_discord_id=interaction.user.id)
         content, embed = await view.build_first_page()
         await r.reply(content=content, embed=embed, view=view)
@@ -455,42 +456,32 @@ _SNAPSHOT_KIND_LABEL = {
 
 
 class _TimelinePageSource(PageSource):
-    """One snapshot per page, oldest to newest."""
+    """One timeline entry per page, oldest to newest."""
 
-    def __init__(self, pooch, snapshots: list):
+    def __init__(self, pooch, entries: list[PoochTimelineEntry]):
         self._pooch = pooch
-        self._snapshots = snapshots
+        self._entries = entries
 
     async def load(self):
-        pass  # snapshots already loaded
+        pass  # entries already loaded
 
     def page_count(self) -> int:
-        return max(len(self._snapshots), 1)
+        return max(len(self._entries), 1)
 
     async def render(self, view: View, page_index: int) -> tuple[Optional[str], Optional[discord.Embed]]:
-        snap = self._snapshots[page_index]
-        total = len(self._snapshots)
-        kind_label = _SNAPSHOT_KIND_LABEL.get(snap.kind, snap.kind.replace("_", " ").title())
+        entry = self._entries[page_index]
+        total = len(self._entries)
+        kind_label = _SNAPSHOT_KIND_LABEL.get(entry.kind, entry.kind.replace("_", " ").title())
 
-        timestamp = snap.snapshot_at.strftime("%Y-%m-%d %H:%M UTC")
+        timestamp = entry.snapshot_at.strftime("%Y-%m-%d %H:%M UTC")
         embed = discord.Embed(
             title=f"{self._pooch.name}'s Timeline ({page_index + 1}/{total})",
-            description=f"**{kind_label}**\n{snap.description}\n\n*{timestamp}*",
+            description=f"**{kind_label}**\n{entry.description}\n\n*{timestamp}*",
         )
 
-        if snap.entity_ids and snap.kind in (SNAPSHOT_VET_INJURIES, SNAPSHOT_VET_MUTATIONS):
-            names: list[str] = []
-            if snap.kind == SNAPSHOT_VET_INJURIES:
-                for eid in snap.entity_ids:
-                    inj = await get_injury_by_id(eid)
-                    if inj:
-                        names.append(inj.name)
-            else:
-                for eid in snap.entity_ids:
-                    mut = await get_mutation_by_id(eid)
-                    if mut:
-                        names.append(mut.name)
-            label = "Injuries on record" if snap.kind == SNAPSHOT_VET_INJURIES else "Mutations on record"
-            embed.add_field(name=label, value=", ".join(names) if names else "None", inline=False)
+        if entry.entity_names is not None:
+            label = "Injuries on record" if entry.kind == SNAPSHOT_VET_INJURIES else "Mutations on record"
+            names = ", ".join(entry.entity_names) if entry.entity_names else "None"
+            embed.add_field(name=label, value=names, inline=False)
 
         return None, embed

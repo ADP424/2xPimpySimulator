@@ -51,7 +51,8 @@ from .constants import (
     VET_TREATMENT_SEVERITY_COST_PER_LEVEL,
 )
 from .exceptions import PoochNotFound
-from .models import to_pooch
+from .manage_static import get_injury_by_id, get_mutation_by_id
+from .models import PoochTimelineEntry, to_pooch
 
 logger = get_logger("game/manage_pooches")
 
@@ -659,3 +660,39 @@ async def mark_pooch_vet_checked(pooch_id: int) -> None:
 async def list_snapshots_for_pooch(pooch_id: int) -> list:
     """Return all timeline snapshots for a pooch, oldest first."""
     return await db_list_pooch_snapshots(pooch_id)
+
+
+async def get_pooch_timeline(pooch_id: int) -> list[PoochTimelineEntry]:
+    """
+    Return a pooch's timeline, oldest first, with vet-visit injury/mutation IDs resolved to names.
+
+    Parameters
+    ----------
+    pooch_id: int
+        The ID of the pooch.
+
+    Returns
+    -------
+    list[PoochTimelineEntry]
+        One entry per snapshot. ``entity_names`` is set only for vet visits that recorded IDs.
+    """
+
+    entries: list[PoochTimelineEntry] = []
+    for snap in await db_list_pooch_snapshots(pooch_id):
+        entity_names: Optional[list[str]] = None
+        if snap.entity_ids and snap.kind in (SNAPSHOT_VET_INJURIES, SNAPSHOT_VET_MUTATIONS):
+            lookup = get_injury_by_id if snap.kind == SNAPSHOT_VET_INJURIES else get_mutation_by_id
+            entity_names = []
+            for entity_id in snap.entity_ids:
+                entity = await lookup(entity_id)
+                if entity:
+                    entity_names.append(entity.name)
+        entries.append(
+            PoochTimelineEntry(
+                kind=snap.kind,
+                description=snap.description,
+                snapshot_at=snap.snapshot_at,
+                entity_names=entity_names,
+            )
+        )
+    return entries

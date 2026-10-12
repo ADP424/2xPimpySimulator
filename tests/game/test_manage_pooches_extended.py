@@ -15,6 +15,7 @@ from src.game.manage_pooches import (
     get_diagnose_injuries_cost,
     get_diagnose_mutations_cost,
     get_pooch_family,
+    get_pooch_timeline,
     get_public_injury_label,
     get_treatment_cost,
     is_injury_treated_today,
@@ -226,6 +227,52 @@ class TestListSnapshotsForPooch:
         mock_list.return_value = []
         result = await list_snapshots_for_pooch(99)
         assert result == []
+
+
+# ---------------------------------------------------------------------------
+# get_pooch_timeline
+# ---------------------------------------------------------------------------
+
+
+class TestGetPoochTimeline:
+    _AT = datetime(2026, 1, 1, tzinfo=timezone.utc)
+
+    def _snap(self, kind, entity_ids=None):
+        return SimpleNamespace(kind=kind, description=f"{kind} happened", snapshot_at=self._AT, entity_ids=entity_ids)
+
+    @patch("src.game.manage_pooches.get_mutation_by_id", new_callable=AsyncMock)
+    @patch("src.game.manage_pooches.get_injury_by_id", new_callable=AsyncMock)
+    @patch("src.game.manage_pooches.db_list_pooch_snapshots", new_callable=AsyncMock)
+    async def test_resolves_vet_entity_names(self, mock_list, mock_injury, mock_mutation):
+        mock_list.return_value = [
+            self._snap("birth"),
+            self._snap("vet_injuries", [1, 99]),
+            self._snap("vet_mutations", [5]),
+            self._snap("vet_injuries", []),
+        ]
+        mock_injury.side_effect = {1: SimpleNamespace(name="Sprain")}.get
+        mock_mutation.side_effect = {5: SimpleNamespace(name="Albinism")}.get
+
+        entries = await get_pooch_timeline(7)
+
+        mock_list.assert_awaited_once_with(7)
+        assert [e.kind for e in entries] == ["birth", "vet_injuries", "vet_mutations", "vet_injuries"]
+        assert entries[0].entity_names is None
+        assert entries[1].entity_names == ["Sprain"]
+        assert entries[2].entity_names == ["Albinism"]
+        assert entries[3].entity_names is None
+        assert entries[0].description == "birth happened"
+        assert entries[0].snapshot_at == self._AT
+
+    @patch("src.game.manage_pooches.get_injury_by_id", new_callable=AsyncMock)
+    @patch("src.game.manage_pooches.db_list_pooch_snapshots", new_callable=AsyncMock)
+    async def test_ignores_entity_ids_on_non_vet_kinds(self, mock_list, mock_injury):
+        mock_list.return_value = [self._snap("medical_exam", [1])]
+
+        entries = await get_pooch_timeline(7)
+
+        assert entries[0].entity_names is None
+        mock_injury.assert_not_awaited()
 
 
 # ---------------------------------------------------------------------------

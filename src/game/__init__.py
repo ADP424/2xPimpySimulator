@@ -1,5 +1,15 @@
 from __future__ import annotations
 
+# Timeline snapshot kinds, re-exported so frontends never import the database layer
+from src.database.models import (
+    SNAPSHOT_BIRTH,
+    SNAPSHOT_DEATH,
+    SNAPSHOT_MEDICAL_EXAM,
+    SNAPSHOT_OWNERSHIP,
+    SNAPSHOT_VET_INJURIES,
+    SNAPSHOT_VET_MUTATIONS,
+)
+
 from .breeding import (
     breed_pooches,
     calculate_incest_level,
@@ -112,6 +122,7 @@ from .manage_pooches import (
     get_pooch_family,
     get_pooch_family_tree,
     get_pooch_injury_instances,
+    get_pooch_timeline,
     get_public_injury_label,
     get_treatment_cost,
     is_injury_treated_today,
@@ -150,6 +161,13 @@ from .manage_vendors import (
 )
 
 __all__ = [
+    # Timeline snapshot kinds
+    "SNAPSHOT_BIRTH",
+    "SNAPSHOT_DEATH",
+    "SNAPSHOT_MEDICAL_EXAM",
+    "SNAPSHOT_OWNERSHIP",
+    "SNAPSHOT_VET_INJURIES",
+    "SNAPSHOT_VET_MUTATIONS",
     # Breeding commands
     "breed_pooches",
     "calculate_incest_level",
@@ -211,6 +229,7 @@ __all__ = [
     "get_public_injury_label",
     "get_treatment_cost",
     "is_injury_treated_today",
+    "get_pooch_timeline",
     "list_snapshots_for_pooch",
     "mark_pooch_vet_checked",
     "medical_exam",

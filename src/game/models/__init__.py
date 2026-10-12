@@ -53,6 +53,7 @@ from .pooch import (
     get_breeding_status,
     to_pooch,
 )
+from .pooch_timeline import PoochTimelineEntry
 from .server import Server, to_server
 from .vendor import Vendor, to_vendor
 
@@ -106,6 +107,7 @@ __all__ = [
     "PoochDiseaseInfo",
     "PoochInjuryInfo",
     "PoochMutationInfo",
+    "PoochTimelineEntry",
     "get_breeding_status",
     "to_pooch",
     "Server",
