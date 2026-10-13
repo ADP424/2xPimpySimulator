@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Any
 
 from src.game import (
+    describe_owner_event_result,
     get_disease_treatment_cost,
     get_public_disease_label,
     get_public_injury_label,
@@ -144,6 +145,87 @@ def serialize_disease(disease: Any) -> dict:
         "heritability": disease.heritability,
         "seasons": disease.seasons or [],
         "immunity_duration": disease.immunity_duration,
+    }
+
+
+def serialize_owner_event_outcome(result: Any, entity_references: Any) -> dict | None:
+    """The described outcome of an owner event; never the raw result (it holds the outcome chance)."""
+    if result is None:
+        return None
+    description = describe_owner_event_result(result, entity_references)
+    return {"headline": description.headline, "lines": description.lines}
+
+
+def serialize_owner_event_references(context: Any, entity_references: Any) -> dict:
+    """Pooches, breeds and mutations an event involves (as the bot's Related field), plus kennel labels."""
+    kennel_ids: list[int] = []
+    for kennel_id in [context.selected_kennel_id, *context.affected_kennel_ids]:
+        if kennel_id is not None and kennel_id not in kennel_ids:
+            kennel_ids.append(kennel_id)
+    references = {
+        kind: [{"id": ref.id, "label": ref.label} for ref in entity_references.for_kind(kind)]
+        for kind in ("pooches", "breeds", "mutations")
+    }
+    references["kennels"] = [f"Kennel #{kennel_id}" for kennel_id in kennel_ids]
+    return references
+
+
+def _featured_pooch(event: Any) -> dict | None:
+    pooch_id = event.featured_pooch_id
+    if pooch_id is None:
+        return None
+    label = next((ref.label for ref in event.entity_references.pooches if ref.id == pooch_id), f"Pooch #{pooch_id}")
+    return {"id": pooch_id, "label": label}
+
+
+def serialize_triggered_owner_event(event: Any) -> dict:
+    """A pending or just-triggered owner event (options are already filtered to the visible ones)."""
+    return {
+        "id": event.active_owner_event_id,
+        "name": event.name,
+        "description": event.description,
+        "flavor_text": event.flavor_text,
+        "category": event.category,
+        "severity": event.severity,
+        "requires_response": event.requires_response,
+        "expires_at": serialize_datetime(event.expires_at),
+        "featured_pooch": _featured_pooch(event),
+        "references": serialize_owner_event_references(event.context, event.entity_references),
+        "options": [
+            {
+                "id": option.id,
+                "label": option.label,
+                "description": option.description,
+                "min_money": option.min_money,
+                "min_bloodskulls": option.min_bloodskulls,
+            }
+            for option in (event.options if event.requires_response else [])
+        ],
+        "outcome": serialize_owner_event_outcome(event.result, event.entity_references),
+    }
+
+
+def serialize_owner_event_history(record: Any) -> dict:
+    """A finished owner event from the owner's history."""
+    if record.timed_out:
+        status = "timed_out"
+    elif record.selected_option_label:
+        status = "responded"
+    else:
+        status = "auto_resolved"
+    return {
+        "id": record.id,
+        "name": record.name,
+        "description": record.description,
+        "flavor_text": record.flavor_text,
+        "category": record.category,
+        "severity": record.severity,
+        "triggered_at": serialize_datetime(record.triggered_at),
+        "completed_at": serialize_datetime(record.completed_at),
+        "status": status,
+        "selected_option_label": record.selected_option_label,
+        "references": serialize_owner_event_references(record.context, record.entity_references),
+        "outcome": serialize_owner_event_outcome(record.result_summary, record.entity_references),
     }
 
 

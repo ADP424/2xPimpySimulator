@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+
+{% block title %}Events - {{ server_name }}{% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-2 flex-wrap gap-3">
+    <h1 class="text-3xl font-bold">🎲 Events</h1>
+</div>
+
+<div role="tablist" class="tabs tabs-border mb-6">
+    <input type="radio" name="event-tabs" role="tab" class="tab" aria-label="Pending" checked />
+    <div role="tabpanel" class="tab-content pt-4">
+        <div id="pending-loading" class="flex items-center gap-3 text-base-content/50 py-8">
+            <span class="loading loading-spinner loading-md"></span>
+            <span>Loading pending events...</span>
+        </div>
+        <div id="pending-list" class="flex flex-col gap-4 max-w-3xl"></div>
+    </div>
+
+    <input type="radio" name="event-tabs" role="tab" class="tab" aria-label="History" />
+    <div role="tabpanel" class="tab-content pt-4">
+        <div id="history-loading" class="flex items-center gap-3 text-base-content/50 py-8">
+            <span class="loading loading-spinner loading-md"></span>
+            <span>Loading event history...</span>
+        </div>
+        <div id="history-list" class="flex flex-col gap-4 max-w-3xl"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let pendingEvents = [];
+let historyLoaded = false;
+
+function formatWhen(iso) {
+    return iso ? new Date(iso).toLocaleString() : '—';
+}
+
+function referencesHtml(refs) {
+    const chips = [];
+    for (const p of refs.pooches) chips.push(`<a class="badge badge-outline" href="/pooch/${p.id}">🐕 ${escapeHtml(p.label)}</a>`);
+    for (const b of refs.breeds) chips.push(`<a class="badge badge-outline" href="/info/breeds/${b.id}">${escapeHtml(b.label)}</a>`);
+    for (const m of refs.mutations) chips.push(`<a class="badge badge-outline" href="/info/mutations/${m.id}">🧬 ${escapeHtml(m.label)}</a>`);
+    for (const k of refs.kennels) chips.push(`<span class="badge badge-outline">🏠 ${escapeHtml(k)}</span>`);
+    return chips.length ? `<div class="flex flex-wrap gap-2">${chips.join('')}</div>` : '';
+}
+
+function outcomeHtml(outcome) {
+    if (!outcome || (!outcome.headline && !outcome.lines.length)) {
+        return '<p class="text-sm text-base-content/50">No recorded outcome.</p>';
+    }
+    return `
+        <div class="bg-base-100 rounded-lg p-3 text-sm flex flex-col gap-1">
+            ${outcome.headline ? `<p class="italic">${App.format.richText(outcome.headline)}</p>` : ''}
+            ${outcome.lines.map(line => `<p>${App.format.richText(line)}</p>`).join('')}
+        </div>
+    `;
+}
+
+function eventHeader(event) {
+    return `
+        <div class="flex justify-between items-start gap-2 flex-wrap">
+            <h2 class="card-title">${escapeHtml(event.name)}</h2>
+            <div class="flex gap-1">
+                <span class="badge ${App.format.eventSeverityBadge(event.severity)}">${escapeHtml(App.format.enumLabel(event.severity))}</span>
+                <span class="badge badge-ghost">${escapeHtml(App.format.enumLabel(event.category))}</span>
+            </div>
+        </div>
+        <p class="text-sm text-base-content/80">${App.format.richText(event.description || 'No description provided.')}</p>
+        ${event.flavor_text ? `<p class="text-sm italic text-base-content/60">${App.format.richText(event.flavor_text.trim())}</p>` : ''}
+    `;
+}
+
+function optionButton(event, option) {
+    const requirements = [];
+    if (option.min_money > 0) requirements.push(formatCurrency(option.min_money));
+    if (option.min_bloodskulls > 0) requirements.push(`${option.min_bloodskulls} bloodskulls`);
+    return `
+        <button class="btn btn-outline h-auto py-2 justify-start text-left normal-case flex-col items-start gap-0.5"
+                data-event-id="${event.id}" data-option-id="${option.id}">
+            <span class="font-semibold">${escapeHtml(option.label)}</span>
+            ${option.description ? `<span class="text-xs font-normal opacity-70">${App.format.richText(option.description)}</span>` : ''}
+            ${requirements.length ? `<span class="text-xs font-normal text-warning">Requires ${requirements.join(' + ')}</span>` : ''}
+        </button>
+    `;
+}
+
+function pendingCard(event) {
+    const expires = event.requires_response && event.expires_at
+        ? `<p class="text-xs text-base-content/50">Expires ${formatWhen(event.expires_at)}</p>`
+        : '';
+    const featured = event.featured_pooch
+        ? `<p class="text-sm font-semibold">Pooch: <a class="link" href="/pooch/${event.featured_pooch.id}">${escapeHtml(event.featured_pooch.label)}</a></p>`
+        : '';
+    const body = event.requires_response && event.options.length
+        ? `<div class="flex flex-col gap-2" id="options-${event.id}">${event.options.map(o => optionButton(event, o)).join('')}</div>`
+        : outcomeHtml(event.outcome);
+    return `
+        <div class="card bg-base-200 shadow-md" id="event-${event.id}">
+            <div class="card-body gap-3">
+                ${eventHeader(event)}
+                ${featured}
+                ${expires}
+                <div id="refs-${event.id}">${referencesHtml(event.references)}</div>
+                <div id="body-${event.id}">${body}</div>
+            </div>
+        </div>
+    `;
+}
+
+function historyCard(record) {
+    const status = record.status === 'timed_out' ? 'Timed out'
+        : record.status === 'responded' ? `Selected: ${escapeHtml(record.selected_option_label)}`
+        : 'Auto-resolved';
+    return `
+        <div class="card bg-base-200 shadow-md">
+            <div class="card-body gap-3">
+                ${eventHeader(record)}
+                <div class="text-xs text-base-content/50 flex flex-wrap gap-x-4">
+                    <span>Triggered: ${formatWhen(record.triggered_at)}</span>
+                    ${record.completed_at ? `<span>Completed: ${formatWhen(record.completed_at)}</span>` : ''}
+                    <span>${status}</span>
+                </div>
+                ${referencesHtml(record.references)}
+                ${outcomeHtml(record.outcome)}
+            </div>
+        </div>
+    `;
+}
+
+async function loadPending() {
+    const list = document.getElementById('pending-list');
+    try {
+        const resp = await fetch('/api/events/pending');
+        pendingEvents = await resp.json();
+        document.getElementById('pending-loading').style.display = 'none';
+        list.innerHTML = pendingEvents.length
+            ? pendingEvents.map(pendingCard).join('')
+            : '<p class="text-base-content/50 py-8">No pending events. Check back later!</p>';
+    } catch (error) {
+        document.getElementById('pending-loading').innerHTML = '<span class="text-error">Failed to load pending events</span>';
+        console.error('Error:', error);
+    }
+}
+
+async function loadHistory() {
+    if (historyLoaded) return;
+    historyLoaded = true;
+    const list = document.getElementById('history-list');
+    try {
+        const resp = await fetch('/api/events/history?limit=25');
+        const records = await resp.json();
+        document.getElementById('history-loading').style.display = 'none';
+        list.innerHTML = records.length
+            ? records.map(historyCard).join('')
+            : '<p class="text-base-content/50 py-8">No past events yet.</p>';
+    } catch (error) {
+        historyLoaded = false;
+        document.getElementById('history-loading').innerHTML = '<span class="text-error">Failed to load event history</span>';
+        console.error('Error:', error);
+    }
+}
+
+async function respond(eventId, optionId, button) {
+    const options = document.getElementById(`options-${eventId}`);
+    options.querySelectorAll('button').forEach(b => { b.disabled = true; });
+    try {
+        const resp = await fetch(`/api/events/${eventId}/respond`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ option_id: optionId }),
+        });
+        const result = await resp.json();
+        if (!resp.ok) throw new Error(result.error || `HTTP ${resp.status}`);
+
+        if (!result.closed) {
+            // e.g. not enough money: the event stays open
+            App.haptics.trigger('error');
+            App.showNotification(result.message, 'error');
+            options.querySelectorAll('button').forEach(b => { b.disabled = false; });
+            return;
+        }
+
+        App.haptics.trigger(result.success ? 'success' : 'warning');
+        const status = result.success
+            ? `<p class="text-sm"><strong>Selected:</strong> ${escapeHtml(result.selected_option_label || '')}</p>`
+            : `<p class="text-sm text-warning">${escapeHtml(result.message)}</p>`;
+        document.getElementById(`body-${eventId}`).innerHTML = status + outcomeHtml(result.outcome);
+        if (result.references) document.getElementById(`refs-${eventId}`).innerHTML = referencesHtml(result.references);
+
+        historyLoaded = false;
+        if (window.refreshNavCurrencies) window.refreshNavCurrencies();
+        // Chain events started by this response show up as new pending events
+        const resolvedCard = document.getElementById(`event-${eventId}`).outerHTML;
+        await loadPending();
+        if (!document.getElementById(`event-${eventId}`)) {
+            document.getElementById('pending-list').insertAdjacentHTML('afterbegin', resolvedCard);
+        }
+    } catch (error) {
+        App.showNotification('Something went wrong.', 'error');
+        options.querySelectorAll('button').forEach(b => { b.disabled = false; });
+        console.error('Error:', error);
+    }
+}
+
+document.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-option-id]');
+    if (!button || button.disabled) return;
+    respond(Number(button.dataset.eventId), Number(button.dataset.optionId), button);
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadPending();
+    document.querySelectorAll('input[name="event-tabs"]').forEach((tab, i) => {
+        tab.addEventListener('change', () => { if (i === 1) loadHistory(); });
+    });
+});
+</script>
+{% endblock %}

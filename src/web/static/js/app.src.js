@@ -174,6 +174,14 @@ const App = {
         },
 
         /**
+         * DaisyUI badge colour for an owner/server event severity (the bot's embed colours).
+         */
+        eventSeverityBadge(severity) {
+            const badges = { moderate: 'badge-info', major: 'badge-warning', critical: 'badge-error' };
+            return badges[String(severity || '').toLowerCase()] || 'badge-ghost';
+        },
+
+        /**
          * DaisyUI badge colour for an injury severity (trivial → catastrophic). Injuries have no rarity.
          */
         severityBadge(severity) {

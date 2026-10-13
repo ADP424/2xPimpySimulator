@@ -17,11 +17,15 @@ from src.web.serializers import (
     serialize_kennel,
     serialize_mutation,
     serialize_owner,
+    serialize_owner_event_history,
+    serialize_owner_event_outcome,
+    serialize_owner_event_references,
     serialize_patient_disease,
     serialize_patient_injury,
     serialize_patient_summary,
     serialize_pooch,
     serialize_timeline_entry,
+    serialize_triggered_owner_event,
     serialize_vendor,
 )
 
@@ -595,6 +599,74 @@ def get_mutation(mutation_id: int):
         if int(getattr(m, "id", -1)) == int(mutation_id):
             return jsonify(serialize_mutation(m))
     return jsonify({"error": "Mutation not found"}), 404
+
+
+# ---------------------------------------------------------------------------
+# Owner events
+# ---------------------------------------------------------------------------
+
+# respond_to_event failures after which the event can no longer be answered (as the bot treats them)
+_TERMINAL_EVENT_MESSAGES = {
+    "This event has expired.",
+    "You have already responded to this event.",
+    "Event not found.",
+}
+
+
+@api_bp.route("/events/pending")
+@server_required
+def get_pending_events():
+    """The current user's owner events still waiting for a response."""
+    from src.game import get_active_events_for_owner
+
+    events = run_async(get_active_events_for_owner(get_current_user_id(), pending_only=True))
+    return jsonify([serialize_triggered_owner_event(event) for event in events])
+
+
+@api_bp.route("/events/history")
+@server_required
+def get_events_history():
+    """The current user's finished owner events, newest first."""
+    from src.game import get_event_history
+
+    limit = min(max(request.args.get("limit", 25, type=int), 1), 50)
+    records = run_async(get_event_history(get_current_user_id(), limit=limit))
+    return jsonify([serialize_owner_event_history(record) for record in records])
+
+
+@api_bp.route("/events/<int:active_owner_event_id>/respond", methods=["POST"])
+@server_required
+def respond_to_event_route(active_owner_event_id: int):
+    """Respond to one of the current user's pending owner events."""
+    from src.game import get_pending_event, respond_to_event
+    from src.game.models.events import resolve_owner_event_entity_references
+
+    option_id = (request.json or {}).get("option_id")
+    if not isinstance(option_id, int):
+        return jsonify({"error": "option_id is required"}), 400
+
+    discord_id = get_current_user_id()
+    event = run_async(get_pending_event(discord_id, active_owner_event_id))
+    if event is None:
+        return jsonify({"success": False, "message": "Event not found.", "closed": True, "outcome": None})
+
+    success, message, result = run_async(respond_to_event(discord_id, active_owner_event_id, option_id))
+    references = event.entity_references
+    if result is not None:
+        references = run_async(
+            resolve_owner_event_entity_references(event.context, result, existing=event.entity_references)
+        )
+    option = next((option for option in event.options if option.id == option_id), None)
+    return jsonify(
+        {
+            "success": success,
+            "message": message,
+            "closed": success or message in _TERMINAL_EVENT_MESSAGES,
+            "selected_option_label": option.label if success and option is not None else None,
+            "outcome": serialize_owner_event_outcome(result, references),
+            "references": serialize_owner_event_references(event.context, references),
+        }
+    )
 
 
 # ---------------------------------------------------------------------------
