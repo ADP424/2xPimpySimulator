@@ -1,5 +1,10 @@
 # environment
 .env
+.env*
+
+# secrets & local data (Playwright login state, database dumps)
+/auth.json
+/*.sql
 
 # caching
 __pycache__/
@@ -8,6 +13,7 @@ __pycache__/
 # testing
 .pytest_cache/
 .coverage
+src/web/test-results/
 
 # claude
 CLAUDE.md
