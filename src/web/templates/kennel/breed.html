@@ -262,13 +262,13 @@ function setupBreedButton() {
                 resultDiv.innerHTML = `
                     <div role="alert" class="alert alert-success">
                         <div>
-                            <h4 class="font-bold">🎉 Breeding Successful!</h4>
-                            <p class="text-sm">New puppies created:</p>
-                            <div class="flex flex-wrap gap-2 mt-2">
-                                ${result.new_pooches.map(p => `
-                                    <a href="/pooch/${p.id}" class="badge badge-outline hover:badge-success">${escapeHtml(p.name)}</a>
-                                `).join('')}
-                            </div>
+                            <p>✅ ${App.format.richText(result.message)}</p>
+                            ${result.disease_lines.length ? `
+                                <ul class="text-sm mt-2 list-disc list-inside">
+                                    ${result.disease_lines.map(line => `<li>${escapeHtml(line)}</li>`).join('')}
+                                </ul>
+                            ` : ''}
+                            <p class="text-xs mt-2 opacity-70">The puppies will be born at the next day change.</p>
                         </div>
                     </div>
                 `;

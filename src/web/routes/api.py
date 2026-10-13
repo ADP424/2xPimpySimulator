@@ -187,19 +187,35 @@ def breed_pooches():
         return jsonify({"error": "Both pooch IDs are required"}), 400
 
     try:
-        new_pooch_ids = run_async(game_breed_pooches(first_pooch_id, second_pooch_id))
-        new_pooches = [run_async(get_pooch_by_id(pid)) for pid in new_pooch_ids]
-        return jsonify(
-            {
-                "success": True,
-                "new_pooch_ids": new_pooch_ids,
-                "new_pooches": [serialize_pooch(p) for p in new_pooches],
-            }
+        # The puppies are fetuses until the next day change, so only their count is reported
+        puppy_ids, disease_events = run_async(
+            game_breed_pooches(first_pooch_id, second_pooch_id, return_disease_events=True)
         )
+        first = run_async(get_pooch_by_id(first_pooch_id))
+        second = run_async(get_pooch_by_id(second_pooch_id))
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     except Exception as e:
         return jsonify({"error": str(e)}), 404
+
+    # Same wording as the bot's breeding reply
+    puppy_count = len(puppy_ids)
+    if puppy_count == 1:
+        message = f"**Breeding successful.** {first.name} and {second.name} are expecting **1** puppy."
+    elif puppy_count == 2:
+        message = f"**Twins!** {first.name} and {second.name} are expecting **2** puppies."
+    else:
+        message = f"**Triplets!** {first.name} and {second.name} are expecting **{puppy_count}** puppies."
+
+    disease_lines = []
+    for pooch_id, public_label, event_type in disease_events:
+        if event_type == "spread":
+            name = first.name if pooch_id == first.id else second.name if pooch_id == second.id else "A puppy"
+            disease_lines.append(f"{name} was exposed to {public_label}.")
+        elif event_type == "inherited":
+            disease_lines.append(f"A puppy inherited {public_label}.")
+
+    return jsonify({"success": True, "puppy_count": puppy_count, "message": message, "disease_lines": disease_lines})
 
 
 @api_bp.route("/incest-check")
@@ -393,6 +409,16 @@ def rename_pooch_route(pooch_id: int):
         return jsonify({"error": "Name is too long"}), 400
     except Exception as e:
         return jsonify({"error": str(e)}), 404
+
+
+@api_bp.route("/kennels/<int:kennel_id>/clean", methods=["POST"])
+@server_required
+def clean_kennel_route(kennel_id: int):
+    """Clean one of the current user's kennels, resetting its messiness."""
+    from src.game import clean_kennel
+
+    success, message = run_async(clean_kennel(get_current_user_id(), kennel_id))
+    return jsonify({"success": success, "message": message})
 
 
 @api_bp.route("/kennels/<int:kennel_id>/rename", methods=["POST"])

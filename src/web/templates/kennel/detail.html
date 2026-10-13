@@ -58,7 +58,11 @@ document.addEventListener('DOMContentLoaded', async function() {
         if (kennel) {
             document.getElementById('kennel-name').textContent = `🏠 ${kennel.name}`;
             document.getElementById('kennel-info').innerHTML = `
-                Capacity: <strong id="pooch-count">-</strong> / ${kennel.pooch_limit}
+                <div class="flex items-center gap-4 flex-wrap">
+                    <span>Capacity: <strong id="pooch-count">-</strong> / ${kennel.pooch_limit}</span>
+                    <span>Messiness: <strong id="kennel-messiness">${kennel.messiness}</strong></span>
+                    <button id="clean-kennel-btn" class="btn btn-primary btn-xs" onclick="cleanKennel()" ${kennel.messiness > 0 ? '' : 'style="display: none;"'}>🧹 Clean</button>
+                </div>
             `;
             document.getElementById('rename-kennel-input').value = kennel.name;
         }
@@ -84,6 +88,27 @@ document.addEventListener('DOMContentLoaded', async function() {
         console.error('Error:', error);
     }
 });
+
+async function cleanKennel() {
+    const button = document.getElementById('clean-kennel-btn');
+    button.disabled = true;
+    try {
+        const resp = await fetch(`/api/kennels/${PAGE_DATA.kennelId}/clean`, { method: 'POST' });
+        const result = await resp.json();
+        if (result.success) {
+            App.showNotification(result.message, 'success');
+            document.getElementById('kennel-messiness').textContent = '0';
+            button.style.display = 'none';
+        } else {
+            App.showNotification(result.message || result.error || 'Cleaning failed', 'error');
+        }
+    } catch (e) {
+        App.showNotification('Something went wrong.', 'error');
+        console.error('Error:', e);
+    } finally {
+        button.disabled = false;
+    }
+}
 
 async function submitRenameKennel() {
     const name = document.getElementById('rename-kennel-input').value.trim();
