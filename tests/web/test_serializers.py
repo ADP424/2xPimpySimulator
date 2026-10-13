@@ -15,8 +15,11 @@ from src.web.serializers import (
     serialize_pooch,
 )
 
+_SECRET_PARAMETERS = {"sold_by_vendors": False, "strength_add": 3, "fertility_mult": 1.5}
+
 
 def _catalog(name, **extra):
+    """A breed/mutation-like catalog entry."""
     return SimpleNamespace(
         id=hash(name) % 1000,
         name=name,
@@ -26,11 +29,50 @@ def _catalog(name, **extra):
         rarity="rare",
         heritability=0.5,
         health_impact="harmful",
-        severity="minor",
         affects_females=True,
         affects_males=True,
-        parameters={"sold_by_vendors": False, "strength_add": 3, "fertility_mult": 1.5},
+        parameters=dict(_SECRET_PARAMETERS),
         **extra,
+    )
+
+
+def _injury(name):
+    """Only the fields the Injury catalog model really has."""
+    return SimpleNamespace(
+        id=hash(name) % 1000,
+        name=name,
+        health_impact="harmful",
+        severity="minor",
+        description="",
+        parameters=dict(_SECRET_PARAMETERS),
+        treated={},
+        visible=True,
+        invisible_messages=None,
+        reveal_chance=1.0,
+    )
+
+
+def _disease(name):
+    """Only the fields the Disease catalog model really has."""
+    return SimpleNamespace(
+        id=hash(name) % 1000,
+        name=name,
+        category="infection",
+        description="",
+        health_impact="harmful",
+        contagion_chance=0.1,
+        sexually_transmitted=False,
+        recovery_chance=0.1,
+        treatable=True,
+        curable=True,
+        immunity_duration=None,
+        heritability=0.0,
+        seasons=None,
+        season_contagion_modifiers=None,
+        parameters=dict(_SECRET_PARAMETERS),
+        visible=True,
+        invisible_messages=None,
+        reveal_chance=1.0,
     )
 
 
@@ -68,13 +110,13 @@ def _make_pooch(**overrides) -> Pooch:
             PoochMutationInfo(mutation=_catalog("Secret Gene"), displayed_symptom="odd eyes", visible=False),
         ],
         injuries=[
-            PoochInjuryInfo(injury=_catalog("Sprain"), displayed_symptom=None, visible=True),
-            PoochInjuryInfo(injury=_catalog("Hidden Fracture"), displayed_symptom="a limp", visible=False),
+            PoochInjuryInfo(injury=_injury("Sprain"), displayed_symptom=None, visible=True),
+            PoochInjuryInfo(injury=_injury("Hidden Fracture"), displayed_symptom="a limp", visible=False),
         ],
         diseases=[
-            PoochDiseaseInfo(disease=_catalog("Flu"), displayed_symptom=None, visible=True, treated=True),
+            PoochDiseaseInfo(disease=_disease("Flu"), displayed_symptom=None, visible=True, treated=True),
             PoochDiseaseInfo(
-                disease=_catalog("Secret Plague"), displayed_symptom="a cough", visible=False, treated=False
+                disease=_disease("Secret Plague"), displayed_symptom="a cough", visible=False, treated=False
             ),
         ],
     )

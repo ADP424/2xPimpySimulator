@@ -94,7 +94,7 @@ def serialize_injury_brief(injury: Any) -> dict:
         "id": injury.id,
         "name": injury.name,
         "severity": injury.severity,
-        "rarity": injury.rarity,
+        "health_impact": injury.health_impact,
     }
 
 
@@ -103,13 +103,13 @@ def serialize_disease_brief(disease: Any) -> dict:
     return {
         "id": disease.id,
         "name": disease.name,
+        "category": disease.category,
         "health_impact": disease.health_impact,
-        "rarity": disease.rarity,
     }
 
 
 def _hidden_symptoms(instances: list) -> list[str]:
-    """Symptoms of hidden conditions; never their names, ids or rarity."""
+    """Symptoms of hidden conditions; never their names or ids."""
     return [inst.displayed_symptom for inst in instances if not inst.visible and inst.displayed_symptom]
 
 
