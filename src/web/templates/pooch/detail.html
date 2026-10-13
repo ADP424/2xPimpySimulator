@@ -12,10 +12,27 @@
     <div class="flex justify-between items-center mb-6 flex-wrap gap-3">
         <div class="flex items-center gap-2">
             <h1 class="text-3xl font-bold" id="pooch-name">Loading...</h1>
-            <button class="btn btn-ghost btn-xs" onclick="document.getElementById('rename-pooch-modal').showModal()" title="Rename">✏️</button>
+            <button class="btn btn-ghost btn-xs owner-only" style="display: none;" onclick="document.getElementById('rename-pooch-modal').showModal()" title="Rename">✏️</button>
         </div>
-        <button onclick="history.back()" class="btn btn-ghost btn-sm">← Back</button>
+        <div class="flex items-center gap-2">
+            <a href="/info/clinic/patients/{{ pooch_id }}" class="btn btn-secondary btn-sm owner-only" style="display: none;">🏥 Take to Vet</a>
+            <button class="btn btn-error btn-outline btn-sm owner-only" style="display: none;" onclick="document.getElementById('cast-out-modal').showModal()">Cast Out</button>
+            <button onclick="history.back()" class="btn btn-ghost btn-sm">← Back</button>
+        </div>
     </div>
+
+    <!-- Cast out confirmation -->
+    <dialog id="cast-out-modal" class="modal">
+        <div class="modal-box">
+            <h3 class="font-bold text-lg mb-2">Cast out <span id="cast-out-name"></span>?</h3>
+            <p class="text-sm text-base-content/70">They'll leave your kennel and wander the park as a stray. Anyone could take them in.</p>
+            <div class="modal-action">
+                <form method="dialog"><button class="btn btn-ghost btn-sm">Keep</button></form>
+                <button class="btn btn-error btn-sm" id="cast-out-confirm" onclick="submitCastOut()">Cast Out</button>
+            </div>
+        </div>
+        <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    </dialog>
 
     <!-- Rename modal -->
     <dialog id="rename-pooch-modal" class="modal">
@@ -55,6 +72,14 @@
             </div>
         </div>
 
+        <!-- Injuries & Diseases Card -->
+        <div class="card bg-base-200 shadow-md">
+            <div class="card-body">
+                <h2 class="card-title">🩹 Injuries & Diseases</h2>
+                <div id="conditions-info"></div>
+            </div>
+        </div>
+
         <!-- Family Card -->
         <div class="card bg-base-200 shadow-md">
             <div class="card-body">
@@ -63,6 +88,14 @@
                     <a href="/pooch/{{ pooch_id }}/family-tree" class="btn btn-ghost btn-xs">View Tree</a>
                 </div>
                 <div id="family-info"></div>
+            </div>
+        </div>
+
+        <!-- Timeline Card -->
+        <div class="card bg-base-200 shadow-md md:col-span-2">
+            <div class="card-body">
+                <h2 class="card-title">📜 Timeline</h2>
+                <div id="timeline-info"></div>
             </div>
         </div>
     </div>
@@ -81,14 +114,22 @@ document.addEventListener('DOMContentLoaded', async function() {
         const poochResponse = await fetch(`/api/pooches/${PAGE_DATA.poochId}`);
         const pooch = await poochResponse.json();
 
-        // Load family
-        const familyResponse = await fetch(`/api/pooches/${PAGE_DATA.poochId}/family`);
+        // Load family and timeline
+        const [familyResponse, timelineResponse] = await Promise.all([
+            fetch(`/api/pooches/${PAGE_DATA.poochId}/family`),
+            fetch(`/api/pooches/${PAGE_DATA.poochId}/timeline`),
+        ]);
         const family = await familyResponse.json();
+        const timeline = await timelineResponse.json();
 
         document.getElementById('loading').style.display = 'none';
         document.getElementById('pooch-container').style.display = 'block';
 
         renderPooch(pooch, family);
+        renderTimeline(timeline);
+        if (pooch.viewer_is_owner) {
+            document.querySelectorAll('.owner-only').forEach(el => { el.style.display = ''; });
+        }
 
     } catch (error) {
         document.getElementById('loading').innerHTML = '<span class="text-error">Failed to load pooch details</span>';
@@ -119,9 +160,113 @@ async function submitRenamePooch() {
     }
 }
 
+async function submitCastOut() {
+    const button = document.getElementById('cast-out-confirm');
+    button.disabled = true;
+    try {
+        const resp = await fetch(`/api/pooches/${PAGE_DATA.poochId}/cast-out`, { method: 'POST' });
+        const result = await resp.json();
+        if (result.success) {
+            App.haptics.trigger('warning');
+            App.queueNotification(result.message, 'success');
+            window.location.href = '{{ url_for("kennel.kennels_list") }}';
+        } else {
+            App.showNotification(result.message || result.error || 'Cast out failed', 'error');
+            document.getElementById('cast-out-modal').close();
+        }
+    } catch (e) {
+        App.showNotification('Something went wrong.', 'error');
+        console.error('Error:', e);
+    } finally {
+        button.disabled = false;
+    }
+}
+
+function ownerHtml(pooch) {
+    if (pooch.owner) return escapeHtml(pooch.owner.discord_name || 'Unknown');
+    if (pooch.vendor) return `<a class="link" href="/vendor/${pooch.vendor.id}">${escapeHtml(pooch.vendor.name)}</a>`;
+    return 'Nobody';
+}
+
+function symptomList(symptoms) {
+    return symptoms.map(s => `<span class="text-sm italic text-base-content/70">${escapeHtml(s)}</span>`).join('');
+}
+
+function renderConditions(pooch) {
+    const rows = [];
+    for (const injury of pooch.injuries || []) {
+        rows.push(`
+            <a href="/info/injuries/${injury.id}" class="flex justify-between items-center p-2 rounded-lg bg-base-300 hover:bg-base-100 transition-colors text-base-content no-underline health-${App.healthImpactGroup(injury.health_impact)}">
+                <span class="font-medium text-sm">🩹 ${escapeHtml(injury.name)}</span>
+                <span class="badge badge-sm ${App.format.severityBadge(injury.severity)}">${escapeHtml(App.format.enumLabel(injury.severity))}</span>
+            </a>
+        `);
+    }
+    for (const disease of pooch.diseases || []) {
+        rows.push(`
+            <a href="/info/diseases/${disease.id}" class="flex justify-between items-center p-2 rounded-lg bg-base-300 hover:bg-base-100 transition-colors text-base-content no-underline health-${App.healthImpactGroup(disease.health_impact)}">
+                <span class="font-medium text-sm">🦠 ${escapeHtml(disease.name)}${disease.treated ? ' <span class="badge badge-xs badge-ghost">Treated</span>' : ''}</span>
+                <span class="text-xs text-base-content/50">${escapeHtml(App.format.enumLabel(disease.health_impact))}</span>
+            </a>
+        `);
+    }
+    const symptoms = [...(pooch.injury_symptoms || []), ...(pooch.disease_symptoms || [])];
+    if (symptoms.length) {
+        rows.push(`<div class="flex flex-col gap-1 mt-1"><span class="text-xs text-base-content/50 uppercase tracking-wide">Undiagnosed symptoms</span>${symptomList(symptoms)}</div>`);
+    }
+    document.getElementById('conditions-info').innerHTML = rows.length
+        ? `<div class="flex flex-col gap-2">${rows.join('')}</div>`
+        : '<p class="text-base-content/50 text-sm">No known injuries or diseases.</p>';
+}
+
+// Same labels as the bot's timeline
+const TIMELINE_LABELS = {
+    birth: 'Birth',
+    death: 'Death',
+    ownership: 'Ownership Change',
+    vet_injuries: 'Vet Visit — Injuries',
+    vet_mutations: 'Vet Visit — Mutations',
+    medical_exam: 'Medical Exam',
+};
+
+function renderTimeline(entries) {
+    const container = document.getElementById('timeline-info');
+    if (!entries.length) {
+        container.innerHTML = '<p class="text-base-content/50 text-sm">No timeline entries yet.</p>';
+        return;
+    }
+    container.innerHTML = `
+        <ul class="timeline timeline-vertical timeline-compact">
+            ${entries.map((entry, i) => {
+                const label = TIMELINE_LABELS[entry.kind] || App.format.enumLabel(entry.kind);
+                const names = entry.entity_names
+                    ? `<div class="text-xs mt-1"><span class="text-base-content/50">${entry.kind === 'vet_injuries' ? 'Injuries' : 'Mutations'} on record:</span> ${entry.entity_names.length ? entry.entity_names.map(escapeHtml).join(', ') : 'None'}</div>`
+                    : '';
+                return `
+                    <li>
+                        ${i > 0 ? '<hr>' : ''}
+                        <div class="timeline-middle">●</div>
+                        <div class="timeline-end timeline-box mb-3">
+                            <div class="flex justify-between gap-3">
+                                <span class="font-semibold">${escapeHtml(label)}</span>
+                                <span class="text-xs text-base-content/50">${new Date(entry.snapshot_at).toLocaleString()}</span>
+                            </div>
+                            <p class="text-sm text-base-content/80 whitespace-pre-line">${escapeHtml(entry.description)}</p>
+                            ${names}
+                        </div>
+                        ${i < entries.length - 1 ? '<hr>' : ''}
+                    </li>
+                `;
+            }).join('')}
+        </ul>
+    `;
+}
+
 function renderPooch(pooch, family) {
     document.getElementById('pooch-name').textContent = `${pooch.sex === 'female' ? '♀️' : '♂️'} ${pooch.name}`;
     document.getElementById('rename-pooch-input').value = pooch.name;
+    document.getElementById('cast-out-name').textContent = pooch.name;
+    renderConditions(pooch);
 
     // Basic Info
     const statusEmoji = {
@@ -150,6 +295,10 @@ function renderPooch(pooch, family) {
             <div class="flex flex-col gap-0.5">
                 <span class="text-xs text-base-content/50 uppercase tracking-wide">Status</span>
                 <span class="font-medium status-${pooch.status}">${statusEmoji[pooch.status]}</span>
+            </div>
+            <div class="flex flex-col gap-0.5">
+                <span class="text-xs text-base-content/50 uppercase tracking-wide">Owner</span>
+                <span class="font-medium">${ownerHtml(pooch)}</span>
             </div>
             <div class="flex flex-col gap-0.5">
                 <span class="text-xs text-base-content/50 uppercase tracking-wide">Sex</span>
@@ -201,8 +350,9 @@ function renderPooch(pooch, family) {
         document.getElementById('breeds-info').innerHTML = '<p class="text-base-content/50 text-sm">No breed information available.</p>';
     }
 
-    // Mutations
-    if (pooch.mutations && pooch.mutations.length > 0) {
+    // Mutations (hidden ones only as their visible symptom)
+    const mutationSymptoms = pooch.mutation_symptoms || [];
+    if ((pooch.mutations && pooch.mutations.length > 0) || mutationSymptoms.length) {
         document.getElementById('mutations-info').innerHTML = `
             <div class="flex flex-col gap-2">
                 ${pooch.mutations.map(m => `
@@ -211,6 +361,7 @@ function renderPooch(pooch, family) {
                         <span class="text-xs text-base-content/50">${escapeHtml(App.format.enumLabel(m.health_impact))}</span>
                     </a>
                 `).join('')}
+                ${mutationSymptoms.length ? `<div class="flex flex-col gap-1 mt-1"><span class="text-xs text-base-content/50 uppercase tracking-wide">Undiagnosed symptoms</span>${symptomList(mutationSymptoms)}</div>` : ''}
             </div>
         `;
     } else {

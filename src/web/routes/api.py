@@ -21,6 +21,7 @@ from src.web.serializers import (
     serialize_patient_injury,
     serialize_patient_summary,
     serialize_pooch,
+    serialize_timeline_entry,
     serialize_vendor,
 )
 
@@ -78,9 +79,30 @@ def get_pooch(pooch_id: int):
 
     try:
         pooch = run_async(get_pooch_by_id(pooch_id))
-        return jsonify(serialize_pooch(pooch))
+        # Compared here because JS numbers can't hold 64-bit Discord IDs exactly
+        return jsonify({**serialize_pooch(pooch), "viewer_is_owner": pooch.owner_discord_id == get_current_user_id()})
     except Exception as e:
         return jsonify({"error": str(e)}), 404
+
+
+@api_bp.route("/pooches/<int:pooch_id>/timeline")
+@login_required
+def get_pooch_timeline(pooch_id: int):
+    """Get a pooch's timeline, oldest first."""
+    from src.game import get_pooch_timeline
+
+    entries = run_async(get_pooch_timeline(pooch_id))
+    return jsonify([serialize_timeline_entry(entry) for entry in entries])
+
+
+@api_bp.route("/pooches/<int:pooch_id>/cast-out", methods=["POST"])
+@server_required
+def cast_out_pooch_route(pooch_id: int):
+    """Cast one of the current user's pooches out to the server's strays."""
+    from src.game import cast_out_pooch
+
+    success, message = run_async(cast_out_pooch(get_current_user_id(), pooch_id, get_current_server_id()))
+    return jsonify({"success": success, "message": message})
 
 
 @api_bp.route("/pooches/<int:pooch_id>/family")

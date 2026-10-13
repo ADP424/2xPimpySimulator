@@ -147,6 +147,16 @@ def serialize_disease(disease: Any) -> dict:
     }
 
 
+def serialize_timeline_entry(entry: Any) -> dict:
+    """Serialize a PoochTimelineEntry."""
+    return {
+        "kind": entry.kind,
+        "description": entry.description,
+        "snapshot_at": serialize_datetime(entry.snapshot_at),
+        "entity_names": entry.entity_names,
+    }
+
+
 def serialize_patient_summary(pooch: Any) -> dict:
     """A pooch as listed in its owner's Patient Room (counts only, as the bot shows)."""
     return {
