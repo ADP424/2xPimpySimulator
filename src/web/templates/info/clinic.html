@@ -9,6 +9,14 @@
 </div>
 
 <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-2xl">
+    <a href="{{ url_for('info.patients_list') }}" class="card bg-base-200 shadow-md hover:-translate-y-1 hover:shadow-lg transition-all text-base-content no-underline sm:col-span-2">
+        <div class="card-body items-center text-center py-10">
+            <span class="text-6xl mb-4">🛏️</span>
+            <h2 class="card-title">Patient Room</h2>
+            <p class="text-sm text-base-content/60">Treat injuries and diseases, diagnose hidden conditions, or book a medical exam</p>
+        </div>
+    </a>
+
     <a href="{{ url_for('info.breeds_list') }}" class="card bg-base-200 shadow-md hover:-translate-y-1 hover:shadow-lg transition-all text-base-content no-underline">
         <div class="card-body items-center text-center py-10">
             <span class="text-6xl mb-4">🐕</span>

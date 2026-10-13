@@ -1,6 +1,14 @@
 from datetime import datetime
 from typing import Any
 
+from src.game import (
+    get_disease_treatment_cost,
+    get_public_disease_label,
+    get_public_injury_label,
+    get_treatment_cost,
+    is_injury_treated_today,
+)
+
 
 def serialize_datetime(dt: datetime | None) -> str | None:
     """Serialize a datetime to ISO format."""
@@ -136,6 +144,46 @@ def serialize_disease(disease: Any) -> dict:
         "heritability": disease.heritability,
         "seasons": disease.seasons or [],
         "immunity_duration": disease.immunity_duration,
+    }
+
+
+def serialize_patient_summary(pooch: Any) -> dict:
+    """A pooch as listed in its owner's Patient Room (counts only, as the bot shows)."""
+    return {
+        "id": pooch.id,
+        "name": pooch.name,
+        "vet_checked": pooch.vet_checked,
+        "injury_count": len(pooch.injuries),
+        "undiagnosed_mutation_count": sum(1 for pm in pooch.mutations if not pm.visible),
+    }
+
+
+def serialize_patient_injury(pooch_injury: Any) -> dict:
+    """One of the owner's pooch's injuries in the Patient Room; hidden ones show their symptom, not their name."""
+    return {
+        "id": pooch_injury.id,
+        "label": get_public_injury_label(pooch_injury),
+        "visible": pooch_injury.visible,
+        "injury_id": pooch_injury.injury_id if pooch_injury.visible else None,
+        "severity": pooch_injury.injury.severity,
+        "persistence": pooch_injury.persistence,
+        "cost": get_treatment_cost(pooch_injury.injury.severity),
+        "treated": pooch_injury.treated,
+        "treated_today": is_injury_treated_today(pooch_injury),
+    }
+
+
+def serialize_patient_disease(pooch_disease: Any) -> dict:
+    """One of the owner's pooch's diseases in the Patient Room; hidden ones show their symptom, not their name."""
+    return {
+        "id": pooch_disease.id,
+        "label": get_public_disease_label(pooch_disease),
+        "visible": pooch_disease.visible,
+        "disease_id": pooch_disease.disease_id if pooch_disease.visible else None,
+        "treated": pooch_disease.treated,
+        "treatable": pooch_disease.disease.treatable,
+        "curable": pooch_disease.disease.curable,
+        "cost": get_disease_treatment_cost(),
     }
 
 

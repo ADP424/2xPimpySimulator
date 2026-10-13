@@ -111,7 +111,8 @@
     <script src="{{ url_for('static', filename='js/app.bundle.js') }}"></script>
     {% if session.get('current_server_id') %}
     <script>
-    document.addEventListener('DOMContentLoaded', async () => {
+    // Pages call this after spending or earning so the navbar balances stay current.
+    window.refreshNavCurrencies = async () => {
         try {
             const resp = await fetch('/api/owner');
             const owner = await resp.json();
@@ -121,7 +122,8 @@
             document.getElementById('nav-bloodskulls').textContent = `💀 ${owner.bloodskulls.toLocaleString()}`;
             el.style.display = '';
         } catch {}
-    });
+    };
+    document.addEventListener('DOMContentLoaded', window.refreshNavCurrencies);
     </script>
     {% endif %}
     {% block extra_scripts %}{% endblock %}

@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}Patient Room - Pooch Breeder{% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-6 flex-wrap gap-3">
+    <div>
+        <h1 class="text-3xl font-bold">🛏️ Patient Room</h1>
+        <p class="text-base-content/60 mt-1">Select a pooch to treat or diagnose.</p>
+    </div>
+    <a href="{{ url_for('info.veterinary_clinic') }}" class="btn btn-ghost btn-sm">← Back to Clinic</a>
+</div>
+
+<div id="loading" class="flex items-center gap-3 text-base-content/50 py-8">
+    <span class="loading loading-spinner loading-md"></span>
+    <span>Loading your pooches...</span>
+</div>
+
+<div id="patients" class="flex flex-col gap-8"></div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function describePatient(pooch) {
+    const parts = [];
+    if (pooch.injury_count) parts.push(`${pooch.injury_count} injur${pooch.injury_count === 1 ? 'y' : 'ies'}`);
+    if (pooch.undiagnosed_mutation_count) {
+        const n = pooch.undiagnosed_mutation_count;
+        parts.push(`${n} hidden mutation${n === 1 ? '' : 's'}`);
+    }
+    return parts.join(', ');
+}
+
+function patientCard(pooch) {
+    const details = describePatient(pooch);
+    return `
+        <a href="/info/clinic/patients/${pooch.id}" class="card bg-base-200 shadow-sm hover:-translate-y-1 hover:shadow-md transition-all text-base-content no-underline">
+            <div class="card-body py-4 px-4 gap-1">
+                <div class="flex justify-between items-center gap-2">
+                    <span class="font-bold">${escapeHtml(pooch.name)}</span>
+                    ${pooch.vet_checked ? '<span class="badge badge-sm badge-success">Checked</span>' : ''}
+                </div>
+                <span class="text-xs text-base-content/50">${details ? escapeHtml(details) : 'No known conditions'}</span>
+            </div>
+        </a>
+    `;
+}
+
+document.addEventListener('DOMContentLoaded', async function() {
+    const container = document.getElementById('patients');
+    try {
+        const resp = await fetch('/api/clinic/patients');
+        const kennels = await resp.json();
+        document.getElementById('loading').style.display = 'none';
+
+        if (!kennels.length) {
+            container.innerHTML = '<p class="text-base-content/50">You have no pooches right now.</p>';
+            return;
+        }
+
+        container.innerHTML = kennels.map(({ kennel, pooches }) => `
+            <section>
+                <h2 class="text-xl font-semibold mb-3">${escapeHtml(kennel.name)}</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    ${pooches.map(patientCard).join('')}
+                </div>
+            </section>
+        `).join('');
+    } catch (error) {
+        document.getElementById('loading').innerHTML = '<span class="text-error">Failed to load your pooches</span>';
+        console.error('Error:', error);
+    }
+});
+</script>
+{% endblock %}

@@ -73,6 +73,7 @@ from .manage_diseases import (
     get_diagnose_diseases_cost,
     get_disease_treatment_cost,
     get_pooch_disease_instances,
+    get_public_disease_label,
     run_daily_disease_tick,
     treat_disease,
 )
@@ -265,6 +266,7 @@ __all__ = [
     "get_diagnose_diseases_cost",
     "get_disease_treatment_cost",
     "get_pooch_disease_instances",
+    "get_public_disease_label",
     "run_daily_disease_tick",
     "treat_disease",
     # Static listing commands

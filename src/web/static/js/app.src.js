@@ -165,6 +165,15 @@ const App = {
         },
 
         /**
+         * Render a game message (which uses Discord-style **bold** and *italic*) as safe HTML.
+         */
+        richText(text) {
+            return escapeHtml(text)
+                .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.+?)\*/g, '<em>$1</em>');
+        },
+
+        /**
          * DaisyUI badge colour for an injury severity (trivial → catastrophic). Injuries have no rarity.
          */
         severityBadge(severity) {

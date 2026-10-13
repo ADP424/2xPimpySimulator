@@ -17,6 +17,9 @@ from src.web.serializers import (
     serialize_kennel,
     serialize_mutation,
     serialize_owner,
+    serialize_patient_disease,
+    serialize_patient_injury,
+    serialize_patient_summary,
     serialize_pooch,
     serialize_vendor,
 )
@@ -544,6 +547,147 @@ def get_mutation(mutation_id: int):
         if int(getattr(m, "id", -1)) == int(mutation_id):
             return jsonify(serialize_mutation(m))
     return jsonify({"error": "Mutation not found"}), 404
+
+
+# ---------------------------------------------------------------------------
+# Veterinary clinic — Patient Room
+# ---------------------------------------------------------------------------
+
+
+def _load_own_pooch(pooch_id: int):
+    """Return (pooch, None) if the current user owns the pooch, else (None, error response)."""
+    from src.game import get_pooch_by_id
+
+    try:
+        pooch = run_async(get_pooch_by_id(pooch_id))
+    except Exception:
+        return None, (jsonify({"error": "Pooch not found"}), 404)
+    if pooch.owner_discord_id != get_current_user_id():
+        return None, (jsonify({"error": "That's not your pooch."}), 403)
+    return pooch, None
+
+
+@api_bp.route("/clinic/patients")
+@server_required
+def get_clinic_patients():
+    """The current user's pooches grouped by kennel, as listed in the Patient Room."""
+    from src.game import list_kennel_pooches, list_owner_kennels
+
+    discord_id = get_current_user_id()
+    result = []
+    for kennel in run_async(list_owner_kennels(discord_id)):
+        pooches = run_async(list_kennel_pooches(kennel.id))
+        if not pooches:
+            continue
+        result.append(
+            {
+                "kennel": {"id": kennel.id, "name": kennel.name},
+                "pooches": [serialize_patient_summary(p) for p in pooches],
+            }
+        )
+    return jsonify(result)
+
+
+@api_bp.route("/pooches/<int:pooch_id>/patient")
+@server_required
+def get_patient(pooch_id: int):
+    """Patient Room details for one of the current user's pooches."""
+    from src.game import (
+        MEDICAL_EXAM_COST,
+        get_diagnose_diseases_cost,
+        get_diagnose_injuries_cost,
+        get_diagnose_mutations_cost,
+        get_pooch_disease_instances,
+        get_pooch_injury_instances,
+    )
+
+    pooch, error = _load_own_pooch(pooch_id)
+    if error:
+        return error
+
+    injuries = run_async(get_pooch_injury_instances(pooch_id))
+    diseases = run_async(get_pooch_disease_instances(pooch_id))
+    return jsonify(
+        {
+            **serialize_patient_summary(pooch),
+            "disease_count": len(pooch.diseases),
+            "undiagnosed_disease_count": sum(1 for pd in pooch.diseases if not pd.visible),
+            "injuries": [serialize_patient_injury(pi) for pi in injuries],
+            "diseases": [serialize_patient_disease(pd) for pd in diseases],
+            "costs": {
+                "diagnose_injuries": get_diagnose_injuries_cost(),
+                "diagnose_mutations": get_diagnose_mutations_cost(),
+                "diagnose_diseases": get_diagnose_diseases_cost(),
+                "medical_exam": MEDICAL_EXAM_COST,
+            },
+        }
+    )
+
+
+@api_bp.route("/clinic/injuries/<int:pooch_injury_id>/treat", methods=["POST"])
+@server_required
+def treat_injury_route(pooch_injury_id: int):
+    """Treat one of the current user's pooch's injuries."""
+    from src.game import treat_injury
+
+    success, message, cost = run_async(treat_injury(get_current_user_id(), pooch_injury_id))
+    return jsonify({"success": success, "message": message, "cost": cost})
+
+
+@api_bp.route("/clinic/diseases/<int:pooch_disease_id>/treat", methods=["POST"])
+@server_required
+def treat_disease_route(pooch_disease_id: int):
+    """Treat one of the current user's pooch's diseases."""
+    from src.game import treat_disease
+
+    success, message, cost = run_async(treat_disease(get_current_user_id(), pooch_disease_id))
+    return jsonify({"success": success, "message": message, "cost": cost})
+
+
+@api_bp.route("/pooches/<int:pooch_id>/diagnose/<kind>", methods=["POST"])
+@server_required
+def diagnose_route(pooch_id: int, kind: str):
+    """Diagnose a pooch's hidden injuries, mutations or diseases."""
+    from src.game import diagnose_diseases, diagnose_injuries, diagnose_mutations
+
+    diagnose_by_kind = {
+        "injuries": (diagnose_injuries, "injuries"),
+        "mutations": (diagnose_mutations, "mutations"),
+        "diseases": (diagnose_diseases, "diseases"),
+    }
+    if kind not in diagnose_by_kind:
+        return jsonify({"error": "Unknown diagnosis"}), 404
+
+    pooch, error = _load_own_pooch(pooch_id)
+    if error:
+        return error
+    diagnose, attribute = diagnose_by_kind[kind]
+    hidden_before = sum(1 for instance in getattr(pooch, attribute) if not instance.visible)
+
+    success, message, revealed = run_async(diagnose(get_current_user_id(), pooch_id))
+    return jsonify(
+        {
+            "success": success,
+            "message": message,
+            "revealed": revealed,
+            "fully_diagnosed": success and len(revealed) >= hidden_before,
+        }
+    )
+
+
+@api_bp.route("/pooches/<int:pooch_id>/medical-exam", methods=["POST"])
+@server_required
+def medical_exam_route(pooch_id: int):
+    """Run a medical exam on one of the current user's pooches."""
+    from src.game import medical_exam
+
+    pooch, error = _load_own_pooch(pooch_id)
+    if error:
+        return error
+
+    success, message, report = run_async(medical_exam(get_current_user_id(), pooch))
+    # A list of pairs keeps the bot's stat order (jsonify sorts dict keys)
+    return jsonify({"success": success, "message": message, "report": list(report.items())})
 
 
 @api_bp.route("/injuries")

@@ -54,6 +54,25 @@ def mutation_detail(mutation_id: int):
     )
 
 
+@info_bp.route("/clinic/patients")
+@server_required
+def patients_list():
+    """Patient Room: pick one of your pooches to treat or diagnose."""
+
+    return render_template("info/patients.html")
+
+
+@info_bp.route("/clinic/patients/<int:pooch_id>")
+@server_required
+def patient_detail(pooch_id: int):
+    """Treat and diagnose one of your pooches."""
+
+    return render_template(
+        "info/patient.html",
+        pooch_id=pooch_id,
+    )
+
+
 @info_bp.route("/injuries")
 @server_required
 def injuries_list():

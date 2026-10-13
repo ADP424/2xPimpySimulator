@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+
+{% block title %}Patient - Pooch Breeder{% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-6 flex-wrap gap-3">
+    <h1 class="text-3xl font-bold" id="patient-name">🛏️ Patient Room</h1>
+    <a href="{{ url_for('info.patients_list') }}" class="btn btn-ghost btn-sm">← Back to Patient Room</a>
+</div>
+
+<div id="loading" class="flex items-center gap-3 text-base-content/50 py-8">
+    <span class="loading loading-spinner loading-md"></span>
+    <span>Loading patient...</span>
+</div>
+
+<div id="patient-container" class="flex flex-col gap-6" style="display: none;">
+    <div id="result" class="alert" style="display: none;"></div>
+
+    <div class="card bg-base-200 shadow-md">
+        <div class="card-body">
+            <h2 class="card-title">📋 Conditions</h2>
+            <ul id="condition-summary" class="text-sm list-none flex flex-col gap-1"></ul>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="card bg-base-200 shadow-md">
+            <div class="card-body">
+                <h2 class="card-title">🩹 Injuries</h2>
+                <p class="text-xs text-base-content/50">Treating reduces persistence. Once per injury per day.</p>
+                <div id="injury-list" class="flex flex-col gap-2 mt-2"></div>
+            </div>
+        </div>
+
+        <div class="card bg-base-200 shadow-md">
+            <div class="card-body">
+                <h2 class="card-title">🦠 Diseases</h2>
+                <p class="text-xs text-base-content/50">Treating boosts recovery chance. Untreatable/incurable diseases cannot be cured.</p>
+                <div id="disease-list" class="flex flex-col gap-2 mt-2"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card bg-base-200 shadow-md">
+        <div class="card-body">
+            <h2 class="card-title">🔬 Diagnosis</h2>
+            <div class="flex flex-wrap gap-2 mt-2">
+                <button class="btn btn-secondary btn-sm" data-action="diagnose" data-kind="injuries">Diagnose Injuries <span data-cost="diagnose_injuries"></span></button>
+                <button class="btn btn-secondary btn-sm" data-action="diagnose" data-kind="mutations">Diagnose Mutations <span data-cost="diagnose_mutations"></span></button>
+                <button class="btn btn-secondary btn-sm" data-action="diagnose" data-kind="diseases">Diagnose Diseases <span data-cost="diagnose_diseases"></span></button>
+                <button class="btn btn-accent btn-sm" data-action="exam">Medical Exam <span data-cost="medical_exam"></span></button>
+            </div>
+            <div id="exam-report" class="mt-4" style="display: none;"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const PAGE_DATA = {
+    poochId: {{ pooch_id }}
+};
+let patient = null;
+
+function showResult(html, kind) {
+    const el = document.getElementById('result');
+    el.className = `alert alert-${kind}`;
+    el.innerHTML = `<span>${html}</span>`;
+    el.style.display = '';
+}
+
+function renderSummary() {
+    const lines = [];
+    if (patient.injury_count) lines.push(`<strong>Injuries:</strong> ${patient.injury_count}`);
+    if (patient.disease_count) lines.push(`<strong>Diseases:</strong> ${patient.disease_count}`);
+    if (patient.undiagnosed_mutation_count) lines.push(`<strong>Undiagnosed mutations:</strong> ${patient.undiagnosed_mutation_count}`);
+    if (patient.undiagnosed_disease_count) lines.push(`<strong>Undiagnosed diseases:</strong> ${patient.undiagnosed_disease_count}`);
+    if (!lines.length) lines.push('No known conditions.');
+    document.getElementById('condition-summary').innerHTML = lines.map(l => `<li>${l}</li>`).join('');
+}
+
+function conditionLabel(row, infoPath, idKey) {
+    // Diagnosed conditions link to the encyclopedia; hidden ones only show their symptom
+    return row.visible
+        ? `<a class="link font-semibold" href="/info/${infoPath}/${row[idKey]}">${escapeHtml(row.label)}</a>`
+        : `<span class="font-semibold italic">${escapeHtml(row.label)}</span>`;
+}
+
+function renderInjuries() {
+    const list = document.getElementById('injury-list');
+    if (!patient.injuries.length) {
+        list.innerHTML = '<p class="text-sm text-base-content/50">No injuries.</p>';
+        return;
+    }
+    list.innerHTML = patient.injuries.map(pi => {
+        const status = pi.treated_today ? ' <span class="badge badge-sm">Treated today</span>'
+            : (pi.treated ? ' <span class="badge badge-sm badge-ghost">Treated</span>' : '');
+        const persistence = pi.persistence !== null ? ` · Persistence: ${pi.persistence}` : '';
+        return `
+            <div class="flex justify-between items-center gap-3 bg-base-100 rounded-lg px-3 py-2">
+                <div class="flex flex-col">
+                    <span>${conditionLabel(pi, 'injuries', 'injury_id')}${status}</span>
+                    <span class="text-xs text-base-content/50">
+                        <span class="badge badge-xs ${App.format.severityBadge(pi.severity)}">${escapeHtml(App.format.enumLabel(pi.severity))}</span>${persistence}
+                    </span>
+                </div>
+                <button class="btn btn-primary btn-sm" data-action="treat-injury" data-id="${pi.id}" ${pi.treated_today ? 'disabled' : ''}>
+                    Treat ${formatCurrency(pi.cost)}
+                </button>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderDiseases() {
+    const list = document.getElementById('disease-list');
+    if (!patient.diseases.length) {
+        list.innerHTML = '<p class="text-sm text-base-content/50">No diseases.</p>';
+        return;
+    }
+    list.innerHTML = patient.diseases.map(pd => {
+        const tags = [];
+        if (pd.treated) tags.push('<span class="badge badge-sm badge-ghost">Treated</span>');
+        if (!pd.treatable) tags.push('<span class="badge badge-sm badge-error">Untreatable</span>');
+        if (!pd.curable) tags.push('<span class="badge badge-sm badge-warning">Incurable</span>');
+        const canTreat = !pd.treated && pd.treatable && pd.curable;
+        return `
+            <div class="flex justify-between items-center gap-3 bg-base-100 rounded-lg px-3 py-2">
+                <span>${conditionLabel(pd, 'diseases', 'disease_id')} ${tags.join(' ')}</span>
+                <button class="btn btn-primary btn-sm" data-action="treat-disease" data-id="${pd.id}" ${canTreat ? '' : 'disabled'}>
+                    Treat ${formatCurrency(pd.cost)}
+                </button>
+            </div>
+        `;
+    }).join('');
+}
+
+function render() {
+    document.getElementById('patient-name').textContent = `🛏️ Patient Room — ${patient.name}`;
+    document.querySelectorAll('[data-cost]').forEach(el => {
+        el.textContent = `(${formatCurrency(patient.costs[el.dataset.cost])})`;
+    });
+    renderSummary();
+    renderInjuries();
+    renderDiseases();
+}
+
+async function loadPatient() {
+    const resp = await fetch(`/api/pooches/${PAGE_DATA.poochId}/patient`);
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || `HTTP ${resp.status}`);
+    patient = data;
+    render();
+}
+
+async function post(url) {
+    const resp = await fetch(url, { method: 'POST' });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || `HTTP ${resp.status}`);
+    return data;
+}
+
+async function afterAction() {
+    await loadPatient();
+    if (window.refreshNavCurrencies) window.refreshNavCurrencies();
+}
+
+async function treat(kind, id) {
+    const data = await post(`/api/clinic/${kind}/${id}/treat`);
+    if (!data.success) {
+        App.haptics.trigger('error');
+        showResult(`Treatment failed: ${App.format.richText(data.message)}`, 'error');
+        return;
+    }
+    App.haptics.trigger('success');
+    showResult(`Treated <strong>${escapeHtml(patient.name)}</strong>. ${App.format.richText(data.message)}`, 'success');
+    await afterAction();
+}
+
+async function diagnose(kind) {
+    const data = await post(`/api/pooches/${PAGE_DATA.poochId}/diagnose/${kind}`);
+    if (!data.success) {
+        App.haptics.trigger('error');
+        showResult(`Diagnosis failed: ${App.format.richText(data.message)}`, 'error');
+        return;
+    }
+    // Same wording as the bot's diagnosis replies
+    const lines = [];
+    if (!data.fully_diagnosed) lines.push("The doctors weren't able to fully diagnose your pooch.");
+    lines.push(data.revealed.length
+        ? `<strong>Revealed ${kind} on ${escapeHtml(patient.name)}:</strong> ${data.revealed.map(escapeHtml).join(', ')}`
+        : `No hidden ${kind} were found on ${escapeHtml(patient.name)}.`);
+    App.haptics.trigger('success');
+    showResult(lines.join('<br>'), data.revealed.length ? 'success' : 'info');
+    await afterAction();
+}
+
+async function medicalExam() {
+    const data = await post(`/api/pooches/${PAGE_DATA.poochId}/medical-exam`);
+    if (!data.success) {
+        App.haptics.trigger('error');
+        showResult(`Medical exam failed: ${App.format.richText(data.message)}`, 'error');
+        return;
+    }
+    App.haptics.trigger('success');
+    const report = document.getElementById('exam-report');
+    report.innerHTML = `
+        <h3 class="font-semibold mb-2">Medical Exam — ${escapeHtml(patient.name)}</h3>
+        <div class="info-list">
+            ${data.report.map(([stat, rating]) => `
+                <div class="info-item">
+                    <span class="info-label">${escapeHtml(stat)}</span>
+                    <span class="info-value">${escapeHtml(rating)}</span>
+                </div>
+            `).join('')}
+        </div>
+    `;
+    report.style.display = '';
+    document.getElementById('result').style.display = 'none';
+    await afterAction();
+}
+
+document.addEventListener('click', async (event) => {
+    const button = event.target.closest('[data-action]');
+    if (!button || button.disabled) return;
+    button.disabled = true;
+    try {
+        const action = button.dataset.action;
+        if (action === 'treat-injury') await treat('injuries', button.dataset.id);
+        else if (action === 'treat-disease') await treat('diseases', button.dataset.id);
+        else if (action === 'diagnose') await diagnose(button.dataset.kind);
+        else if (action === 'exam') await medicalExam();
+    } catch (error) {
+        showResult(escapeHtml(error.message), 'error');
+        console.error('Error:', error);
+    } finally {
+        // Re-rendered rows get fresh buttons; the static diagnosis buttons need re-enabling
+        if (document.body.contains(button)) button.disabled = false;
+    }
+});
+
+document.addEventListener('DOMContentLoaded', async function() {
+    try {
+        await loadPatient();
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('patient-container').style.display = '';
+    } catch (error) {
+        document.getElementById('loading').innerHTML = `<span class="text-error">${escapeHtml(error.message)}</span>`;
+        console.error('Error:', error);
+    }
+});
+</script>
+{% endblock %}
