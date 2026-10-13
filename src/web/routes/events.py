@@ -14,3 +14,14 @@ def owner_events():
         "events/owner.html",
         server_name=g.current_server_name,
     )
+
+
+@events_bp.route("/server")
+@server_required
+def server_event():
+    """The server's active server event — see the menus and enter."""
+
+    return render_template(
+        "events/server.html",
+        server_name=g.current_server_name,
+    )

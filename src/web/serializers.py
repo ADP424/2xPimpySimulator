@@ -4,10 +4,14 @@ from typing import Any
 from src.game import (
     describe_owner_event_result,
     get_disease_treatment_cost,
+    get_menu_uses_left,
     get_public_disease_label,
     get_public_injury_label,
     get_treatment_cost,
+    get_use_count_per_menu,
+    get_used_menu_names,
     is_injury_treated_today,
+    menu_is_available,
 )
 
 
@@ -226,6 +230,81 @@ def serialize_owner_event_history(record: Any) -> dict:
         "selected_option_label": record.selected_option_label,
         "references": serialize_owner_event_references(record.context, record.entity_references),
         "outcome": serialize_owner_event_outcome(record.result_summary, record.entity_references),
+    }
+
+
+def _serialize_viewer_participation(participation: Any) -> dict:
+    """The viewer's own server-event entries, as the bot's "Your status" field shows them."""
+    if participation is None:
+        return {"participated": False, "submissions": [], "rank": None, "resolution_message": None}
+
+    def _pooch_label(pooch_id: Any) -> str:
+        return next(
+            (ref.label for ref in participation.entity_references.pooches if ref.id == pooch_id), f"Pooch #{pooch_id}"
+        )
+
+    submissions = []
+    for sub in participation.submissions or []:
+        immediate = sub.get("immediate_result") or {}
+        pooch_id = sub.get("selected_pooch_id")
+        submissions.append(
+            {
+                "menu_name": sub.get("menu_name", "?"),
+                "option_label": sub.get("option_label", "?"),
+                "pooch_label": _pooch_label(pooch_id) if pooch_id is not None else None,
+                "message": immediate.get("message") if isinstance(immediate, dict) else None,
+            }
+        )
+    resolution = participation.resolution_result
+    return {
+        "participated": True,
+        "submissions": submissions,
+        "rank": participation.rank,
+        "resolution_message": resolution.message if resolution is not None and resolution.message else None,
+    }
+
+
+def serialize_server_event(event: Any) -> dict:
+    """
+    The active server event as a participant sees it.
+
+    Menu availability and uses left come from the game rules; options only say whether they need a pooch,
+    never their filters, scoring or parameters.
+    """
+    submissions = event.viewer_participation.submissions if event.viewer_participation is not None else None
+    used_names = get_used_menu_names(submissions)
+    use_counts = get_use_count_per_menu(submissions)
+    return {
+        "occurrence_id": event.occurrence_id,
+        "name": event.name,
+        "description": event.description,
+        "flavor_text": event.flavor_text,
+        "category": event.category,
+        "severity": event.severity,
+        "expires_at": serialize_datetime(event.expires_at),
+        "participation_count": event.participation_count,
+        "menus": [
+            {
+                "id": menu.id,
+                "name": menu.name,
+                "label": menu.label,
+                "description": menu.description,
+                "depends_on": list(menu.depends_on),
+                "available": menu_is_available(menu, used_names, use_counts),
+                "uses_left": get_menu_uses_left(menu, use_counts),
+                "options": [
+                    {
+                        "id": option.id,
+                        "label": option.label,
+                        "description": option.description,
+                        "requires_pooch": bool(option.requires.get("pooch")),
+                    }
+                    for option in menu.options
+                ],
+            }
+            for menu in event.menus
+        ],
+        "viewer": _serialize_viewer_participation(event.viewer_participation),
     }
 
 

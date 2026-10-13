@@ -24,6 +24,7 @@ from src.web.serializers import (
     serialize_patient_injury,
     serialize_patient_summary,
     serialize_pooch,
+    serialize_server_event,
     serialize_timeline_entry,
     serialize_triggered_owner_event,
     serialize_vendor,
@@ -667,6 +668,47 @@ def respond_to_event_route(active_owner_event_id: int):
             "references": serialize_owner_event_references(event.context, references),
         }
     )
+
+
+# ---------------------------------------------------------------------------
+# Server events
+# ---------------------------------------------------------------------------
+
+
+@api_bp.route("/server-event")
+@server_required
+def get_server_event():
+    """The current server's active server event, with the viewer's own participation."""
+    from src.game import get_active_server_event
+
+    event = run_async(get_active_server_event(get_current_server_id(), viewer_owner_discord_id=get_current_user_id()))
+    return jsonify({"event": serialize_server_event(event) if event is not None else None})
+
+
+@api_bp.route("/server-event/<int:occurrence_id>/participate", methods=["POST"])
+@server_required
+def participate_in_server_event_route(occurrence_id: int):
+    """Enter the active server event with one of its menu options (and a pooch, if the option needs one)."""
+    from src.game import participate_in_server_event
+
+    data = request.json or {}
+    option_id = data.get("option_id")
+    pooch_id = data.get("pooch_id")
+    if not isinstance(option_id, int):
+        return jsonify({"error": "option_id is required"}), 400
+    if pooch_id is not None and not isinstance(pooch_id, int):
+        return jsonify({"error": "pooch_id must be an integer"}), 400
+
+    success, message, _summary = run_async(
+        participate_in_server_event(
+            occurrence_id,
+            get_current_server_id(),
+            get_current_user_id(),
+            option_id,
+            selected_pooch_id=pooch_id,
+        )
+    )
+    return jsonify({"success": success, "message": message})
 
 
 # ---------------------------------------------------------------------------

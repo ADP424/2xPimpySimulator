@@ -6,6 +6,7 @@ from src.web.app import create_app
 
 PAGES = [
     "/events/",
+    "/events/server",
     "/info/clinic",
     "/info/clinic/patients",
     "/info/clinic/patients/1",
