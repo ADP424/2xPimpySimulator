@@ -133,7 +133,7 @@ def get_pooch_family(pooch_id: int):
 @login_required
 def get_pooch_family_tree(pooch_id: int):
     """Get the full family tree graph for a pooch."""
-    from game import get_pooch_family_tree
+    from src.game import get_pooch_family_tree
 
     ancestor_depth = request.args.get("ancestor_depth", 5, type=int)
     descendant_depth = request.args.get("descendant_depth", 4, type=int)

@@ -5,7 +5,9 @@
 {% block content %}
 <div class="mb-8">
     <h1 class="text-3xl font-bold">🏘️ {{ server_name }}</h1>
-    <p class="text-base-content/60 mt-1">Welcome to the town! Choose where to go.</p>
+    <p class="text-base-content/60 mt-1">
+        {% if season %}{{ season_emojis }} It's currently <strong>{{ season | capitalize }}</strong>. {% endif %}Choose where you want to go.
+    </p>
 </div>
 
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-6">
@@ -70,6 +72,22 @@
             <span class="text-5xl mb-3">🏛️</span>
             <h3 class="card-title">Auction House</h3>
             <p class="text-sm text-base-content/60">Buy and sell pooches at auction</p>
+        </div>
+    </a>
+
+    <a href="{{ url_for('events.server_event') }}" class="card bg-base-200 shadow-md hover:-translate-y-1 hover:shadow-lg transition-all cursor-pointer text-base-content no-underline">
+        <div class="card-body items-center text-center py-8">
+            <span class="text-5xl mb-3">🏟️</span>
+            <h3 class="card-title">Server Event</h3>
+            <p class="text-sm text-base-content/60">Join the town-wide event</p>
+        </div>
+    </a>
+
+    <a href="{{ url_for('events.owner_events') }}" class="card bg-base-200 shadow-md hover:-translate-y-1 hover:shadow-lg transition-all cursor-pointer text-base-content no-underline">
+        <div class="card-body items-center text-center py-8">
+            <span class="text-5xl mb-3">🎲</span>
+            <h3 class="card-title">Your Events</h3>
+            <p class="text-sm text-base-content/60">Respond to what's happening to you</p>
         </div>
     </a>
 </div>

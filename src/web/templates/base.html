@@ -30,6 +30,7 @@
                     <li><a href="{{ url_for('main.town') }}">Town</a></li>
                     <li><a href="{{ url_for('vendor.vendors_list') }}">Vendors</a></li>
                     <li><a href="{{ url_for('info.veterinary_clinic') }}">Vet Clinic</a></li>
+                    <li><a href="{{ url_for('events.owner_events') }}">Events</a></li>
                     {% endif %}
                     <li><a href="{{ url_for('main.select_server') }}">
                         {% if session.get('current_server_name') %}{{ session.get('current_server_name') }} ▾{% else %}Select Server{% endif %}
@@ -60,6 +61,7 @@
                 <li><a href="{{ url_for('main.town') }}">Town</a></li>
                 <li><a href="{{ url_for('vendor.vendors_list') }}">Vendors</a></li>
                 <li><a href="{{ url_for('info.veterinary_clinic') }}">Vet Clinic</a></li>
+                <li><a href="{{ url_for('events.owner_events') }}">Events</a></li>
                 {% endif %}
             </ul>
         </div>
@@ -71,6 +73,7 @@
             <div id="navbar-currencies" class="flex items-center gap-2 text-xs sm:text-sm sm:gap-3 mr-1" style="display: none;">
                 <span class="text-success font-semibold" id="nav-dollars">—</span>
                 <span class="text-error font-semibold" id="nav-bloodskulls">—</span>
+                <span class="font-semibold" id="nav-bones">—</span>
             </div>
             {% endif %}
             <a href="{{ url_for('main.select_server') }}" class="btn btn-ghost btn-sm hidden lg:flex">
@@ -120,6 +123,7 @@
             if (!el) return;
             document.getElementById('nav-dollars').textContent = `$${owner.dollars.toLocaleString()}`;
             document.getElementById('nav-bloodskulls').textContent = `💀 ${owner.bloodskulls.toLocaleString()}`;
+            document.getElementById('nav-bones').textContent = `🦴 ${owner.bones.toLocaleString()}`;
             el.style.display = '';
         } catch {}
     };

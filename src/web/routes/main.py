@@ -8,6 +8,14 @@ from src.web.discord_oauth import get_guild_dicts_from_session
 
 main_bp = Blueprint("main", __name__)
 
+# Same as the bot's /town greeting
+_SEASON_EMOJIS = {
+    "spring": "🌸🌿",
+    "summer": "☀️🌻",
+    "autumn": "🍂🍁",
+    "winter": "❄️⛄",
+}
+
 
 def _get_known_server_ids() -> set[int]:
     """Return the set of server IDs that exist in the game database."""
@@ -101,11 +109,15 @@ def set_server(server_id: int):
 @server_required
 def town():
     """Town page for the currently selected server."""
+    from src.game import get_season
 
+    season = run_async(get_season())
     return render_template(
         "town.html",
         server_id=g.current_server_id,
         server_name=g.current_server_name,
+        season=season,
+        season_emojis=_SEASON_EMOJIS.get((season or "").lower(), ""),
     )
 
 

@@ -20,9 +20,13 @@
                     <span class="text-base-content/60">💵 Dollars</span>
                     <span class="font-bold" id="owner-dollars">-</span>
                 </div>
-                <div class="flex justify-between items-center py-2">
+                <div class="flex justify-between items-center py-2 border-b border-base-300">
                     <span class="text-base-content/60">💀 Bloodskulls</span>
                     <span class="font-bold" id="owner-bloodskulls">-</span>
+                </div>
+                <div class="flex justify-between items-center py-2">
+                    <span class="text-base-content/60">🦴 Bones</span>
+                    <span class="font-bold" id="owner-bones">-</span>
                 </div>
             </div>
             <div id="no-server-message" style="display: none;" class="py-2">
@@ -66,6 +70,10 @@
                 <a href="{{ url_for('info.veterinary_clinic') }}" class="flex items-center gap-3 p-3 rounded-lg bg-base-300 hover:bg-base-100 transition-colors text-base-content no-underline">
                     <span class="text-2xl">🏥</span>
                     <span>Vet Clinic</span>
+                </a>
+                <a href="{{ url_for('events.owner_events') }}" class="flex items-center gap-3 p-3 rounded-lg bg-base-300 hover:bg-base-100 transition-colors text-base-content no-underline">
+                    <span class="text-2xl">🎲</span>
+                    <span>Events</span>
                 </a>
                 {% endif %}
             </div>
@@ -119,6 +127,7 @@ async function loadOwnerInfo() {
         document.getElementById('owner-info').style.display = 'block';
         document.getElementById('owner-dollars').textContent = formatCurrency(owner.dollars);
         document.getElementById('owner-bloodskulls').textContent = owner.bloodskulls;
+        document.getElementById('owner-bones').textContent = owner.bones;
     } catch (error) {
         document.getElementById('owner-loading').textContent = 'Failed to load owner info';
         console.error('Error loading owner:', error);
