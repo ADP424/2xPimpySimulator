@@ -10,6 +10,8 @@ from src.game.models import (
 )
 from src.web.serializers import (
     serialize_breed,
+    serialize_disease,
+    serialize_injury,
     serialize_kennel,
     serialize_mutation,
     serialize_pooch,
@@ -176,6 +178,38 @@ class TestCatalogParameters:
         breed = _catalog("Lab")
         breed.parameters = None
         assert serialize_breed(breed)["parameters"] == {}
+
+
+class TestEncyclopedia:
+    def test_injury_matches_bot_fields_only(self):
+        injury = _injury("Sprain")
+        injury.parameters = {"persistence": 4, "strength_add": -2}
+        injury.treated = {"description": "Heals faster", "health_impact": "neutral", "dexterity_add": 1}
+        injury.invisible_messages = ["a limp"]
+        injury.reveal_chance = 0.3
+
+        data = serialize_injury(injury)
+
+        assert data["persistence"] == 4
+        assert data["treated"] == {"description": "Heals faster", "health_impact": "neutral"}
+        for hidden in ("parameters", "reveal_chance", "invisible_messages", "visible"):
+            assert hidden not in data
+        assert "strength_add" not in repr(data) and "dexterity_add" not in repr(data)
+
+    def test_injury_without_treatment(self):
+        assert serialize_injury(_injury("Scratch"))["treated"] is None
+
+    def test_disease_matches_bot_fields_only(self):
+        disease = _disease("Flu")
+        disease.invisible_messages = ["a cough"]
+        disease.reveal_chance = 0.2
+
+        data = serialize_disease(disease)
+
+        assert data["contagion_chance"] == 0.1
+        assert data["seasons"] == []
+        for hidden in ("parameters", "reveal_chance", "invisible_messages", "visible", "season_contagion_modifiers"):
+            assert hidden not in data
 
 
 class TestSerializeKennel:

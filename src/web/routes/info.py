@@ -52,3 +52,41 @@ def mutation_detail(mutation_id: int):
         "info/mutation_detail.html",
         mutation_id=mutation_id,
     )
+
+
+@info_bp.route("/injuries")
+@server_required
+def injuries_list():
+    """List all injuries."""
+
+    return render_template("info/injuries.html")
+
+
+@info_bp.route("/injuries/<int:injury_id>")
+@server_required
+def injury_detail(injury_id: int):
+    """View details about a specific injury."""
+
+    return render_template(
+        "info/injury_detail.html",
+        injury_id=injury_id,
+    )
+
+
+@info_bp.route("/diseases")
+@server_required
+def diseases_list():
+    """List all diseases."""
+
+    return render_template("info/diseases.html")
+
+
+@info_bp.route("/diseases/<int:disease_id>")
+@server_required
+def disease_detail(disease_id: int):
+    """View details about a specific disease."""
+
+    return render_template(
+        "info/disease_detail.html",
+        disease_id=disease_id,
+    )

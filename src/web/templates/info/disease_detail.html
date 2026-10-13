@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}Disease Info - Pooch Breeder{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <a href="{{ url_for('info.diseases_list') }}" class="btn btn-ghost btn-sm mb-3">← Back to Diseases</a>
+    <h1 class="text-3xl font-bold" id="disease-name">Loading...</h1>
+</div>
+
+<div id="loading" class="flex items-center gap-3 text-base-content/50 py-8">
+    <span class="loading loading-spinner loading-md"></span>
+    <span>Loading disease details...</span>
+</div>
+
+<div id="disease-container" style="display: none;">
+    <div class="detail-layout">
+        <div class="detail-main">
+            <div class="card bg-base-200 shadow-md">
+                <div class="card-body">
+                    <h2 class="card-title">📋 Description</h2>
+                    <p id="disease-description" class="text-base-content/80 leading-relaxed"></p>
+                </div>
+            </div>
+
+            <div class="card bg-base-200 shadow-md">
+                <div class="card-body">
+                    <h2 class="card-title">📊 Stats</h2>
+                    <div class="stats-grid mt-2" id="disease-stats"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="detail-sidebar">
+            <div class="card bg-base-200 shadow-md">
+                <div class="card-body">
+                    <h2 class="card-title text-base">💊 Treatment</h2>
+                    <div class="info-list mt-2">
+                        <div class="info-item">
+                            <span class="info-label">Treatable</span>
+                            <span class="info-value" id="disease-treatable"></span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Curable</span>
+                            <span class="info-value" id="disease-curable"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const PAGE_DATA = {
+    diseaseId: {{ disease_id }}
+};
+
+function statItem(label, valueHtml) {
+    return `
+        <div class="stat-item">
+            <span class="stat-label">${label}</span>
+            <span class="stat-display-value">${valueHtml}</span>
+        </div>
+    `;
+}
+
+function pct(value) {
+    return `${Math.round(value * 100)}%`;
+}
+
+document.addEventListener('DOMContentLoaded', async function() {
+    try {
+        const response = await fetch(`/api/diseases/${PAGE_DATA.diseaseId}`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const disease = await response.json();
+
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('disease-container').style.display = 'block';
+
+        const impactGroup = App.healthImpactGroup(disease.health_impact);
+        const impactHtml = `<span class="health-impact health-${impactGroup} font-medium">${escapeHtml(App.format.enumLabel(disease.health_impact))}</span>`;
+
+        document.getElementById('disease-name').textContent = disease.name;
+        document.getElementById('disease-description').textContent = disease.description || 'No description.';
+
+        // Same fields, conditions and wording as the bot's disease info embed
+        const stats = [
+            statItem('Health Impact', impactHtml),
+            statItem('Category', escapeHtml(disease.category || '—')),
+            statItem('Contagious', disease.contagion_chance > 0 ? pct(disease.contagion_chance) : 'No'),
+        ];
+        if (disease.sexually_transmitted) stats.push(statItem('Transmission', 'Sexually transmitted'));
+        stats.push(statItem(
+            'Recovery Chance',
+            disease.recovery_chance > 0 ? `${pct(disease.recovery_chance)}/day` : (disease.treatable ? 'Requires treatment' : 'None'),
+        ));
+        if (disease.heritability > 0) stats.push(statItem('Heritability', pct(disease.heritability)));
+        if (disease.seasons.length) {
+            stats.push(statItem('Seasons', disease.seasons.map(s => App.format.enumLabel(s)).join(', ')));
+        }
+        if (disease.immunity_duration) stats.push(statItem('Immunity After Recovery', `${disease.immunity_duration} days`));
+        document.getElementById('disease-stats').innerHTML = stats.join('');
+
+        document.getElementById('disease-treatable').innerHTML = disease.treatable
+            ? '<span class="badge badge-success">Yes</span>'
+            : '<span class="badge badge-error">No</span>';
+        document.getElementById('disease-curable').innerHTML = disease.curable
+            ? '<span class="badge badge-success">Yes</span>'
+            : '<span class="badge badge-error">No (permanent)</span>';
+    } catch (error) {
+        document.getElementById('loading').innerHTML = '<span class="text-error">Failed to load disease details</span>';
+        console.error('Error:', error);
+    }
+});
+</script>
+{% endblock %}

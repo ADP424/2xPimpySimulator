@@ -5,7 +5,7 @@
 {% block content %}
 <div class="mb-8">
     <h1 class="text-3xl font-bold">🏥 Veterinary Clinic</h1>
-    <p class="text-base-content/60 mt-1">Learn about dog breeds and genetic mutations</p>
+    <p class="text-base-content/60 mt-1">Learn about breeds, mutations, injuries and diseases</p>
 </div>
 
 <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-2xl">
@@ -22,6 +22,22 @@
             <span class="text-6xl mb-4">🧬</span>
             <h2 class="card-title">Genetic Mutations</h2>
             <p class="text-sm text-base-content/60">Learn about mutations that can affect your pooches</p>
+        </div>
+    </a>
+
+    <a href="{{ url_for('info.injuries_list') }}" class="card bg-base-200 shadow-md hover:-translate-y-1 hover:shadow-lg transition-all text-base-content no-underline">
+        <div class="card-body items-center text-center py-10">
+            <span class="text-6xl mb-4">🩹</span>
+            <h2 class="card-title">Injuries</h2>
+            <p class="text-sm text-base-content/60">See every injury, how bad it is, and what treatment does</p>
+        </div>
+    </a>
+
+    <a href="{{ url_for('info.diseases_list') }}" class="card bg-base-200 shadow-md hover:-translate-y-1 hover:shadow-lg transition-all text-base-content no-underline">
+        <div class="card-body items-center text-center py-10">
+            <span class="text-6xl mb-4">🦠</span>
+            <h2 class="card-title">Diseases</h2>
+            <p class="text-sm text-base-content/60">Learn how illnesses spread and which ones can be cured</p>
         </div>
     </a>
 </div>

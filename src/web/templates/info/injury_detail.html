@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}Injury Info - Pooch Breeder{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <a href="{{ url_for('info.injuries_list') }}" class="btn btn-ghost btn-sm mb-3">← Back to Injuries</a>
+    <h1 class="text-3xl font-bold" id="injury-name">Loading...</h1>
+</div>
+
+<div id="loading" class="flex items-center gap-3 text-base-content/50 py-8">
+    <span class="loading loading-spinner loading-md"></span>
+    <span>Loading injury details...</span>
+</div>
+
+<div id="injury-container" style="display: none;">
+    <div class="detail-layout">
+        <div class="detail-main">
+            <div class="card bg-base-200 shadow-md">
+                <div class="card-body">
+                    <h2 class="card-title">📋 Description</h2>
+                    <p id="injury-description" class="text-base-content/80 leading-relaxed"></p>
+                </div>
+            </div>
+
+            <div class="card bg-base-200 shadow-md">
+                <div class="card-body">
+                    <h2 class="card-title">📊 Stats</h2>
+                    <div class="stats-grid mt-2">
+                        <div class="stat-item">
+                            <span class="stat-label">Severity</span>
+                            <span class="stat-display-value" id="injury-severity"></span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Health Impact</span>
+                            <span class="stat-display-value" id="injury-health"></span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Persistence</span>
+                            <span class="stat-display-value" id="injury-persistence"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="detail-sidebar">
+            <div class="card bg-base-200 shadow-md">
+                <div class="card-body">
+                    <h2 class="card-title text-base">💊 When Treated</h2>
+                    <p id="injury-treated" class="text-sm text-base-content/80"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const PAGE_DATA = {
+    injuryId: {{ injury_id }}
+};
+
+document.addEventListener('DOMContentLoaded', async function() {
+    try {
+        const response = await fetch(`/api/injuries/${PAGE_DATA.injuryId}`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const injury = await response.json();
+
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('injury-container').style.display = 'block';
+
+        const severityLabel = App.format.enumLabel(injury.severity);
+        const severityBadge = `<span class="badge ${App.format.severityBadge(injury.severity)}">${escapeHtml(severityLabel)}</span>`;
+        const impactGroup = App.healthImpactGroup(injury.health_impact);
+
+        document.getElementById('injury-name').innerHTML = `${escapeHtml(injury.name)} ${severityBadge}`;
+        document.getElementById('injury-description').textContent = injury.description || 'No description.';
+        document.getElementById('injury-severity').innerHTML = severityBadge;
+        document.getElementById('injury-health').innerHTML =
+            `<span class="health-impact health-${impactGroup} font-medium">${escapeHtml(App.format.enumLabel(injury.health_impact))}</span>`;
+        document.getElementById('injury-persistence').textContent = injury.persistence || '—';
+
+        if (injury.treated) {
+            const treatedImpact = injury.treated.health_impact
+                ? ` (${App.format.enumLabel(injury.treated.health_impact)})`
+                : '';
+            document.getElementById('injury-treated').textContent = injury.treated.description + treatedImpact;
+        } else {
+            document.getElementById('injury-treated').textContent = 'Treatment has no special effect.';
+        }
+    } catch (error) {
+        document.getElementById('loading').innerHTML = '<span class="text-error">Failed to load injury details</span>';
+        console.error('Error:', error);
+    }
+});
+</script>
+{% endblock %}

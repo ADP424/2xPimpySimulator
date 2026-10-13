@@ -163,6 +163,16 @@ const App = {
             const labels = { in_heat: 'In Heat', heating_up: 'Heating Up', cooled: 'Cooled' };
             return labels[status] || '—';
         },
+
+        /**
+         * DaisyUI badge colour for an injury severity (trivial → catastrophic). Injuries have no rarity.
+         */
+        severityBadge(severity) {
+            const v = String(severity || '').toLowerCase();
+            if (v === 'trivial' || v === 'minor') return 'badge-info';
+            if (v === 'moderate') return 'badge-warning';
+            return 'badge-error';
+        },
     },
 
     /**

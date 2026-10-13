@@ -12,6 +12,8 @@ from src.web.serializers import (
     serialize_auction_sale_listing,
     serialize_bounty_match_result,
     serialize_breed,
+    serialize_disease,
+    serialize_injury,
     serialize_kennel,
     serialize_mutation,
     serialize_owner,
@@ -542,6 +544,50 @@ def get_mutation(mutation_id: int):
         if int(getattr(m, "id", -1)) == int(mutation_id):
             return jsonify(serialize_mutation(m))
     return jsonify({"error": "Mutation not found"}), 404
+
+
+@api_bp.route("/injuries")
+@login_required
+def get_injuries():
+    """Get all injuries."""
+    from src.game import list_all_injuries
+
+    injuries = run_async(list_all_injuries())
+    return jsonify([serialize_injury(i) for i in injuries])
+
+
+@api_bp.route("/injuries/<int:injury_id>")
+@login_required
+def get_injury(injury_id: int):
+    """Get a single injury by ID."""
+    from src.game import get_injury_by_id
+
+    injury = run_async(get_injury_by_id(injury_id))
+    if injury is None:
+        return jsonify({"error": "Injury not found"}), 404
+    return jsonify(serialize_injury(injury))
+
+
+@api_bp.route("/diseases")
+@login_required
+def get_diseases():
+    """Get all diseases."""
+    from src.game import list_all_diseases
+
+    diseases = run_async(list_all_diseases())
+    return jsonify([serialize_disease(d) for d in diseases])
+
+
+@api_bp.route("/diseases/<int:disease_id>")
+@login_required
+def get_disease(disease_id: int):
+    """Get a single disease by ID."""
+    from src.game import get_disease_by_id
+
+    disease = run_async(get_disease_by_id(disease_id))
+    if disease is None:
+        return jsonify({"error": "Disease not found"}), 404
+    return jsonify(serialize_disease(disease))
 
 
 # ---------------------------------------------------------------------------

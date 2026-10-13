@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block title %}Diseases - Pooch Breeder{% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-6 flex-wrap gap-3">
+    <h1 class="text-3xl font-bold">🦠 Diseases</h1>
+    <p class="text-base-content/60">Browse every illness that can spread through your kennels</p>
+</div>
+
+<div class="filters-bar">
+    <input type="text" id="search-input" placeholder="Search diseases..." class="search-input flex-1 min-w-[180px]">
+    <select id="health-filter" class="filter-select">
+        <option value="">All impacts</option>
+    </select>
+    <select id="category-filter" class="filter-select">
+        <option value="">All categories</option>
+    </select>
+    <select id="treatment-filter" class="filter-select">
+        <option value="">Treatment: Any</option>
+        <option value="curable">Curable</option>
+        <option value="treatable">Treatable, not curable</option>
+        <option value="untreatable">Untreatable</option>
+    </select>
+</div>
+
+<div id="loading" class="flex items-center gap-3 text-base-content/50 py-8">
+    <span class="loading loading-spinner loading-md"></span>
+    <span>Loading diseases...</span>
+</div>
+
+<div id="diseases-container" style="display: none;">
+    <div id="diseases-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+    <div id="no-results" class="text-center py-12 text-base-content/50" style="display: none;">
+        <p>No diseases found matching your filters.</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let diseases = [];
+
+document.addEventListener('DOMContentLoaded', async function() {
+    try {
+        const response = await fetch('/api/diseases');
+        diseases = await response.json();
+
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('diseases-container').style.display = 'block';
+
+        setupFilters();
+        renderDiseases(diseases);
+    } catch (error) {
+        document.getElementById('loading').innerHTML = '<span class="text-error">Failed to load diseases</span>';
+        console.error('Error:', error);
+    }
+});
+
+function setupFilters() {
+    populateSelect('health-filter', Array.from(new Set(diseases.map(d => d.health_impact).filter(Boolean))).sort());
+    populateSelect('category-filter', Array.from(new Set(diseases.map(d => d.category).filter(Boolean))).sort());
+
+    ['search-input', 'health-filter', 'category-filter', 'treatment-filter'].forEach(id => {
+        document.getElementById(id).addEventListener('input', applyFilters);
+        document.getElementById(id).addEventListener('change', applyFilters);
+    });
+}
+
+function populateSelect(selectId, values) {
+    const select = document.getElementById(selectId);
+    for (const v of values) {
+        const opt = document.createElement('option');
+        opt.value = v;
+        opt.textContent = App.format.enumLabel(v);
+        select.appendChild(opt);
+    }
+}
+
+function applyFilters() {
+    const search = document.getElementById('search-input').value.toLowerCase();
+    const impact = document.getElementById('health-filter').value;
+    const category = document.getElementById('category-filter').value;
+    const treatment = document.getElementById('treatment-filter').value;
+
+    renderDiseases(diseases.filter(disease => {
+        if (search && !disease.name.toLowerCase().includes(search) &&
+            !(disease.description || '').toLowerCase().includes(search)) {
+            return false;
+        }
+        if (impact && disease.health_impact !== impact) return false;
+        if (category && disease.category !== category) return false;
+        if (treatment === 'curable' && !(disease.treatable && disease.curable)) return false;
+        if (treatment === 'treatable' && !(disease.treatable && !disease.curable)) return false;
+        if (treatment === 'untreatable' && disease.treatable) return false;
+        return true;
+    }));
+}
+
+function renderDiseases(list) {
+    const grid = document.getElementById('diseases-grid');
+    const noResults = document.getElementById('no-results');
+
+    if (list.length === 0) {
+        grid.innerHTML = '';
+        noResults.style.display = 'block';
+        return;
+    }
+
+    noResults.style.display = 'none';
+    grid.innerHTML = list.map(createDiseaseCard).join('');
+}
+
+function createDiseaseCard(disease) {
+    const impactGroup = App.healthImpactGroup(disease.health_impact);
+    const contagious = disease.contagion_chance > 0 ? `${Math.round(disease.contagion_chance * 100)}% contagious` : 'Not contagious';
+
+    return `
+        <a href="/info/diseases/${disease.id}" class="card bg-base-200 shadow-sm hover:-translate-y-1 hover:shadow-md transition-all text-base-content no-underline health-${impactGroup}">
+            <div class="card-body py-4 px-4 gap-2">
+                <div class="flex justify-between items-start gap-2">
+                    <h3 class="font-bold">${escapeHtml(disease.name)}</h3>
+                    <span class="health-impact health-${impactGroup} text-xs font-medium shrink-0">${escapeHtml(App.format.enumLabel(disease.health_impact))}</span>
+                </div>
+                <p class="text-sm text-base-content/60 line-clamp-2">${escapeHtml(disease.description)}</p>
+                <div class="flex flex-wrap gap-2 mt-1">
+                    <span class="text-xs text-base-content/40">🦠 ${contagious}</span>
+                    ${disease.category ? `<span class="text-xs text-base-content/40">📁 ${escapeHtml(disease.category)}</span>` : ''}
+                    <span class="text-xs text-base-content/40">💊 ${disease.treatable ? (disease.curable ? 'Curable' : 'Treatable') : 'Untreatable'}</span>
+                </div>
+            </div>
+        </a>
+    `;
+}
+</script>
+{% endblock %}

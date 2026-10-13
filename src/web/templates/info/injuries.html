@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}Injuries - Pooch Breeder{% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-6 flex-wrap gap-3">
+    <h1 class="text-3xl font-bold">🩹 Injuries</h1>
+    <p class="text-base-content/60">Browse every injury a pooch can suffer</p>
+</div>
+
+<div class="filters-bar">
+    <input type="text" id="search-input" placeholder="Search injuries..." class="search-input flex-1 min-w-[180px]">
+    <select id="severity-filter" class="filter-select">
+        <option value="">All severities</option>
+    </select>
+    <select id="health-filter" class="filter-select">
+        <option value="">All impacts</option>
+    </select>
+</div>
+
+<div id="loading" class="flex items-center gap-3 text-base-content/50 py-8">
+    <span class="loading loading-spinner loading-md"></span>
+    <span>Loading injuries...</span>
+</div>
+
+<div id="injuries-container" style="display: none;">
+    <div id="injuries-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+    <div id="no-results" class="text-center py-12 text-base-content/50" style="display: none;">
+        <p>No injuries found matching your filters.</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const SEVERITY_ORDER = ['trivial', 'minor', 'moderate', 'major', 'critical', 'remarkable', 'catastrophic'];
+let injuries = [];
+
+document.addEventListener('DOMContentLoaded', async function() {
+    try {
+        const response = await fetch('/api/injuries');
+        injuries = await response.json();
+
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('injuries-container').style.display = 'block';
+
+        setupFilters();
+        renderInjuries(injuries);
+    } catch (error) {
+        document.getElementById('loading').innerHTML = '<span class="text-error">Failed to load injuries</span>';
+        console.error('Error:', error);
+    }
+});
+
+function setupFilters() {
+    const severities = new Set(injuries.map(i => i.severity).filter(Boolean));
+    const impacts = new Set(injuries.map(i => i.health_impact).filter(Boolean));
+
+    populateSelect('severity-filter', SEVERITY_ORDER.filter(s => severities.has(s)));
+    populateSelect('health-filter', Array.from(impacts).sort());
+
+    ['search-input', 'severity-filter', 'health-filter'].forEach(id => {
+        document.getElementById(id).addEventListener('input', applyFilters);
+        document.getElementById(id).addEventListener('change', applyFilters);
+    });
+}
+
+function populateSelect(selectId, values) {
+    const select = document.getElementById(selectId);
+    for (const v of values) {
+        const opt = document.createElement('option');
+        opt.value = v;
+        opt.textContent = App.format.enumLabel(v);
+        select.appendChild(opt);
+    }
+}
+
+function applyFilters() {
+    const search = document.getElementById('search-input').value.toLowerCase();
+    const severity = document.getElementById('severity-filter').value;
+    const impact = document.getElementById('health-filter').value;
+
+    renderInjuries(injuries.filter(injury => {
+        if (search && !injury.name.toLowerCase().includes(search) &&
+            !(injury.description || '').toLowerCase().includes(search)) {
+            return false;
+        }
+        if (severity && injury.severity !== severity) return false;
+        if (impact && injury.health_impact !== impact) return false;
+        return true;
+    }));
+}
+
+function renderInjuries(list) {
+    const grid = document.getElementById('injuries-grid');
+    const noResults = document.getElementById('no-results');
+
+    if (list.length === 0) {
+        grid.innerHTML = '';
+        noResults.style.display = 'block';
+        return;
+    }
+
+    noResults.style.display = 'none';
+    grid.innerHTML = list.map(createInjuryCard).join('');
+}
+
+function createInjuryCard(injury) {
+    const impactGroup = App.healthImpactGroup(injury.health_impact);
+
+    return `
+        <a href="/info/injuries/${injury.id}" class="card bg-base-200 shadow-sm hover:-translate-y-1 hover:shadow-md transition-all text-base-content no-underline health-${impactGroup}">
+            <div class="card-body py-4 px-4 gap-2">
+                <div class="flex justify-between items-start gap-2">
+                    <h3 class="font-bold">${escapeHtml(injury.name)}</h3>
+                    <span class="badge badge-sm ${App.format.severityBadge(injury.severity)} shrink-0">${escapeHtml(App.format.enumLabel(injury.severity))}</span>
+                </div>
+                <p class="text-sm text-base-content/60 line-clamp-2">${escapeHtml(injury.description)}</p>
+                <div class="flex flex-wrap gap-2 mt-1">
+                    <span class="text-xs text-base-content/40">🏥 ${escapeHtml(App.format.enumLabel(injury.health_impact))}</span>
+                    ${injury.persistence ? `<span class="text-xs text-base-content/40">⏳ Persistence ${injury.persistence}</span>` : ''}
+                    ${injury.treated ? '<span class="text-xs text-base-content/40">💊 Treatable</span>' : ''}
+                </div>
+            </div>
+        </a>
+    `;
+}
+</script>
+{% endblock %}

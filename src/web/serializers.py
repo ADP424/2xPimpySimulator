@@ -108,6 +108,37 @@ def serialize_disease_brief(disease: Any) -> dict:
     }
 
 
+def serialize_injury(injury: Any) -> dict:
+    """Serialize a catalog Injury for the encyclopedia (the fields the bot's injury info shows)."""
+    treated = injury.treated or {}
+    return {
+        **serialize_injury_brief(injury),
+        "description": injury.description,
+        "persistence": (injury.parameters or {}).get("persistence"),
+        "treated": (
+            {"description": treated.get("description") or "Treatable", "health_impact": treated.get("health_impact")}
+            if treated
+            else None
+        ),
+    }
+
+
+def serialize_disease(disease: Any) -> dict:
+    """Serialize a catalog Disease for the encyclopedia (the fields the bot's disease info shows)."""
+    return {
+        **serialize_disease_brief(disease),
+        "description": disease.description,
+        "contagion_chance": disease.contagion_chance,
+        "sexually_transmitted": disease.sexually_transmitted,
+        "recovery_chance": disease.recovery_chance,
+        "treatable": disease.treatable,
+        "curable": disease.curable,
+        "heritability": disease.heritability,
+        "seasons": disease.seasons or [],
+        "immunity_duration": disease.immunity_duration,
+    }
+
+
 def _hidden_symptoms(instances: list) -> list[str]:
     """Symptoms of hidden conditions; never their names or ids."""
     return [inst.displayed_symptom for inst in instances if not inst.visible and inst.displayed_symptom]
