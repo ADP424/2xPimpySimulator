@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Optional
 
 from src.database import (
     get_owner_by_discord_id,
@@ -15,7 +15,7 @@ from src.database import (
 )
 
 from ..constants import BREEDING_COOLDOWN_HEATING_UP_THRESHOLD
-from ..manage_stats import get_pooch_health
+from ..manage_stats import compute_effective_stats, get_pooch_health
 from .breed import to_breed
 from .mutation import to_mutation
 from .owner import to_owner
@@ -146,83 +146,6 @@ def get_breeding_status(cooldown: int) -> str:
     return "cooled"
 
 
-def apply_stat_params(
-    base: int,
-    stat: str,
-    mutation_orms: list,
-    breed_pairs: list,
-    injury_instances: list,
-    disease_instances: list | None = None,
-) -> int:
-    """Apply _add and _mult parameters from mutations, breeds, injuries, and diseases to a base stat value.
-
-    injury_instances: list of PoochInjury ORM records (each has .injury and .treated).
-    disease_instances: list of PoochDisease ORM records (each has .disease).
-    """
-    total = float(base)
-
-    # Mutations: flat add then mult
-    mut_add = sum(m.parameters.get(f"{stat}_add", 0) for m in mutation_orms)
-    mut_mult = 1.0
-    for m in mutation_orms:
-        mut_mult *= m.parameters.get(f"{stat}_mult", 1.0)
-    total = (total + mut_add) * mut_mult
-
-    # Breeds: weighted add and weighted-average mult
-    total_weight = sum(rel for _, rel in breed_pairs)
-    if total_weight > 0:
-        breed_add = sum(b.parameters.get(f"{stat}_add", 0) * (rel / total_weight) for b, rel in breed_pairs)
-        breed_mult = sum(b.parameters.get(f"{stat}_mult", 1.0) * (rel / total_weight) for b, rel in breed_pairs)
-        total = (total + breed_add) * breed_mult
-
-    # Injuries: per-instance flat add then mult from main parameters
-    # When an instance is treated and has a 'treated' block with stat params, apply those instead of the main ones.
-    inj_add = 0.0
-    inj_mult = 1.0
-    for pi in injury_instances:
-        injury = pi.injury
-        params = injury.parameters or {}
-        if pi.treated and injury.treated:
-            treated_params = injury.treated
-            inj_add += treated_params.get(f"{stat}_add", 0)
-            inj_mult *= treated_params.get(f"{stat}_mult", params.get(f"{stat}_mult", 1.0))
-        else:
-            inj_add += params.get(f"{stat}_add", 0)
-            inj_mult *= params.get(f"{stat}_mult", 1.0)
-    total = (total + inj_add) * inj_mult
-
-    disease_instances = disease_instances or []
-
-    disease_add = 0.0
-    disease_mult = 1.0
-    for pd in disease_instances:
-        params = pd.disease.parameters or {}
-        disease_add += params.get(f"{stat}_add", 0)
-        disease_mult *= params.get(f"{stat}_mult", 1.0)
-    total = (total + disease_add) * disease_mult
-
-    # Stack effects: group injuries by id, apply entries whose count threshold is met
-    injury_counts: dict[int, tuple[Any, int]] = {}
-    for pi in injury_instances:
-        injury = pi.injury
-        if injury.id not in injury_counts:
-            injury_counts[injury.id] = (injury, 0)
-        injury_counts[injury.id] = (injury, injury_counts[injury.id][1] + 1)
-
-    stack_add = 0.0
-    stack_mult = 1.0
-    for injury, count in injury_counts.values():
-        for entry in (injury.parameters or {}).get("stacks", []):
-            min_count = entry.get("min_count", 1)
-            max_count = entry.get("max_count")
-            if count >= min_count and (max_count is None or count <= max_count):
-                stack_add += entry.get(f"{stat}_add", 0)
-                stack_mult *= entry.get(f"{stat}_mult", 1.0)
-    total = (total + stack_add) * stack_mult
-
-    return round(total)
-
-
 async def to_pooch(pooch: PoochORM) -> Pooch:
     """
     Convert an ORM Pooch object to a game Pooch object.
@@ -271,40 +194,26 @@ async def to_pooch(pooch: PoochORM) -> Pooch:
         for pdi in disease_instances
     ]
 
+    stats = compute_effective_stats(
+        pooch, mutations=mutation_orms, breeds=breed_pairs, injuries=injury_instances, diseases=disease_instances
+    )
+
     return Pooch(
         id=pooch.id,
         name=pooch.name,
         age=pooch.age,
         sex=pooch.sex,
-        base_health=apply_stat_params(
-            pooch.base_health, "base_health", mutation_orms, breed_pairs, injury_instances, disease_instances
-        ),
+        base_health=stats["base_health"],
         health_loss_age=pooch.health_loss_age,
-        strength=apply_stat_params(
-            pooch.strength, "strength", mutation_orms, breed_pairs, injury_instances, disease_instances
-        ),
-        cuteness=apply_stat_params(
-            pooch.cuteness, "cuteness", mutation_orms, breed_pairs, injury_instances, disease_instances
-        ),
-        fluffiness=apply_stat_params(
-            pooch.fluffiness, "fluffiness", mutation_orms, breed_pairs, injury_instances, disease_instances
-        ),
-        intelligence=apply_stat_params(
-            pooch.intelligence, "intelligence", mutation_orms, breed_pairs, injury_instances, disease_instances
-        ),
-        dexterity=apply_stat_params(
-            pooch.dexterity, "dexterity", mutation_orms, breed_pairs, injury_instances, disease_instances
-        ),
-        fertility=apply_stat_params(
-            pooch.fertility, "fertility", mutation_orms, breed_pairs, injury_instances, disease_instances
-        ),
-        aggressiveness=apply_stat_params(
-            pooch.aggressiveness, "aggressiveness", mutation_orms, breed_pairs, injury_instances, disease_instances
-        ),
-        constitution=apply_stat_params(
-            pooch.constitution, "constitution", mutation_orms, breed_pairs, injury_instances, disease_instances
-        ),
-        size=apply_stat_params(pooch.size, "size", mutation_orms, breed_pairs, injury_instances, disease_instances),
+        strength=stats["strength"],
+        cuteness=stats["cuteness"],
+        fluffiness=stats["fluffiness"],
+        intelligence=stats["intelligence"],
+        dexterity=stats["dexterity"],
+        fertility=stats["fertility"],
+        aggressiveness=stats["aggressiveness"],
+        constitution=stats["constitution"],
+        size=stats["size"],
         breeding_cooldown=pooch.breeding_cooldown,
         alive=pooch.alive,
         virgin=pooch.virgin,

@@ -50,7 +50,6 @@ from .pooch import (
     PoochDiseaseInfo,
     PoochInjuryInfo,
     PoochMutationInfo,
-    apply_stat_params,
     get_breeding_status,
     to_pooch,
 )
@@ -116,5 +115,4 @@ __all__ = [
     "to_server",
     "Vendor",
     "to_vendor",
-    "apply_stat_params",
 ]
