@@ -19,7 +19,7 @@ Categories and their recognized parameters:
 
 from typing import Any
 
-from sqlalchemy import delete
+from sqlalchemy import delete, select
 
 from src.database.session import session_scope
 from src.logger import get_logger
@@ -136,7 +136,7 @@ def validate_items_json(items_json: dict[str, dict[str, dict[str, Any]]]) -> Non
         raise ResourceValidationError(f"Invalid item resources:\n{joined}")
 
 
-async def load_items():
+async def load_items(only_missing: bool = False):
     """Load item resources from JSONC files into the ``items`` table."""
     logger.info("Loading items from 'resources/items/**/*.jsonc' into the database...")
 
@@ -148,13 +148,20 @@ async def load_items():
     validate_items_json(items_json)
 
     async with session_scope() as session:
-        await session.execute(delete(Item))
+        if only_missing:
+            # Upgrade path: existing rows are referenced by player data, so only add new ones
+            existing = set((await session.execute(select(Item.name))).scalars().all())
+        else:
+            await session.execute(delete(Item))
+            existing = set()
         for category, items in items_json.items():
             # Category keys come in Title Case from the filesystem slug; we
             # persist them as a normalized lowercase string so runtime code
             # can do case-insensitive lookups.
             category_key = str(category).strip().lower().replace(" ", "_")
             for name, attributes in items.items():
+                if name in existing:
+                    continue
                 session.add(
                     Item(
                         name=name,

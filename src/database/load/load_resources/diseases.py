@@ -1,6 +1,6 @@
 from typing import Any
 
-from sqlalchemy import delete
+from sqlalchemy import delete, select
 
 from src.database.session import session_scope
 from src.logger import get_logger
@@ -212,7 +212,7 @@ def validate_diseases_json(diseases_json: dict[str, dict[str, dict[str, Any]]]) 
         raise ResourceValidationError(f"Invalid disease resources:\n{joined}")
 
 
-async def load_diseases():
+async def load_diseases(only_missing: bool = False):
     """Load disease resources from JSONC files into the database.
 
     Returns
@@ -227,9 +227,16 @@ async def load_diseases():
     validate_diseases_json(diseases_json)
 
     async with session_scope() as session:
-        await session.execute(delete(Disease))
+        if only_missing:
+            # Upgrade path: existing rows are referenced by player data, so only add new ones
+            existing = set((await session.execute(select(Disease.name))).scalars().all())
+        else:
+            await session.execute(delete(Disease))
+            existing = set()
         for disease_category, diseases in diseases_json.items():
             for name, attributes in diseases.items():
+                if name in existing:
+                    continue
                 invisible_messages = attributes.get("invisible_messages")
                 seasons = attributes.get("seasons")
                 session.add(

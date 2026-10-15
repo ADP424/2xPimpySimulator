@@ -148,6 +148,7 @@ from .list import (
     list_vendors,
 )
 from .load import load_resources, reset_database
+from .migrations import upgrade_lots_of_changes
 from .session import session_scope
 from .set import (
     add_breed_to_pooch,
@@ -418,6 +419,7 @@ __all__ = [
     # Load
     "load_resources",
     "reset_database",
+    "upgrade_lots_of_changes",
     # Session
     "session_scope",
     # Set

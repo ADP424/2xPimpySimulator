@@ -2,8 +2,9 @@ import argparse
 import asyncio
 
 from src.bot import run as run_bot
-from src.database import load_resources, reset_database
+from src.database import load_resources, reset_database, upgrade_lots_of_changes
 from src.game.change_day import refresh_moods
+from src.game.constants import PREGNANCY_TIMER_HOURS_RANGE
 from src.web import run as run_web_app
 
 if __name__ == "__main__":
@@ -39,9 +40,17 @@ if __name__ == "__main__":
         help="Refresh all pooch moods and exit.",
         dest="refresh_moods",
     )
+    parser.add_argument(
+        "--migrate",
+        action="store_true",
+        help="Upgrade an existing database in place (keeps all players) and exit.",
+        dest="migrate",
+    )
     args = parser.parse_args()
 
-    if args.refresh_moods:
+    if args.migrate:
+        asyncio.run(upgrade_lots_of_changes(pregnancy_timer_range=PREGNANCY_TIMER_HOURS_RANGE))
+    elif args.refresh_moods:
         count = asyncio.run(refresh_moods())
         print(f"Refreshed moods for {count} pooches.")
     elif args.web_app:

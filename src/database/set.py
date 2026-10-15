@@ -773,6 +773,36 @@ async def create_owner(owner_discord_id: int) -> Owner:
     return owner
 
 
+def pooch_upkeep(size: int, breed_parameters: list[Optional[dict]]) -> tuple[int, int]:
+    """
+    Return a pooch's hourly ``(consumption, mess_output)`` from its size and breeds.
+
+    Breed parameters ``consumption_mult``, ``mess_output_add`` and ``mess_output_mult`` adjust the base values (no
+    resources define them yet). Both are at least 1.
+    """
+
+    effective_size = max(1, size)
+    consumption_mult = 1.0
+    mess_output_add = 0
+    mess_output_mult = 1.0
+    for params in breed_parameters:
+        params = params or {}
+        consumption_mult *= float(params.get("consumption_mult", 1.0))
+        mess_output_add += int(params.get("mess_output_add", 0))
+        mess_output_mult *= float(params.get("mess_output_mult", 1.0))
+    consumption = max(
+        1, round((POOCH_BASE_CONSUMPTION + POOCH_CONSUMPTION_PER_SIZE_UNIT * effective_size) * consumption_mult)
+    )
+    mess_output = max(
+        1,
+        round(
+            (POOCH_BASE_MESS_OUTPUT + mess_output_add + POOCH_MESS_OUTPUT_PER_SIZE_UNIT * effective_size)
+            * mess_output_mult
+        ),
+    )
+    return consumption, mess_output
+
+
 async def create_pooch(
     owner_discord_id: Optional[int] = None,
     vendor_id: Optional[int] = None,
@@ -914,30 +944,8 @@ async def create_pooch(
         pooch_name = name or await _get_random_pooch_name(session)
         pooch_sex = sex or _get_random_sex()
 
-        # Derive consumption and mess_output from size + breed/mutation parameters.
-        # Breed/mutation params with keys "consumption_mult", "mess_output_add", "mess_output_mult"
-        # can modify the base values. No resources currently define these keys, but the hook
-        # is here for future use.
-        _eff_size = max(1, size)
-        consumption_mult = 1.0
-        mess_output_add = 0
-        mess_output_mult = 1.0
-        for breed_obj in resolved_breed_objects:
-            params = breed_obj.parameters or {}
-            consumption_mult *= float(params.get("consumption_mult", 1.0))
-            mess_output_add += int(params.get("mess_output_add", 0))
-            mess_output_mult *= float(params.get("mess_output_mult", 1.0))
         # (mutations are not yet loaded at this point; they are applied after flush)
-        derived_consumption = max(
-            1, round((POOCH_BASE_CONSUMPTION + POOCH_CONSUMPTION_PER_SIZE_UNIT * _eff_size) * consumption_mult)
-        )
-        derived_mess_output = max(
-            1,
-            round(
-                (POOCH_BASE_MESS_OUTPUT + mess_output_add + POOCH_MESS_OUTPUT_PER_SIZE_UNIT * _eff_size)
-                * mess_output_mult
-            ),
-        )
+        derived_consumption, derived_mess_output = pooch_upkeep(size, [b.parameters for b in resolved_breed_objects])
 
         pooch = Pooch(
             owner_discord_id=owner_discord_id,

@@ -1,6 +1,6 @@
 from typing import Any
 
-from sqlalchemy import delete
+from sqlalchemy import delete, select
 
 from src.database.session import session_scope
 from src.logger import get_logger
@@ -188,7 +188,7 @@ def validate_mutations_json(mutations_json: dict[str, dict[str, dict[str, Any]]]
         raise ResourceValidationError(f"Invalid mutation resources:\n{joined}")
 
 
-async def load_mutations():
+async def load_mutations(only_missing: bool = False):
     """
     Load mutations.
 
@@ -204,10 +204,17 @@ async def load_mutations():
     validate_mutations_json(mutations_json)
 
     async with session_scope() as session:
-        await session.execute(delete(Mutation))
+        if only_missing:
+            # Upgrade path: existing rows are referenced by player data, so only add new ones
+            existing = set((await session.execute(select(Mutation.name))).scalars().all())
+        else:
+            await session.execute(delete(Mutation))
+            existing = set()
 
         for mutation_category, mutations in mutations_json.items():
             for mutation, attributes in mutations.items():
+                if str(mutation) in existing:
+                    continue
                 invisible_messages = attributes.get("invisible_messages")
                 session.add(
                     Mutation(

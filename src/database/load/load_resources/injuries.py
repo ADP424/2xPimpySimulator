@@ -1,6 +1,6 @@
 from typing import Any
 
-from sqlalchemy import delete
+from sqlalchemy import delete, select
 
 from src.database.session import session_scope
 from src.logger import get_logger
@@ -162,7 +162,7 @@ def _validate_injuries_json(injuries_json: dict[str, dict[str, dict[str, Any]]])
         raise ResourceValidationError(f"Invalid injury resources:\n{joined}")
 
 
-async def load_injuries():
+async def load_injuries(only_missing: bool = False):
     """
     Load injuries.
 
@@ -178,9 +178,16 @@ async def load_injuries():
     _validate_injuries_json(injuries_json)
 
     async with session_scope() as session:
-        await session.execute(delete(Injury))
+        if only_missing:
+            # Upgrade path: existing rows are referenced by player data, so only add new ones
+            existing = set((await session.execute(select(Injury.name))).scalars().all())
+        else:
+            await session.execute(delete(Injury))
+            existing = set()
         for injuries in injuries_json.values():
             for name, attributes in injuries.items():
+                if name in existing:
+                    continue
                 invisible_messages = attributes.get("invisible_messages")
                 session.add(
                     Injury(
