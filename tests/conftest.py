@@ -59,7 +59,17 @@ def make_pooch(
         breeds=breeds if breeds is not None else [],
         injuries=injuries if injuries is not None else [],
         diseases=diseases if diseases is not None else [],
-        **kwargs,
+        **{
+            # hourly-tick columns, as on a real pooch row
+            "pregnancy_timer": None,
+            "rejuvenation_count": 0,
+            "immortal": False,
+            "starvation": 0,
+            "birth_hour": None,
+            "mess_output": 2,
+            "consumption": 1,
+            **kwargs,
+        },
     )
 
 

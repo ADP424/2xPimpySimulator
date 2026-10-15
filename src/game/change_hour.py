@@ -21,6 +21,7 @@ from src.database import (
     get_injury_by_name,
     get_injury_health_impact,
     get_mutation_health_impact,
+    get_pooch_by_id,
     get_pooch_kennel,
     give_money_to_owner,
     increment_global_hour,
@@ -67,11 +68,10 @@ from .manage_diseases import run_hourly_disease_tick
 from .manage_hell import drop_body_parts
 from .manage_kennels import add_pooch_to_kennel
 from .manage_pooches import (
-    get_pooch_by_id,
     run_hourly_breeding_cooldown_check,
     run_hourly_injury_persistence_check,
 )
-from .manage_stats import get_pooch_health
+from .manage_stats import get_effective_stats, get_pooch_health
 from .models import (
     BirthEvent,
     DeathEvent,
@@ -176,7 +176,7 @@ async def hourly_age_step(current_hour: int, pooch: "Pooch") -> bool:
         return False
 
     # Age up. Apply health_loss_age via the existing age_pooch path unless immortal.
-    if getattr(pooch, "immortal", False):
+    if pooch.immortal:
         # Immortals age but take no age-based health loss.
         await modify_pooch_age(pooch.id, 1)
     else:
@@ -192,34 +192,38 @@ async def hourly_age_step(current_hour: int, pooch: "Pooch") -> bool:
 
 def _miscarriage_chance(
     pooch: "Pooch",
+    stats: dict[str, int],
     *,
     rng: random.Random,
 ) -> float:
+    """Hourly miscarriage chance. ``stats`` are the mother's effective stats."""
     base = MISCARRIAGE_HOURLY_BASE_CHANCE
     # Old mothers → higher miscarriage.
     if pooch.age and pooch.age > 5:
         base *= 1.0 + 0.2 * (pooch.age - 5)
     # Low constitution → higher.
-    const = max(1, int(getattr(pooch, "constitution", 10) or 10))
+    const = max(1, int(stats.get("constitution", 10) or 10))
     base *= 10 / const
     # Starvation multiplier
-    base *= 1.0 + 0.05 * int(getattr(pooch, "starvation", 0) or 0)
+    base *= 1.0 + 0.05 * int(pooch.starvation or 0)
     return min(0.8, max(0.0, base))
 
 
-def _stillbirth_chance(mother: "Pooch", *, rng: random.Random) -> float:
+def _stillbirth_chance(mother: "Pooch", stats: dict[str, int], *, rng: random.Random) -> float:
+    """Stillbirth chance per delivery. ``stats`` are the mother's effective stats."""
     base = STILLBIRTH_BASE_CHANCE
     if mother.age and mother.age > 5:
         base *= 1.0 + 0.2 * (mother.age - 5)
-    const = max(1, int(getattr(mother, "constitution", 10) or 10))
+    const = max(1, int(stats.get("constitution", 10) or 10))
     base *= 10 / const
-    base *= 1.0 + 0.05 * int(getattr(mother, "starvation", 0) or 0)
+    base *= 1.0 + 0.05 * int(mother.starvation or 0)
     return min(0.8, max(0.0, base))
 
 
 async def _handle_birth(
     mother: "Pooch",
     fetus: "Pooch",
+    mother_stats: dict[str, int],
     *,
     rng: random.Random,
     births_by_server: dict,
@@ -230,7 +234,7 @@ async def _handle_birth(
     await delete_pregnancy(mother.id, fetus.id)
 
     # Stillbirth roll.
-    if rng.random() < _stillbirth_chance(mother, rng=rng):
+    if rng.random() < _stillbirth_chance(mother, mother_stats, rng=rng):
         fetus = await modify_pooch_age(fetus.id, 1)  # -1 -> 0
         await _kill_pooch(fetus)
         for server in await list_servers_for_pooch(fetus.id):
@@ -355,16 +359,17 @@ async def _hourly_food_tick(
 
 def _cannibalism_chance(pooch: "Pooch") -> float:
     """Hourly chance a pooch eats a kennel-mate. Only starving pooches do it, more often the hungrier they are."""
-    starvation = int(getattr(pooch, "starvation", 0) or 0)
+    starvation = int(pooch.starvation or 0)
     if starvation <= 0:
         return 0.0
     return min(1.0, CANNIBALISM_HOURLY_BASE_CHANCE + CANNIBALISM_STARVATION_MULTIPLIER * starvation)
 
 
-def _hourly_fight_chance(pooch: "Pooch") -> float:
-    agg = max(0, int(getattr(pooch, "aggressiveness", 10) or 10) - 10)
-    health = int(getattr(pooch, "base_health", 10) or 10)
-    starvation = int(getattr(pooch, "starvation", 0) or 0)
+def _hourly_fight_chance(pooch: "Pooch", stats: dict[str, int]) -> float:
+    """Hourly chance a pooch picks a fight. ``stats`` are its effective stats."""
+    agg = max(0, int(stats.get("aggressiveness", 10) or 10) - 10)
+    health = int(stats.get("base_health", 10) or 10)
+    starvation = int(pooch.starvation or 0)
     chance = HOURLY_FIGHT_BASE_CHANCE
     chance += HOURLY_FIGHT_AGGRESSION_SCALE * agg
     chance += HOURLY_FIGHT_STARVATION_SCALE * starvation
@@ -405,8 +410,9 @@ async def run_hour_change(rng_seed: Optional[int] = None) -> dict[int, HourChang
         mother = await get_pooch_by_id(mother_id)
         if mother is None or not mother.alive:
             continue
+        mother_stats = await get_effective_stats(mother.id)
         # Miscarriage roll first
-        if rng.random() < _miscarriage_chance(mother, rng=rng):
+        if rng.random() < _miscarriage_chance(mother, mother_stats, rng=rng):
             for fid in fetus_ids:
                 fetus = await get_pooch_by_id(fid)
                 if fetus is not None:
@@ -427,6 +433,7 @@ async def run_hour_change(rng_seed: Optional[int] = None) -> dict[int, HourChang
             await _handle_birth(
                 mother,
                 fetus,
+                mother_stats,
                 rng=rng,
                 births_by_server=births_by_server,
                 deaths_by_server=deaths_by_server,
@@ -490,7 +497,7 @@ async def run_hour_change(rng_seed: Optional[int] = None) -> dict[int, HourChang
         kennel = await get_pooch_kennel(pooch.id)
         if kennel is None:
             continue
-        chance = _hourly_fight_chance(pooch)
+        chance = _hourly_fight_chance(pooch, await get_effective_stats(pooch.id))
         if chance <= 0 or rng.random() > chance:
             continue
         mates = [p for p in (await list_pooches_for_kennel(kennel.id)) if p.alive and p.id != pooch.id]
@@ -526,9 +533,7 @@ async def run_hour_change(rng_seed: Optional[int] = None) -> dict[int, HourChang
         if kennel is None:
             continue
         victims = [
-            p
-            for p in (await list_pooches_for_kennel(kennel.id))
-            if p.alive and p.id != pooch.id and not getattr(p, "immortal", False)
+            p for p in (await list_pooches_for_kennel(kennel.id)) if p.alive and p.id != pooch.id and not p.immortal
         ]
         if not victims:
             continue

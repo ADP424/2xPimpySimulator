@@ -24,6 +24,14 @@ from src.game.constants import (
 )
 from tests.conftest import make_pooch
 
+
+def _stats(pooch) -> dict[str, int]:
+    """Effective stats for a test pooch (its raw stats: no modifiers)."""
+    return {
+        stat: getattr(pooch, stat) for stat in ("base_health", "aggressiveness", "constitution", "fertility", "size")
+    }
+
+
 # ---------------------------------------------------------------------------
 # hourly_death_roll
 # ---------------------------------------------------------------------------
@@ -68,28 +76,36 @@ class TestHourlyDeathRoll:
 class TestMiscarriageChance:
     def test_base_rate_young_pooch(self):
         p = make_pooch(age=2, constitution=10, starvation=0)
-        assert _miscarriage_chance(p, rng=random.Random(0)) == pytest.approx(0.005, abs=1e-6)
+        assert _miscarriage_chance(p, _stats(p), rng=random.Random(0)) == pytest.approx(0.005, abs=1e-6)
 
     def test_old_pooch_higher_rate(self):
         young = make_pooch(age=2, constitution=10, starvation=0)
         old = make_pooch(age=10, constitution=10, starvation=0)
-        assert _miscarriage_chance(old, rng=random.Random(0)) > _miscarriage_chance(young, rng=random.Random(0))
+        assert _miscarriage_chance(old, _stats(old), rng=random.Random(0)) > _miscarriage_chance(
+            young, _stats(young), rng=random.Random(0)
+        )
 
     def test_low_constitution_higher_rate(self):
         healthy = make_pooch(constitution=20, starvation=0)
         weak = make_pooch(constitution=2, starvation=0)
-        assert _miscarriage_chance(weak, rng=random.Random(0)) > _miscarriage_chance(healthy, rng=random.Random(0))
+        assert _miscarriage_chance(weak, _stats(weak), rng=random.Random(0)) > _miscarriage_chance(
+            healthy, _stats(healthy), rng=random.Random(0)
+        )
 
     def test_starving_higher_rate(self):
         full = make_pooch(starvation=0)
         hungry = make_pooch(starvation=20)
-        assert _miscarriage_chance(hungry, rng=random.Random(0)) > _miscarriage_chance(full, rng=random.Random(0))
+        assert _miscarriage_chance(hungry, _stats(hungry), rng=random.Random(0)) > _miscarriage_chance(
+            full, _stats(full), rng=random.Random(0)
+        )
 
 
 class TestStillbirthChance:
     def test_same_shape_as_miscarriage(self):
         young = make_pooch(age=2, constitution=10, starvation=0)
-        assert _stillbirth_chance(young, rng=random.Random(0)) == pytest.approx(0.01, abs=1e-6)  # stillbirth unchanged
+        assert _stillbirth_chance(young, _stats(young), rng=random.Random(0)) == pytest.approx(
+            0.01, abs=1e-6
+        )  # stillbirth unchanged
 
 
 # ---------------------------------------------------------------------------
@@ -100,27 +116,27 @@ class TestStillbirthChance:
 class TestHourlyFightChance:
     def test_base_chance_with_average_stats(self):
         p = make_pooch(aggressiveness=10, base_health=10, starvation=0)
-        assert _hourly_fight_chance(p) == pytest.approx(HOURLY_FIGHT_BASE_CHANCE, abs=1e-6)
+        assert _hourly_fight_chance(p, _stats(p)) == pytest.approx(HOURLY_FIGHT_BASE_CHANCE, abs=1e-6)
 
     def test_high_aggressiveness_raises_chance(self):
         p_low = make_pooch(aggressiveness=10)
         p_high = make_pooch(aggressiveness=25)
-        assert _hourly_fight_chance(p_high) > _hourly_fight_chance(p_low)
+        assert _hourly_fight_chance(p_high, _stats(p_high)) > _hourly_fight_chance(p_low, _stats(p_low))
 
     def test_starving_raises_chance(self):
         p_full = make_pooch(starvation=0)
         p_starv = make_pooch(starvation=50)
-        assert _hourly_fight_chance(p_starv) > _hourly_fight_chance(p_full)
+        assert _hourly_fight_chance(p_starv, _stats(p_starv)) > _hourly_fight_chance(p_full, _stats(p_full))
 
     def test_low_health_penalizes(self):
         p_healthy = make_pooch(base_health=10, aggressiveness=15)
         p_dying = make_pooch(base_health=2, aggressiveness=15)
-        assert _hourly_fight_chance(p_dying) < _hourly_fight_chance(p_healthy)
+        assert _hourly_fight_chance(p_dying, _stats(p_dying)) < _hourly_fight_chance(p_healthy, _stats(p_healthy))
 
     def test_chance_clamped(self):
         """Even with extreme inputs, the chance is bounded to a sane range."""
         p_wild = make_pooch(aggressiveness=10_000, starvation=10_000)
-        c = _hourly_fight_chance(p_wild)
+        c = _hourly_fight_chance(p_wild, _stats(p_wild))
         assert 0 <= c <= 0.1
 
 
@@ -182,7 +198,8 @@ class TestRunHourChangeFights:
                 get_pooch_kennel=AsyncMock(return_value=kennel),
                 list_pooches_for_kennel=AsyncMock(return_value=[attacker, make_pooch(pooch_id=2, name="Pup")]),
                 _hourly_food_tick=AsyncMock(),
-                _hourly_fight_chance=lambda p: 1.0,
+                _hourly_fight_chance=lambda p, stats: 1.0,
+                get_effective_stats=AsyncMock(return_value={}),
                 handle_fight_pooches=fight,
                 list_servers_for_pooch=AsyncMock(return_value=[]),
                 get_pooch_health=AsyncMock(return_value=100),
@@ -300,7 +317,8 @@ class TestCannibalism:
                 get_pooch_kennel=AsyncMock(return_value=type("K", (), {"id": 5})()),
                 list_pooches_for_kennel=AsyncMock(return_value=[cannibal, victim, immortal]),
                 _hourly_food_tick=AsyncMock(),
-                _hourly_fight_chance=lambda p: 0.0,
+                _hourly_fight_chance=lambda p, stats: 0.0,
+                get_effective_stats=AsyncMock(return_value={}),
                 _cannibalism_chance=lambda p: 1.0,
                 _kill_pooch=AsyncMock(return_value=eaten),
                 update_pooch_mood=AsyncMock(),
@@ -325,3 +343,18 @@ class TestCannibalism:
 
         deaths = result[100]["deaths"]
         assert [d.message for d in deaths] == ["Snack was eaten by Gnasher, who had been starving."]
+
+
+class TestHourTickUsesDatabaseRows:
+    def test_pooches_come_from_the_database_not_the_game_model(self):
+        """The tick reads columns (immortal, starvation, consumption, birth_hour) the game Pooch used to lack."""
+        import src.database
+        from src.game import change_hour
+
+        assert change_hour.get_pooch_by_id is src.database.get_pooch_by_id
+
+    def test_fight_chance_uses_effective_stats_not_raw(self):
+        calm_raw = make_pooch(aggressiveness=10, starvation=0)
+        assert _hourly_fight_chance(calm_raw, {"aggressiveness": 30, "base_health": 10}) > _hourly_fight_chance(
+            calm_raw, _stats(calm_raw)
+        )

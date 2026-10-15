@@ -102,6 +102,16 @@ class Pooch:
     injuries: list[PoochInjuryInfo]
     diseases: list[PoochDiseaseInfo]
 
+    # Hourly-tick state (lots-of-changes columns). Defaults only so test factories needn't pass them; to_pooch
+    # always copies them from the row.
+    pregnancy_timer: Optional[int] = None
+    rejuvenation_count: int = 0
+    immortal: bool = False
+    starvation: int = 0
+    birth_hour: Optional[int] = None
+    mess_output: int = 2
+    consumption: int = 1
+
     @property
     def birthday(self) -> Optional[datetime]:
         if self.created_at is None:
@@ -314,4 +324,11 @@ async def to_pooch(pooch: PoochORM) -> Pooch:
         mutations=mutations,
         injuries=injuries,
         diseases=diseases,
+        pregnancy_timer=pooch.pregnancy_timer,
+        rejuvenation_count=pooch.rejuvenation_count or 0,
+        immortal=bool(pooch.immortal),
+        starvation=pooch.starvation or 0,
+        birth_hour=pooch.birth_hour,
+        mess_output=pooch.mess_output,
+        consumption=pooch.consumption,
     )

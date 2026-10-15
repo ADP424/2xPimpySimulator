@@ -81,9 +81,9 @@ identical to a fresh install.
 
 ## Still to verify by hand (dev server, migrated Kraft copy)
 
-- [ ] **Open bug**: the hour tick crashes with `AttributeError: 'Pooch' object has no attribute 'immortal'` at
-  `change_hour.py` (death rolls, `pooch.immortal` on the game `Pooch` model, which lacks lots' new fields). Seen on
-  the dev server 2026-10-15; the day and week loops keep running. Check the game model for the other new columns too.
+- [ ] Hour tick runs clean on the dev server. (Fixed 2026-10-15: it crashed with `'Pooch' object has no attribute
+  'immortal'` because it read game `Pooch` dataclasses, which lacked lots' columns; it now reads database rows and
+  effective stats, and the game `Pooch` carries the columns so the bot embed and web show Pregnant/Immortal/Hunger.)
 - [ ] Dev week loop ticks every ~30 s and advances the season each time — expected in dev, but confirm the prod interval.
 - [ ] `/increment_hour` until River, Boomer, Max and Mocha give birth (15–20 ticks); hunger rises without food.
 - [ ] Buy items (bot + web), feed, hand-clean and item-clean; bleach hurts the kennel; navbar balances update.

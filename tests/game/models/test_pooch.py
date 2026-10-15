@@ -454,3 +454,57 @@ class TestApplyStatParamsDiseases:
         injury = _make_injury_orm({"strength_add": -1})
         disease = _make_disease_instance({"strength_mult": 0.5})
         assert apply_stat_params(10, "strength", [mutation], [(breed, 1.0)], [injury], [disease]) == 8
+
+
+class TestToPoochHourlyFields:
+    async def test_copies_hourly_tick_columns(self):
+        from unittest.mock import AsyncMock, patch
+
+        from src.game.models import to_pooch
+
+        row = SimpleNamespace(
+            id=7,
+            name="Eternal",
+            age=3,
+            sex="female",
+            base_health=10,
+            health_loss_age=0,
+            strength=10,
+            cuteness=10,
+            fluffiness=10,
+            intelligence=10,
+            dexterity=10,
+            fertility=10,
+            aggressiveness=10,
+            constitution=10,
+            size=10,
+            breeding_cooldown=0,
+            alive=True,
+            virgin=False,
+            vet_checked=False,
+            mood=None,
+            owner_discord_id=None,
+            vendor_id=None,
+            created_at=None,
+            pregnancy_timer=12,
+            rejuvenation_count=2,
+            immortal=True,
+            starvation=5,
+            birth_hour=48,
+            mess_output=3,
+            consumption=2,
+        )
+        empty = AsyncMock(return_value=[])
+        with patch.multiple(
+            "src.game.models.pooch",
+            list_pooch_breeds=empty,
+            list_pooch_mutations=empty,
+            list_pooch_mutation_instances=empty,
+            list_pooch_injury_instances=empty,
+            list_pooch_disease_instances=empty,
+            get_pooch_health=AsyncMock(return_value=10),
+        ):
+            pooch = await to_pooch(row)
+
+        assert (pooch.pregnancy_timer, pooch.rejuvenation_count, pooch.immortal, pooch.starvation) == (12, 2, True, 5)
+        assert (pooch.birth_hour, pooch.mess_output, pooch.consumption) == (48, 3, 2)
