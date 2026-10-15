@@ -70,6 +70,19 @@ class TestBackfillUpkeep:
         assert (mutt.consumption, mutt.mess_output) == pooch_upkeep(10, [])
 
 
+class TestStockKennels:
+    async def test_tops_up_only_kennels_below_the_amount(self):
+        empty = SimpleNamespace(id=1, food_stock=0)
+        low = SimpleNamespace(id=2, food_stock=10)
+        session = MagicMock()
+        session.execute = AsyncMock(return_value=_result(scalars=[empty, low]))
+        with patch(f"{MOD}.session_scope", return_value=_scope(session)):
+            assert await migration._stock_kennels(48) == 2
+        assert (empty.food_stock, low.food_stock) == (48, 48)
+        # the query itself only selects kennels below the amount, so fuller kennels are never touched
+        assert "food_stock <" in str(session.execute.await_args.args[0])
+
+
 class TestUpgradeOrder:
     async def test_runs_every_step_and_only_adds_catalog_rows(self):
         connection = MagicMock()
@@ -85,12 +98,17 @@ class TestUpgradeOrder:
             patch(f"{MOD}.validate_cross_references", new=AsyncMock()) as validate,
         ):
             await migration.upgrade(pregnancy_timer_range=(15, 20))
-        connection.run_sync.assert_awaited_once_with(migration._sync_schema)
+            with patch(f"{MOD}._stock_kennels", new=AsyncMock(return_value=0)) as stock:
+                await migration.upgrade(pregnancy_timer_range=(15, 20))
+                stock.assert_not_awaited()
+                await migration.upgrade(pregnancy_timer_range=(15, 20), starting_food=48)
+                stock.assert_awaited_once_with(48)
+        connection.run_sync.assert_awaited_with(migration._sync_schema)
         for loader in loaders.values():
-            loader.assert_awaited_once_with(only_missing=True)
+            loader.assert_awaited_with(only_missing=True)
         assert pregnancies.await_args.args[0] == (15, 20)
-        upkeep.assert_awaited_once()
-        validate.assert_awaited_once()
+        upkeep.assert_awaited()
+        validate.assert_awaited()
 
 
 class TestLoadersOnlyMissing:

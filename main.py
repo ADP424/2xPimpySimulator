@@ -46,10 +46,20 @@ if __name__ == "__main__":
         help="Upgrade an existing database in place (keeps all players) and exit.",
         dest="migrate",
     )
+    parser.add_argument(
+        "--starting-food",
+        type=int,
+        default=0,
+        metavar="N",
+        help="With --migrate: top every kennel up to at least N food units (a pooch eats 1-3 an hour).",
+        dest="starting_food",
+    )
     args = parser.parse_args()
 
     if args.migrate:
-        asyncio.run(upgrade_lots_of_changes(pregnancy_timer_range=PREGNANCY_TIMER_HOURS_RANGE))
+        asyncio.run(
+            upgrade_lots_of_changes(pregnancy_timer_range=PREGNANCY_TIMER_HOURS_RANGE, starting_food=args.starting_food)
+        )
     elif args.refresh_moods:
         count = asyncio.run(refresh_moods())
         print(f"Refreshed moods for {count} pooches.")

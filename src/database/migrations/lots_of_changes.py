@@ -12,9 +12,11 @@ Safe to run more than once: each step only adds what is missing.
    - pooches that are already pregnant get a pregnancy timer (otherwise they'd never give birth);
    - every pooch's hourly food consumption and mess output are recomputed from its size and breeds, as
      ``create_pooch`` does for new pooches. (``birth_hour`` is seeded by the hourly tick itself.)
+   - optionally (``--starting-food N``) every kennel is topped up to at least N food units, so existing pooches
+     don't start starving the moment the hourly tick runs. Re-running never adds more.
 4. Validate the cross references between catalogs.
 
-Run with ``uv run python main.py --migrate``.
+Run with ``uv run python main.py --migrate [--starting-food N]``.
 """
 
 from __future__ import annotations
@@ -34,7 +36,7 @@ from ..load.load_resources import (
     load_mutations,
 )
 from ..load.load_resources.cross_refs import validate_cross_references
-from ..models import Base, Breed, Pooch, PoochBreed, PoochPregnancy
+from ..models import Base, Breed, Kennel, Pooch, PoochBreed, PoochPregnancy
 from ..session import _get_engine, session_scope
 from ..set import pooch_upkeep
 
@@ -99,8 +101,22 @@ async def _backfill_upkeep() -> int:
     return len(pooches)
 
 
-async def upgrade(pregnancy_timer_range: tuple[int, int], rng: Optional[random.Random] = None) -> None:
-    """Run the whole upgrade. ``pregnancy_timer_range`` is the game's PREGNANCY_TIMER_HOURS_RANGE."""
+async def _stock_kennels(food: int) -> int:
+    """Top every kennel with less than ``food`` food units up to ``food``. Returns how many were topped up."""
+    async with session_scope() as session:
+        kennels = (await session.execute(select(Kennel).where(Kennel.food_stock < food))).scalars().all()
+        for kennel in kennels:
+            kennel.food_stock = food
+    return len(kennels)
+
+
+async def upgrade(
+    pregnancy_timer_range: tuple[int, int], rng: Optional[random.Random] = None, *, starting_food: int = 0
+) -> None:
+    """
+    Run the whole upgrade. ``pregnancy_timer_range`` is the game's PREGNANCY_TIMER_HOURS_RANGE; ``starting_food``
+    (food units, 0 = skip) is the least food every kennel is left with.
+    """
     rng = rng or random.Random()
 
     logger.info("Upgrading schema...")
@@ -118,6 +134,9 @@ async def upgrade(pregnancy_timer_range: tuple[int, int], rng: Optional[random.R
     logger.info("Gave %d pregnant pooch(es) a pregnancy timer.", pregnancies)
     pooches = await _backfill_upkeep()
     logger.info("Recomputed consumption and mess output for %d pooch(es).", pooches)
+    if starting_food > 0:
+        kennels = await _stock_kennels(starting_food)
+        logger.info("Topped up %d kennel(s) to %d food.", kennels, starting_food)
 
     await validate_cross_references()
     logger.info("Upgrade complete.")

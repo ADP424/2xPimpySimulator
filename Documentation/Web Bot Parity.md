@@ -59,7 +59,9 @@ New catalog rows: diseases (5), items (6), injury "Cannibalism Guilt", mutation 
 **Upgrading a live database** (keeps every player): `uv run python main.py --migrate`. It adds the tables, columns and
 checks (DDL generated from the models), adds only the new catalog rows, gives already-pregnant pooches a pregnancy
 timer, recomputes each pooch's consumption/mess output from size and breeds, and validates catalog references. Safe to
-run twice. Verified on a copy of the Kraft database (2026-10-14): player data unchanged, second run a no-op, schema
+run twice. Kennels start with no food, so add `--starting-food N` to top every kennel up to at least N food units
+(a kennel eats the sum of its pooches' consumption, 2–7 an hour on the Kraft data, so ~170 is a day's grace); without
+it, starving pooches turn to cannibalism within hours. Verified on a copy of the Kraft database (2026-10-14): player data unchanged, second run a no-op, schema
 identical to a fresh install.
 
 ## Setup
@@ -77,7 +79,7 @@ identical to a fresh install.
 
 1. Back up: `docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner --no-privileges' > kraft_backup_<date>.sql`
 2. Pull `integrate-lots-of-changes`, install, rebuild the JS bundle.
-3. `uv run python main.py --migrate`, then restart the bot and web app.
+3. `uv run python main.py --migrate --starting-food 170`, then restart the bot and web app.
 
 ## Still to verify by hand (dev server, migrated Kraft copy)
 
