@@ -91,25 +91,30 @@ class TestRenamePooch:
 
 
 class TestRunHourlyBreedingCooldownCheck:
-    @patch("src.game.manage_pooches.tick_hourly_breeding_cooldowns", new_callable=AsyncMock)
-    async def test_returns_count(self, mock_tick):
-        mock_tick.return_value = 5
+    async def _run(self, fertility_by_pooch, rolls):
+        rng_values = iter(rolls)
+        with (
+            patch(
+                "src.game.manage_pooches.list_pooch_ids_on_breeding_cooldown",
+                new=AsyncMock(return_value=list(fertility_by_pooch)),
+            ),
+            patch(
+                "src.game.manage_pooches.get_effective_stat",
+                new=AsyncMock(side_effect=lambda pid, stat: fertility_by_pooch[pid]),
+            ),
+            patch("src.game.manage_pooches.decrement_pooch_breeding_cooldown", new=AsyncMock()) as decrement,
+            patch("random.Random.random", new=lambda self: next(rng_values)),
+        ):
+            count = await run_hourly_breeding_cooldown_check(rng_seed=1)
+        return count, decrement
 
-        count = await run_hourly_breeding_cooldown_check(rng_seed=42)
-        assert count == 5
-        mock_tick.assert_awaited_once()
+    async def test_rolls_effective_fertility_over_divisor(self):
+        # fertility 25 / 50 = 0.5 chance: a 0.4 roll succeeds, a 0.6 roll fails
+        count, decrement = await self._run({1: 25, 2: 25}, rolls=[0.4, 0.6])
+        assert count == 1
+        decrement.assert_awaited_once_with(1)
 
-    @patch("src.game.manage_pooches.tick_hourly_breeding_cooldowns", new_callable=AsyncMock)
-    async def test_passes_divisor_and_seed(self, mock_tick):
-        mock_tick.return_value = 0
-
-        await run_hourly_breeding_cooldown_check(rng_seed=99)
-        mock_tick.assert_awaited_once_with(fertility_divisor=50, rng_seed=99)
-
-    @patch("src.game.manage_pooches.tick_hourly_breeding_cooldowns", new_callable=AsyncMock)
-    async def test_no_seed(self, mock_tick):
-        mock_tick.return_value = 3
-
-        count = await run_hourly_breeding_cooldown_check()
-        assert count == 3
-        mock_tick.assert_awaited_once_with(fertility_divisor=50, rng_seed=None)
+    async def test_immortal_pooches_never_come_back_into_heat(self):
+        count, decrement = await self._run({1: 0}, rolls=[0.0])
+        assert count == 0
+        decrement.assert_not_awaited()

@@ -5,7 +5,7 @@
 {% block content %}
 <div class="mb-8">
     <h1 class="text-3xl font-bold">🏥 Veterinary Clinic</h1>
-    <p class="text-base-content/60 mt-1">Learn about breeds, mutations, injuries and diseases</p>
+    <p class="text-base-content/60 mt-1">Care for your pooches and learn about breeds, mutations, injuries and diseases</p>
 </div>
 
 <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-2xl">
@@ -13,7 +13,7 @@
         <div class="card-body items-center text-center py-10">
             <span class="text-6xl mb-4">🛏️</span>
             <h2 class="card-title">Patient Room</h2>
-            <p class="text-sm text-base-content/60">Treat injuries and diseases, diagnose hidden conditions, or book a medical exam</p>
+            <p class="text-sm text-base-content/60">Treat, diagnose, examine or neuter your pooches</p>
         </div>
     </a>
 
@@ -48,5 +48,57 @@
             <p class="text-sm text-base-content/60">Learn how illnesses spread and which ones can be cured</p>
         </div>
     </a>
+
+    <button class="card bg-base-200 shadow-md hover:-translate-y-1 hover:shadow-lg transition-all text-base-content sm:col-span-2" onclick="toggleSurvey()">
+        <div class="card-body items-center text-center py-10">
+            <span class="text-6xl mb-4">📊</span>
+            <h2 class="card-title">Breed Survey</h2>
+            <p class="text-sm text-base-content/60">See which breeds are most common across the server</p>
+        </div>
+    </button>
 </div>
+
+<!-- Breed Survey panel -->
+<div id="survey-panel" style="display: none;" class="card bg-base-200 shadow-md mt-6 max-w-2xl">
+    <div class="card-body">
+        <h2 class="card-title">📊 Breed Population Survey</h2>
+        <div id="survey-loading" class="flex items-center gap-2 text-base-content/50 py-2">
+            <span class="loading loading-spinner loading-sm"></span> Loading...
+        </div>
+        <div id="survey-content" style="display: none;"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let surveyLoaded = false;
+function toggleSurvey() {
+    const panel = document.getElementById('survey-panel');
+    panel.style.display = panel.style.display === 'none' ? '' : 'none';
+    if (!surveyLoaded && panel.style.display !== 'none') loadSurvey();
+}
+
+async function loadSurvey() {
+    surveyLoaded = true;
+    try {
+        const r = await fetch('/api/vet/breed-survey');
+        const data = await r.json();
+        document.getElementById('survey-loading').style.display = 'none';
+        const contentEl = document.getElementById('survey-content');
+        let html = '';
+        for (const [pop, entries] of Object.entries(data)) {
+            if (!entries || !entries.length) continue;
+            html += `<div class="mb-4"><h3 class="font-semibold capitalize mb-2">${escapeHtml(pop)}</h3><div class="flex flex-col gap-1">`;
+            entries.slice(0, 15).forEach(e => {
+                const pct = (e.weighted_total * 100).toFixed(1);
+                html += `<div class="flex justify-between text-sm"><span>${escapeHtml(e.breed)}</span><span class="text-base-content/50">${pct}% avg · ${e.dominant_count} dominant</span></div>`;
+            });
+            html += '</div></div>';
+        }
+        contentEl.innerHTML = html || '<p class="text-base-content/50">No data yet.</p>';
+        contentEl.style.display = 'block';
+    } catch(e) { document.getElementById('survey-loading').textContent = 'Failed to load survey.'; }
+}
+</script>
 {% endblock %}

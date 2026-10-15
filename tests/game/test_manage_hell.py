@@ -147,6 +147,7 @@ class TestGetPoochBloodskullValue:
 class TestSacrificePooch:
     @patch("src.game.manage_hell.damn_pooch", new_callable=AsyncMock)
     @patch("src.game.manage_hell.remove_pooch_from_kennel", new_callable=AsyncMock)
+    @patch("src.game.manage_hell.give_owner_body_part", new_callable=AsyncMock)
     @patch("src.game.manage_hell.update_pooch_mood", new_callable=AsyncMock)
     @patch("src.game.manage_hell.set_pooch_dead", new_callable=AsyncMock)
     @patch("src.game.manage_hell.give_bones_to_owner", new_callable=AsyncMock)
@@ -163,6 +164,7 @@ class TestSacrificePooch:
         mock_bones,
         mock_kill,
         mock_mood,
+        mock_body_part,
         mock_remove,
         mock_damn,
     ):
@@ -371,3 +373,33 @@ class TestConjurePooch:
 
         assert success is True
         mock_add_mut.assert_not_awaited()
+
+
+class TestBodyParts:
+    def test_describe_uses_real_plurals(self):
+        from src.game.manage_hell import describe_body_parts
+
+        assert describe_body_parts({"bone": 3, "teeth": 1, "eye": 2}) == "3 bones, 1 tooth, 2 eyes"
+        assert describe_body_parts({"teeth": 4, "heart": 1}) == "4 teeth, 1 heart"
+
+    async def test_drop_grants_and_reports_each_part(self):
+        import random
+        from types import SimpleNamespace
+
+        from src.game.manage_hell import drop_body_parts
+
+        with patch("src.game.manage_hell.give_owner_body_part", new=AsyncMock()) as give:
+            dropped = await drop_body_parts(7, SimpleNamespace(size=10), random.Random(1))
+        assert dropped  # bones and teeth always drop
+        assert {"bone", "teeth"} <= set(dropped)
+        assert sorted(c.args for c in give.await_args_list) == sorted((7, part, n) for part, n in dropped.items())
+
+    async def test_scale_zero_drops_nothing(self):
+        import random
+        from types import SimpleNamespace
+
+        from src.game.manage_hell import drop_body_parts
+
+        with patch("src.game.manage_hell.give_owner_body_part", new=AsyncMock()) as give:
+            assert await drop_body_parts(7, SimpleNamespace(size=10), random.Random(1), scale=0.0) == {}
+        give.assert_not_awaited()

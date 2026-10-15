@@ -9,7 +9,14 @@ import urllib.request
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from src.game.models import BirthEvent, DayChangeSummary, DeathEvent, OtherEvent, Pooch
+    from src.game.models import (
+        BirthEvent,
+        DayChangeSummary,
+        DeathEvent,
+        HourChangeSummary,
+        OtherEvent,
+        Pooch,
+    )
 
 from src.logger import get_logger
 
@@ -191,6 +198,41 @@ async def post_day_change_webhooks(summaries: dict[int, DayChangeSummary]) -> No
         payload = {
             "event": "day_change",
             "data": serialize_day_change_summary(summary),
+        }
+        tasks.append(asyncio.to_thread(post_json, url, secret, payload))
+
+    if tasks:
+        await asyncio.gather(*tasks, return_exceptions=True)
+
+
+def serialize_hour_change_summary(summary: HourChangeSummary) -> dict[str, Any]:
+    """Serialize an HourChangeSummary for the web app webhook."""
+    return {
+        "server_discord_id": summary.server.discord_id,
+        "hour": int(getattr(summary, "hour", 0) or 0),
+        "births": [serialize_birth(e) for e in summary.births],
+        "deaths": [serialize_death(e) for e in summary.deaths],
+        "other_events": [serialize_other(e) for e in summary.other_events],
+    }
+
+
+async def post_hour_change_webhooks(summaries: dict[int, HourChangeSummary]) -> None:
+    """Post each hour-change summary to the configured web app webhook endpoint.
+
+    Only non-empty summaries are sent — quiet hours don't cause network traffic.
+    """
+    url = os.environ.get("WEBHOOK_URL")
+    secret = os.environ.get("WEBHOOK_SECRET")
+    if not url or not secret:
+        return
+
+    tasks = []
+    for summary in summaries.values():
+        if getattr(summary, "is_empty", False):
+            continue
+        payload = {
+            "event": "hour_change",
+            "data": serialize_hour_change_summary(summary),
         }
         tasks.append(asyncio.to_thread(post_json, url, secret, payload))
 

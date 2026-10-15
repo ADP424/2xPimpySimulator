@@ -93,8 +93,8 @@ class TestKennelPageControls:
         view = MagicMock()
         view.add_item = MagicMock()
         controls.attach(view)
-        # Should add: rename kennel button, select, info, breed, walk, rename pooch, cast out
-        assert view.add_item.call_count == 7
+        # Should add: rename kennel button, feed button, select, info, breed, walk, rename pooch, cast out
+        assert view.add_item.call_count == 8
 
     async def test_select_enables_action_buttons(self):
         kennel = _make_kennel()
@@ -265,7 +265,10 @@ class TestKennelPageControls:
         controls.selected_pooch = pooch_male
         interaction = MagicMock()
 
-        with patch("src.bot.ui.kennels.InteractionResponder") as MockResponder:
+        with (
+            patch("src.bot.ui.kennels.InteractionResponder") as MockResponder,
+            patch("src.bot.ui.kennels.get_breeding_chance", new=AsyncMock(return_value=0.4)) as chance,
+        ):
             mock_r = MagicMock()
             mock_r.reply = AsyncMock()
             MockResponder.return_value = mock_r
@@ -273,6 +276,8 @@ class TestKennelPageControls:
             mock_r.reply.assert_called_once()
             call_kwargs = mock_r.reply.call_args[1]
             assert "view" in call_kwargs
+            assert "(40% chance)" in call_kwargs["view"].select.placeholder
+        chance.assert_awaited_once_with(1)
 
     async def test_noop_replies_coming_soon(self):
         kennel = _make_kennel()

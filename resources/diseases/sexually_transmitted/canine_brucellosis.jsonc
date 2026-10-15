@@ -1,0 +1,22 @@
+{
+    "name": "Canine Brucellosis",
+    "description": "A bacterial infection spread through breeding. Causes reproductive failure and chronic illness.",
+    "health_impact": "HARMFUL",
+    "contagion_chance": 0.6,
+    "sexually_transmitted": true,
+    "recovery_chance": 0.02,
+    "treatable": true,
+    "curable": false,
+    "heritability": 0.1,
+    "invisible_messages": [
+        "This pooch tires out more quickly than usual.",
+        "This pooch has been losing weight slowly.",
+        "This pooch's joints seem stiff."
+    ],
+    "visible": false,
+    "reveal_chance": 0.5,
+    "parameters": {
+        "fertility_add": -3,
+        "constitution_add": -1
+    }
+}

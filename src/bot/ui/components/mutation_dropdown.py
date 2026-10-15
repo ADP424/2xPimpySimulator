@@ -61,6 +61,13 @@ class MutationDropdownControls:
     """Reusable dropdown + info button for showing general mutation info."""
 
     def __init__(self, mutations: list[MutationOption], placeholder: str = "Select a mutation"):
+        from src.game.utils.rarity_sort import sort_by_rarity_weight
+
+        mutations = sort_by_rarity_weight(
+            mutations,
+            key=lambda o: getattr(o.mutation, "rarity", None),
+            secondary=lambda o: getattr(o.mutation, "name", "") or "",
+        )
         self.mutations = mutations
         self.selected: Optional[Mutation] = None
 

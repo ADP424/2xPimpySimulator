@@ -1,0 +1,25 @@
+{
+    "name": "Kennel Cough",
+    "description": "A common and highly contagious respiratory infection in dogs.",
+    "health_impact": "HARMFUL",
+    "contagion_chance": 0.3,
+    "sexually_transmitted": false,
+    "recovery_chance": 0.15,
+    "treatable": true,
+    "curable": true,
+    "immunity_duration": 30,
+    "heritability": 0.0,
+    "seasons": ["autumn", "winter"],
+    "season_contagion_modifiers": {
+        "autumn": 1.2,
+        "winter": 1.5
+    },
+    "invisible_messages": [
+        "This pooch has been coughing a lot lately.",
+        "This pooch sneezes frequently.",
+        "This pooch seems to have a runny nose.",
+        "This pooch tires out more quickly than usual."
+    ],
+    "visible": false,
+    "reveal_chance": 0.8
+}

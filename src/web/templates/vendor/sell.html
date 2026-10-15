@@ -70,7 +70,9 @@ document.addEventListener('DOMContentLoaded', async function() {
         document.getElementById('sell-container').style.display = 'block';
 
         document.getElementById('vendor-name').textContent = `💰 Sell to ${vendor.name}`;
-        document.getElementById('vendor-subtitle').textContent = `Price markup: ${formatMarkup(vendor.price_markup)}`;
+        // Section 1B: vendor markup is internal — show stock summary instead.
+        document.getElementById('vendor-subtitle').textContent =
+            `${vendor.stock_count ?? 0} pooches in stock`;
 
         // Desired mutations
         if (vendor.desired_mutations && vendor.desired_mutations.length > 0) {

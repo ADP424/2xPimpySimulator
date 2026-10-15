@@ -9,7 +9,7 @@ from typing import Any
 from flask import Blueprint, abort, current_app, jsonify, request
 
 from src.web.app import socketio
-from src.web.events import broadcast_day_change
+from src.web.events import broadcast_day_change, broadcast_hour_change
 
 webhooks_bp = Blueprint("webhooks", __name__)
 
@@ -148,16 +148,46 @@ class WebhookDayChangeSummary:
 
 
 @dataclass(frozen=True)
+class WebhookHourChangeSummary:
+    server_discord_id: int
+    hour: int
+    births: list[WebhookBirthEvent]
+    deaths: list[WebhookDeathEvent]
+    other_events: list[WebhookOtherEvent]
+
+    @staticmethod
+    def from_dict(data: dict[str, Any]) -> "WebhookHourChangeSummary":
+        return WebhookHourChangeSummary(
+            server_discord_id=int(data["server_discord_id"]),
+            hour=int(data.get("hour", 0) or 0),
+            births=[WebhookBirthEvent.from_dict(e) for e in data.get("births", [])],
+            deaths=[WebhookDeathEvent.from_dict(e) for e in data.get("deaths", [])],
+            other_events=[WebhookOtherEvent.from_dict(e) for e in data.get("other_events", [])],
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "server_discord_id": self.server_discord_id,
+            "hour": self.hour,
+            "births": [b.to_dict() for b in self.births],
+            "deaths": [d.to_dict() for d in self.deaths],
+            "other_events": [o.to_dict() for o in self.other_events],
+        }
+
+
+@dataclass(frozen=True)
 class WebhookEnvelope:
     event: str
-    data: WebhookDayChangeSummary
+    data: WebhookDayChangeSummary | WebhookHourChangeSummary
 
     @staticmethod
     def from_dict(payload: dict[str, Any]) -> "WebhookEnvelope":
         event = str(payload.get("event", ""))
-        if event != "day_change":
-            raise ValueError("Unsupported webhook event")
-        return WebhookEnvelope(event=event, data=WebhookDayChangeSummary.from_dict(payload["data"]))
+        if event == "day_change":
+            return WebhookEnvelope(event=event, data=WebhookDayChangeSummary.from_dict(payload["data"]))
+        if event == "hour_change":
+            return WebhookEnvelope(event=event, data=WebhookHourChangeSummary.from_dict(payload["data"]))
+        raise ValueError(f"Unsupported webhook event: {event}")
 
 
 @webhooks_bp.post("/day-change")
@@ -182,7 +212,39 @@ def day_change_webhook():
 
     summary_dict = envelope.data.to_dict()
 
-    # Emit to subscribed clients
-    broadcast_day_change(socketio, summary_dict)
+    if envelope.event == "day_change":
+        broadcast_day_change(socketio, summary_dict)
+    elif envelope.event == "hour_change":
+        broadcast_hour_change(socketio, summary_dict)
 
+    return jsonify({"ok": True})
+
+
+@webhooks_bp.post("/hour-change")
+def hour_change_webhook():
+    """Receive hour-change summaries from the bot and push to connected web clients.
+
+    The bot posts to a separate path so operators can filter traffic, but
+    the shared /day-change endpoint also handles ``event == 'hour_change'``
+    for simplicity.
+    """
+    secret = current_app.config.get("WEBHOOK_SECRET")
+    if not secret:
+        abort(503, description="Webhook secret not configured")
+
+    body = request.get_data(cache=False)
+    signature = request.headers.get("X-Pimpy-Signature", "")
+    if not signature or not _verify_signature(secret, body, signature):
+        abort(401, description="Invalid signature")
+
+    try:
+        payload_raw = json.loads(body.decode("utf-8"))
+        envelope = WebhookEnvelope.from_dict(payload_raw)
+    except Exception:
+        abort(400, description="Invalid payload")
+
+    if envelope.event != "hour_change":
+        abort(400, description="Expected hour_change payload")
+
+    broadcast_hour_change(socketio, envelope.data.to_dict())
     return jsonify({"ok": True})

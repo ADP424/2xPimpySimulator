@@ -124,3 +124,20 @@ def broadcast_day_change(socketio: SocketIO, summary_data: dict[str, Any]) -> No
         return
 
     socketio.emit("day_change", summary_data, room=f"server_{server_id}")
+
+
+def broadcast_hour_change(socketio: SocketIO, summary_data: dict[str, Any]) -> None:
+    """Broadcast a single server hour-change summary to subscribed clients.
+
+    Skips broadcasting when the summary has no events, so the client feed
+    isn't flooded with empty ticks.
+    """
+    server_id = int(summary_data.get("server_discord_id", 0))
+    if not server_id:
+        return
+
+    has_events = bool(summary_data.get("births") or summary_data.get("deaths") or summary_data.get("other_events"))
+    if not has_events:
+        return
+
+    socketio.emit("hour_change", summary_data, room=f"server_{server_id}")

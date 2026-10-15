@@ -64,6 +64,7 @@ from src.game.constants import (
     FIGHT_STRENGTH_LOSS_PER_ROUND,
 )
 
+from ...manage_stats import get_effective_stats
 from .amount import get_amount_from_parameters, get_mode, resolve_amount
 
 logger = logging.getLogger(__name__)
@@ -391,6 +392,16 @@ _SET_FNS = {
 }
 
 
+MODIFIABLE_STATS = (*_MODIFY_FNS, "base_health")
+
+
+async def modify_pooch_stat(pooch_id: int, stat: str, amount: int) -> Any:
+    """Permanently change one of a pooch's stats (or its base health) by ``amount``. Returns the updated pooch."""
+    if stat == "base_health":
+        return await modify_pooch_base_health(pooch_id, amount)
+    return await _MODIFY_FNS[stat](pooch_id, amount)
+
+
 async def handle_modify_stat(
     action_type: str,
     pooch_ids: list[int],
@@ -572,16 +583,19 @@ async def handle_fight_pooches(
             "error": "one or both pooches unavailable",
         }
 
-    att_str: float = max(1, attacker.strength)
-    att_dex = max(1, attacker.dexterity)
-    att_con = max(1, attacker.constitution)
-    att_agg = max(1, attacker.aggressiveness)
-    att_siz = max(1, attacker.size)
-    def_str_raw: float = max(1, defender.strength)
-    def_dex = max(1, defender.dexterity)
-    def_con = max(1, defender.constitution)
-    def_agg = max(1, defender.aggressiveness)
-    def_siz = max(1, defender.size)
+    # Fighters use their effective stats: breeds, conditions, hunger etc. all count
+    att = await get_effective_stats(attacker_id)
+    dfn = await get_effective_stats(defender_id)
+    att_str: float = max(1, att["strength"])
+    att_dex = max(1, att["dexterity"])
+    att_con = max(1, att["constitution"])
+    att_agg = max(1, att["aggressiveness"])
+    att_siz = max(1, att["size"])
+    def_str_raw: float = max(1, dfn["strength"])
+    def_dex = max(1, dfn["dexterity"])
+    def_con = max(1, dfn["constitution"])
+    def_agg = max(1, dfn["aggressiveness"])
+    def_siz = max(1, dfn["size"])
 
     att_fatigue = _strength_loss_for_round(att_con)
     def_fatigue = _strength_loss_for_round(def_con)

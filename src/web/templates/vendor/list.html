@@ -49,16 +49,9 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 });
 
-function formatMarkup(markup) {
-    const pct = Math.round((markup - 1) * 100);
-    const sign = pct >= 0 ? '+' : '';
-    return `${sign}${pct}%`;
-}
+// Section 1B: vendor markup is internal pricing only — never shown to players.
 
 function createVendorCard(vendor) {
-    const markupPct = Math.round((vendor.price_markup - 1) * 100);
-    const markupClass = markupPct > 20 ? 'text-error' : markupPct < 0 ? 'text-success' : '';
-
     const wantsMutationsHtml = vendor.desired_mutations && vendor.desired_mutations.length > 0
         ? `<div class="flex flex-wrap gap-1 items-center">
                <span class="text-xs text-base-content/50 shrink-0">Wants Mutations:</span>
@@ -88,10 +81,6 @@ function createVendorCard(vendor) {
                     <div class="flex flex-col gap-0.5">
                         <span class="text-xs text-base-content/50 uppercase tracking-wide">Stock</span>
                         <span class="font-semibold">${vendor.stock_count ?? 0}</span>
-                    </div>
-                    <div class="flex flex-col gap-0.5">
-                        <span class="text-xs text-base-content/50 uppercase tracking-wide">Markup</span>
-                        <span class="font-semibold ${markupClass}">${formatMarkup(vendor.price_markup)}</span>
                     </div>
                 </div>
                 ${wantsHtml}

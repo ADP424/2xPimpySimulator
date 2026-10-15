@@ -450,3 +450,29 @@ class TestSacrificeControls:
 
             await controls._on_sacrifice(interaction)
             mock_r.finish_with_error.assert_called_once()
+
+
+@pytest.mark.contract
+class TestCustomSummonModal:
+    async def _submit(self, typed):
+        from src.bot.ui.church import _CustomSummonModal
+
+        modal = _CustomSummonModal(owner_discord_id=100)
+        modal.rolls = MagicMock(value=typed)
+        interaction = MagicMock()
+        interaction.user.id = 100
+        with patch("src.bot.ui.church.InteractionResponder") as MockResponder:
+            mock_r = MagicMock()
+            mock_r.reply = AsyncMock()
+            MockResponder.return_value = mock_r
+            await modal.on_submit(interaction)
+        return mock_r.reply.call_args[1]["content"]
+
+    async def test_typed_number_is_used(self):
+        assert "**7** marks" in await self._submit(" 7 ")
+
+    async def test_non_number_is_rejected(self):
+        assert await self._submit("seven") == "Enter a whole number of rolls (like 7)."
+
+    async def test_zero_is_rejected(self):
+        assert await self._submit("0") == "You need to make at least 1 roll."

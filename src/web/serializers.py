@@ -69,6 +69,11 @@ def serialize_owner(owner: Any) -> dict:
         "dollars": owner.dollars,
         "bloodskulls": owner.bloodskulls,
         "bones": owner.bones,
+        "hearts": getattr(owner, "hearts", 0),
+        "brains": getattr(owner, "brains", 0),
+        "eyes": getattr(owner, "eyes", 0),
+        "tails": getattr(owner, "tails", 0),
+        "teeth": getattr(owner, "teeth", 0),
         "begged_today": owner.begged_today,
         "visited_park_today": owner.visited_park_today,
     }
@@ -84,12 +89,18 @@ def serialize_public_owner(owner: Any) -> dict:
 
 def serialize_kennel(kennel: Any) -> dict:
     """Serialize a Kennel object."""
+    from src.game.utils.obfuscation import messiness_label
+
+    messiness = getattr(kennel, "messiness", 0) or 0
+    pooch_limit = kennel.pooch_limit or 10
     return {
         "id": kennel.id,
         "owner_discord_id": kennel.owner_discord_id,
         "name": kennel.name,
-        "pooch_limit": kennel.pooch_limit,
-        "messiness": kennel.messiness,
+        "pooch_limit": pooch_limit,
+        "messiness": messiness,
+        "messiness_label": messiness_label(messiness, capacity=pooch_limit),
+        "food_stock": getattr(kennel, "food_stock", 0),
     }
 
 
@@ -367,9 +378,11 @@ def serialize_pooch(pooch: Any, include_relations: bool = True) -> dict:
     """
     Serialize a Pooch object as any player may see it.
 
-    Exact health and breeding cooldown stay hidden (the bot shows only status labels), and hidden
+    Exact health, hunger and breeding cooldown stay hidden (only their labels are sent), and hidden
     mutations, injuries and diseases appear only as their displayed symptoms.
     """
+    from src.game.utils.obfuscation import health_label, starvation_label
+
     data = {
         "id": pooch.id,
         "name": pooch.name,
@@ -381,10 +394,15 @@ def serialize_pooch(pooch: Any, include_relations: bool = True) -> dict:
         "vendor_id": pooch.vendor_id,
         "created_at": serialize_datetime(pooch.created_at),
         "birthday": serialize_datetime(pooch.birthday),
+        "health_label": health_label(pooch.health),
         "status": pooch.status,
         "breeding_status": pooch.breeding_status,
         "can_breed": pooch.can_breed,
         "mood": pooch.mood,
+        "pregnant": getattr(pooch, "pregnancy_timer", None) is not None,
+        "immortal": getattr(pooch, "immortal", False),
+        "rejuvenation_count": getattr(pooch, "rejuvenation_count", 0),
+        "starvation_label": starvation_label(getattr(pooch, "starvation", 0) or 0),
     }
 
     if include_relations:
@@ -411,7 +429,6 @@ def serialize_vendor(vendor: Any) -> dict:
         "id": vendor.id,
         "server_discord_id": vendor.server_discord_id,
         "name": vendor.name,
-        "price_markup": vendor.price_markup,
         "stock_count": vendor.stock_count,
         "desired_mutations": [],
         "desired_breeds": [],
@@ -458,7 +475,7 @@ def serialize_auction_sale_listing(listing: Any) -> dict:
     """Serialize a game-layer AuctionSaleListing."""
     return {
         "id": listing.id,
-        "pooch": serialize_pooch(listing.pooch),
+        "pooch": serialize_pooch(listing.pooch) if listing.pooch else None,
         "seller_discord_id": listing.seller_discord_id,
         "server_discord_id": listing.server_discord_id,
         "minimum_bid": listing.minimum_bid,
@@ -491,6 +508,18 @@ def serialize_bounty_match_result(result: Any) -> dict:
         "listing_id": result.listing_id,
         "matched_criteria": result.matched_criteria,
         "payout": result.payout,
+    }
+
+
+def serialize_item(item: Any) -> dict:
+    """Serialize a catalog Item."""
+    return {
+        "name": item.name,
+        "alt_name": item.alt_name,
+        "category": item.category,
+        "description": item.description,
+        "rarity": item.rarity,
+        "parameters": item.parameters,
     }
 
 

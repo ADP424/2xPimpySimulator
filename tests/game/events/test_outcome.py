@@ -74,25 +74,25 @@ async def test_get_stat_size_returns_float():
         The result of calling `test_get_stat_size_returns_float`.
     """
 
-    with patch(f"{MOD}.get_pooch_size", new=AsyncMock(return_value=15)):
+    with patch(f"{MOD}.get_effective_stat", new=AsyncMock(return_value=15)):
         result = await get_effective_pooch_stat("size", 1)
     assert result == 15.0
 
 
 @pytest.mark.asyncio
-async def test_get_stat_size_none_returns_default_10():
+async def test_get_stat_size_missing_pooch_returns_none():
     """
-    Test get stat size none returns default 10.
+    Test get stat size for a missing pooch returns None.
 
     Returns
     -------
     Any
-        The result of calling `test_get_stat_size_none_returns_default_10`.
+        The result of calling `test_get_stat_size_missing_pooch_returns_none`.
     """
 
-    with patch(f"{MOD}.get_pooch_size", new=AsyncMock(return_value=None)):
+    with patch(f"{MOD}.get_effective_stat", new=AsyncMock(return_value=None)):
         result = await get_effective_pooch_stat("size", 1)
-    assert result == 10.0
+    assert result is None
 
 
 @pytest.mark.asyncio
@@ -106,12 +106,12 @@ async def test_get_stat_known_returns_float():
         The result of calling `test_get_stat_known_returns_float`.
     """
 
-    original = _outcome_mod._STAT_GETTERS["strength"]
-    _outcome_mod._STAT_GETTERS["strength"] = AsyncMock(return_value=8)
+    original = _outcome_mod.get_effective_stat
+    _outcome_mod.get_effective_stat = AsyncMock(return_value=8)
     try:
         result = await get_effective_pooch_stat("strength", 1)
     finally:
-        _outcome_mod._STAT_GETTERS["strength"] = original
+        _outcome_mod.get_effective_stat = original
     assert result == 8.0
 
 
@@ -141,12 +141,12 @@ async def test_get_stat_known_db_none_returns_none():
         The result of calling `test_get_stat_known_db_none_returns_none`.
     """
 
-    original = _outcome_mod._STAT_GETTERS["cuteness"]
-    _outcome_mod._STAT_GETTERS["cuteness"] = AsyncMock(return_value=None)
+    original = _outcome_mod.get_effective_stat
+    _outcome_mod.get_effective_stat = AsyncMock(return_value=None)
     try:
         result = await get_effective_pooch_stat("cuteness", 1)
     finally:
-        _outcome_mod._STAT_GETTERS["cuteness"] = original
+        _outcome_mod.get_effective_stat = original
     assert result is None
 
 
@@ -199,12 +199,12 @@ async def test_stat_multiplier_skips_non_dict_entries(rng):
 async def test_stat_multiplier_above_pivot_increases(rng):
     """strength=20, pivot=10, scale=0.1, direction=1 → multiplier = 1 + (20-10)*0.1*1 = 2.0"""
     entry = {"stat": "strength", "pooch": "random", "scale": 0.1, "pivot": 10.0, "direction": 1.0}
-    original = _outcome_mod._STAT_GETTERS["strength"]
-    _outcome_mod._STAT_GETTERS["strength"] = AsyncMock(return_value=20)
+    original = _outcome_mod.get_effective_stat
+    _outcome_mod.get_effective_stat = AsyncMock(return_value=20)
     try:
         result = await compute_outcome_stat_multiplier([entry], _simple_resolver(1), rng)
     finally:
-        _outcome_mod._STAT_GETTERS["strength"] = original
+        _outcome_mod.get_effective_stat = original
     assert abs(result - 2.0) < 1e-6
 
 
@@ -225,12 +225,12 @@ async def test_stat_multiplier_clamped_to_zero(rng):
     """
 
     entry = {"stat": "strength", "pooch": "random", "scale": 1.0, "pivot": 10.0, "direction": 1.0}
-    original = _outcome_mod._STAT_GETTERS["strength"]
-    _outcome_mod._STAT_GETTERS["strength"] = AsyncMock(return_value=0)
+    original = _outcome_mod.get_effective_stat
+    _outcome_mod.get_effective_stat = AsyncMock(return_value=0)
     try:
         result = await compute_outcome_stat_multiplier([entry], _simple_resolver(1), rng)
     finally:
-        _outcome_mod._STAT_GETTERS["strength"] = original
+        _outcome_mod.get_effective_stat = original
     assert result == 0.0
 
 
@@ -355,11 +355,11 @@ async def test_raw_sum_zero_falls_back_to_rng_choice(rng):
     sw = [{"stat": "strength", "pooch": "random", "scale": 100.0, "pivot": 10.0, "direction": 1.0}]
     o_dynamic = _make_outcome(chance=0.0, stat_weights=sw, label="zero_dynamic")
 
-    original = _outcome_mod._STAT_GETTERS["strength"]
-    _outcome_mod._STAT_GETTERS["strength"] = AsyncMock(return_value=0)
+    original = _outcome_mod.get_effective_stat
+    _outcome_mod.get_effective_stat = AsyncMock(return_value=0)
     try:
         result = await choose_weighted_outcome([o_dynamic], _simple_resolver(1), rng)
     finally:
-        _outcome_mod._STAT_GETTERS["strength"] = original
+        _outcome_mod.get_effective_stat = original
 
     assert result is o_dynamic

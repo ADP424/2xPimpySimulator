@@ -1,0 +1,11 @@
+{
+    "name": "Cannibalism Guilt",
+    "description": "This pooch is haunted by what it has done. The guilt weighs heavily on its psyche.",
+    "health_impact": "NEUTRAL",
+    "severity": "minor",
+    "parameters": {
+        "persistence": 20,
+        "intelligence_add": -1,
+        "cuteness_add": -2
+    }
+}

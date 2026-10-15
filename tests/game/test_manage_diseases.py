@@ -14,6 +14,8 @@ from src.game.manage_diseases import (
     TREATMENT_RECOVERY_BONUS,
     VET_DIAGNOSE_DISEASES_COST,
     VET_DISEASE_TREATMENT_BASE_COST,
+    clean_kennel_by_hand,
+    clean_kennel_with_item,
     diagnose_diseases,
     get_public_disease_label,
     treat_disease,
@@ -857,20 +859,16 @@ class TestDiagnoseDiseases:
 
     @pytest.mark.asyncio
     @patch("src.game.manage_diseases.reveal_pooch_disease", new_callable=AsyncMock)
-    @patch("src.game.manage_diseases.list_pooch_disease_instances", new_callable=AsyncMock)
+    @patch("src.game.manage_diseases.list_invisible_pooch_disease_instances", new_callable=AsyncMock)
     @patch("src.game.manage_diseases.give_money_to_owner", new_callable=AsyncMock)
     @patch("src.game.manage_diseases.get_pooch_by_id", new_callable=AsyncMock)
     @patch("src.game.manage_diseases.get_owner_by_discord_id", new_callable=AsyncMock)
-    async def test_reveals_only_hidden_diseases(
-        self, mock_get_owner, mock_get_pooch, mock_give, mock_list, mock_reveal
-    ):
+    async def test_reveals_hidden_diseases(self, mock_get_owner, mock_get_pooch, mock_give, mock_list, mock_reveal):
         mock_get_owner.return_value = SimpleNamespace(dollars=1000)
         mock_get_pooch.return_value = SimpleNamespace(owner_discord_id=1)
         hidden = make_pooch_disease(disease=make_disease(name="Mange", reveal_chance=1.0), visible=False)
         hidden.id = 11
-        shown = make_pooch_disease(disease=make_disease(name="Flu", reveal_chance=1.0), visible=True)
-        shown.id = 12
-        mock_list.return_value = [hidden, shown]
+        mock_list.return_value = [hidden]
 
         success, _, revealed = await diagnose_diseases(1, 1, rng_seed=0)
 
@@ -883,12 +881,16 @@ class TestDiagnoseDiseases:
 class TestAdditionalDiseaseLogic:
     @pytest.mark.asyncio
     @patch("src.game.manage_diseases.get_kennel_by_id", new_callable=AsyncMock)
-    @patch("src.game.manage_diseases.set_kennel_messiness", new_callable=AsyncMock)
-    async def test_clean_kennel_rejects_wrong_owner(self, mock_set_messiness, mock_get_kennel):
+    @patch("src.game.manage_diseases.update_kennel_messiness", new_callable=AsyncMock)
+    @patch("src.game.manage_diseases.consume_owner_item", new_callable=AsyncMock)
+    @patch("src.game.manage_diseases.set_owner_hand_cleaned_today", new_callable=AsyncMock)
+    async def test_cleaning_rejects_wrong_owner(self, mock_set_hand, mock_consume, mock_update, mock_get_kennel):
         mock_get_kennel.return_value = SimpleNamespace(id=1, owner_discord_id=999, messiness=50)
-        result = await __import__("src.game.manage_diseases", fromlist=["clean_kennel"]).clean_kennel(100, 1)
-        assert result[0] is False
-        mock_set_messiness.assert_not_awaited()
+        assert await clean_kennel_by_hand(100, 1) == (False, "That's not your kennel.")
+        assert await clean_kennel_with_item(100, 1, "Soap") == (False, "That's not your kennel.")
+        mock_update.assert_not_awaited()
+        mock_consume.assert_not_awaited()
+        mock_set_hand.assert_not_awaited()
 
     @pytest.mark.asyncio
     @patch("src.game.manage_diseases.add_disease_to_pooch", new_callable=AsyncMock)
@@ -947,3 +949,57 @@ class TestAdditionalDiseaseLogic:
         )
         assert low is False
         assert high is True
+
+
+class TestCleaningWithItems:
+    _MOD = "src.game.manage_diseases"
+
+    def _patches(self, parameters, kennel_pooches=()):
+        kennel = SimpleNamespace(id=1, owner_discord_id=100, pooch_limit=10)
+        item = SimpleNamespace(name="Bleach", category="cleaning", parameters=parameters)
+        return (
+            patch(f"{self._MOD}.get_kennel_by_id", new=AsyncMock(return_value=kennel)),
+            patch(f"{self._MOD}.get_item_by_name", new=AsyncMock(return_value=item)),
+            patch(f"{self._MOD}.consume_owner_item", new=AsyncMock(return_value=True)),
+            patch(f"{self._MOD}.update_kennel_messiness", new=AsyncMock(return_value=0)),
+            patch(f"{self._MOD}.list_pooches_for_kennel", new=AsyncMock(return_value=list(kennel_pooches))),
+            patch(f"{self._MOD}.modify_pooch_base_health", new=AsyncMock()),
+        )
+
+    @pytest.mark.asyncio
+    async def test_message_shows_label_not_number(self):
+        a, b, c, d, e, f = self._patches({"mess_reduction": 5})
+        with a, b, c, d, e, f as hurt:
+            ok, message = await clean_kennel_with_item(100, 1, "Soap")
+        assert ok is True
+        assert message == "You used one Bleach. The kennel is noticeably cleaner. It is now **Spotless**."
+        hurt.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_bleach_hurts_every_living_pooch(self):
+        alive = SimpleNamespace(id=7, alive=True)
+        dead = SimpleNamespace(id=8, alive=False)
+        a, b, c, d, e, f = self._patches({"mess_reduction": 20, "side_effect_health": -1}, [alive, dead])
+        with a, b, c, d, e, f as hurt:
+            ok, message = await clean_kennel_with_item(100, 1, "Bleach")
+        assert ok is True
+        assert "harsh fumes" in message
+        hurt.assert_awaited_once_with(7, -1)
+
+    @pytest.mark.asyncio
+    async def test_hand_clean_message_shows_label(self):
+        with (
+            patch(
+                f"{self._MOD}.get_kennel_by_id",
+                new=AsyncMock(return_value=SimpleNamespace(id=1, owner_discord_id=100, pooch_limit=10)),
+            ),
+            patch(
+                f"{self._MOD}.get_owner_by_discord_id",
+                new=AsyncMock(return_value=SimpleNamespace(hand_cleaned_today=False)),
+            ),
+            patch(f"{self._MOD}.update_kennel_messiness", new=AsyncMock(return_value=6)),
+            patch(f"{self._MOD}.set_owner_hand_cleaned_today", new=AsyncMock()),
+        ):
+            ok, message = await clean_kennel_by_hand(100, 1)
+        assert ok is True
+        assert message.endswith("It is now **Messy**.")

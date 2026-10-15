@@ -1,0 +1,23 @@
+{
+    "name": "Mange",
+    "description": "A skin disease caused by mites. Causes intense itching and hair loss.",
+    "health_impact": "HARMFUL",
+    "contagion_chance": 0.1,
+    "sexually_transmitted": false,
+    "recovery_chance": 0.1,
+    "treatable": true,
+    "curable": true,
+    "immunity_duration": 20,
+    "heritability": 0.0,
+    "invisible_messages": [
+        "This pooch has been scratching a lot.",
+        "This pooch's fur looks a little patchy.",
+        "This pooch seems uncomfortable in its own skin."
+    ],
+    "visible": false,
+    "reveal_chance": 0.9,
+    "parameters": {
+        "cuteness_add": -2,
+        "fluffiness_add": -2
+    }
+}

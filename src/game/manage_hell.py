@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import random
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from src.database import (
     add_mutation_to_pooch,
@@ -13,10 +13,10 @@ from src.database import (
     get_mutation_by_name,
     get_owner_by_discord_id,
     get_pooch_by_id,
-    get_pooch_health,
     get_random_breed_ids,
     give_bloodskulls_to_owner,
     give_bones_to_owner,
+    give_owner_body_part,
 )
 from src.database import list_hell_pooches as db_list_hell_pooches
 from src.database import (
@@ -33,6 +33,7 @@ from .constants import (
     BASE_POOCH_BLOODSKULL_VALUE,
     BASE_POOCH_SUMMON_PRICE,
     BLOODSKULL_PRICE_PER_POOCH_SUMMON_ROLL,
+    BODY_PART_DROP_RATES,
     BREED_RARITY_TO_POOCH_VALUE_MULT,
     NUM_BREEDS_PER_SUMMON_POOCH_RANGE,
     POOCH_BLOODSKULL_VALUE_LOSS_BY_HEALTH_BELOW_AVERAGE,
@@ -40,6 +41,7 @@ from .constants import (
     POOCH_STATS,
 )
 from .exceptions import PoochNotFound
+from .manage_stats import get_pooch_health
 from .models import to_pooch
 
 if TYPE_CHECKING:
@@ -128,6 +130,47 @@ async def list_hell_pooches() -> list[Pooch]:
     return [await to_pooch(pooch) for pooch in rows]
 
 
+_BODY_PART_NAMES = {
+    "bone": ("bone", "bones"),
+    "teeth": ("tooth", "teeth"),
+    "eye": ("eye", "eyes"),
+    "brain": ("brain", "brains"),
+    "heart": ("heart", "hearts"),
+    "tail": ("tail", "tails"),
+}
+
+
+async def drop_body_parts(
+    owner_discord_id: int, pooch: Any, rng: random.Random, *, scale: float = 1.0
+) -> dict[str, int]:
+    """
+    Grant ``owner_discord_id`` body parts harvested from ``pooch`` and return what dropped, by part.
+
+    Bigger pooches give more bones and teeth. Eyes are uncommon and brains, hearts and tails rare (see
+    BODY_PART_DROP_RATES). ``scale`` lowers the chances, e.g. for deaths that aren't a full sacrifice.
+    """
+
+    size_factor = max(1, int(pooch.size or 10) // 5)
+    dropped: dict[str, int] = {}
+    for part_name, rates in BODY_PART_DROP_RATES.items():
+        if rng.random() > rates["chance"] * scale:
+            continue
+        high = rates["base_max"] + (size_factor if part_name in ("bone", "teeth") else 0)
+        amount = rng.randint(rates["base_min"], high)
+        if amount > 0:
+            await give_owner_body_part(owner_discord_id, part_name, amount)
+            dropped[part_name] = amount
+    return dropped
+
+
+def describe_body_parts(parts: dict[str, int]) -> str:
+    """e.g. ``{"bone": 3, "teeth": 1}`` -> "3 bones, 1 tooth"."""
+    return ", ".join(
+        f"{amount} {_BODY_PART_NAMES[part][0] if amount == 1 else _BODY_PART_NAMES[part][1]}"
+        for part, amount in parts.items()
+    )
+
+
 async def sacrifice_pooch(owner_discord_id: int, pooch_id: int) -> tuple[bool, str]:
     """
     Have the given owner sacrifice the given pooch to Hell for bloodskulls.
@@ -167,11 +210,20 @@ async def sacrifice_pooch(owner_discord_id: int, pooch_id: int) -> tuple[bool, s
 
     await give_bloodskulls_to_owner(owner_discord_id, value)
     await give_bones_to_owner(owner_discord_id, 1)
+
+    dropped_parts = await drop_body_parts(owner_discord_id, pooch, random.Random())
+
     await set_pooch_dead(pooch.id)
     await update_pooch_mood(pooch.id, "dead")
     await remove_pooch_from_kennel(pooch.id)
     await damn_pooch(pooch_id)
 
+    if dropped_parts:
+        return (
+            True,
+            f"You sacrificed {pooch.name} for {value} bloodskulls... 𖤐\n"
+            f"You also harvested: {describe_body_parts(dropped_parts)}.",
+        )
     return (True, f"You sacrificed {pooch.name} for {value} bloodskulls... 𖤐")
 
 

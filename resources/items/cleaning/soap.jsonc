@@ -1,0 +1,8 @@
+{
+    "description": "A bar of soap. Cleans up a bit of mess in your kennel.",
+    "rarity": "common",
+    "parameters": {
+        "price": 8,
+        "mess_reduction": 5
+    }
+}

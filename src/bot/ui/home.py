@@ -34,12 +34,30 @@ async def build_home_content(guild_id: int, user_id: int) -> str:
     """
 
     owner = await get_or_create_owner(guild_id, user_id)
-    return (
-        f"**{mention(owner.discord_id)}'s Home**\n"
-        f"You have ${owner.dollars}.\n"
-        f"You have {owner.bloodskulls} bloodskulls.\n"
-        f"You have {owner.bones} bone(s)."
-    )
+    lines = [
+        f"**{mention(owner.discord_id)}'s Home**",
+        f"💵 **${owner.dollars}**",
+        f"💀 **{owner.bloodskulls}** bloodskulls  🦴 **{owner.bones}** bones",
+    ]
+
+    # Body parts (only show if any are owned)
+    def _int(attr: str) -> int:
+        try:
+            return int(getattr(owner, attr, 0) or 0)
+        except TypeError, ValueError:
+            return 0
+
+    parts = {
+        "❤️ hearts": _int("hearts"),
+        "🧠 brains": _int("brains"),
+        "👁️ eyes": _int("eyes"),
+        "🦷 teeth": _int("teeth"),
+        "🐾 tails": _int("tails"),
+    }
+    nonempty = [(label, count) for label, count in parts.items() if count > 0]
+    if nonempty:
+        lines.append("**Body Parts:** " + "  ".join(f"{label} ×{count}" for label, count in nonempty))
+    return "\n".join(lines)
 
 
 async def send_home_menu(interaction: discord.Interaction):

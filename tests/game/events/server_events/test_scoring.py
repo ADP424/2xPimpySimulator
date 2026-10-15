@@ -143,7 +143,7 @@ async def test_pooch_stat_source(rng):
     pooch = SimpleNamespace(id=1, strength=20, base_health=10)
     scoring = {"sources": [{"type": "pooch_stat", "stat": "strength", "pivot": 10.0, "scale": 1.0, "direction": 1.0}]}
     submission = {"selected_pooch_id": 1}
-    with patch(f"{MOD}.db_get_pooch_by_id", new=AsyncMock(return_value=pooch)):
+    with patch(f"{MOD}.get_effective_stat", new=AsyncMock(side_effect=lambda pid, stat: getattr(pooch, stat))):
         result = await compute_submission_score(submission, scoring, rng)
     # (20 - 10) * 1.0 * 1.0 = 10.0
     assert result == 10.0
@@ -363,3 +363,18 @@ async def test_rank_participations_no_submissions_gets_zero(rng):
     occurrence = SimpleNamespace(participations=[p])
     ranked = await rank_participations(occurrence, rng)
     assert ranked[0][1] == 0.0
+
+
+@pytest.mark.asyncio
+async def test_pooch_stat_uses_effective_stats_and_raw_for_other_fields():
+    from types import SimpleNamespace
+
+    from src.game.events.server_events.scoring import _pooch_stat
+
+    with (
+        patch(f"{MOD}.get_effective_stat", new=AsyncMock(return_value=14)) as effective,
+        patch(f"{MOD}.db_get_pooch_by_id", new=AsyncMock(return_value=SimpleNamespace(age=3))),
+    ):
+        assert await _pooch_stat(1, "strength") == 14.0
+        assert await _pooch_stat(1, "age") == 3.0
+    effective.assert_awaited_once_with(1, "strength")

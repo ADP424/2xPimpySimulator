@@ -49,8 +49,18 @@
                 <button class="btn btn-secondary btn-sm" data-action="diagnose" data-kind="mutations">Diagnose Mutations <span data-cost="diagnose_mutations"></span></button>
                 <button class="btn btn-secondary btn-sm" data-action="diagnose" data-kind="diseases">Diagnose Diseases <span data-cost="diagnose_diseases"></span></button>
                 <button class="btn btn-accent btn-sm" data-action="exam">Medical Exam <span data-cost="medical_exam"></span></button>
+                <button class="btn btn-accent btn-sm" data-action="workup">Detailed Workup <span data-cost="detailed_workup"></span></button>
             </div>
             <div id="exam-report" class="mt-4" style="display: none;"></div>
+        </div>
+    </div>
+
+    <div class="card bg-base-200 shadow-md">
+        <div class="card-body">
+            <h2 class="card-title">✂️ Procedures</h2>
+            <div class="flex flex-wrap gap-2 mt-2">
+                <button class="btn btn-error btn-sm" data-action="neuter">Neuter <span data-cost="neuter"></span></button>
+            </div>
         </div>
     </div>
 </div>
@@ -76,6 +86,9 @@ function renderSummary() {
     if (patient.disease_count) lines.push(`<strong>Diseases:</strong> ${patient.disease_count}`);
     if (patient.undiagnosed_mutation_count) lines.push(`<strong>Undiagnosed mutations:</strong> ${patient.undiagnosed_mutation_count}`);
     if (patient.undiagnosed_disease_count) lines.push(`<strong>Undiagnosed diseases:</strong> ${patient.undiagnosed_disease_count}`);
+    if (patient.pregnant) lines.push('🤰 Pregnant');
+    if (patient.immortal) lines.push('♾️ Immortal');
+    if (patient.rejuvenation_count) lines.push(`<strong>Rejuvenated:</strong> ×${patient.rejuvenation_count}`);
     if (!lines.length) lines.push('No known conditions.');
     document.getElementById('condition-summary').innerHTML = lines.map(l => `<li>${l}</li>`).join('');
 }
@@ -221,6 +234,54 @@ async function medicalExam() {
     await afterAction();
 }
 
+async function detailedWorkup() {
+    const data = await post(`/api/pooches/${PAGE_DATA.poochId}/detailed-workup`);
+    if (!data.success) {
+        App.haptics.trigger('error');
+        showResult(`Detailed workup failed: ${App.format.richText(data.message)}`, 'error');
+        return;
+    }
+    App.haptics.trigger('success');
+    // Hidden conditions arrive under their symptom name, never their real name
+    const rows = Object.entries(data.report).map(([stat, info]) => {
+        const mods = (info.sources || []).map(s => s.text).join(', ');
+        return `
+            <tr>
+                <td class="font-medium">${escapeHtml(App.format.enumLabel(stat))}</td>
+                <td>${info.base}</td>
+                <td class="font-semibold">${info.effective} <span class="text-xs text-base-content/50">${escapeHtml(info.label || '')}</span></td>
+                <td class="text-xs text-base-content/50">${escapeHtml(mods)}</td>
+            </tr>
+        `;
+    }).join('');
+    const report = document.getElementById('exam-report');
+    report.innerHTML = `
+        <h3 class="font-semibold mb-2">Detailed Workup — ${escapeHtml(patient.name)}</h3>
+        <div class="overflow-x-auto">
+            <table class="table table-xs w-full">
+                <thead><tr><th>Stat</th><th>Base</th><th>Effective</th><th>Modifiers</th></tr></thead>
+                <tbody>${rows}</tbody>
+            </table>
+        </div>
+    `;
+    report.style.display = '';
+    document.getElementById('result').style.display = 'none';
+    await afterAction();
+}
+
+async function neuter() {
+    if (!confirm(`Neuter ${patient.name}? This cannot be undone.`)) return;
+    const data = await post(`/api/pooches/${PAGE_DATA.poochId}/neuter`);
+    if (!data.success) {
+        App.haptics.trigger('error');
+        showResult(`Neuter failed: ${App.format.richText(data.message)}`, 'error');
+        return;
+    }
+    App.haptics.trigger('success');
+    showResult(`✂️ ${App.format.richText(data.message)}`, 'success');
+    await afterAction();
+}
+
 document.addEventListener('click', async (event) => {
     const button = event.target.closest('[data-action]');
     if (!button || button.disabled) return;
@@ -231,6 +292,8 @@ document.addEventListener('click', async (event) => {
         else if (action === 'treat-disease') await treat('diseases', button.dataset.id);
         else if (action === 'diagnose') await diagnose(button.dataset.kind);
         else if (action === 'exam') await medicalExam();
+        else if (action === 'workup') await detailedWorkup();
+        else if (action === 'neuter') await neuter();
     } catch (error) {
         showResult(escapeHtml(error.message), 'error');
         console.error('Error:', error);

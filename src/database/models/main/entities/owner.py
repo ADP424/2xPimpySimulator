@@ -25,8 +25,18 @@ class Owner(Base):
     dollars: Mapped[int] = mapped_column(Integer, default=100)
     bloodskulls: Mapped[int] = mapped_column(Integer, default=0)
     bones: Mapped[int] = mapped_column(Integer, default=0)
+    # Extended body-part inventory for blood magic rituals.
+    hearts: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"), default=0)
+    brains: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"), default=0)
+    eyes: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"), default=0)
+    tails: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"), default=0)
+    teeth: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"), default=0)
     begged_today: Mapped[bool] = mapped_column(Boolean, default=False)
     visited_park_today: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Hand-cleaned a kennel today (the free once-per-day small cleaning).
+    hand_cleaned_today: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false"), default=False
+    )
     joined_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=text("now()"))
 
     owned_pooches: Mapped[list[Pooch]] = relationship(

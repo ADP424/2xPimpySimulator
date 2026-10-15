@@ -12,6 +12,7 @@ from src.bot.ui.pooch_info import (
     _FamilySelect,
     _MutationSelect,
 )
+from src.game.utils.obfuscation import health_label
 
 
 def _make_pooch(
@@ -137,6 +138,8 @@ class TestPoochInfoView:
         assert "Age" in field_names
         assert "Sex" in field_names
         assert "Health Status" in field_names
+        health = next(f for f in embed.fields if f.name == "Health")
+        assert health.value == health_label(pooch.health)
 
     async def test_build_embed_with_family(self):
         server = _make_server()

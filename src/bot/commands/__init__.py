@@ -2,7 +2,9 @@ from .event_history import register_event_history_command  # noqa: F401
 from .get_money import register_get_money_command  # noqa: F401
 from .home import register_home_command  # noqa: F401
 from .increment_day import register_increment_day_command  # noqa: F401
+from .increment_hour import register_increment_hour_command  # noqa: F401
 from .pause_day_loop import register_pause_day_loop_command  # noqa: F401
+from .pause_hour_loop import register_pause_hour_loop_command  # noqa: F401
 from .pending_events import register_pending_events_command  # noqa: F401
 from .server_event import register_server_event_command  # noqa: F401
 from .set_event_channel import register_set_event_channel_command  # noqa: F401

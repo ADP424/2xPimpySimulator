@@ -16,6 +16,7 @@ from .pooch_actions import (
     handle_remove_mutation,
     handle_rename_pooch,
     handle_select_pooch,
+    modify_pooch_stat,
 )
 from .utils import (
     apply_baby_overrides,
@@ -41,6 +42,7 @@ __all__ = [
     "handle_modify_breeding_cooldown",
     "handle_modify_health",
     "handle_modify_stat",
+    "modify_pooch_stat",
     "handle_remove_breed",
     "handle_remove_mutation",
     "handle_rename_pooch",

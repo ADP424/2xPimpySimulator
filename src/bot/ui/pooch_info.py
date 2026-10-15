@@ -27,6 +27,7 @@ from src.game.models import (
     PoochTimelineEntry,
     get_breeding_status,
 )
+from src.game.utils.obfuscation import health_label, starvation_label
 
 from .components import (
     PageSource,
@@ -286,12 +287,38 @@ class PoochInfoView(View):
             inline=True,
         )
         embed.add_field(name="Health Status", value=self.pooch.status.capitalize(), inline=True)
+        if self.pooch.alive:
+            embed.add_field(name="Health", value=health_label(self.pooch.health), inline=True)
         embed.add_field(name="Birthday", value=str(self.pooch.birthday.date()), inline=True)
 
         embed.add_field(
             name="Breeding Status", value=self._format_breeding_status(self.pooch.breeding_cooldown), inline=True
         )
         embed.add_field(name="Sexual Status", value=("Virgin" if self.pooch.virgin else "Debauched"), inline=True)
+
+        # Pregnancy
+        if getattr(self.pooch, "pregnancy_timer", None) is not None:
+            embed.add_field(name="Pregnant", value="🤰 Expecting!", inline=True)
+
+        # Immortality
+        if getattr(self.pooch, "immortal", False):
+            embed.add_field(name="Immortal", value="☠️ Undying", inline=True)
+
+        # Rejuvenation count
+        try:
+            rejuv_count = int(getattr(self.pooch, "rejuvenation_count", 0) or 0)
+        except TypeError, ValueError:
+            rejuv_count = 0
+        if rejuv_count > 0:
+            embed.add_field(name="Rejuvenations", value=str(rejuv_count), inline=True)
+
+        # Starvation
+        try:
+            starvation = int(getattr(self.pooch, "starvation", 0) or 0)
+        except TypeError, ValueError:
+            starvation = 0
+        if starvation > 0:
+            embed.add_field(name="Hunger", value=starvation_label(starvation), inline=True)
 
         mood_emojis = {
             "happy": "😊",

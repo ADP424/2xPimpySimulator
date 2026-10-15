@@ -521,3 +521,27 @@ async def test_list_owner_bid_history_returns_empty():
         result = await list_owner_bid_history(999)
 
     assert result == []
+
+
+# ---------------------------------------------------------------------------
+# hourly tick queries
+# ---------------------------------------------------------------------------
+
+
+async def test_list_pooch_ids_on_breeding_cooldown():
+    scope, _ = _mock_session_scope(scalars_result=[3, 4])
+    with patch("src.database.list.session_scope", return_value=scope()):
+        from src.database import list_pooch_ids_on_breeding_cooldown
+
+        assert await list_pooch_ids_on_breeding_cooldown() == [3, 4]
+
+
+async def test_list_persistent_injury_instances():
+    scope, session = _mock_session_scope()
+    response = MagicMock()
+    response.all.return_value = [(10, 1), (11, 2)]
+    session.execute = AsyncMock(return_value=response)
+    with patch("src.database.list.session_scope", return_value=scope()):
+        from src.database import list_persistent_injury_instances
+
+        assert await list_persistent_injury_instances() == [(10, 1), (11, 2)]

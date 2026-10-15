@@ -6,14 +6,16 @@ from typing import TYPE_CHECKING, Optional
 from src.database import (
     add_disease_immunity_to_pooch,
     add_disease_to_pooch,
+    consume_owner_item,
     get_current_day,
+    get_item_by_name,
     get_kennel_by_id,
     get_owner_by_discord_id,
     get_pooch_by_id,
-    get_pooch_constitution,
     get_pooch_disease_instance,
     give_money_to_owner,
     list_all_diseases,
+    list_invisible_pooch_disease_instances,
     list_kennels_for_owner,
     list_owners,
     list_pooch_disease_immunities,
@@ -21,15 +23,18 @@ from src.database import (
     list_pooch_diseases,
     list_pooch_mutations,
     list_pooches_for_kennel,
+    modify_pooch_base_health,
     remove_disease_from_pooch,
-    remove_expired_disease_immunities,
     reveal_pooch_disease,
-    set_kennel_messiness,
+    set_owner_hand_cleaned_today,
     treat_pooch_disease,
     update_kennel_messiness,
 )
 from src.database.models import PoochDisease
 from src.logger import get_logger
+
+from .manage_stats import get_effective_stat
+from .utils.obfuscation import messiness_label
 
 if TYPE_CHECKING:
     from src.database.models import Disease
@@ -39,13 +44,19 @@ logger = get_logger("game/manage_diseases")
 DISEASE_BASE_CONTRACTION_CHANCE = 0.005
 MESSINESS_CONTRACTION_MULT = 0.005
 CONSTITUTION_RESISTANCE_DIVISOR = 100
-MESS_PER_POOCH_PER_DAY = 2
-MESS_COMPOUND_RATE = 0.1
 TREATMENT_RECOVERY_BONUS = 0.15
 VET_DIAGNOSE_DISEASES_COST = 30
 VET_DISEASE_TREATMENT_BASE_COST = 15
 VET_DISEASE_TREATMENT_SEVERITY_MULT = 5
 MUTATION_PREDISPOSITION_MULT = 3.0
+
+# Hourly mess accumulation: each pooch contributes mess_output / 12 per hour
+# (so a default-output pooch adds ~2 mess units per 24-hour day).
+MESS_PER_POOCH_PER_HOUR_DIVISOR = 12
+# Hourly compounding rate: 10% per day scaled to per-hour (~0.417%).
+# Applied on top of linear accumulation once messiness is elevated enough
+# that int(messiness * rate) > 0 (i.e. messiness ≥ 24).
+MESS_HOURLY_COMPOUND_RATE = 0.1 / 24
 
 
 async def get_pooch_disease_instances(pooch_id: int) -> list[PoochDisease]:
@@ -66,25 +77,69 @@ def get_public_disease_label(pd: PoochDisease) -> str:
     return pd.displayed_symptom or "a mysterious illness"
 
 
-async def accumulate_kennel_mess(kennel_id: int, num_pooches: int) -> int:
-    return await update_kennel_messiness(kennel_id, MESS_PER_POOCH_PER_DAY * num_pooches)
+HAND_CLEAN_MESS_REDUCTION = 3
 
 
-async def compound_kennel_mess(kennel_id: int, current_messiness: int) -> int:
-    growth = int(current_messiness * MESS_COMPOUND_RATE)
-    if growth > 0:
-        return await update_kennel_messiness(kennel_id, growth)
-    return current_messiness
-
-
-async def clean_kennel(owner_discord_id: int, kennel_id: int) -> tuple[bool, str]:
+async def clean_kennel_by_hand(owner_discord_id: int, kennel_id: int) -> tuple[bool, str]:
+    """
+    Free, once-per-day small clean. Uses the owner's ``hand_cleaned_today``
+    flag so each owner can only do this once per game day.
+    """
     kennel = await get_kennel_by_id(kennel_id)
     if kennel is None:
         return False, "Kennel not found."
     if kennel.owner_discord_id != owner_discord_id:
         return False, "That's not your kennel."
-    await set_kennel_messiness(kennel_id, 0)
-    return True, "Kennel cleaned!"
+    owner = await get_owner_by_discord_id(owner_discord_id)
+    if owner is None:
+        return False, "Owner not found."
+    if getattr(owner, "hand_cleaned_today", False):
+        return False, "You've already hand-cleaned a kennel today."
+
+    new_mess = await update_kennel_messiness(kennel_id, -HAND_CLEAN_MESS_REDUCTION)
+    await set_owner_hand_cleaned_today(owner_discord_id, True)
+    label = messiness_label(new_mess, capacity=kennel.pooch_limit)
+    return True, f"You tidied up — the kennel feels a little cleaner. It is now **{label}**."
+
+
+async def clean_kennel_with_item(owner_discord_id: int, kennel_id: int, item_name: str) -> tuple[bool, str]:
+    """
+    Consume one of the owner's cleaning items and apply its ``mess_reduction``
+    effect to the kennel. Returns (success, message).
+    """
+    kennel = await get_kennel_by_id(kennel_id)
+    if kennel is None:
+        return False, "Kennel not found."
+    if kennel.owner_discord_id != owner_discord_id:
+        return False, "That's not your kennel."
+
+    item = await get_item_by_name(item_name)
+    if item is None:
+        return False, f"Unknown item: {item_name}."
+    if item.category != "cleaning":
+        return False, f"{item.name} is not a cleaning product."
+
+    parameters = item.parameters or {}
+    reduction = int(parameters.get("mess_reduction", 0))
+    if reduction <= 0:
+        return False, f"{item.name} has no cleaning effect."
+
+    ok = await consume_owner_item(owner_discord_id, item.name, 1)
+    if not ok:
+        return False, f"You don't own any {item.name}."
+
+    new_mess = await update_kennel_messiness(kennel_id, -reduction)
+    label = messiness_label(new_mess, capacity=kennel.pooch_limit)
+    message = f"You used one {item.name}. The kennel is noticeably cleaner. It is now **{label}**."
+
+    # Harsh products (e.g. bleach) permanently hurt every pooch in the kennel
+    side_effect_health = int(parameters.get("side_effect_health", 0))
+    if side_effect_health:
+        for pooch in await list_pooches_for_kennel(kennel_id):
+            if pooch.alive:
+                await modify_pooch_base_health(pooch.id, side_effect_health)
+        message += " The harsh fumes left your pooches a little worse for wear."
+    return True, message
 
 
 async def _get_mutation_disease_info(pooch_id: int) -> tuple[set[str], set[str]]:
@@ -271,7 +326,7 @@ async def diagnose_diseases(
         return False, f"Not enough money. Diagnosis costs **${VET_DIAGNOSE_DISEASES_COST}**.", []
 
     rng_inst = _random.Random(rng_seed)
-    invisible_instances = [pd for pd in await list_pooch_disease_instances(pooch_id) if not pd.visible]
+    invisible_instances = await list_invisible_pooch_disease_instances(pooch_id)
 
     await give_money_to_owner(owner_discord_id, -VET_DIAGNOSE_DISEASES_COST)
     revealed: list[str] = []
@@ -309,112 +364,6 @@ async def treat_disease(owner_discord_id: int, pooch_disease_id: int) -> tuple[b
     return True, f"Treatment successful. Charged **${cost}**.", cost
 
 
-async def run_daily_disease_tick(season: str, rng_seed: Optional[int] = None) -> dict[int, list[tuple[int, str, str]]]:
-    rng = random.Random(rng_seed)
-    current_day = await get_current_day()
-    await remove_expired_disease_immunities(current_day)
-
-    all_diseases = await list_all_diseases(season=season)
-    kennel_diseases = [d for d in all_diseases if not d.sexually_transmitted]
-    events: dict[int, list[tuple[int, str, str]]] = {}
-
-    for owner in await list_owners():
-        for kennel in await list_kennels_for_owner(owner.discord_id):
-            pooches = await list_pooches_for_kennel(kennel.id)
-            living_pooches = [p for p in pooches if p.alive]
-            if not living_pooches:
-                continue
-
-            messiness = await accumulate_kennel_mess(kennel.id, len(living_pooches))
-            messiness = await compound_kennel_mess(kennel.id, messiness)
-
-            pooch_diseases_cache: dict[int, set[int]] = {}
-            pooch_immunity_cache: dict[int, set[int]] = {}
-            pooch_predisposed_cache: dict[int, set[str]] = {}
-            pooch_immune_names_cache: dict[int, set[str]] = {}
-            pooch_constitution_cache: dict[int, int] = {}
-
-            for pooch in living_pooches:
-                pooch_diseases_cache[pooch.id] = {d.id for d in (await list_pooch_diseases(pooch.id))}
-                pooch_immunity_cache[pooch.id] = {
-                    imm.disease_id for imm in (await list_pooch_disease_immunities(pooch.id))
-                }
-                predisposed, immune_names = await _get_mutation_disease_info(pooch.id)
-                pooch_predisposed_cache[pooch.id] = predisposed
-                pooch_immune_names_cache[pooch.id] = immune_names
-                pooch_constitution_cache[pooch.id] = (await get_pooch_constitution(pooch.id)) or pooch.constitution
-
-            for pooch in living_pooches:
-                for pd_instance in await list_pooch_disease_instances(pooch.id):
-                    disease = pd_instance.disease
-                    if disease.sexually_transmitted or disease.contagion_chance <= 0:
-                        continue
-                    for target in living_pooches:
-                        if target.id == pooch.id:
-                            continue
-                        spread = await try_spread_disease(
-                            source_pooch_id=pooch.id,
-                            target_pooch_id=target.id,
-                            disease=disease,
-                            target_constitution=pooch_constitution_cache.get(target.id, target.constitution),
-                            messiness=messiness,
-                            season=season,
-                            rng=rng,
-                            current_day=current_day,
-                            target_predisposed_names=pooch_predisposed_cache.get(target.id, set()),
-                            target_immune_names=pooch_immune_names_cache.get(target.id, set()),
-                            target_immunity_disease_ids=pooch_immunity_cache.get(target.id, set()),
-                            target_existing_disease_ids=pooch_diseases_cache.get(target.id, set()),
-                        )
-                        if spread:
-                            pooch_diseases_cache.setdefault(target.id, set()).add(disease.id)
-                            target_instance = next(
-                                (
-                                    pd
-                                    for pd in await list_pooch_disease_instances(target.id)
-                                    if pd.disease_id == disease.id
-                                ),
-                                None,
-                            )
-                            public_label = (
-                                get_public_disease_label(target_instance) if target_instance else disease.name
-                            )
-                            events.setdefault(target.id, []).append((disease.id, public_label, "spread"))
-
-            for pooch in living_pooches:
-                for disease in kennel_diseases:
-                    contracted = await try_contract_disease(
-                        pooch_id=pooch.id,
-                        disease=disease,
-                        constitution=pooch_constitution_cache.get(pooch.id, pooch.constitution),
-                        messiness=messiness,
-                        season=season,
-                        rng=rng,
-                        current_day=current_day,
-                        predisposed_names=pooch_predisposed_cache.get(pooch.id, set()),
-                        immune_names=pooch_immune_names_cache.get(pooch.id, set()),
-                        immunity_disease_ids=pooch_immunity_cache.get(pooch.id, set()),
-                        existing_disease_ids=pooch_diseases_cache.get(pooch.id, set()),
-                    )
-                    if contracted:
-                        pooch_diseases_cache.setdefault(pooch.id, set()).add(disease.id)
-                        pooch_instance = next(
-                            (pd for pd in await list_pooch_disease_instances(pooch.id) if pd.disease_id == disease.id),
-                            None,
-                        )
-                        public_label = get_public_disease_label(pooch_instance) if pooch_instance else disease.name
-                        events.setdefault(pooch.id, []).append((disease.id, public_label, "contracted"))
-
-            for pooch in living_pooches:
-                for pd_instance in await list_pooch_disease_instances(pooch.id):
-                    if await try_recover_from_disease(pd_instance, current_day=current_day, rng=rng):
-                        pooch_diseases_cache.get(pooch.id, set()).discard(pd_instance.disease_id)
-                        public_label = pd_instance.disease.name if pd_instance.visible else "a mysterious illness"
-                        events.setdefault(pooch.id, []).append((pd_instance.disease_id, public_label, "recovered"))
-
-    return events
-
-
 async def handle_breeding_diseases(
     father_id: int,
     mother_id: int,
@@ -434,7 +383,7 @@ async def handle_breeding_diseases(
         partner_existing = {d.id for d in (await list_pooch_diseases(partner_id))}
         partner_immunities = {imm.disease_id for imm in (await list_pooch_disease_immunities(partner_id))}
         partner_predisposed, partner_immune_names = await _get_mutation_disease_info(partner_id)
-        partner_constitution = (await get_pooch_constitution(partner_id)) or 10
+        partner_constitution = (await get_effective_stat(partner_id, "constitution")) or 10
 
         for pd_instance in parent_diseases:
             if await try_breed_spread_disease(
@@ -482,3 +431,129 @@ async def handle_breeding_diseases(
                 breed_events.append((puppy_id, public_label, "inherited"))
 
     return breed_events
+
+
+# ---------------------------------------------------------------------------
+# Hourly disease tick
+# ---------------------------------------------------------------------------
+
+
+async def run_hourly_disease_tick(season: str, rng_seed: Optional[int] = None) -> dict[int, list[tuple[int, str, str]]]:
+    """
+    Run the disease model for one hour of game time.
+
+    Contraction and recovery chances from ``try_contract_disease`` /
+    ``try_recover_from_disease`` are used directly — those functions hold
+    the authoritative per-roll probability, and the hourly loop fires them
+    once per hour with no additional scaling.
+
+    Mess accumulates linearly each hour (pooch.mess_output /
+    MESS_PER_POOCH_PER_HOUR_DIVISOR) and also compounds at
+    MESS_HOURLY_COMPOUND_RATE (≈0.417%/hour, equivalent to 10%/day).
+
+    Strays use a fixed environmental messiness in place of a kennel value.
+    """
+    from src.database import list_servers, list_strays_for_server
+
+    from .constants import STRAY_ENVIRONMENTAL_MESSINESS
+
+    rng = random.Random(rng_seed)
+    current_day = await get_current_day()
+
+    all_diseases = await list_all_diseases(season=season)
+    kennel_diseases = [d for d in all_diseases if not d.sexually_transmitted]
+    events: dict[int, list[tuple[int, str, str]]] = {}
+
+    # 1. Kennel path.
+    for owner in await list_owners():
+        for kennel in await list_kennels_for_owner(owner.discord_id):
+            pooches = [p for p in (await list_pooches_for_kennel(kennel.id)) if p.alive]
+            if not pooches:
+                continue
+
+            # Linear mess accumulation (per-pooch per hour).
+            linear_add = int(
+                round(sum(int(getattr(p, "mess_output", 2) or 2) for p in pooches) / MESS_PER_POOCH_PER_HOUR_DIVISOR)
+            )
+            if linear_add > 0:
+                await update_kennel_messiness(kennel.id, linear_add)
+
+            # Compound mess growth (~0.417%/hour → ~10%/day).
+            current_mess = kennel.messiness + linear_add
+            compound_add = int(current_mess * MESS_HOURLY_COMPOUND_RATE)
+            if compound_add > 0:
+                await update_kennel_messiness(kennel.id, compound_add)
+                current_mess += compound_add
+
+            messiness = current_mess
+
+            predisposed_cache: dict[int, set[str]] = {}
+            immune_names_cache: dict[int, set[str]] = {}
+            existing_cache: dict[int, set[int]] = {}
+            immunity_cache: dict[int, set[int]] = {}
+            const_cache: dict[int, int] = {}
+
+            for p in pooches:
+                pre, imm = await _get_mutation_disease_info(p.id)
+                predisposed_cache[p.id] = pre
+                immune_names_cache[p.id] = imm
+                existing_cache[p.id] = {d.id for d in (await list_pooch_diseases(p.id))}
+                immunity_cache[p.id] = {im.disease_id for im in (await list_pooch_disease_immunities(p.id))}
+                const_cache[p.id] = (await get_effective_stat(p.id, "constitution")) or p.constitution
+
+            for p in pooches:
+                for disease in kennel_diseases:
+                    if disease.id in existing_cache.get(p.id, set()):
+                        continue
+                    if await try_contract_disease(
+                        pooch_id=p.id,
+                        disease=disease,
+                        constitution=const_cache.get(p.id, p.constitution),
+                        messiness=messiness,
+                        season=season,
+                        rng=rng,
+                        current_day=current_day,
+                        predisposed_names=predisposed_cache.get(p.id, set()),
+                        immune_names=immune_names_cache.get(p.id, set()),
+                        immunity_disease_ids=immunity_cache.get(p.id, set()),
+                        existing_disease_ids=existing_cache.get(p.id, set()),
+                    ):
+                        existing_cache.setdefault(p.id, set()).add(disease.id)
+                        events.setdefault(p.id, []).append((disease.id, disease.name, "contracted"))
+
+                for pd_instance in await list_pooch_disease_instances(p.id):
+                    if await try_recover_from_disease(pd_instance, current_day=current_day, rng=rng):
+                        events.setdefault(p.id, []).append(
+                            (pd_instance.disease_id, pd_instance.disease.name, "recovered")
+                        )
+
+    # 2. Stray path — use fixed environmental messiness (medium-dirty kennel equivalent).
+    for server in await list_servers():
+        strays = await list_strays_for_server(server.discord_id)
+        for p in strays:
+            if not p.alive:
+                continue
+            pre, imm = await _get_mutation_disease_info(p.id)
+            existing = {d.id for d in (await list_pooch_diseases(p.id))}
+            immunity = {im.disease_id for im in (await list_pooch_disease_immunities(p.id))}
+            const = (await get_effective_stat(p.id, "constitution")) or p.constitution
+            for disease in kennel_diseases:
+                if disease.id in existing:
+                    continue
+                if await try_contract_disease(
+                    pooch_id=p.id,
+                    disease=disease,
+                    constitution=const,
+                    messiness=STRAY_ENVIRONMENTAL_MESSINESS,
+                    season=season,
+                    rng=rng,
+                    current_day=current_day,
+                    predisposed_names=pre,
+                    immune_names=imm,
+                    immunity_disease_ids=immunity,
+                    existing_disease_ids=existing,
+                ):
+                    existing.add(disease.id)
+                    events.setdefault(p.id, []).append((disease.id, disease.name, "contracted"))
+
+    return events

@@ -10,7 +10,9 @@ from src.bot.commands import (
     register_get_money_command,
     register_home_command,
     register_increment_day_command,
+    register_increment_hour_command,
     register_pause_day_loop_command,
+    register_pause_hour_loop_command,
     register_pending_events_command,
     register_server_event_command,
     register_set_event_channel_command,
@@ -22,8 +24,12 @@ from src.game import get_or_create_server
 from src.logger import get_logger
 
 from .constants import GUILDS
-from .day_change_loop import day_change_runner, fetch_and_update_names
-from .event_loop import hourly_event_runner
+from .day_change_loop import (
+    day_change_runner,
+    fetch_and_update_names,
+    hour_change_runner,
+    week_change_runner,
+)
 
 logger = get_logger("bot/app")
 
@@ -68,6 +74,8 @@ def run(update_names_only: bool = False, skip_startup_day_change: bool = False):
         register_get_money_command(tree)
         register_pause_day_loop_command(tree)
         register_increment_day_command(tree)
+        register_pause_hour_loop_command(tree)
+        register_increment_hour_command(tree)
         register_trigger_event_command(tree)
 
     async def sync_commands():
@@ -101,8 +109,10 @@ def run(update_names_only: bool = False, skip_startup_day_change: bool = False):
 
         if not hasattr(bot, "_day_change_task"):
             bot._day_change_task = asyncio.create_task(day_change_runner(bot, stage=stage, tz=tz))
-        if not hasattr(bot, "_hourly_event_task"):
-            bot._hourly_event_task = asyncio.create_task(hourly_event_runner(bot, stage=stage))
+        if not hasattr(bot, "_week_change_task"):
+            bot._week_change_task = asyncio.create_task(week_change_runner(bot, stage=stage))
+        if not hasattr(bot, "_hour_change_task"):
+            bot._hour_change_task = asyncio.create_task(hour_change_runner(bot, stage=stage))
 
     if not token:
         raise RuntimeError("DISCORD_TOKEN not set")

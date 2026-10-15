@@ -10,16 +10,29 @@ from src.database.models import (
     SNAPSHOT_VET_MUTATIONS,
 )
 
+from .access import owns_kennel, owns_pooch
 from .breeding import (
+    BreedingOutcome,
     breed_pooches,
+    breed_with_mate_choice,
     calculate_incest_level,
     combine_puppy_name,
+    compute_breeding_chance,
+    describe_breeding_outcome,
+    get_breeding_chance,
+    neuter_pooch,
+    select_actual_mate,
 )
 from .change_day import (
-    death_roll,
     refresh_moods,
     run_day_change,
 )
+from .change_hour import (
+    hourly_death_roll,
+    run_hour_change,
+)
+from .change_week import run_week_change
+from .constants import INJURY_SEVERITIES, NEUTER_COST
 from .events.owner_events import (
     OwnerEventResultDescription,
     describe_owner_event_result,
@@ -68,13 +81,14 @@ from .manage_auctions import (
     process_expired_sale_listings,
 )
 from .manage_diseases import (
-    clean_kennel,
+    clean_kennel_by_hand,
+    clean_kennel_with_item,
     diagnose_diseases,
     get_diagnose_diseases_cost,
     get_disease_treatment_cost,
     get_pooch_disease_instances,
     get_public_disease_label,
-    run_daily_disease_tick,
+    run_hourly_disease_tick,
     treat_disease,
 )
 from .manage_global import (
@@ -82,6 +96,7 @@ from .manage_global import (
     get_season,
 )
 from .manage_graveyard import (
+    breed_population_survey,
     list_graveyard_pooches,
 )
 from .manage_hell import (
@@ -92,6 +107,15 @@ from .manage_hell import (
     list_hell_pooches,
     sacrifice_pooch,
     summon_pooch,
+)
+from .manage_items import (
+    buy_item,
+    feed_kennel,
+    get_item_food_units,
+    get_item_price,
+    get_owner_inventory,
+    list_items,
+    list_vendor_items,
 )
 from .manage_kennels import (
     add_pooch_to_kennel,
@@ -114,7 +138,9 @@ from .manage_owners import (
     visit_park,
 )
 from .manage_pooches import (
+    DETAILED_WORKUP_COST,
     MEDICAL_EXAM_COST,
+    detailed_workup,
     diagnose_injuries,
     diagnose_mutations,
     get_diagnose_injuries_cost,
@@ -135,10 +161,20 @@ from .manage_pooches import (
     run_hourly_injury_persistence_check,
     treat_injury,
 )
+from .manage_rituals import (
+    RitualResult,
+    clone_pooch_ritual,
+    clone_ritual_cost,
+    describe_ritual_costs,
+    gender_change_pooch,
+    immortalize_pooch,
+    rejuvenate_pooch,
+)
 from .manage_servers import (
     get_event_channel,
     get_or_create_server,
     get_server,
+    list_all_servers,
     list_servers,
     set_event_channel,
 )
@@ -151,6 +187,14 @@ from .manage_static import (
     list_all_diseases,
     list_all_injuries,
     list_all_mutations,
+)
+from .manage_stats import (
+    StatSource,
+    compute_effective_stats,
+    effective_size,
+    get_effective_stat,
+    get_effective_stats,
+    get_pooch_health,
 )
 from .manage_vendors import (
     buy_pooch,
@@ -172,10 +216,38 @@ __all__ = [
     "SNAPSHOT_VET_INJURIES",
     "SNAPSHOT_VET_MUTATIONS",
     # Breeding commands
+    # Access rules
+    "owns_kennel",
+    "owns_pooch",
+    "BreedingOutcome",
     "breed_pooches",
+    "breed_with_mate_choice",
+    "describe_breeding_outcome",
+    "get_breeding_chance",
     "calculate_incest_level",
     # Day change commands
     "run_day_change",
+    "run_hour_change",
+    "run_week_change",
+    "hourly_death_roll",
+    "RitualResult",
+    "clone_pooch_ritual",
+    "describe_ritual_costs",
+    "clone_ritual_cost",
+    "gender_change_pooch",
+    "immortalize_pooch",
+    "rejuvenate_pooch",
+    "StatSource",
+    "compute_effective_stats",
+    "get_effective_stat",
+    "get_effective_stats",
+    "get_pooch_health",
+    "effective_size",
+    "compute_breeding_chance",
+    "neuter_pooch",
+    "select_actual_mate",
+    "breed_population_survey",
+    "detailed_workup",
     # Event commands
     "list_all_owner_events",
     "OwnerEventResultDescription",
@@ -220,7 +292,10 @@ __all__ = [
     "update_owner_names",
     "visit_park",
     # Pooch commands
+    "DETAILED_WORKUP_COST",
     "MEDICAL_EXAM_COST",
+    "NEUTER_COST",
+    "INJURY_SEVERITIES",
     "diagnose_injuries",
     "diagnose_mutations",
     "get_diagnose_injuries_cost",
@@ -247,6 +322,7 @@ __all__ = [
     "get_event_channel",
     "get_or_create_server",
     "get_server",
+    "list_all_servers",
     "list_servers",
     "set_event_channel",
     "get_active_server_event",
@@ -261,14 +337,23 @@ __all__ = [
     "trigger_daily_server_event",
     "trigger_server_event_by_name",
     # Disease commands
-    "clean_kennel",
+    "clean_kennel_by_hand",
+    "clean_kennel_with_item",
+    "run_hourly_disease_tick",
     "diagnose_diseases",
     "get_diagnose_diseases_cost",
     "get_disease_treatment_cost",
     "get_pooch_disease_instances",
     "get_public_disease_label",
-    "run_daily_disease_tick",
     "treat_disease",
+    # Item commands
+    "buy_item",
+    "feed_kennel",
+    "get_item_food_units",
+    "get_item_price",
+    "get_owner_inventory",
+    "list_items",
+    "list_vendor_items",
     # Static listing commands
     "get_breed_by_id",
     "get_disease_by_id",
@@ -303,7 +388,6 @@ __all__ = [
     "sell_pooch",
     "refresh_moods",
     "combine_puppy_name",
-    "death_roll",
     "add_pooch_to_kennel",
     "get_pooch_base_price",
 ]

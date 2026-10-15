@@ -67,6 +67,15 @@ class DiseaseDropdownControls:
     """Reusable dropdown + info button for showing general disease info."""
 
     def __init__(self, diseases: list[DiseaseOption], placeholder: str = "Select a disease"):
+        # Diseases don't expose a rarity, but we can sort by contagion descending
+        # so the most-common infections show first.
+        diseases = sorted(
+            diseases,
+            key=lambda o: (
+                -float(getattr(o.disease, "contagion_chance", 0) or 0),
+                getattr(o.disease, "name", "") or "",
+            ),
+        )
         self.diseases = diseases
         self.selected: Optional[Disease] = None
 

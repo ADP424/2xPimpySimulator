@@ -89,7 +89,7 @@ function optionButton(event, option) {
 
 function pendingCard(event) {
     const expires = event.requires_response && event.expires_at
-        ? `<p class="text-xs text-base-content/50">Expires ${formatWhen(event.expires_at)}</p>`
+        ? `<p class="text-xs text-base-content/50">${new Date(event.expires_at) <= new Date() ? 'Expired' : 'Expires'} ${formatWhen(event.expires_at)}</p>`
         : '';
     const featured = event.featured_pooch
         ? `<p class="text-sm font-semibold">Pooch: <a class="link" href="/pooch/${event.featured_pooch.id}">${escapeHtml(event.featured_pooch.label)}</a></p>`

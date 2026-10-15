@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Any, Optional
 
 from src.database import (
     get_owner_by_discord_id,
-    get_pooch_health,
     get_vendor_by_id,
     list_pooch_breeds,
     list_pooch_disease_instances,
@@ -16,6 +15,7 @@ from src.database import (
 )
 
 from ..constants import BREEDING_COOLDOWN_HEATING_UP_THRESHOLD
+from ..manage_stats import get_pooch_health
 from .breed import to_breed
 from .mutation import to_mutation
 from .owner import to_owner

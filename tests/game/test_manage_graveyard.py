@@ -69,3 +69,34 @@ class TestListGraveyardPooches:
         result = await list_graveyard_pooches(100)
         assert len(result) == 1
         assert result[0][0].name == "Casper"
+
+
+class TestBreedPopulationSurvey:
+    async def test_summarises_each_population(self):
+        from types import SimpleNamespace
+
+        from src.game.manage_graveyard import breed_population_survey
+
+        mod = "src.game.manage_graveyard"
+        rex = SimpleNamespace(id=1, alive=True)
+        bella = SimpleNamespace(id=2, alive=True)
+        weights = {1: [(10, 3.0), (20, 1.0)], 2: [(20, 1.0)]}
+        names = {10: "Poodle", 20: "Pug"}
+        with (
+            patch(f"{mod}.list_owner_discord_ids_for_server", new=AsyncMock(return_value=[100])),
+            patch(f"{mod}.list_kennels_for_owner", new=AsyncMock(return_value=[SimpleNamespace(id=5)])),
+            patch(f"{mod}.list_pooches_for_kennel", new=AsyncMock(return_value=[rex, bella])),
+            patch(f"{mod}.list_strays_for_server", new=AsyncMock(return_value=[])),
+            patch(f"{mod}.list_graveyard_pooches_for_owners", new=AsyncMock(return_value=[])),
+            patch(f"{mod}.list_hell_pooches", new=AsyncMock(return_value=[])),
+            patch(f"{mod}.list_pooch_breed_weights", new=AsyncMock(side_effect=lambda pid: weights[pid])),
+            patch(f"{mod}.get_breed_by_id", new=AsyncMock(side_effect=lambda bid: SimpleNamespace(name=names[bid]))),
+        ):
+            survey = await breed_population_survey(1)
+
+        # Pug: (0.25 + 1.0) / 2 pooches; Poodle: 0.75 / 2
+        assert survey["owned"] == [
+            {"breed": "Pug", "weighted_total": 0.625, "dominant_count": 1},
+            {"breed": "Poodle", "weighted_total": 0.375, "dominant_count": 1},
+        ]
+        assert survey["strays"] == survey["graveyard"] == survey["hell"] == []

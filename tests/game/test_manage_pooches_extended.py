@@ -25,7 +25,7 @@ from src.game.manage_pooches import (
     run_hourly_injury_persistence_check,
     treat_injury,
 )
-from tests.conftest import make_owner, make_pooch
+from tests.conftest import make_owner
 
 # ---------------------------------------------------------------------------
 # _pooch_status
@@ -177,24 +177,22 @@ class TestDiagnoseCosts:
 
 
 class TestRunHourlyInjuryPersistenceCheck:
-    @patch("src.game.manage_pooches.tick_hourly_injury_persistence", new_callable=AsyncMock)
-    async def test_returns_count(self, mock_tick):
-        mock_tick.return_value = 3
-        result = await run_hourly_injury_persistence_check(rng_seed=42)
-        assert result == 3
-
-    @patch("src.game.manage_pooches.tick_hourly_injury_persistence", new_callable=AsyncMock)
-    async def test_passes_divisor_and_seed(self, mock_tick):
-        mock_tick.return_value = 0
-        await run_hourly_injury_persistence_check(rng_seed=7)
-        mock_tick.assert_awaited_once_with(constitution_divisor=50, rng_seed=7)
-
-    @patch("src.game.manage_pooches.tick_hourly_injury_persistence", new_callable=AsyncMock)
-    async def test_no_seed(self, mock_tick):
-        mock_tick.return_value = 2
-        result = await run_hourly_injury_persistence_check()
-        assert result == 2
-        mock_tick.assert_awaited_once_with(constitution_divisor=50, rng_seed=None)
+    async def test_rolls_effective_constitution_once_per_pooch(self):
+        rolls = iter([0.1, 0.9, 0.1])
+        stat = AsyncMock(return_value=25)  # 25 / 50 = 0.5 chance
+        with (
+            patch(
+                "src.game.manage_pooches.list_persistent_injury_instances",
+                new=AsyncMock(return_value=[(10, 1), (11, 1), (12, 2)]),
+            ),
+            patch("src.game.manage_pooches.get_effective_stat", new=stat),
+            patch("src.game.manage_pooches.reduce_pooch_injury_persistence", new=AsyncMock()) as reduce,
+            patch("random.Random.random", new=lambda self: next(rolls)),
+        ):
+            count = await run_hourly_injury_persistence_check(rng_seed=1)
+        assert count == 2
+        assert [c.args for c in reduce.await_args_list] == [(10, 1), (12, 1)]
+        assert stat.await_count == 2  # constitution is looked up once per pooch
 
 
 # ---------------------------------------------------------------------------
@@ -281,6 +279,12 @@ class TestGetPoochTimeline:
 
 
 class TestMedicalExam:
+    @pytest.fixture(autouse=True)
+    def _effective_stats_are_the_pooch_fields(self):
+        """With no effective stats available the exam falls back to the pooch's own fields."""
+        with patch("src.game.manage_pooches.get_effective_stats", new=AsyncMock(return_value=None)):
+            yield
+
     def _make_game_pooch(self, **overrides):
         """Build a SimpleNamespace that mimics a game Pooch model."""
         defaults = dict(
@@ -606,8 +610,10 @@ class TestDiagnoseInjuries:
     @patch("src.game.manage_pooches.reveal_pooch_injury", new_callable=AsyncMock)
     @patch("src.game.manage_pooches.give_money_to_owner", new_callable=AsyncMock)
     @patch("src.game.manage_pooches.get_owner_by_discord_id", new_callable=AsyncMock)
+    @patch("src.game.manage_pooches.list_invisible_pooch_injury_instances", new_callable=AsyncMock)
     async def test_success_reveals_injury(
         self,
+        mock_list_invisible,
         mock_get_owner,
         mock_give,
         mock_reveal,
@@ -619,9 +625,9 @@ class TestDiagnoseInjuries:
         mock_get_owner.return_value = make_owner(dollars=100)
         # One invisible injury with reveal_chance=1.0, plus an already-visible one that must be skipped
         inj = SimpleNamespace(id=7, injury=SimpleNamespace(id=7, name="Bite", reveal_chance=1.0), visible=False)
-        seen = SimpleNamespace(id=8, injury=SimpleNamespace(id=8, name="Bruise", reveal_chance=1.0), visible=True)
+        mock_list_invisible.return_value = [inj]
         mock_db_get.return_value = SimpleNamespace(name="Buddy", owner_discord_id=1)
-        mock_list_inj.side_effect = [[inj, seen], [SimpleNamespace(injury_id=7, visible=True)]]
+        mock_list_inj.return_value = [SimpleNamespace(injury_id=7, visible=True)]
 
         success, msg, revealed = await diagnose_injuries(1, 1, rng_seed=42)
 
@@ -636,8 +642,10 @@ class TestDiagnoseInjuries:
     @patch("src.game.manage_pooches.reveal_pooch_injury", new_callable=AsyncMock)
     @patch("src.game.manage_pooches.give_money_to_owner", new_callable=AsyncMock)
     @patch("src.game.manage_pooches.get_owner_by_discord_id", new_callable=AsyncMock)
+    @patch("src.game.manage_pooches.list_invisible_pooch_injury_instances", new_callable=AsyncMock)
     async def test_injury_not_revealed_when_chance_zero(
         self,
+        mock_list_invisible,
         mock_get_owner,
         mock_give,
         mock_reveal,
@@ -648,8 +656,9 @@ class TestDiagnoseInjuries:
     ):
         mock_get_owner.return_value = make_owner(dollars=100)
         inj = SimpleNamespace(id=7, injury=SimpleNamespace(id=7, name="Scratch", reveal_chance=0.0), visible=False)
+        mock_list_invisible.return_value = [inj]
         mock_db_get.return_value = SimpleNamespace(name="Buddy", owner_discord_id=1)
-        mock_list_inj.side_effect = [[inj], []]
+        mock_list_inj.return_value = []
 
         success, _, revealed = await diagnose_injuries(1, 1, rng_seed=0)
 
@@ -699,8 +708,10 @@ class TestDiagnoseMutations:
     @patch("src.game.manage_pooches.reveal_pooch_mutation", new_callable=AsyncMock)
     @patch("src.game.manage_pooches.give_money_to_owner", new_callable=AsyncMock)
     @patch("src.game.manage_pooches.get_owner_by_discord_id", new_callable=AsyncMock)
+    @patch("src.game.manage_pooches.list_invisible_pooch_mutation_instances", new_callable=AsyncMock)
     async def test_success_reveals_mutation(
         self,
+        mock_list_invisible,
         mock_get_owner,
         mock_give,
         mock_reveal,
@@ -710,11 +721,10 @@ class TestDiagnoseMutations:
         mock_snapshot,
     ):
         mock_get_owner.return_value = make_owner(dollars=200)
-        pm = SimpleNamespace(
-            pooch_id=1, mutation_id=3, mutation=SimpleNamespace(name="Albinism", reveal_chance=1.0), visible=False
-        )
+        pm = SimpleNamespace(pooch_id=1, mutation_id=3, mutation=SimpleNamespace(name="Albinism", reveal_chance=1.0))
+        mock_list_invisible.return_value = [pm]
         mock_db_get.return_value = SimpleNamespace(name="Buddy", owner_discord_id=1)
-        mock_list_mut.side_effect = [[pm], [SimpleNamespace(mutation_id=3, visible=True)]]
+        mock_list_mut.return_value = [SimpleNamespace(mutation_id=3, visible=True)]
 
         success, _, revealed = await diagnose_mutations(1, 1, rng_seed=42)
 

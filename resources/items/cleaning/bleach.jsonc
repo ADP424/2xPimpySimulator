@@ -1,0 +1,9 @@
+{
+    "description": "Industrial-strength bleach. Significantly reduces kennel mess, but harsh on the pooches.",
+    "rarity": "uncommon",
+    "parameters": {
+        "price": 20,
+        "mess_reduction": 20,
+        "side_effect_health": -1
+    }
+}

@@ -1,0 +1,28 @@
+{
+    "name": "Canine Influenza",
+    "description": "A seasonal respiratory virus that spreads quickly in kennels.",
+    "health_impact": "HARMFUL",
+    "contagion_chance": 0.2,
+    "sexually_transmitted": false,
+    "recovery_chance": 0.2,
+    "treatable": true,
+    "curable": true,
+    "immunity_duration": 14,
+    "heritability": 0.0,
+    "seasons": ["winter", "spring"],
+    "season_contagion_modifiers": {
+        "winter": 1.4,
+        "spring": 1.1
+    },
+    "invisible_messages": [
+        "This pooch has watery eyes.",
+        "This pooch sneezes frequently.",
+        "This pooch seems to have a runny nose.",
+        "This pooch seems a little off today."
+    ],
+    "visible": false,
+    "reveal_chance": 0.75,
+    "parameters": {
+        "constitution_add": -1
+    }
+}

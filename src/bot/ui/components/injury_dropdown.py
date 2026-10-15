@@ -7,9 +7,15 @@ import discord
 from discord.ui import Button, Select, View
 
 from src.bot.ui.util import edit_interaction, reply_to_interacted_message
+from src.game import INJURY_SEVERITIES
 
 if TYPE_CHECKING:
     from src.database.models import Injury
+
+
+def _severity_rank(severity: str) -> int:
+    """Position of a severity from least to most severe; unknown severities sort last."""
+    return INJURY_SEVERITIES.index(severity) if severity in INJURY_SEVERITIES else len(INJURY_SEVERITIES)
 
 
 def build_injury_info_embed(injury: Injury) -> discord.Embed:
@@ -61,6 +67,15 @@ class InjuryDropdownControls:
     """Reusable dropdown + info button for showing general injury info."""
 
     def __init__(self, injuries: list[InjuryOption], placeholder: str = "Select an injury"):
+        # Injuries don't have a rarity enum; they have a severity enum. Sort
+        # "most common" first, which for severity means trivial injuries first.
+        injuries = sorted(
+            injuries,
+            key=lambda o: (
+                _severity_rank(str(getattr(o.injury, "severity", "moderate")).lower()),
+                getattr(o.injury, "name", "") or "",
+            ),
+        )
         self.injuries = injuries
         self.selected: Optional[Injury] = None
 

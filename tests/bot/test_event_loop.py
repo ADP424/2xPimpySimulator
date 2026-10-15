@@ -1,11 +1,10 @@
 """Contract tests for src/bot/event_loop.py."""
 
-import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.bot import hourly_event_runner, post_hourly_event_notifications
+from src.bot import post_hourly_event_notifications
 
 
 def _make_bot():
@@ -59,28 +58,3 @@ class TestPostHourlyEventNotifications:
             mock_send.return_value = True
             await post_hourly_event_notifications(bot, {100: [event_a], 200: [event_b]})
             assert mock_send.call_count == 2
-
-
-@pytest.mark.contract
-class TestHourlyEventRunner:
-    async def test_runner_attaches_run_once_to_bot(self):
-        """The runner should set bot._hourly_event_run_once before looping."""
-        bot = _make_bot()
-
-        with (
-            patch("src.bot.event_loop.run_hourly_event_check", new_callable=AsyncMock, return_value={}),
-            patch("src.bot.event_loop.post_hourly_event_notifications", new_callable=AsyncMock),
-            patch("src.bot.event_loop.run_hourly_breeding_cooldown_check", new_callable=AsyncMock),
-        ):
-            # Run the loop briefly then cancel
-            task = asyncio.create_task(hourly_event_runner(bot, stage="dev"))
-            await asyncio.sleep(0.05)
-            task.cancel()
-            try:
-                await task
-            except asyncio.CancelledError:
-                pass
-
-            # The run_once function should be attached to the bot
-            assert hasattr(bot, "_hourly_event_run_once")
-            assert callable(bot._hourly_event_run_once)

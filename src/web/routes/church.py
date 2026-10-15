@@ -16,7 +16,9 @@ def church_hub():
 @login_required
 def basement():
     """Church basement — sacrifice, summon, and gaze into hell."""
-    return render_template("church/basement.html")
+    from src.game import describe_ritual_costs
+
+    return render_template("church/basement.html", ritual_costs=describe_ritual_costs())
 
 
 @church_bp.route("/beg")

@@ -15,43 +15,16 @@ import logging
 import random
 from typing import Any, Optional
 
-from src.database import (
-    get_pooch_aggressiveness,
-    get_pooch_base_health,
-    get_pooch_constitution,
-    get_pooch_cuteness,
-    get_pooch_dexterity,
-    get_pooch_fertility,
-    get_pooch_fluffiness,
-    get_pooch_intelligence,
-    get_pooch_size,
-    get_pooch_strength,
-)
+from src.game.manage_stats import ALL_STATS, get_effective_stat
 
 logger = logging.getLogger(__name__)
-
-_STAT_GETTERS = {
-    "strength": get_pooch_strength,
-    "cuteness": get_pooch_cuteness,
-    "fluffiness": get_pooch_fluffiness,
-    "intelligence": get_pooch_intelligence,
-    "dexterity": get_pooch_dexterity,
-    "fertility": get_pooch_fertility,
-    "aggressiveness": get_pooch_aggressiveness,
-    "constitution": get_pooch_constitution,
-    "base_health": get_pooch_base_health,
-}
 
 
 async def get_effective_pooch_stat(stat: str, pooch_id: int) -> Optional[float]:
     """Return the effective value of a named stat for a pooch. Returns None if stat is unknown."""
-    if stat == "size":
-        result = await get_pooch_size(pooch_id)
-        return float(result) if result is not None else 10.0
-    getter = _STAT_GETTERS.get(stat)
-    if getter is None:
+    if stat not in ALL_STATS:
         return None
-    result = await getter(pooch_id)
+    result = await get_effective_stat(pooch_id, stat)
     return float(result) if result is not None else None
 
 

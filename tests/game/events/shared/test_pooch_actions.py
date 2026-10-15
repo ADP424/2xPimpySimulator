@@ -636,6 +636,19 @@ from src.game.events.shared import handle_fight_pooches
 
 
 class TestHandleFightPooches:
+    @pytest.fixture(autouse=True)
+    def _effective_stats_are_the_pooch_fields(self):
+        """Fighters use effective stats; here those are just the (patched) pooch's own fields."""
+        from src.game.events.shared import pooch_actions
+        from src.game.manage_stats import ALL_STATS
+
+        async def stats(pooch_id):
+            pooch = await pooch_actions.get_pooch_by_id(pooch_id)
+            return {stat: getattr(pooch, stat, 10) for stat in ALL_STATS}
+
+        with patch("src.game.events.shared.pooch_actions.get_effective_stats", new=stats):
+            yield
+
     def _make_pooch_ns(self, **overrides):
         defaults = dict(
             id=1,
@@ -688,7 +701,7 @@ class TestHandleFightPooches:
     ):
         attacker = self._make_pooch_ns(id=1, base_health=100)
         defender = self._make_pooch_ns(id=2, base_health=100)
-        mock_get.side_effect = [attacker, defender]
+        mock_get.side_effect = lambda pid: {1: attacker, 2: defender}[pid]
         mock_inj_name.return_value = None
 
         result = await handle_fight_pooches(1, 2, rounds=1, rng=rng)
@@ -717,7 +730,7 @@ class TestHandleFightPooches:
         # Give attacker huge stats, defender very low stats — attacker should deal more damage
         attacker = self._make_pooch_ns(id=1, strength=100, dexterity=100, aggressiveness=100, size=20, base_health=1000)
         defender = self._make_pooch_ns(id=2, strength=1, dexterity=1, aggressiveness=1, size=1, base_health=1000)
-        mock_get.side_effect = [attacker, defender]
+        mock_get.side_effect = lambda pid: {1: attacker, 2: defender}[pid]
         mock_inj_name.return_value = None
 
         result = await handle_fight_pooches(1, 2, rounds=1, rng=rng)

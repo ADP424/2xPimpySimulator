@@ -5,6 +5,7 @@ from .event_occurrence import EventOccurrence
 from .graveyard_pooch import GraveyardPooch
 from .hell_pooch import HellPooch
 from .kennel_pooch import KennelPooch
+from .owner_item import OwnerItem
 from .owner_server import OwnerServer
 from .pooch_breed import PoochBreed
 from .pooch_disease import PoochDisease
@@ -37,6 +38,7 @@ __all__ = [
     "GraveyardPooch",
     "HellPooch",
     "KennelPooch",
+    "OwnerItem",
     "OwnerServer",
     "PoochBreed",
     "PoochDisease",

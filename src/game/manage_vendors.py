@@ -7,9 +7,6 @@ from src.database import (
     get_owner_by_discord_id,
 )
 from src.database import get_pooch_by_id as db_get_pooch_by_id
-from src.database import (
-    get_pooch_health,
-)
 from src.database import get_vendor_by_id as db_get_vendor_by_id
 from src.database import (
     give_money_to_owner,
@@ -41,6 +38,7 @@ from .constants import (
 )
 from .exceptions import PoochNotFound, VendorNotFound
 from .manage_auctions import cancel_listing_for_pooch
+from .manage_stats import get_pooch_health
 from .models import to_pooch, to_vendor
 
 if TYPE_CHECKING:

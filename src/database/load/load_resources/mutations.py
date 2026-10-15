@@ -20,7 +20,9 @@ _MUTATIONS_ROOT = RESOURCE_ROOT / "mutations"
 
 
 _VALID_SEASONS = {"spring", "summer", "autumn", "winter"}
-_VALID_ON_DEATH_EFFECTS = {"kill", "spread", "spread_all", "send_to_hell", "none"}
+# "injure" added in Section 5A — inflicts a random injury on a nearby pooch
+# using the on_death_options list of injury names.
+_VALID_ON_DEATH_EFFECTS = {"kill", "spread", "spread_all", "send_to_hell", "injure", "none"}
 _VALID_ON_DEATH_TARGETS = {"all", "random", "none"}
 _VALID_ON_DEATH_TRIGGER_KEYS = {
     "on_death",
@@ -28,6 +30,7 @@ _VALID_ON_DEATH_TRIGGER_KEYS = {
     "on_death_chance",
     "always_on_death",
     "impact_message",
+    "on_death_options",  # list of injury names for on_death: injure
 }
 
 
@@ -165,6 +168,21 @@ def validate_mutations_json(mutations_json: dict[str, dict[str, dict[str, Any]]]
                             impact_message = trigger.get("impact_message")
                             if impact_message is not None and not isinstance(impact_message, str):
                                 errors.append(f"{trigger_path}.impact_message: must be a string")
+                            on_death_options = trigger.get("on_death_options")
+                            if on_death_options is not None:
+                                if not isinstance(on_death_options, list) or not all(
+                                    isinstance(x, str) for x in on_death_options
+                                ):
+                                    errors.append(f"{trigger_path}.on_death_options: must be a list of strings")
+                                elif (
+                                    isinstance(on_death_effect, str)
+                                    and on_death_effect.strip().lower() == "injure"
+                                    and not on_death_options
+                                ):
+                                    errors.append(
+                                        f"{trigger_path}.on_death_options: must have at least one injury name "
+                                        "when on_death is 'injure'"
+                                    )
     if errors:
         joined = "\n".join(f"- {error}" for error in errors)
         raise ResourceValidationError(f"Invalid mutation resources:\n{joined}")

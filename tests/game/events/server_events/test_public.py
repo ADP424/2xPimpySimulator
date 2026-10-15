@@ -237,7 +237,7 @@ async def test_participate_pooch_filter_not_met():
         for p in _participation_patches(option):
             stack.enter_context(p)
         stack.enter_context(
-            patch("src.database.get_pooch_by_id", new=AsyncMock(return_value=MagicMock(owner_discord_id=1)))
+            patch(f"{MOD}.db_get_pooch_by_id", new=AsyncMock(return_value=MagicMock(owner_discord_id=1)))
         )
         mock_list = stack.enter_context(patch(f"{MOD}.list_matching_pooch_ids", new=AsyncMock(return_value=[2, 3])))
         success, msg, summary = await participate_in_server_event(

@@ -8,12 +8,9 @@ info_bp = Blueprint("info", __name__)
 @info_bp.route("/clinic")
 @server_required
 def veterinary_clinic():
-    """Veterinary clinic - info hub for breeds and mutations."""
+    """Veterinary clinic - hub for the Patient Room, encyclopedias and breed survey."""
 
-    return render_template(
-        "info/clinic.html",
-        server_name=g.current_server_name,
-    )
+    return render_template("info/clinic.html", server_name=g.current_server_name)
 
 
 @info_bp.route("/breeds")

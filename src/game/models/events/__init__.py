@@ -3,6 +3,7 @@ from __future__ import annotations
 from .birth_event import BirthEvent
 from .day_change_summary import DayChangeSummary
 from .death_event import DeathEvent
+from .hour_change_summary import HourChangeSummary
 from .other_event import OtherEvent
 from .owner_events import (
     OwnerEvent,
@@ -41,6 +42,7 @@ __all__ = [
     "BirthEvent",
     "DayChangeSummary",
     "DeathEvent",
+    "HourChangeSummary",
     "OtherEvent",
     # Owner event models
     "OwnerEvent",

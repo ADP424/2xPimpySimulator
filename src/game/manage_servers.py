@@ -97,6 +97,11 @@ async def get_or_create_server(server_discord_id: int) -> Server:
     return await to_server(server)
 
 
+async def list_all_servers() -> list[Server]:
+    """Return all registered servers."""
+    return await list_servers()
+
+
 async def set_event_channel(server_discord_id: int, event_channel_discord_id: int):
     """
     Set the Discord ID of the event channel for the given server.

@@ -14,6 +14,9 @@ from src.database import (
     create_server_event_participation,
     get_active_server_event_occurrence,
     get_owner_server,
+)
+from src.database import get_pooch_by_id as db_get_pooch_by_id
+from src.database import (
     get_server_event_menu_option_by_id,
     get_server_event_occurrence_by_id,
     get_server_event_participation,
@@ -166,8 +169,6 @@ async def participate_in_server_event(
         if pooch_req is not None:
             if selected_pooch_id is None:
                 return False, "You must select a pooch for that option.", None
-            from src.database import get_pooch_by_id as db_get_pooch_by_id
-
             pooch = await db_get_pooch_by_id(selected_pooch_id)
             if pooch is None or pooch.owner_discord_id != owner_discord_id:
                 return False, "That pooch does not belong to you.", None

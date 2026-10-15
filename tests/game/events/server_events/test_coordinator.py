@@ -206,7 +206,7 @@ async def test_trigger_daily_no_eligible_event(rng):
         patch(f"{MOD}.get_current_season", new=AsyncMock(return_value="spring")),
         patch(f"{MOD}.list_server_events_with_weights_by_tier", new=AsyncMock(return_value=[])),
         patch(f"{MOD}.get_active_server_event_occurrence_by_tier", new=AsyncMock(return_value=None)),
-        patch(f"{MOD}.check_server_event_filter", new=AsyncMock(return_value=True)),
+        patch(f"{MOD}.check_server_event_filter_for_server", new=AsyncMock(return_value=True)),
     ):
         result = await trigger_daily_server_event(100, "minor", rng)
 
@@ -232,11 +232,35 @@ async def test_run_daily_no_servers():
     with (
         patch(f"{MOD}.list_active_server_event_occurrences", new=AsyncMock(return_value=[])),
         patch(f"{MOD}.list_servers", new=AsyncMock(return_value=[])),
-        patch(f"{MOD}.get_current_season", new=AsyncMock(return_value="spring")),
-        patch(f"{MOD}.advance_season", new=AsyncMock(return_value="summer")),
     ):
         result = await run_daily_server_event_cycle()
 
-    # run_daily_server_event_cycle returns a tuple of collections
+    # run_daily_server_event_cycle returns (new_events, resolutions)
     assert result is not None
-    assert isinstance(result, tuple)
+    new_events, resolutions = result
+    assert isinstance(new_events, dict)
+    assert isinstance(resolutions, list)
+
+
+class TestResolveExpiredServerEvents:
+    async def test_only_expired_events_are_resolved(self):
+        from datetime import datetime, timedelta, timezone
+
+        from src.game.events.server_events.coordinator import (
+            _resolve_expired_server_events,
+        )
+
+        now = datetime.now(timezone.utc)
+        expired = SimpleNamespace(id=1, expires_at=now - timedelta(minutes=1))
+        running_major = SimpleNamespace(id=2, expires_at=now + timedelta(days=6))
+        naive_expired = SimpleNamespace(id=3, expires_at=(now - timedelta(hours=1)).replace(tzinfo=None))
+        resolve = AsyncMock(side_effect=lambda oid, rng: f"resolved {oid}")
+        with (
+            patch(
+                f"{MOD}.list_active_server_event_occurrences",
+                new=AsyncMock(return_value=[expired, running_major, naive_expired]),
+            ),
+            patch(f"{MOD}.resolve_server_event", new=resolve),
+        ):
+            resolutions = await _resolve_expired_server_events(random.Random(0))
+        assert resolutions == ["resolved 1", "resolved 3"]

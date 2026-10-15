@@ -7,10 +7,14 @@ from sqlalchemy.orm import selectinload
 
 from .constants import (
     KENNEL_POOCH_LIMIT,
+    POOCH_BASE_CONSUMPTION,
     POOCH_BASE_HEALTH,
+    POOCH_BASE_MESS_OUTPUT,
     POOCH_BREEDING_COOLDOWN,
+    POOCH_CONSUMPTION_PER_SIZE_UNIT,
     POOCH_FETAL_AGE,
     POOCH_HEALTH_LOSS_AGE,
+    POOCH_MESS_OUTPUT_PER_SIZE_UNIT,
     POOCH_STAT_DEFAULT,
     RANDOM_SEED_SIZE_LIMIT,
     VENDOR_DESIRED_MUTATION_COUNT_RANGE,
@@ -910,6 +914,31 @@ async def create_pooch(
         pooch_name = name or await _get_random_pooch_name(session)
         pooch_sex = sex or _get_random_sex()
 
+        # Derive consumption and mess_output from size + breed/mutation parameters.
+        # Breed/mutation params with keys "consumption_mult", "mess_output_add", "mess_output_mult"
+        # can modify the base values. No resources currently define these keys, but the hook
+        # is here for future use.
+        _eff_size = max(1, size)
+        consumption_mult = 1.0
+        mess_output_add = 0
+        mess_output_mult = 1.0
+        for breed_obj in resolved_breed_objects:
+            params = breed_obj.parameters or {}
+            consumption_mult *= float(params.get("consumption_mult", 1.0))
+            mess_output_add += int(params.get("mess_output_add", 0))
+            mess_output_mult *= float(params.get("mess_output_mult", 1.0))
+        # (mutations are not yet loaded at this point; they are applied after flush)
+        derived_consumption = max(
+            1, round((POOCH_BASE_CONSUMPTION + POOCH_CONSUMPTION_PER_SIZE_UNIT * _eff_size) * consumption_mult)
+        )
+        derived_mess_output = max(
+            1,
+            round(
+                (POOCH_BASE_MESS_OUTPUT + mess_output_add + POOCH_MESS_OUTPUT_PER_SIZE_UNIT * _eff_size)
+                * mess_output_mult
+            ),
+        )
+
         pooch = Pooch(
             owner_discord_id=owner_discord_id,
             vendor_id=vendor_id,
@@ -928,6 +957,8 @@ async def create_pooch(
             constitution=constitution,
             size=size,
             breeding_cooldown=breeding_cooldown,
+            consumption=derived_consumption,
+            mess_output=derived_mess_output,
             alive=True,
             virgin=True,
         )

@@ -17,10 +17,12 @@ from .models import (
     GlobalState,
     HealthImpactWeight,
     Injury,
+    Item,
     Kennel,
     KennelPooch,
     Mutation,
     Owner,
+    OwnerItem,
     OwnerServer,
     Pooch,
     PoochBreed,
@@ -40,7 +42,7 @@ from .models import (
     Vendor,
 )
 from .session import session_scope
-from .utils import check_owner_event_filter, rarity_choice
+from .utils import check_owner_event_filter, check_server_event_filter, rarity_choice
 
 
 async def get_active_owner_event_by_id(active_owner_event_id: int) -> Optional[EventOccurrence]:
@@ -584,26 +586,14 @@ async def get_pooch_by_id(pooch_id: int) -> Optional[Pooch]:
     return response.scalar_one_or_none()
 
 
-async def get_pooch_health(pooch_id: int) -> Optional[int]:
+async def get_pooch_health_impact(pooch_id: int) -> int:
     """
-    Get the current health of the given pooch, taking into account age, mutations, injuries, and diseases.
+    Return the summed health-impact weight of all of a pooch's mutations, injuries and diseases.
 
-    Parameters
-    ----------
-    pooch_id: int
-        The ID of the pooch to get the health of.
-
-    Returns
-    -------
-    int, optional
-        The current health of the pooch, or None if the pooch wasn't found.
+    The game layer adds this to the pooch's effective base health (see ``game.manage_stats.get_pooch_health``).
     """
 
     async with session_scope() as session:
-        pooch = await session.scalar(select(Pooch).where(Pooch.id == pooch_id))
-        if pooch is None:
-            return None
-
         InjuryWeight = aliased(HealthImpactWeight)
         DiseaseWeight = aliased(HealthImpactWeight)
 
@@ -632,31 +622,28 @@ async def get_pooch_health(pooch_id: int) -> Optional[int]:
             .scalar_subquery()
         )
         total_impact = await session.scalar(select(mutation_subq + injury_subq + disease_subq))
-
-    effective_base_health = await _get_pooch_stat(pooch_id, "base_health")
-    if effective_base_health is None:
-        return None
-
-    return effective_base_health - pooch.health_loss_age + (total_impact or 0)
+    return int(total_impact or 0)
 
 
-async def _get_pooch_stat(pooch_id: int, stat: str) -> Optional[int]:
+async def get_pooch_stat_sources(
+    pooch_id: int,
+) -> Optional[tuple[Pooch, list[PoochMutation], list[tuple[Breed, float]], list[PoochInjury], list[PoochDisease]]]:
     """
-    Return the effective value of a single stat for the given pooch, accounting for
-    mutation, breed, injury, and disease `{stat}_add` / `{stat}_mult` parameters.
+    Return everything that affects a pooch's stats, in one session: the pooch, its mutation instances, its breeds
+    with their weights, and its injury and disease instances (each with its catalog row loaded).
+
+    Returns None if the pooch doesn't exist. The math lives in ``game.manage_stats``.
     """
 
     async with session_scope() as session:
         pooch = await session.scalar(select(Pooch).where(Pooch.id == pooch_id))
         if pooch is None:
             return None
-
-        base: int = getattr(pooch, stat)
         mutations = (
             (
                 await session.execute(
-                    select(Mutation)
-                    .join(PoochMutation, PoochMutation.mutation_id == Mutation.id)
+                    select(PoochMutation)
+                    .options(selectinload(PoochMutation.mutation))
                     .where(PoochMutation.pooch_id == pooch_id)
                 )
             )
@@ -670,7 +657,7 @@ async def _get_pooch_stat(pooch_id: int, stat: str) -> Optional[int]:
                 .where(PoochBreed.pooch_id == pooch_id)
             )
         ).all()
-        injury_rows = (
+        injuries = (
             (
                 await session.execute(
                     select(PoochInjury)
@@ -681,7 +668,7 @@ async def _get_pooch_stat(pooch_id: int, stat: str) -> Optional[int]:
             .scalars()
             .all()
         )
-        disease_rows = (
+        diseases = (
             (
                 await session.execute(
                     select(PoochDisease)
@@ -692,113 +679,7 @@ async def _get_pooch_stat(pooch_id: int, stat: str) -> Optional[int]:
             .scalars()
             .all()
         )
-
-    total = float(base)
-    mut_add = sum(m.parameters.get(f"{stat}_add", 0) for m in mutations)
-    mut_mult = 1.0
-    for m in mutations:
-        mut_mult *= m.parameters.get(f"{stat}_mult", 1.0)
-    total = (total + mut_add) * mut_mult
-
-    total_weight = sum(w for _, w in breed_rows)
-    if total_weight > 0:
-        breed_add = sum(b.parameters.get(f"{stat}_add", 0) * (w / total_weight) for b, w in breed_rows)
-        breed_mult = sum(b.parameters.get(f"{stat}_mult", 1.0) * (w / total_weight) for b, w in breed_rows)
-        total = (total + breed_add) * breed_mult
-
-    injury_add = 0.0
-    injury_mult = 1.0
-    for pi in injury_rows:
-        injury = pi.injury
-        params = injury.parameters or {}
-        if pi.treated and injury.treated:
-            treated_params = injury.treated
-            injury_add += treated_params.get(f"{stat}_add", 0)
-            injury_mult *= treated_params.get(f"{stat}_mult", params.get(f"{stat}_mult", 1.0))
-        else:
-            injury_add += params.get(f"{stat}_add", 0)
-            injury_mult *= params.get(f"{stat}_mult", 1.0)
-    total = (total + injury_add) * injury_mult
-
-    injury_counts: dict[int, tuple[Injury, int]] = {}
-    for pi in injury_rows:
-        injury = pi.injury
-        if injury.id not in injury_counts:
-            injury_counts[injury.id] = (injury, 0)
-        injury_counts[injury.id] = (injury, injury_counts[injury.id][1] + 1)
-
-    stack_add = 0.0
-    stack_mult = 1.0
-    for injury, count in injury_counts.values():
-        for entry in (injury.parameters or {}).get("stacks", []):
-            min_count = entry.get("min_count", 1)
-            max_count = entry.get("max_count")
-            if count >= min_count and (max_count is None or count <= max_count):
-                stack_add += entry.get(f"{stat}_add", 0)
-                stack_mult *= entry.get(f"{stat}_mult", 1.0)
-    total = (total + stack_add) * stack_mult
-
-    disease_add = 0.0
-    disease_mult = 1.0
-    for pd in disease_rows:
-        params = pd.disease.parameters or {}
-        disease_add += params.get(f"{stat}_add", 0)
-        disease_mult *= params.get(f"{stat}_mult", 1.0)
-    total = (total + disease_add) * disease_mult
-
-    return round(total)
-
-
-async def get_pooch_base_health(pooch_id: int) -> Optional[int]:
-    """Return the effective base health of the pooch, accounting for mutation/breed stat parameters."""
-    return await _get_pooch_stat(pooch_id, "base_health")
-
-
-async def get_pooch_strength(pooch_id: int) -> Optional[int]:
-    """Return the effective strength of the pooch, accounting for mutation/breed stat parameters."""
-    return await _get_pooch_stat(pooch_id, "strength")
-
-
-async def get_pooch_cuteness(pooch_id: int) -> Optional[int]:
-    """Return the effective cuteness of the pooch, accounting for mutation/breed stat parameters."""
-    return await _get_pooch_stat(pooch_id, "cuteness")
-
-
-async def get_pooch_fluffiness(pooch_id: int) -> Optional[int]:
-    """Return the effective fluffiness of the pooch, accounting for mutation/breed stat parameters."""
-    return await _get_pooch_stat(pooch_id, "fluffiness")
-
-
-async def get_pooch_intelligence(pooch_id: int) -> Optional[int]:
-    """Return the effective intelligence of the pooch, accounting for mutation/breed stat parameters."""
-    return await _get_pooch_stat(pooch_id, "intelligence")
-
-
-async def get_pooch_dexterity(pooch_id: int) -> Optional[int]:
-    """Return the effective dexterity of the pooch, accounting for mutation/breed stat parameters."""
-    return await _get_pooch_stat(pooch_id, "dexterity")
-
-
-async def get_pooch_fertility(pooch_id: int) -> Optional[int]:
-    """Return the effective fertility of the pooch, accounting for mutation/breed stat parameters."""
-    return await _get_pooch_stat(pooch_id, "fertility")
-
-
-async def get_pooch_aggressiveness(pooch_id: int) -> Optional[int]:
-    """Return the effective aggressiveness of the pooch, accounting for mutation/breed stat parameters."""
-    return await _get_pooch_stat(pooch_id, "aggressiveness")
-
-
-async def get_pooch_constitution(pooch_id: int) -> Optional[int]:
-    """Return the effective constitution of the pooch, accounting for mutation/breed stat parameters."""
-    return await _get_pooch_stat(pooch_id, "constitution")
-
-
-async def get_pooch_size(pooch_id: int) -> Optional[int]:
-    """Return the stored size of the pooch (raw column value, not breed-derived)."""
-    async with session_scope() as session:
-        result = await session.scalar(select(Pooch.size).where(Pooch.id == pooch_id))
-    return result
+    return pooch, list(mutations), [(breed, weight) for breed, weight in breed_rows], list(injuries), list(diseases)
 
 
 async def get_pooch_kennel(pooch_id: int) -> Optional[Kennel]:
@@ -966,6 +847,14 @@ async def check_owner_event_filter_for_owner(owner_discord_id: int, filter_spec:
 
     async with session_scope() as session:
         return await check_owner_event_filter(session, owner_discord_id, filter_spec or {})
+
+
+async def check_server_event_filter_for_server(
+    server_discord_id: int, filter_spec: dict | None, season: str | None = None
+) -> bool:
+    """Session-free wrapper around check_server_event_filter."""
+    async with session_scope() as session:
+        return await check_server_event_filter(session, server_discord_id, filter_spec or {}, season=season)
 
 
 async def get_random_matching_pooch_id(
@@ -1624,3 +1513,102 @@ async def get_current_day() -> int:
         if row is None:
             return 0
         return row.current_day
+
+
+async def get_current_hour() -> int:
+    """Return the current global hour number, defaulting to 0."""
+    async with session_scope() as session:
+        row = await session.get(GlobalState, _GET_GLOBAL_STATE_ID)
+        if row is None:
+            return 0
+        return int(row.current_hour or 0)
+
+
+# ---------------------------------------------------------------------------
+# Item catalog + owner inventory
+# ---------------------------------------------------------------------------
+
+
+async def list_all_items() -> list[Item]:
+    """Return every item defined in the static item catalog."""
+    async with session_scope() as session:
+        result = await session.execute(select(Item).order_by(Item.name))
+        return list(result.scalars().all())
+
+
+async def list_items_by_category(category: str) -> list[Item]:
+    async with session_scope() as session:
+        result = await session.execute(select(Item).where(Item.category == category).order_by(Item.name))
+        return list(result.scalars().all())
+
+
+async def get_item_by_name(name: str) -> Optional[Item]:
+    async with session_scope() as session:
+        return (await session.execute(select(Item).where(Item.name == name))).scalar_one_or_none()
+
+
+async def get_owner_items(owner_discord_id: int) -> dict[str, int]:
+    """Return a ``{item_name: count}`` mapping of everything the owner owns."""
+    async with session_scope() as session:
+        result = await session.execute(select(OwnerItem).where(OwnerItem.owner_discord_id == owner_discord_id))
+        return {row.item_name: row.count for row in result.scalars().all() if row.count > 0}
+
+
+async def get_owner_item_count(owner_discord_id: int, item_name: str) -> int:
+    async with session_scope() as session:
+        row = (
+            await session.execute(
+                select(OwnerItem).where(
+                    OwnerItem.owner_discord_id == owner_discord_id,
+                    OwnerItem.item_name == item_name,
+                )
+            )
+        ).scalar_one_or_none()
+        return int(row.count) if row is not None else 0
+
+
+async def give_owner_item(owner_discord_id: int, item_name: str, amount: int) -> int:
+    """Add ``amount`` of ``item_name`` to an owner's inventory. Returns new count."""
+    async with session_scope() as session:
+        row = (
+            await session.execute(
+                select(OwnerItem).where(
+                    OwnerItem.owner_discord_id == owner_discord_id,
+                    OwnerItem.item_name == item_name,
+                )
+            )
+        ).scalar_one_or_none()
+        if row is None:
+            row = OwnerItem(
+                owner_discord_id=owner_discord_id,
+                item_name=item_name,
+                count=max(0, int(amount)),
+            )
+            session.add(row)
+        else:
+            row.count = max(0, int(row.count) + int(amount))
+        await session.flush()
+        return int(row.count)
+
+
+async def consume_owner_item(owner_discord_id: int, item_name: str, amount: int = 1) -> bool:
+    """
+    Try to remove ``amount`` of ``item_name`` from the owner's inventory.
+    Returns True on success, False if the owner didn't have enough.
+    """
+    if amount <= 0:
+        return True
+    async with session_scope() as session:
+        row = (
+            await session.execute(
+                select(OwnerItem).where(
+                    OwnerItem.owner_discord_id == owner_discord_id,
+                    OwnerItem.item_name == item_name,
+                )
+            )
+        ).scalar_one_or_none()
+        if row is None or int(row.count) < int(amount):
+            return False
+        row.count = int(row.count) - int(amount)
+        await session.flush()
+        return True

@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Optional
 
 from src.database import (
     create_pooch_snapshot,
+    decrement_pooch_breeding_cooldown,
     get_owner_by_discord_id,
     get_parentage_maps,
 )
@@ -13,7 +14,11 @@ from src.database import (
     get_pooch_injury_instance,
     get_pooch_parents,
     give_money_to_owner,
+    list_invisible_pooch_injury_instances,
+    list_invisible_pooch_mutation_instances,
+    list_persistent_injury_instances,
     list_pooch_children,
+    list_pooch_ids_on_breeding_cooldown,
     list_pooch_injury_instances,
     list_pooch_mutation_instances,
     list_pooch_siblings,
@@ -28,8 +33,6 @@ from src.database import (
     reveal_pooch_injury,
     reveal_pooch_mutation,
     set_pooch_vet_checked,
-    tick_hourly_breeding_cooldowns,
-    tick_hourly_injury_persistence,
     treat_pooch_injury,
 )
 from src.database.models import (
@@ -43,6 +46,7 @@ from src.logger import get_logger
 from .constants import (
     BREEDING_COOLDOWN_HOURLY_FERTILITY_DIVISOR,
     INJURY_PERSISTENCE_HOURLY_CONSTITUTION_DIVISOR,
+    INJURY_SEVERITIES,
     MAX_NAME_LENGTH,
     VET_DIAGNOSE_INJURIES_COST,
     VET_DIAGNOSE_MUTATIONS_COST,
@@ -52,6 +56,7 @@ from .constants import (
 )
 from .exceptions import PoochNotFound
 from .manage_static import get_injury_by_id, get_mutation_by_id
+from .manage_stats import get_effective_stat, get_effective_stats
 from .models import PoochTimelineEntry, to_pooch
 
 logger = get_logger("game/manage_pooches")
@@ -291,10 +296,16 @@ async def run_hourly_breeding_cooldown_check(rng_seed: Optional[int] = None) -> 
         Number of pooches whose cooldown was decremented.
     """
 
-    decremented = await tick_hourly_breeding_cooldowns(
-        fertility_divisor=BREEDING_COOLDOWN_HOURLY_FERTILITY_DIVISOR,
-        rng_seed=rng_seed,
-    )
+    import random as _random
+
+    rng = _random.Random(rng_seed)
+    decremented = 0
+    for pooch_id in await list_pooch_ids_on_breeding_cooldown():
+        # Effective fertility: immortal pooches (fertility 0) never come back into heat
+        fertility = await get_effective_stat(pooch_id, "fertility") or 0
+        if rng.random() < fertility / BREEDING_COOLDOWN_HOURLY_FERTILITY_DIVISOR:
+            await decrement_pooch_breeding_cooldown(pooch_id)
+            decremented += 1
     logger.info("Hourly breeding cooldown tick: %d pooch(es) decremented.", decremented)
     return decremented
 
@@ -317,23 +328,22 @@ async def run_hourly_injury_persistence_check(rng_seed: Optional[int] = None) ->
         Number of injury instances whose persistence was decremented.
     """
 
-    decremented = await tick_hourly_injury_persistence(
-        constitution_divisor=INJURY_PERSISTENCE_HOURLY_CONSTITUTION_DIVISOR,
-        rng_seed=rng_seed,
-    )
+    import random as _random
+
+    rng = _random.Random(rng_seed)
+    constitution: dict[int, int] = {}
+    decremented = 0
+    for pooch_injury_id, pooch_id in await list_persistent_injury_instances():
+        if pooch_id not in constitution:
+            constitution[pooch_id] = await get_effective_stat(pooch_id, "constitution") or 0
+        if rng.random() < constitution[pooch_id] / INJURY_PERSISTENCE_HOURLY_CONSTITUTION_DIVISOR:
+            await reduce_pooch_injury_persistence(pooch_injury_id, 1)
+            decremented += 1
     logger.info("Hourly injury persistence tick: %d injury instance(s) decremented.", decremented)
     return decremented
 
 
-_SEVERITY_LEVEL: dict[str, int] = {
-    "trivial": 1,
-    "minor": 2,
-    "moderate": 3,
-    "major": 4,
-    "critical": 5,
-    "remarkable": 6,
-    "catastrophic": 7,
-}
+_SEVERITY_LEVEL: dict[str, int] = {severity: level for level, severity in enumerate(INJURY_SEVERITIES, start=1)}
 
 
 def get_treatment_cost(severity: str) -> int:
@@ -467,7 +477,7 @@ async def diagnose_injuries(
 
     rng = _random.Random(rng_seed)
 
-    invisible_instances = [pi for pi in await list_pooch_injury_instances(pooch_id) if not pi.visible]
+    invisible_instances = await list_invisible_pooch_injury_instances(pooch_id)
 
     await give_money_to_owner(owner_discord_id, -VET_DIAGNOSE_INJURIES_COST)
 
@@ -528,7 +538,7 @@ async def diagnose_mutations(
 
     rng = _random.Random(rng_seed)
 
-    invisible_instances = [pm for pm in await list_pooch_mutation_instances(pooch_id) if not pm.visible]
+    invisible_instances = await list_invisible_pooch_mutation_instances(pooch_id)
 
     await give_money_to_owner(owner_discord_id, -VET_DIAGNOSE_MUTATIONS_COST)
 
@@ -630,16 +640,18 @@ async def medical_exam(owner_discord_id: int, pooch: "Pooch") -> tuple[bool, str
 
     await give_money_to_owner(owner_discord_id, -MEDICAL_EXAM_COST)
 
+    # The exam describes the pooch as it really is: breeds, conditions, hunger etc. all count
+    stats = await get_effective_stats(pooch.id) or {}
     report = {
-        "Strength": _rate_stat(pooch.strength),
-        "Cuteness": _rate_stat(pooch.cuteness),
-        "Fluffiness": _rate_stat(pooch.fluffiness),
-        "Intelligence": _rate_stat(pooch.intelligence),
-        "Dexterity": _rate_stat(pooch.dexterity),
-        "Fertility": _rate_stat(pooch.fertility),
-        "Aggressiveness": _rate_stat(pooch.aggressiveness),
-        "Constitution": _rate_stat(pooch.constitution),
-        "Size Class": str(pooch.size),
+        "Strength": _rate_stat(stats.get("strength", pooch.strength)),
+        "Cuteness": _rate_stat(stats.get("cuteness", pooch.cuteness)),
+        "Fluffiness": _rate_stat(stats.get("fluffiness", pooch.fluffiness)),
+        "Intelligence": _rate_stat(stats.get("intelligence", pooch.intelligence)),
+        "Dexterity": _rate_stat(stats.get("dexterity", pooch.dexterity)),
+        "Fertility": _rate_stat(stats.get("fertility", pooch.fertility)),
+        "Aggressiveness": _rate_stat(stats.get("aggressiveness", pooch.aggressiveness)),
+        "Constitution": _rate_stat(stats.get("constitution", pooch.constitution)),
+        "Size Class": str(stats.get("size", pooch.size)),
     }
 
     stats_lines = "\n".join(f"{k}: {v}" for k, v in report.items())
@@ -696,3 +708,70 @@ async def get_pooch_timeline(pooch_id: int) -> list[PoochTimelineEntry]:
             )
         )
     return entries
+
+
+def _public_source_label(kind: str, instance) -> str:
+    """Name a condition in a Detailed Workup: its real name once diagnosed, otherwise only its symptom."""
+    catalog = getattr(instance, kind, instance)
+    if getattr(instance, "visible", True):
+        return catalog.name
+    fallback = {
+        "mutation": "an undiagnosed mutation",
+        "injury": "a mysterious injury",
+        "disease": "a mysterious illness",
+    }
+    return getattr(instance, "displayed_symptom", None) or fallback[kind]
+
+
+DETAILED_WORKUP_COST = 150
+
+
+async def detailed_workup(owner_discord_id: int, pooch_id: int) -> tuple[bool, str, dict]:
+    """
+    Pricier vet procedure that returns the exact base/effective values for
+    every stat plus a per-source breakdown. Persists the result as a snapshot
+    so the player can review their pooch's history.
+
+    Hidden mutations, injuries and diseases are listed under their displayed symptom, never their name.
+    """
+    from .utils.obfuscation import stat_label
+
+    owner = await get_owner_by_discord_id(owner_discord_id)
+    if owner is None:
+        return False, "Owner not found.", {}
+    pooch = await db_get_pooch_by_id(pooch_id)
+    if pooch is None:
+        return False, "Pooch not found.", {}
+    if pooch.owner_discord_id != owner_discord_id:
+        return False, "That's not your pooch.", {}
+    if owner.dollars < DETAILED_WORKUP_COST:
+        return False, f"Not enough money. A detailed workup costs **${DETAILED_WORKUP_COST}**.", {}
+
+    await give_money_to_owner(owner_discord_id, -DETAILED_WORKUP_COST)
+
+    breakdown = await get_effective_stats(pooch_id, return_breakdown=True, label=_public_source_label)
+
+    # Format with labels per stat for the UI.
+    report = {}
+    for stat, info in breakdown.items():
+        if stat == "base_health":
+            # Exact health is never shown to players.
+            continue
+        eff = int(round(info["effective"]))
+        base = int(round(info["base"]))
+        label = stat_label(eff)
+        report[stat] = {
+            "base": base,
+            "effective": eff,
+            "label": label,
+            "sources": info["sources"],
+        }
+
+    # Persist as a snapshot.
+    await create_pooch_snapshot(
+        pooch_id=pooch.id,
+        kind=SNAPSHOT_MEDICAL_EXAM,
+        description=f"{pooch.name} received a Detailed Workup.",
+    )
+
+    return True, "", report

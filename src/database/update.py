@@ -1,4 +1,3 @@
-import random
 from datetime import datetime, timezone
 from typing import Any, Optional
 
@@ -11,15 +10,12 @@ from .models import (
     SNAPSHOT_OWNERSHIP,
     AuctionBountyListing,
     AuctionSaleListing,
-    Breed,
     EventOccurrence,
     GlobalState,
-    Injury,
     Kennel,
     Mutation,
     Owner,
     Pooch,
-    PoochBreed,
     PoochDisease,
     PoochInjury,
     PoochMutation,
@@ -73,172 +69,6 @@ async def age_pooch(pooch_id: int, health_loss_starting_age: int = POOCH_HEALTH_
             )
 
     return pooch
-
-
-async def tick_hourly_breeding_cooldowns(fertility_divisor: float, rng_seed: Optional[int] = None) -> int:
-    """
-    For each living pooch whose breeding_cooldown > 0, roll a chance equal to
-    (fertility / fertility_divisor) to decrement the cooldown by 1.
-
-    Parameters
-    ----------
-    fertility_divisor: float
-        Divisor applied to each pooch's fertility stat to compute the per-hour
-        decrement chance.
-
-    rng_seed: int, optional
-        Seed for the random number generator.
-
-    Returns
-    -------
-    int
-        The number of pooches whose cooldown was decremented.
-    """
-
-    rng = random.Random(rng_seed)
-
-    async with session_scope() as session:
-        query = select(Pooch).where(Pooch.alive.is_(True), Pooch.breeding_cooldown > 0)
-        pooches = (await session.execute(query)).scalars().all()
-
-        decremented = 0
-        for pooch in pooches:
-            mutations = (
-                (
-                    await session.execute(
-                        select(Mutation)
-                        .join(PoochMutation, PoochMutation.mutation_id == Mutation.id)
-                        .where(PoochMutation.pooch_id == pooch.id)
-                    )
-                )
-                .scalars()
-                .all()
-            )
-            breed_rows = (
-                await session.execute(
-                    select(Breed, PoochBreed.weight)
-                    .join(PoochBreed, PoochBreed.breed_id == Breed.id)
-                    .where(PoochBreed.pooch_id == pooch.id)
-                )
-            ).all()
-
-            effective_fertility = float(pooch.fertility)
-            mut_add = sum(m.parameters.get("fertility_add", 0) for m in mutations)
-            mut_mult = 1.0
-            for m in mutations:
-                mut_mult *= m.parameters.get("fertility_mult", 1.0)
-            effective_fertility = (effective_fertility + mut_add) * mut_mult
-
-            total_weight = sum(w for _, w in breed_rows)
-            if total_weight > 0:
-                breed_add = sum(b.parameters.get("fertility_add", 0) * (w / total_weight) for b, w in breed_rows)
-                breed_mult = sum(b.parameters.get("fertility_mult", 1.0) * (w / total_weight) for b, w in breed_rows)
-                effective_fertility = (effective_fertility + breed_add) * breed_mult
-
-            chance = round(effective_fertility) / fertility_divisor
-            if rng.random() < chance:
-                pooch.breeding_cooldown = max(pooch.breeding_cooldown - 1, 0)
-                decremented += 1
-
-    return decremented
-
-
-async def tick_hourly_injury_persistence(constitution_divisor: float, rng_seed: Optional[int] = None) -> int:
-    """
-    For each living pooch, roll a constitution-based chance to decrement the persistence
-    counter on each of their injuries that has one. When persistence reaches 0 the injury
-    is removed.
-
-    Chance per injury instance = constitution / constitution_divisor.
-
-    Parameters
-    ----------
-    constitution_divisor: float
-        Divisor applied to the pooch's effective constitution to compute the per-hour
-        decrement chance.
-
-    rng_seed: int, optional
-        Seed for the random number generator.
-
-    Returns
-    -------
-    int
-        The number of injury instances whose persistence was decremented (including removals).
-    """
-
-    rng = random.Random(rng_seed)
-
-    async with session_scope() as session:
-        query = (
-            select(PoochInjury)
-            .join(Pooch, Pooch.id == PoochInjury.pooch_id)
-            .join(Injury, Injury.id == PoochInjury.injury_id)
-            .where(Pooch.alive.is_(True), PoochInjury.persistence.is_not(None))
-        )
-        injury_instances = (await session.execute(query)).scalars().all()
-
-        if not injury_instances:
-            return 0
-
-        # Gather unique pooch ids and fetch their stats + modifiers in bulk
-        pooch_ids = list({pi.pooch_id for pi in injury_instances})
-        pooches = {
-            p.id: p for p in (await session.execute(select(Pooch).where(Pooch.id.in_(pooch_ids)))).scalars().all()
-        }
-        mutations_by_pooch: dict[int, list] = {pid: [] for pid in pooch_ids}
-        for m, pid in (
-            await session.execute(
-                select(Mutation, PoochMutation.pooch_id)
-                .join(PoochMutation, PoochMutation.mutation_id == Mutation.id)
-                .where(PoochMutation.pooch_id.in_(pooch_ids))
-            )
-        ).all():
-            mutations_by_pooch[pid].append(m)
-        breed_rows_by_pooch: dict[int, list] = {pid: [] for pid in pooch_ids}
-        for b, w, pid in (
-            await session.execute(
-                select(Breed, PoochBreed.weight, PoochBreed.pooch_id)
-                .join(PoochBreed, PoochBreed.breed_id == Breed.id)
-                .where(PoochBreed.pooch_id.in_(pooch_ids))
-            )
-        ).all():
-            breed_rows_by_pooch[pid].append((b, w))
-
-        # Cache effective constitution per pooch
-        effective_constitution: dict[int, float] = {}
-        for pid in pooch_ids:
-            pooch = pooches[pid]
-            ec = float(pooch.constitution)
-            mutations = mutations_by_pooch[pid]
-            mut_add = sum(m.parameters.get("constitution_add", 0) for m in mutations)
-            mut_mult = 1.0
-            for m in mutations:
-                mut_mult *= m.parameters.get("constitution_mult", 1.0)
-            ec = (ec + mut_add) * mut_mult
-            breed_rows = breed_rows_by_pooch[pid]
-            total_weight = sum(w for _, w in breed_rows)
-            if total_weight > 0:
-                breed_add = sum(b.parameters.get("constitution_add", 0) * (w / total_weight) for b, w in breed_rows)
-                breed_mult = sum(b.parameters.get("constitution_mult", 1.0) * (w / total_weight) for b, w in breed_rows)
-                ec = (ec + breed_add) * breed_mult
-            effective_constitution[pid] = ec
-
-        decremented = 0
-        to_delete: list[int] = []
-        for pi in injury_instances:
-            chance = round(effective_constitution[pi.pooch_id]) / constitution_divisor
-            if rng.random() < chance:
-                pi.persistence -= 1
-                decremented += 1
-                if pi.persistence <= 0:
-                    to_delete.append(pi.id)
-
-        for pi_id in to_delete:
-            pi = await session.get(PoochInjury, pi_id)
-            if pi is not None:
-                await session.delete(pi)
-
-    return decremented
 
 
 async def decrement_pooch_breeding_cooldown(pooch_id: int) -> Optional[Pooch]:
@@ -1715,31 +1545,6 @@ async def update_kennel_messiness(kennel_id: int, amount: int) -> Optional[int]:
     return kennel.messiness
 
 
-async def set_kennel_messiness(kennel_id: int, value: int) -> Optional[int]:
-    """
-    Set the kennel's messiness to the given value. Returns the new value.
-
-    Parameters
-    ----------
-    kennel_id: int
-        The ID of the kennel to update.
-    value: int
-        The value to set messiness to.
-
-    Returns
-    -------
-    int, optional
-        The new messiness value, or None if the kennel wasn't found.
-    """
-    async with session_scope() as session:
-        kennel = await session.get(Kennel, kennel_id)
-        if kennel is None:
-            return None
-        kennel.messiness = max(0, value)
-        await session.flush()
-    return kennel.messiness
-
-
 async def increment_global_day() -> int:
     """Increment the global day counter by 1 and return the new value."""
     async with session_scope() as session:
@@ -1750,3 +1555,185 @@ async def increment_global_day() -> int:
         row.current_day += 1
         await session.flush()
     return row.current_day
+
+
+async def increment_global_hour() -> int:
+    """Increment the global hour counter by 1 and return the new value.
+
+    Keeps ``current_day`` in sync (``current_day = current_hour // 24``).
+    """
+    async with session_scope() as session:
+        row = await session.get(GlobalState, _GLOBAL_STATE_ID)
+        if row is None:
+            row = GlobalState(id=_GLOBAL_STATE_ID, current_season="spring", current_day=0, current_hour=0)
+            session.add(row)
+        row.current_hour = (row.current_hour or 0) + 1
+        row.current_day = int(row.current_hour // 24)
+        await session.flush()
+    return row.current_hour
+
+
+# ---------------------------------------------------------------------------
+# Pooch hour-loop fields
+# ---------------------------------------------------------------------------
+
+
+async def set_pooch_pregnancy_timer(pooch_id: int, timer: Optional[int]) -> Optional[Pooch]:
+    """Set the pregnancy timer to the given value (None = not pregnant)."""
+    async with session_scope() as session:
+        pooch = await session.get(Pooch, pooch_id)
+        if pooch is None:
+            return None
+        pooch.pregnancy_timer = timer
+        await session.flush()
+    return pooch
+
+
+async def decrement_pooch_pregnancy_timer(pooch_id: int) -> Optional[int]:
+    """Subtract 1 from the pregnancy timer, clamped to 0. Returns new value."""
+    async with session_scope() as session:
+        pooch = await session.get(Pooch, pooch_id)
+        if pooch is None or pooch.pregnancy_timer is None:
+            return None
+        pooch.pregnancy_timer = max(0, (pooch.pregnancy_timer or 0) - 1)
+        await session.flush()
+        return pooch.pregnancy_timer
+
+
+async def increment_pooch_rejuvenation_count(pooch_id: int) -> Optional[int]:
+    async with session_scope() as session:
+        pooch = await session.get(Pooch, pooch_id)
+        if pooch is None:
+            return None
+        pooch.rejuvenation_count = (pooch.rejuvenation_count or 0) + 1
+        await session.flush()
+        return pooch.rejuvenation_count
+
+
+async def set_pooch_immortal(pooch_id: int, immortal: bool = True) -> Optional[Pooch]:
+    async with session_scope() as session:
+        pooch = await session.get(Pooch, pooch_id)
+        if pooch is None:
+            return None
+        pooch.immortal = bool(immortal)
+        await session.flush()
+    return pooch
+
+
+async def modify_pooch_starvation(pooch_id: int, delta: int) -> Optional[int]:
+    async with session_scope() as session:
+        pooch = await session.get(Pooch, pooch_id)
+        if pooch is None:
+            return None
+        pooch.starvation = max(0, (pooch.starvation or 0) + int(delta))
+        await session.flush()
+        return pooch.starvation
+
+
+async def set_pooch_mess_output(pooch_id: int, value: int) -> Optional[Pooch]:
+    async with session_scope() as session:
+        pooch = await session.get(Pooch, pooch_id)
+        if pooch is None:
+            return None
+        pooch.mess_output = max(0, int(value))
+        await session.flush()
+    return pooch
+
+
+async def set_pooch_consumption(pooch_id: int, value: int) -> Optional[Pooch]:
+    async with session_scope() as session:
+        pooch = await session.get(Pooch, pooch_id)
+        if pooch is None:
+            return None
+        pooch.consumption = max(0, int(value))
+        await session.flush()
+    return pooch
+
+
+async def set_pooch_birth_hour(pooch_id: int, hour: Optional[int]) -> Optional[Pooch]:
+    async with session_scope() as session:
+        pooch = await session.get(Pooch, pooch_id)
+        if pooch is None:
+            return None
+        pooch.birth_hour = None if hour is None else int(hour)
+        await session.flush()
+    return pooch
+
+
+async def flip_pooch_sex(pooch_id: int) -> Optional[Pooch]:
+    async with session_scope() as session:
+        pooch = await session.get(Pooch, pooch_id)
+        if pooch is None:
+            return None
+        pooch.sex = "female" if pooch.sex == "male" else "male"
+        await session.flush()
+    return pooch
+
+
+# ---------------------------------------------------------------------------
+# Kennel food stock
+# ---------------------------------------------------------------------------
+
+
+async def modify_kennel_food_stock(kennel_id: int, amount: int) -> Optional[int]:
+    """Add ``amount`` (may be negative) to a kennel's food stock. Clamped to 0."""
+    async with session_scope() as session:
+        kennel = await session.get(Kennel, kennel_id)
+        if kennel is None:
+            return None
+        kennel.food_stock = max(0, (kennel.food_stock or 0) + int(amount))
+        await session.flush()
+        return kennel.food_stock
+
+
+# ---------------------------------------------------------------------------
+# Owner body parts and item inventory
+# ---------------------------------------------------------------------------
+
+
+_BODY_PART_ATTR = {
+    "bloodskull": "bloodskulls",
+    "bloodskulls": "bloodskulls",
+    "bone": "bones",
+    "bones": "bones",
+    "heart": "hearts",
+    "hearts": "hearts",
+    "brain": "brains",
+    "brains": "brains",
+    "eye": "eyes",
+    "eyes": "eyes",
+    "tail": "tails",
+    "tails": "tails",
+    "tooth": "teeth",
+    "teeth": "teeth",
+}
+
+BODY_PART_NAMES = ("bloodskull", "bone", "heart", "brain", "eye", "tail", "teeth")
+
+
+async def give_owner_body_part(owner_discord_id: int, part: str, amount: int) -> Optional[Owner]:
+    """
+    Increment one of the owner's body-part columns by ``amount`` (may be negative).
+
+    ``part`` is a human-friendly singular or plural ("heart", "hearts", "bone").
+    """
+    attr = _BODY_PART_ATTR.get(part.strip().lower())
+    if attr is None:
+        raise ValueError(f"Unknown body part '{part}'")
+    async with session_scope() as session:
+        owner = await session.get(Owner, owner_discord_id)
+        if owner is None:
+            return None
+        setattr(owner, attr, max(0, int(getattr(owner, attr) or 0) + int(amount)))
+        await session.flush()
+    return owner
+
+
+async def set_owner_hand_cleaned_today(owner_discord_id: int, value: bool) -> Optional[Owner]:
+    async with session_scope() as session:
+        owner = await session.get(Owner, owner_discord_id)
+        if owner is None:
+            return None
+        owner.hand_cleaned_today = bool(value)
+        await session.flush()
+    return owner
