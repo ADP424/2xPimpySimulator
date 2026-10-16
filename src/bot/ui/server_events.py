@@ -494,7 +494,11 @@ class ServerEventParticipationView(discord.ui.View):
 
     @discord.ui.button(label="Participate", style=discord.ButtonStyle.primary, custom_id="server-event-participate")
     async def participate_button(self, interaction: discord.Interaction, _button: discord.ui.Button):
-        event = await get_active_server_event(self.server_discord_id, interaction.user.id)
+        event = await get_active_server_event(
+            server_discord_id=self.server_discord_id,
+            occurrence_id=self.occurrence_id,
+            viewer_owner_discord_id=interaction.user.id,
+        )
         if event is None or event.occurrence_id != self.occurrence_id:
             await interaction.response.send_message("This server event is no longer active.", ephemeral=True)
             return
@@ -577,7 +581,7 @@ async def refresh_public_server_event_message(bot: discord.Client, server_discor
         The `occurrence_id` value.
     """
 
-    event = await get_active_server_event(server_discord_id)
+    event = await get_active_server_event(server_discord_id=server_discord_id, occurrence_id=occurrence_id)
     if event is None or event.occurrence_id != occurrence_id or event.message_discord_id is None:
         return
 

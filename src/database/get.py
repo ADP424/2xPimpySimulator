@@ -1075,39 +1075,6 @@ async def get_server_event_occurrence_by_id(occurrence_id: int) -> Optional[Serv
     return response.scalar_one_or_none()
 
 
-async def get_active_server_event_occurrence(server_discord_id: int) -> Optional[ServerEventOccurrence]:
-    """
-    Get active server event occurrence.
-
-    Parameters
-    ----------
-    server_discord_id: Any
-        The `server_discord_id` value.
-
-    Returns
-    -------
-    Any
-        The result of calling `get_active_server_event_occurrence`.
-    """
-
-    async with session_scope() as session:
-        query = (
-            select(ServerEventOccurrence)
-            .where(
-                ServerEventOccurrence.server_discord_id == server_discord_id,
-                ServerEventOccurrence.archived.is_(False),
-                ServerEventOccurrence.resolved_at.is_(None),
-            )
-            .options(
-                selectinload(ServerEventOccurrence.server_event).options(*_server_event_load_options()),
-                selectinload(ServerEventOccurrence.participations),
-            )
-        )
-        response = await session.execute(query)
-
-    return response.scalar_one_or_none()
-
-
 async def get_active_server_event_occurrence_by_tier(
     server_discord_id: int, tier: str
 ) -> Optional[ServerEventOccurrence]:

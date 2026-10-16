@@ -41,6 +41,12 @@ crashed (string vs int); 7-day server events ended after a day; moods stopped ch
 nothing; cannibalism was configured but never built; cleaning messages leaked the exact mess number; the bot's
 breeding "eligible females" could be males; duplicate `auction_bp` registration would crash the web app.
 
+Found while testing on the Kraft copy: the hour tick crashed on `pooch.immortal` (and silently read starvation as 0)
+because the game `Pooch` lacked lots' columns; `to_pooch` had its own stat math; kennels came out of the upgrade
+with no food; and with a daily (minor) and a weekly (major) server event running at once, the web Server Events page
+and the bot's `/server_event` crashed (`MultipleResultsFound`) — both now show every active event, and Participate
+looks its event up by ID.
+
 ## Schema changes (needed by any database older than this branch)
 
 `web-bot-parity` itself had no schema changes. From lots-of-changes:

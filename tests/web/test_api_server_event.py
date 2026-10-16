@@ -92,14 +92,14 @@ def _participation():
 
 class TestGetServerEvent:
     def test_no_active_event(self, client):
-        with patch("src.game.get_active_server_event", new=AsyncMock(return_value=None)):
-            assert client.get("/api/server-event").get_json() == {"event": None}
+        with patch("src.game.list_active_server_events", new=AsyncMock(return_value=[])):
+            assert client.get("/api/server-event").get_json() == {"events": []}
 
     def test_menus_before_participating(self, client):
-        with patch("src.game.get_active_server_event", new=AsyncMock(return_value=_event())) as fetch:
+        with patch("src.game.list_active_server_events", new=AsyncMock(return_value=[_event()])) as fetch:
             resp = client.get("/api/server-event")
-        fetch.assert_awaited_once_with(SERVER_ID, viewer_owner_discord_id=VIEWER_ID)
-        event = resp.get_json()["event"]
+        fetch.assert_awaited_once_with(SERVER_ID, VIEWER_ID)
+        (event,) = resp.get_json()["events"]
         enter, cheer = event["menus"]
         assert (enter["available"], enter["uses_left"]) == (True, 1)
         assert (cheer["available"], cheer["uses_left"]) == (False, None)
@@ -110,9 +110,9 @@ class TestGetServerEvent:
             assert secret not in body
 
     def test_after_participating(self, client):
-        with patch("src.game.get_active_server_event", new=AsyncMock(return_value=_event(_participation()))):
+        with patch("src.game.list_active_server_events", new=AsyncMock(return_value=[_event(_participation())])):
             resp = client.get("/api/server-event")
-        event = resp.get_json()["event"]
+        (event,) = resp.get_json()["events"]
         enter, cheer = event["menus"]
         assert (enter["available"], enter["uses_left"]) == (False, 0)
         assert cheer["available"] is True

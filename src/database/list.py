@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from typing import Optional
 
 from sqlalchemy import Text as SAText
 from sqlalchemy import and_, case, cast, func, or_, select, true
@@ -1037,20 +1038,26 @@ async def list_vendor_desired_breeds(vendor_id: int) -> list[Breed]:
     return list(response.scalars().all())
 
 
-async def list_active_server_event_occurrences() -> list[ServerEventOccurrence]:
+async def list_active_server_event_occurrences(server_discord_id: Optional[int] = None) -> list[ServerEventOccurrence]:
     """
-    List active server event occurrences.
+    List active (unresolved, unarchived) server event occurrences, newest first.
 
-    Returns
-    -------
-    Any
-        The result of calling `list_active_server_event_occurrences`.
+    A server can have several at once (one per tier: a daily minor event and a weekly major one).
+
+    Parameters
+    ----------
+    server_discord_id: Optional[int]
+        Only this server's occurrences; every server's when None.
     """
+
+    filters = [ServerEventOccurrence.archived.is_(False), ServerEventOccurrence.resolved_at.is_(None)]
+    if server_discord_id is not None:
+        filters.append(ServerEventOccurrence.server_discord_id == server_discord_id)
 
     async with session_scope() as session:
         query = (
             select(ServerEventOccurrence)
-            .where(ServerEventOccurrence.archived.is_(False), ServerEventOccurrence.resolved_at.is_(None))
+            .where(*filters)
             .options(
                 selectinload(ServerEventOccurrence.server_event).selectinload(ServerEvent.actions),
                 selectinload(ServerEventOccurrence.server_event)

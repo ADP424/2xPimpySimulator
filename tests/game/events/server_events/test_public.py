@@ -29,48 +29,42 @@ def rng() -> random.Random:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.asyncio
-async def test_get_active_server_event_none():
-    """
-    Test get active server event none.
-
-    Returns
-    -------
-    Any
-        The result of calling `test_get_active_server_event_none`.
-    """
-
-    from src.game.events.server_events import get_active_server_event
-
-    with patch(f"{MOD}.get_active_server_event_occurrence", new=AsyncMock(return_value=None)):
-        result = await get_active_server_event(100)
-
-    assert result is None
+def _occurrence(server_discord_id=100, archived=False, resolved_at=None):
+    occ = MagicMock()
+    occ.server_discord_id = server_discord_id
+    occ.archived = archived
+    occ.resolved_at = resolved_at
+    return occ
 
 
 @pytest.mark.asyncio
-async def test_get_active_server_event_returns_triggered():
-    """
-    Test get active server event returns triggered.
-
-    Returns
-    -------
-    Any
-        The result of calling `test_get_active_server_event_returns_triggered`.
-    """
-
+@pytest.mark.parametrize(
+    "occurrence",
+    [None, _occurrence(server_discord_id=999), _occurrence(archived=True), _occurrence(resolved_at="2026-10-15")],
+    ids=["missing", "other server", "archived", "resolved"],
+)
+async def test_get_active_server_event_none_unless_active_on_that_server(occurrence):
     from src.game.events.server_events import get_active_server_event
 
-    mock_occ = MagicMock()
+    with patch(f"{MOD}.get_server_event_occurrence_by_id", new=AsyncMock(return_value=occurrence)):
+        assert await get_active_server_event(server_discord_id=100, occurrence_id=7) is None
+
+
+@pytest.mark.asyncio
+async def test_get_active_server_event_returns_that_occurrence():
+    from src.game.events.server_events import get_active_server_event
+
+    occ = _occurrence()
     mock_triggered = MagicMock()
-
     with (
-        patch(f"{MOD}.get_active_server_event_occurrence", new=AsyncMock(return_value=mock_occ)),
-        patch(f"{MOD}.to_triggered_server_event", new=AsyncMock(return_value=mock_triggered)),
+        patch(f"{MOD}.get_server_event_occurrence_by_id", new=AsyncMock(return_value=occ)) as fetch,
+        patch(f"{MOD}.to_triggered_server_event", new=AsyncMock(return_value=mock_triggered)) as convert,
     ):
-        result = await get_active_server_event(100)
+        result = await get_active_server_event(server_discord_id=100, occurrence_id=7, viewer_owner_discord_id=5)
 
     assert result is mock_triggered
+    fetch.assert_awaited_once_with(7)
+    convert.assert_awaited_once_with(occ, 5)
 
 
 # ---------------------------------------------------------------------------
@@ -120,6 +114,22 @@ async def test_list_active_server_events_converts_all():
         result = await list_active_server_events()
 
     assert result == [mock_triggered]
+
+
+@pytest.mark.asyncio
+async def test_list_active_server_events_for_one_server_lists_every_tier():
+    """A server can have a minor (daily) and a major (weekly) event at once; both are listed for the viewer."""
+    from src.game.events.server_events import list_active_server_events
+
+    minor, major = MagicMock(), MagicMock()
+    with (
+        patch(f"{MOD}.list_active_server_event_occurrences", new=AsyncMock(return_value=[minor, major])) as fetch,
+        patch(f"{MOD}.to_triggered_server_event", new=AsyncMock(side_effect=lambda occ, viewer: (occ, viewer))),
+    ):
+        result = await list_active_server_events(100, 5)
+
+    fetch.assert_awaited_once_with(100)
+    assert result == [(minor, 5), (major, 5)]
 
 
 # ---------------------------------------------------------------------------

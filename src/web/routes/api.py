@@ -720,11 +720,14 @@ def _ritual_response(result):
 @api_bp.route("/server-event")
 @server_required
 def get_server_event():
-    """The current server's active server event, with the viewer's own participation."""
-    from src.game import get_active_server_event
+    """
+    The current server's active server events (a daily and a weekly one can run at once), each with the viewer's own
+    participation.
+    """
+    from src.game import list_active_server_events
 
-    event = run_async(get_active_server_event(get_current_server_id(), viewer_owner_discord_id=get_current_user_id()))
-    return jsonify({"event": serialize_server_event(event) if event is not None else None})
+    events = run_async(list_active_server_events(get_current_server_id(), get_current_user_id()))
+    return jsonify({"events": [serialize_server_event(event) for event in events]})
 
 
 @api_bp.route("/server-event/<int:occurrence_id>/participate", methods=["POST"])

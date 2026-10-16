@@ -12,7 +12,6 @@ from src.database import (
     append_server_event_submission,
     check_owner_event_filter_for_owner,
     create_server_event_participation,
-    get_active_server_event_occurrence,
     get_owner_server,
 )
 from src.database import get_pooch_by_id as db_get_pooch_by_id
@@ -49,43 +48,36 @@ logger = get_logger("game/events/server_events/public")
 
 
 async def get_active_server_event(
-    server_discord_id: int, viewer_owner_discord_id: int | None = None
+    *, server_discord_id: int, occurrence_id: int, viewer_owner_discord_id: int | None = None
 ) -> TriggeredServerEvent | None:
     """
-    Get active server event.
+    Return one of a server's active server events by its occurrence ID, or None if it isn't (or is no longer)
+    active on that server.
 
-    Parameters
-    ----------
-    server_discord_id: Any
-        The `server_discord_id` value.
-
-    viewer_owner_discord_id: Any
-        The `viewer_owner_discord_id` value.
-
-    Returns
-    -------
-    Any
-        The result of calling `get_active_server_event`.
+    A server can run several server events at once (a daily minor event and a weekly major one), so anything acting
+    on a specific event looks it up by ID; ``list_active_server_events`` shows them all.
     """
 
-    occurrence = await get_active_server_event_occurrence(server_discord_id)
-    if occurrence is None:
+    occurrence = await get_server_event_occurrence_by_id(occurrence_id)
+    if (
+        occurrence is None
+        or occurrence.server_discord_id != server_discord_id
+        or occurrence.archived
+        or occurrence.resolved_at is not None
+    ):
         return None
     return await to_triggered_server_event(occurrence, viewer_owner_discord_id)
 
 
-async def list_active_server_events() -> list[TriggeredServerEvent]:
+async def list_active_server_events(
+    server_discord_id: int | None = None, viewer_owner_discord_id: int | None = None
+) -> list[TriggeredServerEvent]:
     """
-    List active server events.
-
-    Returns
-    -------
-    Any
-        The result of calling `list_active_server_events`.
+    List active server events, newest first: one server's (with the viewer's own participation), or every server's.
     """
 
-    occurrences = await list_active_server_event_occurrences()
-    return [await to_triggered_server_event(occurrence) for occurrence in occurrences]
+    occurrences = await list_active_server_event_occurrences(server_discord_id)
+    return [await to_triggered_server_event(occurrence, viewer_owner_discord_id) for occurrence in occurrences]
 
 
 async def participate_in_server_event(

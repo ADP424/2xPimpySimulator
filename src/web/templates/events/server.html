@@ -1,41 +1,24 @@
 {% extends "base.html" %}
 
-{% block title %}Server Event - {{ server_name }}{% endblock %}
+{% block title %}Server Events - {{ server_name }}{% endblock %}
 
 {% block content %}
 <div class="flex justify-between items-center mb-6 flex-wrap gap-3">
-    <h1 class="text-3xl font-bold" id="event-title">🏟️ Server Event</h1>
+    <h1 class="text-3xl font-bold">🏟️ Server Events</h1>
     <a href="{{ url_for('events.owner_events') }}" class="btn btn-ghost btn-sm">← My Events</a>
 </div>
 
 <div id="loading" class="flex items-center gap-3 text-base-content/50 py-8">
     <span class="loading loading-spinner loading-md"></span>
-    <span>Loading server event...</span>
+    <span>Loading server events...</span>
 </div>
 
 <div id="no-event" class="text-base-content/50 py-8" style="display: none;">
     There's no server event running right now. Keep an eye on the town!
 </div>
 
-<div id="event-container" class="flex flex-col gap-6 max-w-3xl" style="display: none;">
-    <div class="card bg-base-200 shadow-md">
-        <div class="card-body gap-3" id="event-info"></div>
-    </div>
-
-    <div class="card bg-base-200 shadow-md">
-        <div class="card-body">
-            <h2 class="card-title">How to participate</h2>
-            <div id="menus" class="flex flex-col gap-4 mt-2"></div>
-        </div>
-    </div>
-
-    <div class="card bg-base-200 shadow-md">
-        <div class="card-body">
-            <h2 class="card-title">Your status</h2>
-            <div id="viewer-status" class="text-sm flex flex-col gap-1"></div>
-        </div>
-    </div>
-</div>
+<!-- One section per active event: a server can run a daily and a weekly event at once -->
+<div id="event-container" class="flex flex-col gap-10 max-w-3xl" style="display: none;"></div>
 
 <!-- Pooch picker for options that need a pooch -->
 <dialog id="pooch-modal" class="modal">
@@ -53,28 +36,32 @@
 
 {% block extra_scripts %}
 <script>
-let serverEvent = null;
+let serverEvents = [];
 let livingPooches = null;
-let pendingOptionId = null;
+let pending = null;  // {occurrenceId, optionId} while the pooch picker is open
 
-function renderInfo() {
-    document.getElementById('event-title').textContent = `🏟️ ${serverEvent.name}`;
-    document.getElementById('event-info').innerHTML = `
-        <div class="flex flex-wrap gap-2">
-            <span class="badge ${App.format.eventSeverityBadge(serverEvent.severity)}">${escapeHtml(App.format.enumLabel(serverEvent.severity))}</span>
-            <span class="badge badge-ghost">${escapeHtml(App.format.enumLabel(serverEvent.category))}</span>
-        </div>
-        <p class="text-base-content/80">${App.format.richText(serverEvent.description || '')}</p>
-        ${serverEvent.flavor_text ? `<p class="text-sm italic text-base-content/60">${App.format.richText(serverEvent.flavor_text)}</p>` : ''}
-        <div class="text-sm text-base-content/60 flex flex-wrap gap-x-6">
-            <span>Ends: ${new Date(serverEvent.expires_at).toLocaleString()}</span>
-            <span>Participants: <strong>${serverEvent.participation_count}</strong></span>
+function renderInfo(serverEvent) {
+    return `
+        <div class="card bg-base-200 shadow-md">
+            <div class="card-body gap-3">
+                <h2 class="card-title text-2xl">${escapeHtml(serverEvent.name)}</h2>
+                <div class="flex flex-wrap gap-2">
+                    <span class="badge ${App.format.eventSeverityBadge(serverEvent.severity)}">${escapeHtml(App.format.enumLabel(serverEvent.severity))}</span>
+                    <span class="badge badge-ghost">${escapeHtml(App.format.enumLabel(serverEvent.category))}</span>
+                </div>
+                <p class="text-base-content/80">${App.format.richText(serverEvent.description || '')}</p>
+                ${serverEvent.flavor_text ? `<p class="text-sm italic text-base-content/60">${App.format.richText(serverEvent.flavor_text)}</p>` : ''}
+                <div class="text-sm text-base-content/60 flex flex-wrap gap-x-6">
+                    <span>Ends: ${new Date(serverEvent.expires_at).toLocaleString()}</span>
+                    <span>Participants: <strong>${serverEvent.participation_count}</strong></span>
+                </div>
+            </div>
         </div>
     `;
 }
 
-function renderMenus() {
-    document.getElementById('menus').innerHTML = serverEvent.menus.map(menu => {
+function renderMenus(serverEvent) {
+    const menus = serverEvent.menus.map(menu => {
         const notes = [];
         if (menu.depends_on.length) notes.push(`requires: ${menu.depends_on.map(escapeHtml).join(', ')}`);
         if (menu.uses_left !== null && menu.uses_left >= 0) notes.push(`uses left: ${menu.uses_left}`);
@@ -89,7 +76,7 @@ function renderMenus() {
                 <div class="flex flex-wrap gap-2">
                     ${menu.options.map(option => `
                         <button class="btn btn-sm ${menu.available ? 'btn-primary' : 'btn-disabled'} h-auto py-1.5 flex-col items-start gap-0"
-                                data-option-id="${option.id}" ${menu.available ? '' : 'disabled'}>
+                                data-occurrence-id="${serverEvent.occurrence_id}" data-option-id="${option.id}" ${menu.available ? '' : 'disabled'}>
                             <span>${escapeHtml(option.label)}</span>
                             ${option.description ? `<span class="text-xs font-normal opacity-70">${escapeHtml(option.description)}</span>` : ''}
                             ${option.requires_pooch ? '<span class="text-xs font-normal opacity-70">needs a pooch</span>' : ''}
@@ -99,44 +86,62 @@ function renderMenus() {
             </div>
         `;
     }).join('') || '<p class="text-base-content/50 text-sm">This server event is not accepting participations.</p>';
+    return `
+        <div class="card bg-base-200 shadow-md">
+            <div class="card-body">
+                <h3 class="card-title">How to participate</h3>
+                <div class="flex flex-col gap-4 mt-2">${menus}</div>
+            </div>
+        </div>
+    `;
 }
 
-function renderViewer() {
+function renderViewer(serverEvent) {
     const viewer = serverEvent.viewer;
-    const el = document.getElementById('viewer-status');
-    if (!viewer.participated) {
-        el.innerHTML = '<p>You have not participated yet.</p>';
-        return;
-    }
-    if (!viewer.submissions.length) {
-        el.innerHTML = '<p>You have participated.</p>';
-        return;
-    }
     const lines = [];
-    for (const sub of viewer.submissions) {
-        lines.push(`<p><strong>${escapeHtml(sub.menu_name)}</strong>: ${escapeHtml(sub.option_label)}</p>`);
-        if (sub.pooch_label) lines.push(`<p class="pl-4">Pooch: <strong>${escapeHtml(sub.pooch_label)}</strong></p>`);
-        if (sub.message) lines.push(`<p class="pl-4 text-base-content/70">${App.format.richText(sub.message)}</p>`);
+    if (!viewer.participated) {
+        lines.push('<p>You have not participated yet.</p>');
+    } else if (!viewer.submissions.length) {
+        lines.push('<p>You have participated.</p>');
+    } else {
+        for (const sub of viewer.submissions) {
+            lines.push(`<p><strong>${escapeHtml(sub.menu_name)}</strong>: ${escapeHtml(sub.option_label)}</p>`);
+            if (sub.pooch_label) lines.push(`<p class="pl-4">Pooch: <strong>${escapeHtml(sub.pooch_label)}</strong></p>`);
+            if (sub.message) lines.push(`<p class="pl-4 text-base-content/70">${App.format.richText(sub.message)}</p>`);
+        }
+        if (viewer.rank !== null) lines.push(`<p>Rank: <strong>#${viewer.rank}</strong></p>`);
+        if (viewer.resolution_message) lines.push(`<p>${App.format.richText(viewer.resolution_message)}</p>`);
     }
-    if (viewer.rank !== null) lines.push(`<p>Rank: <strong>#${viewer.rank}</strong></p>`);
-    if (viewer.resolution_message) lines.push(`<p>${App.format.richText(viewer.resolution_message)}</p>`);
-    el.innerHTML = lines.join('');
+    return `
+        <div class="card bg-base-200 shadow-md">
+            <div class="card-body">
+                <h3 class="card-title">Your status</h3>
+                <div class="text-sm flex flex-col gap-1">${lines.join('')}</div>
+            </div>
+        </div>
+    `;
 }
 
-async function loadEvent() {
+async function loadEvents() {
     const resp = await fetch('/api/server-event');
     const data = await resp.json();
     document.getElementById('loading').style.display = 'none';
-    serverEvent = data.event;
-    if (!serverEvent) {
+    serverEvents = data.events || [];
+    const container = document.getElementById('event-container');
+    if (!serverEvents.length) {
         document.getElementById('no-event').style.display = '';
-        document.getElementById('event-container').style.display = 'none';
+        container.style.display = 'none';
         return;
     }
-    document.getElementById('event-container').style.display = '';
-    renderInfo();
-    renderMenus();
-    renderViewer();
+    document.getElementById('no-event').style.display = 'none';
+    container.style.display = '';
+    container.innerHTML = serverEvents.map(serverEvent => `
+        <section class="flex flex-col gap-4">
+            ${renderInfo(serverEvent)}
+            ${renderMenus(serverEvent)}
+            ${renderViewer(serverEvent)}
+        </section>
+    `).join('');
 }
 
 async function loadLivingPooches() {
@@ -147,8 +152,8 @@ async function loadLivingPooches() {
     return livingPooches;
 }
 
-async function participate(optionId, poochId) {
-    const resp = await fetch(`/api/server-event/${serverEvent.occurrence_id}/participate`, {
+async function participate(occurrenceId, optionId, poochId) {
+    const resp = await fetch(`/api/server-event/${occurrenceId}/participate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(poochId ? { option_id: optionId, pooch_id: poochId } : { option_id: optionId }),
@@ -159,17 +164,17 @@ async function participate(optionId, poochId) {
     App.showNotification(result.message, result.success ? 'success' : 'error');
     if (result.success) {
         if (window.refreshNavCurrencies) window.refreshNavCurrencies();
-        await loadEvent();
+        await loadEvents();
     }
 }
 
-async function openPoochPicker(optionId, optionLabel) {
+async function openPoochPicker(occurrenceId, optionId, optionLabel) {
     const pooches = await loadLivingPooches();
     if (!pooches.length) {
         App.showNotification('You do not have any living pooches to enter.', 'error');
         return;
     }
-    pendingOptionId = optionId;
+    pending = { occurrenceId, optionId };
     document.getElementById('pooch-modal-option').textContent = optionLabel;
     document.getElementById('pooch-choices').innerHTML = pooches.map(p => `
         <button class="btn btn-outline btn-sm justify-between" data-pooch-id="${p.id}">
@@ -185,7 +190,7 @@ document.addEventListener('click', async (event) => {
     if (poochButton) {
         document.getElementById('pooch-modal').close();
         try {
-            await participate(pendingOptionId, Number(poochButton.dataset.poochId));
+            await participate(pending.occurrenceId, pending.optionId, Number(poochButton.dataset.poochId));
         } catch (error) {
             App.showNotification('Something went wrong.', 'error');
             console.error('Error:', error);
@@ -197,12 +202,14 @@ document.addEventListener('click', async (event) => {
     if (!optionButton || optionButton.disabled) return;
     optionButton.disabled = true;
     try {
+        const occurrenceId = Number(optionButton.dataset.occurrenceId);
         const optionId = Number(optionButton.dataset.optionId);
-        const option = serverEvent.menus.flatMap(m => m.options).find(o => o.id === optionId);
+        const serverEvent = serverEvents.find(e => e.occurrence_id === occurrenceId);
+        const option = serverEvent && serverEvent.menus.flatMap(m => m.options).find(o => o.id === optionId);
         if (option && option.requires_pooch) {
-            await openPoochPicker(optionId, option.label);
+            await openPoochPicker(occurrenceId, optionId, option.label);
         } else {
-            await participate(optionId, null);
+            await participate(occurrenceId, optionId, null);
         }
     } catch (error) {
         App.showNotification('Something went wrong.', 'error');
@@ -214,9 +221,9 @@ document.addEventListener('click', async (event) => {
 
 document.addEventListener('DOMContentLoaded', async () => {
     try {
-        await loadEvent();
+        await loadEvents();
     } catch (error) {
-        document.getElementById('loading').innerHTML = '<span class="text-error">Failed to load the server event</span>';
+        document.getElementById('loading').innerHTML = '<span class="text-error">Failed to load the server events</span>';
         console.error('Error:', error);
     }
 });
