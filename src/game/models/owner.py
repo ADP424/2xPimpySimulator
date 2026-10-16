@@ -16,6 +16,14 @@ class Owner:
     bones: int
     begged_today: bool = False
     visited_park_today: bool = False
+    hand_cleaned_today: bool = False
+
+    # body parts (from sacrifices and violent deaths; spent on rituals)
+    hearts: int = 0
+    brains: int = 0
+    eyes: int = 0
+    tails: int = 0
+    teeth: int = 0
 
 
 async def to_owner(owner: OwnerORM) -> Owner:
@@ -41,4 +49,10 @@ async def to_owner(owner: OwnerORM) -> Owner:
         bones=owner.bones,
         begged_today=owner.begged_today,
         visited_park_today=owner.visited_park_today,
+        hand_cleaned_today=owner.hand_cleaned_today,
+        hearts=owner.hearts,
+        brains=owner.brains,
+        eyes=owner.eyes,
+        tails=owner.tails,
+        teeth=owner.teeth,
     )
