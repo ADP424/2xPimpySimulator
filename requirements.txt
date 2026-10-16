@@ -1,7 +1,8 @@
 asyncpg
+discord.py
 json5
 numpy
 psycopg
 psycopg-binary
 python-dotenv
-sqlalchemy
+sqlalchemy[asyncio]
