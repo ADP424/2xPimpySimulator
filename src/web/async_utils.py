@@ -28,8 +28,11 @@ class AsyncBridge:
         if cls._instance is None:
             with cls._lock:
                 if cls._instance is None:
-                    cls._instance = cls()
-                    cls._instance._start()
+                    # Publish only once the loop is running: a concurrent request that sees the instance
+                    # skips the lock and would otherwise find no loop yet ("Event loop not initialized").
+                    instance = cls()
+                    instance._start()
+                    cls._instance = instance
         return cls._instance
 
     def _start(self) -> None:
