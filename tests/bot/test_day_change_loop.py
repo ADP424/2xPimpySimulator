@@ -366,3 +366,27 @@ class TestPostStrayEventSummaries:
         with patch("src.bot.day_change_loop.get_event_channel", new_callable=AsyncMock, return_value=12345):
             await post_stray_event_summaries(bot, {200: []})
             channel.send.assert_not_called()
+
+
+@pytest.mark.contract
+@pytest.mark.parametrize("skip, expected_runs", [(True, 0), (False, 1)])
+async def test_startup_day_change_runs_unless_skipped(skip, expected_runs):
+    """day_change_runner runs one day change on startup unless skip_startup_day_change (main.py -s)."""
+    from src.bot.day_change_loop import day_change_runner
+
+    bot = _make_bot()
+    with (
+        patch("src.bot.day_change_loop.run_day_change", new=AsyncMock(return_value={})) as mock_day,
+        patch("src.bot.day_change_loop.post_new_day_announcement", new=AsyncMock()),
+        patch("src.bot.day_change_loop.fetch_and_update_names", new=AsyncMock()),
+        patch("src.bot.day_change_loop.run_daily_server_event_cycle", new=AsyncMock(return_value=([], []))),
+        patch("src.bot.day_change_loop.post_server_event_resolutions", new=AsyncMock()),
+        patch("src.bot.day_change_loop.post_server_event_notifications", new=AsyncMock()),
+    ):
+        task = asyncio.create_task(day_change_runner(bot, stage="alpha", tz="UTC", skip_startup_day_change=skip))
+        await asyncio.sleep(0.05)  # startup, then the loop sleeps until the next scheduled change
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+    assert mock_day.await_count == expected_runs
