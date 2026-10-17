@@ -108,7 +108,9 @@ def run(update_names_only: bool = False, skip_startup_day_change: bool = False):
             return
 
         if not hasattr(bot, "_day_change_task"):
-            bot._day_change_task = asyncio.create_task(day_change_runner(bot, stage=stage, tz=tz))
+            bot._day_change_task = asyncio.create_task(
+                day_change_runner(bot, stage=stage, tz=tz, skip_startup_day_change=skip_startup_day_change)
+            )
         if not hasattr(bot, "_week_change_task"):
             bot._week_change_task = asyncio.create_task(week_change_runner(bot, stage=stage))
         if not hasattr(bot, "_hour_change_task"):

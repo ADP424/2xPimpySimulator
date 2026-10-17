@@ -98,3 +98,37 @@ def test_prod_stage_does_not_register_dev_commands():
         mock_pause.assert_not_called()
         mock_inc_day.assert_not_called()
         mock_trigger.assert_not_called()
+
+
+@pytest.mark.contract
+@pytest.mark.parametrize("skip", [True, False])
+async def test_skip_startup_day_change_reaches_the_day_loop(skip):
+    """run(skip_startup_day_change=...) is passed on to day_change_runner (main.py's -s flag)."""
+    from unittest.mock import AsyncMock
+
+    handlers = {}
+    fake_bot = MagicMock()
+    fake_bot.event = lambda func: handlers.setdefault(func.__name__, func)
+    del fake_bot._day_change_task, fake_bot._week_change_task, fake_bot._hour_change_task
+
+    with (
+        patch("src.bot.app.load_dotenv"),
+        patch(
+            "src.bot.app.os.getenv",
+            side_effect=lambda k, d=None: {"DISCORD_TOKEN": "test-token", "STAGE": "alpha", "TZ": "UTC"}.get(k, d),
+        ),
+        patch("src.bot.app.discord.Client", return_value=fake_bot),
+        patch("src.bot.app.app_commands.CommandTree"),
+        patch("src.bot.app.GUILDS", []),
+        patch("src.bot.app.register_active_server_event_views", new=AsyncMock()),
+        patch("src.bot.app.asyncio.create_task"),
+        patch("src.bot.app.day_change_runner") as mock_day_runner,
+        patch("src.bot.app.week_change_runner"),
+        patch("src.bot.app.hour_change_runner"),
+    ):
+        from src.bot import run
+
+        run(skip_startup_day_change=skip)
+        await handlers["on_ready"]()
+
+    assert mock_day_runner.call_args.kwargs["skip_startup_day_change"] is skip
