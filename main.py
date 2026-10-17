@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+import signal
 
 from src.bot import run as run_bot
 from src.database import load_resources, reset_database, upgrade_lots_of_changes
@@ -7,7 +8,14 @@ from src.game.change_day import refresh_moods
 from src.game.constants import PREGNANCY_TIMER_HOURS_RANGE
 from src.web import run as run_web_app
 
+
+def _stop_on_sigterm(signum, frame):
+    """Treat SIGTERM (kill, scripts/update.sh) like Ctrl+C so the bot and web app shut down cleanly."""
+    raise KeyboardInterrupt
+
+
 if __name__ == "__main__":
+    signal.signal(signal.SIGTERM, _stop_on_sigterm)
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-w", "--web-app", action="store_true", help="Run the web app instead of the bot.", dest="web_app"

@@ -26,3 +26,7 @@ src/web/static/js/app.bundle.js
 # other
 .vscode
 *.egg-info
+
+# server update script output
+/backup/
+/logs/
