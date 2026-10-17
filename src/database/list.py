@@ -1430,9 +1430,11 @@ async def list_pooches_with_disease_in_kennel(kennel_id: int, disease_id: int) -
 
 
 async def list_pooch_ids_on_breeding_cooldown() -> list[int]:
-    """Return the IDs of living pooches whose breeding cooldown is above 0."""
+    """Return the IDs of living pooches whose breeding cooldown is above 0, leaving out pregnant ones."""
     async with session_scope() as session:
-        result = await session.execute(select(Pooch.id).where(Pooch.alive.is_(True), Pooch.breeding_cooldown > 0))
+        result = await session.execute(
+            select(Pooch.id).where(Pooch.alive.is_(True), Pooch.breeding_cooldown > 0, Pooch.pregnancy_timer.is_(None))
+        )
         return list(result.scalars().all())
 
 

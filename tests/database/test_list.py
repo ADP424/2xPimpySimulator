@@ -536,6 +536,17 @@ async def test_list_pooch_ids_on_breeding_cooldown():
         assert await list_pooch_ids_on_breeding_cooldown() == [3, 4]
 
 
+async def test_list_pooch_ids_on_breeding_cooldown_leaves_out_pregnant_pooches():
+    scope, session = _mock_session_scope(scalars_result=[])
+    with patch("src.database.list.session_scope", return_value=scope()):
+        from src.database import list_pooch_ids_on_breeding_cooldown
+
+        await list_pooch_ids_on_breeding_cooldown()
+
+    query = str(session.execute.await_args.args[0])
+    assert "pooches.pregnancy_timer IS NULL" in query
+
+
 async def test_list_persistent_injury_instances():
     scope, session = _mock_session_scope()
     response = MagicMock()

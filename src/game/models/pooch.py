@@ -134,7 +134,7 @@ class Pooch:
 
     @property
     def can_breed(self) -> bool:
-        return self.alive and self.breeding_cooldown == 0
+        return self.alive and self.breeding_cooldown == 0 and self.pregnancy_timer is None
 
 
 def get_breeding_status(cooldown: int) -> str:

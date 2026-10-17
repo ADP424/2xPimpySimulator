@@ -95,6 +95,7 @@ async def breed_pooches(
 
     skip_validation: bool, default : False
         Whether to skip validation (like pooches being different sexes, on breeding cooldown, etc.) or not.
+        A mother who is already pregnant is refused either way.
 
     Returns
     -------
@@ -135,7 +136,8 @@ async def breed_pooches(
         if getattr(parent, "immortal", False) and not skip_validation:
             raise ValueError(f"{parent.name} is immortal, and immortal pooches are infertile.")
 
-    if getattr(mother, "pregnancy_timer", None) is not None and not skip_validation:
+    # Checked even with skip_validation: a second litter would overwrite the first one's timer
+    if getattr(mother, "pregnancy_timer", None) is not None:
         raise ValueError(f"{mother.name} is already pregnant.")
 
     await reset_pooch_breeding_cooldown(father.id, base_cooldown=POOCH_BREEDING_COOLDOWN)

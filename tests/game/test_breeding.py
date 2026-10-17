@@ -484,6 +484,18 @@ class TestBreedPooches:
         result = await breed_pooches(1, 2, rng_seed=42, skip_validation=True)
         assert len(result) >= 1
 
+    @patch("src.game.breeding.reset_pooch_breeding_cooldown", new_callable=AsyncMock)
+    @patch("src.game.breeding.get_pooch_by_id", new_callable=AsyncMock)
+    async def test_skip_validation_still_refuses_a_pregnant_mother(self, mock_get, mock_reset_cd):
+        """Event breeding (skip_validation=True) must not start a second litter in a pregnant female."""
+        father = make_pooch(pooch_id=1, sex="male", name="Dad")
+        mother = make_pooch(pooch_id=2, sex="female", name="Mom", pregnancy_timer=12)
+        mock_get.side_effect = lambda pid: father if pid == 1 else mother
+
+        with pytest.raises(ValueError, match="already pregnant"):
+            await breed_pooches(1, 2, rng_seed=42, skip_validation=True)
+        mock_reset_cd.assert_not_awaited()
+
 
 # ---------------------------------------------------------------------------
 # calculate_incest_level

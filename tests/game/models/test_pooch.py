@@ -129,6 +129,9 @@ class TestPoochBreedingStatus:
     def test_cannot_breed_when_dead(self):
         assert _make_pooch(alive=False, breeding_cooldown=0).can_breed is False
 
+    def test_cannot_breed_when_pregnant(self):
+        assert _make_pooch(alive=True, breeding_cooldown=0, pregnancy_timer=5).can_breed is False
+
 
 # ===========================================================================
 # Pooch.birthday

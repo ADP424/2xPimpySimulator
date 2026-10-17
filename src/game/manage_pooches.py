@@ -283,6 +283,7 @@ async def get_pooch_family(pooch_id: int) -> dict[str, list[Pooch]]:
 async def run_hourly_breeding_cooldown_check(rng_seed: Optional[int] = None) -> int:
     """
     Roll a fertility-based chance to decrement each living pooch's breeding cooldown by 1.
+    Pregnant pooches are skipped: their cooldown waits until the litter is born (birth resets it anyway).
 
     Chance per pooch = fertility / BREEDING_COOLDOWN_HOURLY_FERTILITY_DIVISOR.
 
