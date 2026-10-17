@@ -16,6 +16,11 @@ for arg in "$@"; do
 done
 
 mkdir -p backup logs
+
+export PATH="$HOME/.bun/bin:$PATH" # bun's default install dir, often missing from non-interactive shells
+for tool in git docker uv bun; do
+    command -v "$tool" > /dev/null || { echo "$tool not found. Nothing was stopped." >&2; exit 1; }
+done
 STAMP=$(date +%Y-%m-%d_%H%M%S)
 
 # 1. Fetch first and make sure the pull will fast-forward, so a bad pull never leaves the game stopped.
@@ -81,7 +86,7 @@ echo "==> Installing dependencies..."
 uv pip install --quiet -e . -r requirements.txt -r src/web/requirements.txt
 
 echo "==> Building the JS bundle..."
-(cd src/web/static/js && npm install --silent && npm run build --silent)
+(cd src/web/static/js && bun install --silent && bun run build)
 
 if [ "$MIGRATE" -eq 1 ]; then
     echo "==> Migrating the database..."

@@ -30,3 +30,6 @@ src/web/static/js/app.bundle.js
 # server update script output
 /backup/
 /logs/
+
+# bun (scripts/update.sh builds the JS bundle with it)
+src/web/static/js/bun.lock
