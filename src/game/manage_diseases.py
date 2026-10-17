@@ -7,6 +7,7 @@ from src.database import (
     add_disease_immunity_to_pooch,
     add_disease_to_pooch,
     consume_owner_item,
+    create_pooch_snapshot,
     get_current_day,
     get_item_by_name,
     get_kennel_by_id,
@@ -30,7 +31,7 @@ from src.database import (
     treat_pooch_disease,
     update_kennel_messiness,
 )
-from src.database.models import PoochDisease
+from src.database.models import SNAPSHOT_VET_DISEASES, PoochDisease
 from src.logger import get_logger
 
 from .manage_stats import get_effective_stat
@@ -343,6 +344,15 @@ async def diagnose_diseases(
         if rng_inst.random() < float(getattr(pd.disease, "reveal_chance", 1.0)):
             await reveal_pooch_disease(pd.id)
             revealed.append(pd.disease.name)
+
+    # Snapshot: record every disease known after the diagnosis, like injury/mutation diagnoses do
+    known_disease_ids = [pd.disease_id for pd in await list_pooch_disease_instances(pooch_id) if pd.visible]
+    await create_pooch_snapshot(
+        pooch_id=pooch_id,
+        kind=SNAPSHOT_VET_DISEASES,
+        description=f"{pooch.name} had their diseases examined by a vet.",
+        entity_ids=known_disease_ids or None,
+    )
     return True, "", revealed
 
 

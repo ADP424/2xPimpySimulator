@@ -888,17 +888,26 @@ class TestDiagnoseDiseases:
         mock_give.assert_not_awaited()
 
     @pytest.mark.asyncio
+    @patch("src.game.manage_diseases.create_pooch_snapshot", new_callable=AsyncMock)
+    @patch("src.game.manage_diseases.list_pooch_disease_instances", new_callable=AsyncMock)
     @patch("src.game.manage_diseases.reveal_pooch_disease", new_callable=AsyncMock)
     @patch("src.game.manage_diseases.list_invisible_pooch_disease_instances", new_callable=AsyncMock)
     @patch("src.game.manage_diseases.give_money_to_owner", new_callable=AsyncMock)
     @patch("src.game.manage_diseases.get_pooch_by_id", new_callable=AsyncMock)
     @patch("src.game.manage_diseases.get_owner_by_discord_id", new_callable=AsyncMock)
-    async def test_reveals_hidden_diseases(self, mock_get_owner, mock_get_pooch, mock_give, mock_list, mock_reveal):
+    async def test_reveals_hidden_diseases(
+        self, mock_get_owner, mock_get_pooch, mock_give, mock_list, mock_reveal, mock_all, mock_snapshot
+    ):
         mock_get_owner.return_value = SimpleNamespace(dollars=1000)
-        mock_get_pooch.return_value = SimpleNamespace(owner_discord_id=1)
+        mock_get_pooch.return_value = SimpleNamespace(owner_discord_id=1, name="Husky")
         hidden = make_pooch_disease(disease=make_disease(name="Mange", reveal_chance=1.0), visible=False)
         hidden.id = 11
         mock_list.return_value = [hidden]
+        # after the reveal: Mange (id 1) is known, another disease (id 2) is still hidden
+        mock_all.return_value = [
+            SimpleNamespace(disease_id=1, visible=True),
+            SimpleNamespace(disease_id=2, visible=False),
+        ]
 
         success, _, revealed = await diagnose_diseases(1, 1, rng_seed=0)
 
@@ -906,6 +915,10 @@ class TestDiagnoseDiseases:
         assert revealed == ["Mange"]
         mock_reveal.assert_awaited_once_with(11)
         mock_give.assert_awaited_once_with(1, -VET_DIAGNOSE_DISEASES_COST)
+        # the diagnosis is recorded on the timeline with only the known diseases
+        mock_snapshot.assert_awaited_once()
+        assert mock_snapshot.await_args.kwargs["kind"] == "vet_diseases"
+        assert mock_snapshot.await_args.kwargs["entity_ids"] == [1]
 
 
 class TestAdditionalDiseaseLogic:

@@ -272,6 +272,59 @@ class TestGetPoochTimeline:
         assert entries[0].entity_names is None
         mock_injury.assert_not_awaited()
 
+    @patch("src.game.manage_pooches.get_disease_by_id", new_callable=AsyncMock)
+    @patch("src.game.manage_pooches.db_list_pooch_snapshots", new_callable=AsyncMock)
+    async def test_resolves_disease_diagnosis_names(self, mock_list, mock_disease):
+        mock_list.return_value = [self._snap("vet_diseases", [3])]
+        mock_disease.side_effect = {3: SimpleNamespace(name="Mange")}.get
+
+        entries = await get_pooch_timeline(7)
+
+        assert entries[0].entity_names == ["Mange"]
+
+
+# ---------------------------------------------------------------------------
+# get_latest_vet_results
+# ---------------------------------------------------------------------------
+
+
+class TestGetLatestVetResults:
+    _OLD = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    _NEW = datetime(2026, 1, 2, tzinfo=timezone.utc)
+
+    def _snap(self, kind, at, description="", entity_ids=None):
+        return SimpleNamespace(kind=kind, description=description, snapshot_at=at, entity_ids=entity_ids)
+
+    @patch("src.game.manage_pooches.get_disease_by_id", new_callable=AsyncMock)
+    @patch("src.game.manage_pooches.db_list_pooch_snapshots", new_callable=AsyncMock)
+    async def test_latest_exam_and_diagnosis(self, mock_list, mock_disease):
+        from src.game.manage_pooches import get_latest_vet_results
+
+        mock_list.return_value = [  # oldest first, as the database returns them
+            self._snap("medical_exam", self._OLD, "Rex received a medical exam.\nStrength: Poor"),
+            self._snap("vet_diseases", self._OLD, entity_ids=[3]),
+            self._snap("medical_exam", self._NEW, "Rex received a medical exam.\nStrength: Good\nSize Class: 4"),
+            # a Detailed Workup shares the kind but records no ratings, so it doesn't hide the exam
+            self._snap("medical_exam", self._NEW, "Rex received a Detailed Workup."),
+            self._snap("vet_diseases", self._NEW, entity_ids=None),
+        ]
+        mock_disease.side_effect = {3: SimpleNamespace(name="Mange")}.get
+
+        results = await get_latest_vet_results(7)
+
+        assert results == {
+            "medical_exam": {"at": self._NEW, "ratings": {"Strength": "Good", "Size Class": "4"}},
+            "disease_diagnosis": {"at": self._NEW, "diseases": []},
+        }
+
+    @patch("src.game.manage_pooches.db_list_pooch_snapshots", new_callable=AsyncMock)
+    async def test_nothing_on_record(self, mock_list):
+        from src.game.manage_pooches import get_latest_vet_results
+
+        mock_list.return_value = [self._snap("birth", self._OLD, "Rex was born.")]
+
+        assert await get_latest_vet_results(7) == {"medical_exam": None, "disease_diagnosis": None}
+
 
 # ---------------------------------------------------------------------------
 # medical_exam

@@ -37,6 +37,7 @@ from src.database import (
 )
 from src.database.models import (
     SNAPSHOT_MEDICAL_EXAM,
+    SNAPSHOT_VET_DISEASES,
     SNAPSHOT_VET_INJURIES,
     SNAPSHOT_VET_MUTATIONS,
     PoochInjury,
@@ -55,7 +56,7 @@ from .constants import (
     VET_TREATMENT_SEVERITY_COST_PER_LEVEL,
 )
 from .exceptions import PoochNotFound
-from .manage_static import get_injury_by_id, get_mutation_by_id
+from .manage_static import get_disease_by_id, get_injury_by_id, get_mutation_by_id
 from .manage_stats import get_effective_stat, get_effective_stats
 from .models import PoochTimelineEntry, to_pooch
 
@@ -674,6 +675,55 @@ async def list_snapshots_for_pooch(pooch_id: int) -> list:
     return await db_list_pooch_snapshots(pooch_id)
 
 
+def _vet_visit_lookup(kind: str):
+    """The catalog lookup for the conditions a vet visit snapshot records, or None for other snapshots."""
+    return {
+        SNAPSHOT_VET_INJURIES: get_injury_by_id,
+        SNAPSHOT_VET_MUTATIONS: get_mutation_by_id,
+        SNAPSHOT_VET_DISEASES: get_disease_by_id,
+    }.get(kind)
+
+
+def _exam_ratings(description: str) -> dict[str, str]:
+    """Read the ``Stat: rating`` lines a medical exam writes under its first line (a Detailed Workup has none)."""
+    ratings = {}
+    for line in description.splitlines()[1:]:
+        stat, sep, rating = line.partition(": ")
+        if sep:
+            ratings[stat] = rating
+    return ratings
+
+
+async def get_latest_vet_results(pooch_id: int) -> dict:
+    """
+    The latest medical exam and disease diagnosis on record for a pooch, for its owner's pooch page.
+
+    Both come from the pooch's timeline, so they show the pooch as it was at that visit.
+
+    Returns
+    -------
+    dict
+        ``{"medical_exam": {"at": datetime, "ratings": {stat: rating}} | None,
+        "disease_diagnosis": {"at": datetime, "diseases": [name, ...]} | None}``
+    """
+
+    results: dict = {"medical_exam": None, "disease_diagnosis": None}
+    for snap in reversed(await db_list_pooch_snapshots(pooch_id)):
+        if results["medical_exam"] is None and snap.kind == SNAPSHOT_MEDICAL_EXAM:
+            ratings = _exam_ratings(snap.description)
+            if ratings:
+                results["medical_exam"] = {"at": snap.snapshot_at, "ratings": ratings}
+        elif results["disease_diagnosis"] is None and snap.kind == SNAPSHOT_VET_DISEASES:
+            diseases = [await get_disease_by_id(disease_id) for disease_id in snap.entity_ids or []]
+            results["disease_diagnosis"] = {
+                "at": snap.snapshot_at,
+                "diseases": [disease.name for disease in diseases if disease],
+            }
+        if all(results.values()):
+            break
+    return results
+
+
 async def get_pooch_timeline(pooch_id: int) -> list[PoochTimelineEntry]:
     """
     Return a pooch's timeline, oldest first, with vet-visit injury/mutation IDs resolved to names.
@@ -692,8 +742,8 @@ async def get_pooch_timeline(pooch_id: int) -> list[PoochTimelineEntry]:
     entries: list[PoochTimelineEntry] = []
     for snap in await db_list_pooch_snapshots(pooch_id):
         entity_names: Optional[list[str]] = None
-        if snap.entity_ids and snap.kind in (SNAPSHOT_VET_INJURIES, SNAPSHOT_VET_MUTATIONS):
-            lookup = get_injury_by_id if snap.kind == SNAPSHOT_VET_INJURIES else get_mutation_by_id
+        lookup = _vet_visit_lookup(snap.kind)
+        if snap.entity_ids and lookup is not None:
             entity_names = []
             for entity_id in snap.entity_ids:
                 entity = await lookup(entity_id)

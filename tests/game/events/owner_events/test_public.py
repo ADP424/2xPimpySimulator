@@ -303,7 +303,9 @@ class TestUnavailableFeaturedPooch:
         ],
     )
     async def test_names_pooch_only_when_gone(self, pooch, expected):
-        from src.game.events.owner_events.public import get_unavailable_featured_pooch_name
+        from src.game.events.owner_events.public import (
+            get_unavailable_featured_pooch_name,
+        )
 
         event = _make_active_event(context=_FEATURED_CONTEXT)
         with patch("src.database.get_pooch_by_id", new=AsyncMock(return_value=pooch)):
@@ -311,7 +313,9 @@ class TestUnavailableFeaturedPooch:
 
     @pytest.mark.asyncio
     async def test_event_without_featured_pooch_is_available(self):
-        from src.game.events.owner_events.public import get_unavailable_featured_pooch_name
+        from src.game.events.owner_events.public import (
+            get_unavailable_featured_pooch_name,
+        )
 
         lookup = AsyncMock()
         with patch("src.database.get_pooch_by_id", new=lookup):

@@ -80,6 +80,16 @@
             </div>
         </div>
 
+        <!-- Latest Vet Exam Card (owner only) -->
+        <div class="card bg-base-200 shadow-md owner-only" style="display: none;">
+            <div class="card-body">
+                <h2 class="card-title">🩺 Latest Vet Exam</h2>
+                <div id="vet-results-info" class="flex flex-col gap-4">
+                    <p class="text-base-content/50 text-sm">Loading...</p>
+                </div>
+            </div>
+        </div>
+
         <!-- Family Card -->
         <div class="card bg-base-200 shadow-md">
             <div class="card-body">
@@ -129,6 +139,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         renderTimeline(timeline);
         if (pooch.viewer_is_owner) {
             document.querySelectorAll('.owner-only').forEach(el => { el.style.display = ''; });
+            loadVetResults();
         }
 
     } catch (error) {
@@ -219,6 +230,54 @@ function renderConditions(pooch) {
         : '<p class="text-base-content/50 text-sm">No known injuries or diseases.</p>';
 }
 
+async function loadVetResults() {
+    const container = document.getElementById('vet-results-info');
+    try {
+        const resp = await fetch(`/api/pooches/${PAGE_DATA.poochId}/vet-results`);
+        if (!resp.ok) throw new Error(resp.status);
+        renderVetResults(await resp.json());
+    } catch (e) {
+        container.innerHTML = '<p class="text-error text-sm">Failed to load vet results.</p>';
+        console.error('Error:', e);
+    }
+}
+
+function vetSection(title, at, body) {
+    return `
+        <div>
+            <div class="flex justify-between items-baseline gap-3 mb-2">
+                <span class="text-xs text-base-content/50 uppercase tracking-wide">${escapeHtml(title)}</span>
+                <span class="text-xs text-base-content/50">${new Date(at).toLocaleString()}</span>
+            </div>
+            ${body}
+        </div>
+    `;
+}
+
+function renderVetResults(results) {
+    const sections = [];
+    const exam = results.medical_exam;
+    if (exam) {
+        const rows = Object.entries(exam.ratings).map(([stat, rating]) => `
+            <div class="flex justify-between gap-2 p-1.5 px-2 rounded bg-base-300 text-sm">
+                <span class="text-base-content/70">${escapeHtml(stat)}</span>
+                <span class="font-medium">${escapeHtml(rating)}</span>
+            </div>
+        `).join('');
+        sections.push(vetSection('Medical Exam', exam.at, `<div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5">${rows}</div>`));
+    }
+    const diagnosis = results.disease_diagnosis;
+    if (diagnosis) {
+        const body = diagnosis.diseases.length
+            ? `<div class="flex flex-wrap gap-1.5">${diagnosis.diseases.map(d => `<span class="badge badge-sm">🦠 ${escapeHtml(d)}</span>`).join('')}</div>`
+            : '<p class="text-sm text-base-content/70">No diseases found.</p>';
+        sections.push(vetSection('Disease Diagnosis', diagnosis.at, body));
+    }
+    document.getElementById('vet-results-info').innerHTML = sections.length
+        ? sections.join('')
+        : `<p class="text-base-content/50 text-sm">No vet exams yet. Visit the <a class="link" href="{{ url_for('info.veterinary_clinic') }}">vet clinic</a> for a medical exam or disease diagnosis.</p>`;
+}
+
 // Same labels as the bot's timeline
 const TIMELINE_LABELS = {
     birth: 'Birth',
@@ -226,8 +285,11 @@ const TIMELINE_LABELS = {
     ownership: 'Ownership Change',
     vet_injuries: 'Vet Visit — Injuries',
     vet_mutations: 'Vet Visit — Mutations',
+    vet_diseases: 'Vet Visit — Diseases',
     medical_exam: 'Medical Exam',
 };
+
+const VET_RECORD_LABELS = { vet_injuries: 'Injuries', vet_mutations: 'Mutations', vet_diseases: 'Diseases' };
 
 function renderTimeline(entries) {
     const container = document.getElementById('timeline-info');
@@ -240,7 +302,7 @@ function renderTimeline(entries) {
             ${entries.map((entry, i) => {
                 const label = TIMELINE_LABELS[entry.kind] || App.format.enumLabel(entry.kind);
                 const names = entry.entity_names
-                    ? `<div class="text-xs mt-1"><span class="text-base-content/50">${entry.kind === 'vet_injuries' ? 'Injuries' : 'Mutations'} on record:</span> ${entry.entity_names.length ? entry.entity_names.map(escapeHtml).join(', ') : 'None'}</div>`
+                    ? `<div class="text-xs mt-1"><span class="text-base-content/50">${VET_RECORD_LABELS[entry.kind] || 'Conditions'} on record:</span> ${entry.entity_names.length ? entry.entity_names.map(escapeHtml).join(', ') : 'None'}</div>`
                     : '';
                 return `
                     <li>

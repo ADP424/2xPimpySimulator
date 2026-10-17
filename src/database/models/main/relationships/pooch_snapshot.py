@@ -19,6 +19,7 @@ SNAPSHOT_OWNERSHIP = "ownership"
 SNAPSHOT_VET_INJURIES = "vet_injuries"
 SNAPSHOT_VET_MUTATIONS = "vet_mutations"
 SNAPSHOT_MEDICAL_EXAM = "medical_exam"
+SNAPSHOT_VET_DISEASES = "vet_diseases"
 
 
 class PoochSnapshot(Base):

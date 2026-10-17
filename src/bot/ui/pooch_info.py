@@ -16,6 +16,7 @@ from src.game import (
     SNAPSHOT_DEATH,
     SNAPSHOT_MEDICAL_EXAM,
     SNAPSHOT_OWNERSHIP,
+    SNAPSHOT_VET_DISEASES,
     SNAPSHOT_VET_INJURIES,
     SNAPSHOT_VET_MUTATIONS,
     get_pooch_family,
@@ -478,6 +479,7 @@ _SNAPSHOT_KIND_LABEL = {
     SNAPSHOT_OWNERSHIP: "Ownership Change",
     SNAPSHOT_VET_INJURIES: "Vet Visit — Injuries",
     SNAPSHOT_VET_MUTATIONS: "Vet Visit — Mutations",
+    SNAPSHOT_VET_DISEASES: "Vet Visit — Diseases",
     SNAPSHOT_MEDICAL_EXAM: "Medical Exam",
 }
 
@@ -507,7 +509,10 @@ class _TimelinePageSource(PageSource):
         )
 
         if entry.entity_names is not None:
-            label = "Injuries on record" if entry.kind == SNAPSHOT_VET_INJURIES else "Mutations on record"
+            label = {
+                SNAPSHOT_VET_INJURIES: "Injuries on record",
+                SNAPSHOT_VET_DISEASES: "Diseases on record",
+            }.get(entry.kind, "Mutations on record")
             names = ", ".join(entry.entity_names) if entry.entity_names else "None"
             embed.add_field(name=label, value=names, inline=False)
 

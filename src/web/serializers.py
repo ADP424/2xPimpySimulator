@@ -329,6 +329,17 @@ def serialize_timeline_entry(entry: Any) -> dict:
     }
 
 
+def serialize_vet_results(results: dict) -> dict:
+    """Serialize get_latest_vet_results for the owner's pooch page."""
+    exam = results.get("medical_exam")
+    diagnosis = results.get("disease_diagnosis")
+    return {
+        "medical_exam": exam and {"at": serialize_datetime(exam["at"]), "ratings": exam["ratings"]},
+        "disease_diagnosis": diagnosis
+        and {"at": serialize_datetime(diagnosis["at"]), "diseases": diagnosis["diseases"]},
+    }
+
+
 def serialize_patient_summary(pooch: Any) -> dict:
     """A pooch as listed in its owner's Patient Room (counts only, as the bot shows)."""
     return {

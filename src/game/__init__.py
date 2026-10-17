@@ -6,6 +6,7 @@ from src.database.models import (
     SNAPSHOT_DEATH,
     SNAPSHOT_MEDICAL_EXAM,
     SNAPSHOT_OWNERSHIP,
+    SNAPSHOT_VET_DISEASES,
     SNAPSHOT_VET_INJURIES,
     SNAPSHOT_VET_MUTATIONS,
 )
@@ -145,6 +146,7 @@ from .manage_pooches import (
     diagnose_mutations,
     get_diagnose_injuries_cost,
     get_diagnose_mutations_cost,
+    get_latest_vet_results,
     get_pooch_by_id,
     get_pooch_family,
     get_pooch_family_tree,
@@ -214,6 +216,7 @@ __all__ = [
     "SNAPSHOT_MEDICAL_EXAM",
     "SNAPSHOT_OWNERSHIP",
     "SNAPSHOT_VET_INJURIES",
+    "SNAPSHOT_VET_DISEASES",
     "SNAPSHOT_VET_MUTATIONS",
     # Breeding commands
     # Access rules
@@ -308,6 +311,7 @@ __all__ = [
     "get_treatment_cost",
     "is_injury_treated_today",
     "get_pooch_timeline",
+    "get_latest_vet_results",
     "list_snapshots_for_pooch",
     "mark_pooch_vet_checked",
     "medical_exam",

@@ -31,6 +31,7 @@ from src.web.serializers import (
     serialize_timeline_entry,
     serialize_triggered_owner_event,
     serialize_vendor,
+    serialize_vet_results,
 )
 from src.web.validators import clean_display_name
 
@@ -103,6 +104,16 @@ def get_pooch_timeline(pooch_id: int):
 
     entries = run_async(get_pooch_timeline(pooch_id))
     return jsonify([serialize_timeline_entry(entry) for entry in entries])
+
+
+@api_bp.route("/pooches/<int:pooch_id>/vet-results")
+@login_required
+def get_pooch_vet_results(pooch_id: int):
+    """The latest medical exam and disease diagnosis for one of the current user's pooches."""
+    from src.game import get_latest_vet_results
+
+    require_pooch_owner(pooch_id)
+    return jsonify(serialize_vet_results(run_async(get_latest_vet_results(pooch_id))))
 
 
 @api_bp.route("/pooches/<int:pooch_id>/cast-out", methods=["POST"])
