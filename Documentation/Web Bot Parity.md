@@ -107,6 +107,8 @@ identical to a fresh install.
 - Participating from the web doesn't refresh the public Discord server-event message's participant count until the next bot-side participation.
 - Health-based owner-event filters and the family-tree health are SQL approximations that count mutations only.
 - Web notifications show game messages' `**bold**` markers literally (`App.showNotification` is plain text).
+- Diseases spread between kennel mates every hour (`try_spread_disease`, wired into `run_hourly_disease_tick`; it was dead code before). Only diseases a pooch had when the hour began spread, and a mate who catches one doesn't roll to recover that hour. `DISEASE_SPREAD_CONTAGION_MULT` in `game/manage_diseases.py` sets how much contagion carries: **0.1** (default) scales it like environmental contraction (Kennel Cough ≈3%/h per sick mate at constitution 10), **1.0** uses the full contagion (≈32%/h: whole kennels fall ill together).
+- Kennel mess growth is rounded **randomly** each hour (`_random_round` in `game/manage_diseases.py`): the whole part, plus 1 with chance equal to the fraction. It used to be `round(sum(mess_output) / 12)` once per kennel, which lost the same fraction every hour (one dog: 0 mess forever; two dogs with output 7: a full point every hour, 24/day instead of 14). Random rounding is right on average but drifts a little day to day (two dogs: usually 12–16/day). If exact, steady growth is ever wanted, carry the fraction instead: add a kennel column (e.g. `mess_remainder` float), add the hour's amount to it, move the whole part into `messiness` and keep the rest. That needs the column, the game `Kennel` field and a `--migrate` run. The compounding step (`MESS_HOURLY_COMPOUND_RATE`) uses the same rounding.
 
 ## Older issues still open
 
@@ -114,3 +116,4 @@ identical to a fresh install.
 - Kennels send raw `messiness` to the web next to `messiness_label` (the bot shows only the label).
 - `src/game` still imports snapshot constants / ORM types from `src.database.models` (mostly type hints).
 - Bot `events.py` keeps `detail_entries` / `signed` only for their re-exports and tests; nothing uses them anymore.
+- Hour summaries name hidden diseases outright ("started showing signs of Mange", "recovered from Mange", "died of Mange"): `run_hourly_disease_tick` passes `disease.name`, not the public symptom label, and the death message uses the condition's real name. Kept on purpose for now; revisit (`get_public_disease_label`).

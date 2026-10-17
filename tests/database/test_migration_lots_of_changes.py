@@ -83,6 +83,22 @@ class TestStockKennels:
         assert "food_stock <" in str(session.execute.await_args.args[0])
 
 
+class TestSyncOwnerEventTimeouts:
+    async def test_only_changes_events_whose_window_differs(self):
+        fish = SimpleNamespace(name="Fish or Cheese", response_timeout=5)
+        family = SimpleNamespace(name="Interested Family", response_timeout=7200)
+        session = MagicMock()
+        session.execute = AsyncMock(return_value=_result(scalars=[fish, family]))
+        resources = {"other": {"Fish or Cheese": {"response_timeout": 7200}}, "fortune": {"Interested Family": {}}}
+        with (
+            patch(f"{MOD}.load_categorized_resource_objects", return_value=resources),
+            patch(f"{MOD}.session_scope", return_value=_scope(session)),
+        ):
+            assert await migration._sync_owner_event_timeouts() == ["Fish or Cheese", "Interested Family"]
+        # a file without response_timeout gets the loader's default, as on a reset
+        assert (fish.response_timeout, family.response_timeout) == (7200, 3600)
+
+
 class TestUpgradeOrder:
     async def test_runs_every_step_and_only_adds_catalog_rows(self):
         connection = MagicMock()
@@ -95,6 +111,7 @@ class TestUpgradeOrder:
             patch.multiple(MOD, **loaders),
             patch(f"{MOD}._backfill_pregnancy_timers", new=AsyncMock(return_value=0)) as pregnancies,
             patch(f"{MOD}._backfill_upkeep", new=AsyncMock(return_value=0)) as upkeep,
+            patch(f"{MOD}._sync_owner_event_timeouts", new=AsyncMock(return_value=[])) as retime,
             patch(f"{MOD}.validate_cross_references", new=AsyncMock()) as validate,
         ):
             await migration.upgrade(pregnancy_timer_range=(15, 20))
@@ -108,6 +125,7 @@ class TestUpgradeOrder:
             loader.assert_awaited_with(only_missing=True)
         assert pregnancies.await_args.args[0] == (15, 20)
         upkeep.assert_awaited()
+        retime.assert_awaited()
         validate.assert_awaited()
 
 

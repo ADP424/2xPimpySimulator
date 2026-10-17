@@ -158,6 +158,11 @@ async def process_expired_events(rng: Optional[random.Random] = None) -> list[tu
     results = []
 
     for active_event in expired_events:
+        gone_pooch = await get_unavailable_featured_pooch_name(active_event, active_event.owner_discord_id)
+        if gone_pooch is not None:
+            await cancel_event_for_unavailable_pooch(active_event, gone_pooch)
+            continue
+
         context = OwnerEventContext.from_dict(active_event.context)
         event = active_event.event
 
@@ -210,6 +215,71 @@ async def process_expired_events(rng: Optional[random.Random] = None) -> list[tu
     return results
 
 
+async def get_unavailable_featured_pooch_name(active_event, owner_discord_id: int) -> Optional[str]:
+    """
+    Name the event's featured pooch if it can no longer be offered: it died, went to a vendor
+    or belongs to another player now. Events with no featured pooch are always available.
+
+    Parameters
+    ----------
+    active_event: EventOccurrence
+        The active event to check.
+
+    owner_discord_id: int
+        The Discord ID of the owner the event belongs to.
+
+    Returns
+    -------
+    str, optional
+        The featured pooch's name if it's gone, otherwise None.
+    """
+
+    from src.database import get_pooch_by_id
+
+    context = OwnerEventContext.from_dict(active_event.context)
+    slot_name = context.extra_data.get("_featured_pooch_slot")
+    if not isinstance(slot_name, str) or not slot_name:
+        return None
+    slot = context.extra_data.get(slot_name, {})
+    pooch_ids = slot.get("pooch_ids", []) if isinstance(slot, dict) else []
+    if not pooch_ids:
+        return None
+
+    pooch = await get_pooch_by_id(pooch_ids[0])
+    if pooch is None:
+        return "The pooch"
+    owned_elsewhere = pooch.owner_discord_id is not None and pooch.owner_discord_id != owner_discord_id
+    if not pooch.alive or pooch.vendor_id is not None or owned_elsewhere:
+        return pooch.name
+    return None
+
+
+async def cancel_event_for_unavailable_pooch(active_event, pooch_name: str) -> str:
+    """
+    Close an event whose featured pooch is gone without applying any option.
+
+    Parameters
+    ----------
+    active_event: EventOccurrence
+        The active event to close.
+
+    pooch_name: str
+        The featured pooch's name, for the message.
+
+    Returns
+    -------
+    str
+        The message explaining why the event was called off.
+    """
+
+    message = f"**{pooch_name}** is no longer available, so **{active_event.event.name}** is off."
+    result = OwnerEventResult()
+    result.message = message
+    await respond_to_active_owner_event(active_event.id, None, result.to_dict())
+    await archive_active_event(active_event.id)
+    return message
+
+
 async def respond_to_event(
     owner_discord_id: int, active_owner_event_id: int, option_id: int, rng: Optional[random.Random] = None
 ) -> tuple[bool, str, Optional[OwnerEventResult]]:
@@ -254,6 +324,10 @@ async def respond_to_event(
     if active_event.expires_at and datetime.now(timezone.utc) > active_event.expires_at:
         await archive_active_event(active_owner_event_id, timed_out=True)
         return False, "This event has expired.", None
+
+    gone_pooch = await get_unavailable_featured_pooch_name(active_event, owner_discord_id)
+    if gone_pooch is not None:
+        return False, await cancel_event_for_unavailable_pooch(active_event, gone_pooch), None
 
     option = await get_owner_event_option_by_id(option_id)
     if option is None:
@@ -334,6 +408,12 @@ async def run_hourly_event_check(rng_seed: Optional[int] = None) -> dict[int, li
     triggered_events: dict[int, list[TriggeredOwnerEvent]] = {}
 
     for owner in owners:
+        # Call off pending offers whose pooch died or changed hands this hour, so they stop showing.
+        for active_event in await list_active_owner_events_for_owner(owner.discord_id, pending_only=True):
+            gone_pooch = await get_unavailable_featured_pooch_name(active_event, owner.discord_id)
+            if gone_pooch is not None:
+                await cancel_event_for_unavailable_pooch(active_event, gone_pooch)
+
         if rng.random() > EVENT_HOURLY_TRIGGER_CHANCE:
             continue
 

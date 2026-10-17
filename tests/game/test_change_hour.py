@@ -166,9 +166,21 @@ class TestRunHourChangeEmptyWorld:
             result = await run_hour_change(rng_seed=42)
         assert result == {}
         # The cooldown and injury ticks go through the game wrappers (and their constants)
-        mocks["run_hourly_breeding_cooldown_check"].assert_awaited_once_with(rng_seed=42)
-        mocks["run_hourly_injury_persistence_check"].assert_awaited_once_with(rng_seed=42)
-        mocks["run_hourly_disease_tick"].assert_awaited_once_with(season="spring", rng_seed=42)
+        mocks["run_hourly_breeding_cooldown_check"].assert_awaited_once()
+        mocks["run_hourly_injury_persistence_check"].assert_awaited_once()
+        mocks["run_hourly_disease_tick"].assert_awaited_once()
+        assert mocks["run_hourly_disease_tick"].await_args.kwargs["season"] == "spring"
+
+        # Each sub-tick gets its own seed, drawn reproducibly from the hour's seed
+        seeds = [
+            mocks["run_hourly_breeding_cooldown_check"].await_args.kwargs["rng_seed"],
+            mocks["run_hourly_injury_persistence_check"].await_args.kwargs["rng_seed"],
+            mocks["run_hourly_disease_tick"].await_args.kwargs["rng_seed"],
+        ]
+        assert len(set(seeds)) == 3
+        assert 42 not in seeds
+        hour_rng = random.Random(42)
+        assert seeds == [hour_rng.getrandbits(64) for _ in range(3)]
 
 
 class TestRunHourChangeFights:

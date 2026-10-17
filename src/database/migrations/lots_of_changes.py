@@ -1,7 +1,8 @@
 """
 Upgrade a live database from web-bot-parity to the lots-of-changes merge without losing players.
 
-Safe to run more than once: each step only adds what is missing.
+Safe to run more than once: each step only adds what is missing or corrects data to match the models and resources.
+Nothing is ever deleted.
 
 1. Schema: create missing tables (``items``, ``owner_items``), then add every column and check constraint the models
    have but the database lacks. The DDL is generated from the ORM models, so it can't drift from them. New columns
@@ -14,7 +15,9 @@ Safe to run more than once: each step only adds what is missing.
      ``create_pooch`` does for new pooches. (``birth_hour`` is seeded by the hourly tick itself.)
    - optionally (``--starting-food N``) every kennel is topped up to at least N food units, so existing pooches
      don't start starving the moment the hourly tick runs. Re-running never adds more.
-4. Validate the cross references between catalogs.
+4. Owner event response windows are synced from ``resources/owner_events`` (a reset is the only other way to change
+   them, and it wipes players). Only ``response_timeout`` is touched.
+5. Validate the cross references between catalogs.
 
 Run with ``uv run python main.py --migrate [--starting-food N]``.
 """
@@ -36,7 +39,9 @@ from ..load.load_resources import (
     load_mutations,
 )
 from ..load.load_resources.cross_refs import validate_cross_references
-from ..models import Base, Breed, Kennel, Pooch, PoochBreed, PoochPregnancy
+from ..load.load_resources.owner_events import OWNER_EVENTS_ROOT
+from ..load.load_resources.utils import load_categorized_resource_objects
+from ..models import Base, Breed, Event, Kennel, Pooch, PoochBreed, PoochPregnancy
 from ..session import _get_engine, session_scope
 from ..set import pooch_upkeep
 
@@ -110,6 +115,22 @@ async def _stock_kennels(food: int) -> int:
     return len(kennels)
 
 
+async def _sync_owner_event_timeouts() -> list[str]:
+    """Set each owner event's response window to its resource file's. Returns the names of the events changed."""
+    timeouts = {
+        name: attributes.get("response_timeout", 3600)
+        for events in load_categorized_resource_objects(OWNER_EVENTS_ROOT, "event").values()
+        for name, attributes in events.items()
+    }
+    changed: list[str] = []
+    async with session_scope() as session:
+        for event in (await session.execute(select(Event).where(Event.name.in_(timeouts)))).scalars().all():
+            if event.response_timeout != timeouts[event.name]:
+                event.response_timeout = timeouts[event.name]
+                changed.append(event.name)
+    return changed
+
+
 async def upgrade(
     pregnancy_timer_range: tuple[int, int], rng: Optional[random.Random] = None, *, starting_food: int = 0
 ) -> None:
@@ -137,6 +158,8 @@ async def upgrade(
     if starting_food > 0:
         kennels = await _stock_kennels(starting_food)
         logger.info("Topped up %d kennel(s) to %d food.", kennels, starting_food)
+    retimed = await _sync_owner_event_timeouts()
+    logger.info("Owner event response windows: %s", ", ".join(retimed) if retimed else "already up to date")
 
     await validate_cross_references()
     logger.info("Upgrade complete.")

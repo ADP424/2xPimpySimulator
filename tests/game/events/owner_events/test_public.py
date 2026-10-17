@@ -277,3 +277,84 @@ class TestTriggerEventByName:
             result = await trigger_event_by_name(123, "test_event")
 
         assert result is mock_triggered
+
+
+# ---------------------------------------------------------------------------
+# Featured pooch gone (died / changed hands while the event waited)
+# ---------------------------------------------------------------------------
+
+_FEATURED_CONTEXT = {"extra_data": {"_featured_pooch_slot": "chosen_pooch", "chosen_pooch": {"pooch_ids": [7]}}}
+
+
+def _pooch(alive=True, owner_discord_id=123, vendor_id=None):
+    return SimpleNamespace(id=7, name="Lucy", alive=alive, owner_discord_id=owner_discord_id, vendor_id=vendor_id)
+
+
+class TestUnavailableFeaturedPooch:
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "pooch, expected",
+        [
+            (_pooch(), None),
+            (_pooch(owner_discord_id=None), None),  # stray offered to the owner
+            (_pooch(alive=False), "Lucy"),
+            (_pooch(owner_discord_id=999), "Lucy"),
+            (_pooch(owner_discord_id=None, vendor_id=4), "Lucy"),
+        ],
+    )
+    async def test_names_pooch_only_when_gone(self, pooch, expected):
+        from src.game.events.owner_events.public import get_unavailable_featured_pooch_name
+
+        event = _make_active_event(context=_FEATURED_CONTEXT)
+        with patch("src.database.get_pooch_by_id", new=AsyncMock(return_value=pooch)):
+            assert await get_unavailable_featured_pooch_name(event, 123) == expected
+
+    @pytest.mark.asyncio
+    async def test_event_without_featured_pooch_is_available(self):
+        from src.game.events.owner_events.public import get_unavailable_featured_pooch_name
+
+        lookup = AsyncMock()
+        with patch("src.database.get_pooch_by_id", new=lookup):
+            assert await get_unavailable_featured_pooch_name(_make_active_event(), 123) is None
+        lookup.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_respond_calls_off_event_for_dead_pooch(self):
+        from src.game.events.owner_events import respond_to_event
+
+        event = _make_active_event(context=_FEATURED_CONTEXT, event=SimpleNamespace(name="Interested Family"))
+        option_lookup = AsyncMock()
+        with (
+            patch(f"{MOD}.get_active_owner_event_by_id", new=AsyncMock(return_value=event)),
+            patch("src.database.get_pooch_by_id", new=AsyncMock(return_value=_pooch(alive=False))),
+            patch(f"{MOD}.respond_to_active_owner_event", new=AsyncMock()) as respond,
+            patch(f"{MOD}.archive_active_event", new=AsyncMock()) as archive,
+            patch(f"{MOD}.get_owner_event_option_by_id", new=option_lookup),
+        ):
+            ok, message, result = await respond_to_event(123, 1, 5)
+
+        assert ok is False
+        assert message == "**Lucy** is no longer available, so **Interested Family** is off."
+        assert result is None
+        option_lookup.assert_not_awaited()
+        respond.assert_awaited_once()
+        assert respond.await_args.args[1] is None
+        archive.assert_awaited_once_with(1)
+
+    @pytest.mark.asyncio
+    async def test_hourly_check_calls_off_pending_event_for_dead_pooch(self):
+        from src.game.events.owner_events import run_hourly_event_check
+
+        event = _make_active_event(context=_FEATURED_CONTEXT, event=SimpleNamespace(name="Interested Family"))
+        with (
+            patch(f"{MOD}.list_expired_active_owner_events", new=AsyncMock(return_value=[])),
+            patch(f"{MOD}.list_owners", new=AsyncMock(return_value=[SimpleNamespace(discord_id=123)])),
+            patch(f"{MOD}.list_active_owner_events_for_owner", new=AsyncMock(return_value=[event])),
+            patch("src.database.get_pooch_by_id", new=AsyncMock(return_value=_pooch(alive=False))),
+            patch(f"{MOD}.respond_to_active_owner_event", new=AsyncMock()),
+            patch(f"{MOD}.archive_active_event", new=AsyncMock()) as archive,
+            patch(f"{MOD}.EVENT_HOURLY_TRIGGER_CHANCE", 0),
+        ):
+            assert await run_hourly_event_check(rng_seed=1) == {}
+
+        archive.assert_awaited_once_with(1)

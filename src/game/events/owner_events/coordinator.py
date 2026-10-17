@@ -549,7 +549,8 @@ async def execute_single_action(
                 from src.database import get_pooch_by_id
 
                 pooch = await get_pooch_by_id(pooch_id)
-                if pooch is None or not pooch.alive:
+                # The pooch may have died or changed hands since the event fired.
+                if pooch is None or not pooch.alive or pooch.owner_discord_id != owner_discord_id:
                     continue
                 if resolved_vendor_id is not None:
                     price = round((await get_pooch_sell_price(pooch_id, resolved_vendor_id)) * multiplier)

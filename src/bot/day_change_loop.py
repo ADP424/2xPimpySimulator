@@ -312,8 +312,9 @@ async def day_change_runner(
     paused_event, manual_queue, run_lock = ensure_controls(bot)
 
     async def run_once():
-        logger.info("Changing day...")
-        stray_results = await run_day_change(rng_seed=int.from_bytes(os.urandom(8)))
+        seed = int.from_bytes(os.urandom(8))
+        logger.info("Changing day (seed %d)...", seed)
+        stray_results = await run_day_change(rng_seed=seed)
         await post_new_day_announcement(bot)
         if stage == "dev":
             await post_stray_event_summaries(bot, stray_results)
@@ -505,8 +506,9 @@ async def hour_change_runner(
     paused_event, manual_queue, run_lock = ensure_hour_controls(bot)
 
     async def run_once():
-        logger.info("Ticking hour...")
-        summaries = await run_hour_change(rng_seed=int.from_bytes(os.urandom(8)))
+        seed = int.from_bytes(os.urandom(8))
+        logger.info("Ticking hour (seed %d)...", seed)
+        summaries = await run_hour_change(rng_seed=seed)
         await post_hour_change_summaries(bot, summaries)
         try:
             await post_hour_change_webhooks(summaries)

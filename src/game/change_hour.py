@@ -391,6 +391,9 @@ async def run_hour_change(rng_seed: Optional[int] = None) -> dict[int, HourChang
     are not ``is_empty`` to the user-facing event channel.
     """
     rng = random.Random(rng_seed)
+    # Each sub-tick gets its own seed drawn from the hour's, so their rolls are independent
+    # (passing them all ``rng_seed`` gave every one the same random sequence) yet still reproducible.
+    cooldown_seed, injury_seed, disease_seed = (rng.getrandbits(64) for _ in range(3))
 
     current_hour = await increment_global_hour()
 
@@ -447,13 +450,13 @@ async def run_hour_change(rng_seed: Optional[int] = None) -> dict[int, HourChang
         await hourly_age_step(current_hour, pooch)
 
     # 3. Hourly fertility/breeding cooldown tick
-    await run_hourly_breeding_cooldown_check(rng_seed=rng_seed)
+    await run_hourly_breeding_cooldown_check(rng_seed=cooldown_seed)
 
     # 4. Hourly injury persistence tick
-    await run_hourly_injury_persistence_check(rng_seed=rng_seed)
+    await run_hourly_injury_persistence_check(rng_seed=injury_seed)
 
     # 5. Disease tick (for kennel pooches and strays).
-    disease_events = await run_hourly_disease_tick(season=season, rng_seed=rng_seed)
+    disease_events = await run_hourly_disease_tick(season=season, rng_seed=disease_seed)
     for pooch_id, pooch_events in disease_events.items():
         pooch_orm = await get_pooch_by_id(pooch_id)
         if pooch_orm is None:

@@ -517,3 +517,33 @@ class TestCreateAndExecuteEvent:
         ):
             triggered = await create_and_execute_event(1, event, rng)
         assert triggered is mock_triggered
+
+
+# ---------------------------------------------------------------------------
+# sell_pooch
+# ---------------------------------------------------------------------------
+
+
+class TestSellPooch:
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "pooch",
+        [
+            SimpleNamespace(id=7, name="Lucy", alive=False, owner_discord_id=1),
+            SimpleNamespace(id=7, name="Lucy", alive=True, owner_discord_id=999),
+        ],
+        ids=["dead", "owned_by_someone_else"],
+    )
+    async def test_skips_pooch_that_is_gone(self, pooch):
+        action = _make_action("sell_pooch", parameters={"value_multiplier": 3.0})
+        pay = AsyncMock()
+        with (
+            patch(f"{MOD}.get_target_pooch_ids", new=AsyncMock(return_value=[7])),
+            patch("src.database.get_pooch_by_id", new=AsyncMock(return_value=pooch)),
+            patch(f"{MOD}.give_money_to_owner", new=pay),
+        ):
+            result = await execute_event_actions(1, [action], OwnerEventContext(owner_discord_id=1), random.Random(0))
+
+        pay.assert_not_awaited()
+        assert result.money_changed == 0
+        assert result.pooches_affected == []

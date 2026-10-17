@@ -149,6 +149,8 @@ async def run_day_change(
     """
 
     rng = random.Random(rng_seed)
+    # Moods and stray events get their own seeds drawn from the day's, so their rolls don't repeat its sequence.
+    mood_seed, stray_event_seed = (rng.getrandbits(64) for _ in range(2))
 
     servers = await list_servers()
     _season = await get_current_season()
@@ -165,7 +167,7 @@ async def run_day_change(
     logger.info("Daily owner flags reset.")
 
     # moods drift once a day with each pooch's health and age
-    await refresh_moods(rng_seed=rng_seed)
+    await refresh_moods(rng_seed=mood_seed)
 
     # minimum stray guarantee: every server must have at least one alive stray
     logger.info("Checking minimum stray population per server...")
@@ -247,7 +249,7 @@ async def run_day_change(
 
     # stray events (fire once per server after the stray population is guaranteed)
     logger.info("Running daily stray events...")
-    stray_event_results = await run_daily_stray_event_check(rng_seed=rng_seed)
+    stray_event_results = await run_daily_stray_event_check(rng_seed=stray_event_seed)
     logger.info("Completed daily stray events.")
 
     return stray_event_results

@@ -89,6 +89,22 @@ class TestRunDayChange:
 
         assert result is fake_results
 
+    async def test_moods_and_stray_events_get_their_own_seeds(self):
+        """Sub-steps get seeds drawn from the day's seed, not the day's seed itself."""
+        import random
+
+        mocks = {t: AsyncMock() for t in _PATCH_TARGETS}
+        _apply_defaults(mocks)
+
+        with patch.multiple("src.game.change_day", **{k.split(".")[-1]: v for k, v in mocks.items()}):
+            await run_day_change(rng_seed=42)
+
+        mood_seed = mocks["src.game.change_day.refresh_moods"].await_args.kwargs["rng_seed"]
+        stray_seed = mocks["src.game.change_day.run_daily_stray_event_check"].await_args.kwargs["rng_seed"]
+        day_rng = random.Random(42)
+        assert [mood_seed, stray_seed] == [day_rng.getrandbits(64) for _ in range(2)]
+        assert 42 not in (mood_seed, stray_seed)
+
     async def test_no_crashes_empty_server(self):
         """run_day_change completes without error on a server with no strays or vendors."""
         mocks = {t: AsyncMock() for t in _PATCH_TARGETS}

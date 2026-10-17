@@ -49,14 +49,23 @@ VET_DIAGNOSE_DISEASES_COST = 30
 VET_DISEASE_TREATMENT_BASE_COST = 15
 VET_DISEASE_TREATMENT_SEVERITY_MULT = 5
 MUTATION_PREDISPOSITION_MULT = 3.0
+# How much of a disease's contagion carries from a sick pooch to each kennel mate per hour.
+# 0.1 scales it like environmental contraction (Kennel Cough ≈3%/h per sick mate);
+# 1.0 uses the full contagion (Kennel Cough ≈32%/h per sick mate: whole kennels fall ill together).
+DISEASE_SPREAD_CONTAGION_MULT = 0.1
 
 # Hourly mess accumulation: each pooch contributes mess_output / 12 per hour
-# (so a default-output pooch adds ~2 mess units per 24-hour day).
+# (so a pooch with mess_output 3 adds ~6 mess units per 24-hour day).
 MESS_PER_POOCH_PER_HOUR_DIVISOR = 12
-# Hourly compounding rate: 10% per day scaled to per-hour (~0.417%).
-# Applied on top of linear accumulation once messiness is elevated enough
-# that int(messiness * rate) > 0 (i.e. messiness ≥ 24).
+# Hourly compounding rate: 10% per day scaled to per-hour (~0.417%),
+# applied on top of linear accumulation.
 MESS_HOURLY_COMPOUND_RATE = 0.1 / 24
+
+
+def _random_round(amount: float, rng: random.Random) -> int:
+    """Round down, then add 1 with chance equal to the fraction, so fractions add up over many hours."""
+    whole = int(amount)
+    return whole + (1 if rng.random() < amount - whole else 0)
 
 
 async def get_pooch_disease_instances(pooch_id: int) -> list[PoochDisease]:
@@ -224,7 +233,7 @@ async def try_spread_disease(
     effective_contagion = disease.contagion_chance
     if disease.season_contagion_modifiers:
         effective_contagion *= disease.season_contagion_modifiers.get(season, 1.0)
-    chance = effective_contagion + messiness * MESSINESS_CONTRACTION_MULT
+    chance = effective_contagion * DISEASE_SPREAD_CONTAGION_MULT + messiness * MESSINESS_CONTRACTION_MULT
     if target_constitution > 0:
         chance *= max(0.1, 1.0 - target_constitution / CONSTITUTION_RESISTANCE_DIVISOR)
     if disease.name in target_predisposed_names:
@@ -449,9 +458,14 @@ async def run_hourly_disease_tick(season: str, rng_seed: Optional[int] = None) -
 
     Mess accumulates linearly each hour (pooch.mess_output /
     MESS_PER_POOCH_PER_HOUR_DIVISOR) and also compounds at
-    MESS_HOURLY_COMPOUND_RATE (≈0.417%/hour, equivalent to 10%/day).
+    MESS_HOURLY_COMPOUND_RATE (≈0.417%/hour, equivalent to 10%/day). Both are
+    rounded randomly, so their fractions add up correctly over many hours.
 
-    Strays use a fixed environmental messiness in place of a kennel value.
+    Pooches that were sick when the hour began can also pass their diseases to
+    kennel mates (``try_spread_disease``, scaled by DISEASE_SPREAD_CONTAGION_MULT).
+
+    Strays use a fixed environmental messiness in place of a kennel value, and roll
+    to recover like kennel pooches.
     """
     from src.database import list_servers, list_strays_for_server
 
@@ -471,16 +485,17 @@ async def run_hourly_disease_tick(season: str, rng_seed: Optional[int] = None) -
             if not pooches:
                 continue
 
-            # Linear mess accumulation (per-pooch per hour).
-            linear_add = int(
-                round(sum(int(getattr(p, "mess_output", 2) or 2) for p in pooches) / MESS_PER_POOCH_PER_HOUR_DIVISOR)
+            # Linear mess accumulation (per-pooch per hour). Rounded randomly: a fixed rounding would lose
+            # (or gain) the same fraction every hour, so a one-dog kennel would never get messy.
+            linear_add = _random_round(
+                sum(int(getattr(p, "mess_output", 2) or 2) for p in pooches) / MESS_PER_POOCH_PER_HOUR_DIVISOR, rng
             )
             if linear_add > 0:
                 await update_kennel_messiness(kennel.id, linear_add)
 
             # Compound mess growth (~0.417%/hour → ~10%/day).
             current_mess = kennel.messiness + linear_add
-            compound_add = int(current_mess * MESS_HOURLY_COMPOUND_RATE)
+            compound_add = _random_round(current_mess * MESS_HOURLY_COMPOUND_RATE, rng)
             if compound_add > 0:
                 await update_kennel_messiness(kennel.id, compound_add)
                 current_mess += compound_add
@@ -492,16 +507,20 @@ async def run_hourly_disease_tick(season: str, rng_seed: Optional[int] = None) -
             existing_cache: dict[int, set[int]] = {}
             immunity_cache: dict[int, set[int]] = {}
             const_cache: dict[int, int] = {}
+            # What each pooch was sick with when the hour began: only these spread to kennel mates this hour.
+            carried_cache: dict[int, list] = {}
 
             for p in pooches:
                 pre, imm = await _get_mutation_disease_info(p.id)
                 predisposed_cache[p.id] = pre
                 immune_names_cache[p.id] = imm
-                existing_cache[p.id] = {d.id for d in (await list_pooch_diseases(p.id))}
+                carried_cache[p.id] = list(await list_pooch_diseases(p.id))
+                existing_cache[p.id] = {d.id for d in carried_cache[p.id]}
                 immunity_cache[p.id] = {im.disease_id for im in (await list_pooch_disease_immunities(p.id))}
                 const_cache[p.id] = (await get_effective_stat(p.id, "constitution")) or p.constitution
 
             for p in pooches:
+                contracted_now: set[int] = set()
                 for disease in kennel_diseases:
                     if disease.id in existing_cache.get(p.id, set()):
                         continue
@@ -519,9 +538,35 @@ async def run_hourly_disease_tick(season: str, rng_seed: Optional[int] = None) -
                         existing_disease_ids=existing_cache.get(p.id, set()),
                     ):
                         existing_cache.setdefault(p.id, set()).add(disease.id)
+                        contracted_now.add(disease.id)
                         events.setdefault(p.id, []).append((disease.id, disease.name, "contracted"))
 
+                for source in pooches:
+                    if source.id == p.id:
+                        continue
+                    for disease in carried_cache.get(source.id, []):
+                        if await try_spread_disease(
+                            source_pooch_id=source.id,
+                            target_pooch_id=p.id,
+                            disease=disease,
+                            target_constitution=const_cache.get(p.id, p.constitution),
+                            messiness=messiness,
+                            season=season,
+                            rng=rng,
+                            current_day=current_day,
+                            target_predisposed_names=predisposed_cache.get(p.id, set()),
+                            target_immune_names=immune_names_cache.get(p.id, set()),
+                            target_immunity_disease_ids=immunity_cache.get(p.id, set()),
+                            target_existing_disease_ids=existing_cache.get(p.id, set()),
+                        ):
+                            existing_cache.setdefault(p.id, set()).add(disease.id)
+                            contracted_now.add(disease.id)
+                            events.setdefault(p.id, []).append((disease.id, disease.name, "spread"))
+
                 for pd_instance in await list_pooch_disease_instances(p.id):
+                    # A disease caught this hour can't also be shaken off this hour.
+                    if pd_instance.disease_id in contracted_now:
+                        continue
                     if await try_recover_from_disease(pd_instance, current_day=current_day, rng=rng):
                         events.setdefault(p.id, []).append(
                             (pd_instance.disease_id, pd_instance.disease.name, "recovered")
@@ -537,6 +582,7 @@ async def run_hourly_disease_tick(season: str, rng_seed: Optional[int] = None) -
             existing = {d.id for d in (await list_pooch_diseases(p.id))}
             immunity = {im.disease_id for im in (await list_pooch_disease_immunities(p.id))}
             const = (await get_effective_stat(p.id, "constitution")) or p.constitution
+            contracted_now: set[int] = set()
             for disease in kennel_diseases:
                 if disease.id in existing:
                     continue
@@ -554,6 +600,13 @@ async def run_hourly_disease_tick(season: str, rng_seed: Optional[int] = None) -
                     existing_disease_ids=existing,
                 ):
                     existing.add(disease.id)
+                    contracted_now.add(disease.id)
                     events.setdefault(p.id, []).append((disease.id, disease.name, "contracted"))
+
+            for pd_instance in await list_pooch_disease_instances(p.id):
+                if pd_instance.disease_id in contracted_now:
+                    continue
+                if await try_recover_from_disease(pd_instance, current_day=current_day, rng=rng):
+                    events.setdefault(p.id, []).append((pd_instance.disease_id, pd_instance.disease.name, "recovered"))
 
     return events

@@ -10,8 +10,8 @@
     </div>
     <div class="flex gap-2 flex-wrap">
         <a href="{{ url_for('kennel.breeding_interface', kennel_id=kennel_id) }}" class="btn btn-primary btn-sm">💕 Breed Pooches</a>
-        <button class="btn btn-sm btn-outline" onclick="document.getElementById('clean-modal').showModal()">🧹 Clean</button>
-        <button class="btn btn-sm btn-outline btn-success" onclick="document.getElementById('feed-modal').showModal()">🍖 Feed</button>
+        <button class="btn btn-sm btn-outline" onclick="openCleanModal()">🧹 Clean</button>
+        <button class="btn btn-sm btn-outline btn-success" onclick="openFeedModal()">🍖 Feed</button>
         <a href="{{ url_for('kennel.kennels_list') }}" class="btn btn-ghost btn-sm">← Back to Kennels</a>
     </div>
 </div>
@@ -142,9 +142,12 @@ async function submitRenameKennel() {
 
 // ---- Clean modal ----
 
+// Load from the button click: <dialog> 'toggle' events don't fire on older mobile browsers.
 let cleanItemsLoaded = false;
-document.getElementById('clean-modal').addEventListener('show', async () => { if (!cleanItemsLoaded) await loadCleanItems(); });
-document.getElementById('clean-modal').addEventListener('toggle', async (e) => { if (e.newState === 'open' && !cleanItemsLoaded) await loadCleanItems(); });
+function openCleanModal() {
+    document.getElementById('clean-modal').showModal();
+    if (!cleanItemsLoaded) loadCleanItems();
+}
 
 async function loadCleanItems() {
     cleanItemsLoaded = true;
@@ -199,7 +202,10 @@ async function doClean(itemName) {
 // ---- Feed modal ----
 
 let feedItemsLoaded = false;
-document.getElementById('feed-modal').addEventListener('toggle', async (e) => { if (e.newState === 'open' && !feedItemsLoaded) await loadFeedItems(); });
+function openFeedModal() {
+    document.getElementById('feed-modal').showModal();
+    if (!feedItemsLoaded) loadFeedItems();
+}
 
 async function loadFeedItems() {
     feedItemsLoaded = true;

@@ -2,7 +2,7 @@
 
 import random
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -442,6 +442,7 @@ class TestTrySpreadDisease:
         mock_add.assert_not_awaited()
 
     @pytest.mark.asyncio
+    @patch("src.game.manage_diseases.DISEASE_SPREAD_CONTAGION_MULT", 1.0)
     @patch("src.game.manage_diseases.add_disease_to_pooch", new_callable=AsyncMock)
     async def test_spreads_when_roll_succeeds(self, mock_add):
         """Highly contagious disease with 0 constitution should spread."""
@@ -464,6 +465,7 @@ class TestTrySpreadDisease:
         mock_add.assert_awaited_once_with(2, disease.id, current_day=5, rng=rng)
 
     @pytest.mark.asyncio
+    @patch("src.game.manage_diseases.DISEASE_SPREAD_CONTAGION_MULT", 1.0)
     @patch("src.game.manage_diseases.add_disease_to_pooch", new_callable=AsyncMock)
     async def test_season_contagion_modifier_applied(self, mock_add):
         """Season contagion modifiers should alter effective contagion chance."""
@@ -488,6 +490,34 @@ class TestTrySpreadDisease:
         )
         # Effective contagion = 0.5 * 2.0 = 1.0, so always spreads with constitution 0
         assert result is True
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("mult, spreads", [(0.1, False), (1.0, True)])
+    async def test_contagion_scaled_by_spread_mult(self, mult, spreads):
+        """By default only a tenth of the contagion carries over (0.6 → 6%); 1.0 uses all of it (60%)."""
+        disease = make_disease(contagion_chance=0.6)
+        rng = MagicMock()
+        rng.random.return_value = 0.3  # between the scaled and the full chance
+        with (
+            patch("src.game.manage_diseases.DISEASE_SPREAD_CONTAGION_MULT", mult),
+            patch("src.game.manage_diseases.add_disease_to_pooch", new=AsyncMock()),
+        ):
+            result = await try_spread_disease(
+                source_pooch_id=1,
+                target_pooch_id=2,
+                disease=disease,
+                target_constitution=0,
+                messiness=0,
+                season="spring",
+                rng=rng,
+                current_day=1,
+            )
+        assert result is spreads
+
+    def test_default_scales_like_contraction(self):
+        from src.game.manage_diseases import DISEASE_SPREAD_CONTAGION_MULT
+
+        assert DISEASE_SPREAD_CONTAGION_MULT == 0.1
 
 
 # ---------------------------------------------------------------------------
@@ -915,6 +945,7 @@ class TestAdditionalDiseaseLogic:
         mock_add.assert_not_awaited()
 
     @pytest.mark.asyncio
+    @patch("src.game.manage_diseases.DISEASE_SPREAD_CONTAGION_MULT", 1.0)
     @patch("src.game.manage_diseases.add_disease_to_pooch", new_callable=AsyncMock)
     async def test_predisposition_increases_spread_chance(self, mock_add):
         disease = make_disease(name="Mange", contagion_chance=0.2)
@@ -1003,3 +1034,193 @@ class TestCleaningWithItems:
             ok, message = await clean_kennel_by_hand(100, 1)
         assert ok is True
         assert message.endswith("It is now **Messy**.")
+
+
+# ---------------------------------------------------------------------------
+# run_hourly_disease_tick
+# ---------------------------------------------------------------------------
+
+
+class TestHourlyDiseaseTick:
+    _MOD = "src.game.manage_diseases"
+
+    @pytest.mark.asyncio
+    async def test_disease_caught_this_hour_gets_no_recovery_roll(self):
+        from src.game.manage_diseases import run_hourly_disease_tick
+
+        new = make_disease(disease_id=1, name="Mange")
+        old = make_disease(disease_id=2, name="Kennel Cough")
+        pooch = SimpleNamespace(id=7, alive=True, mess_output=2, constitution=10)
+        kennel = SimpleNamespace(id=3, messiness=0)
+        new_instance = SimpleNamespace(disease_id=1, disease=new)
+        old_instance = SimpleNamespace(disease_id=2, disease=old)
+        recover = AsyncMock(return_value=False)
+
+        with (
+            patch(f"{self._MOD}.get_current_day", new=AsyncMock(return_value=5)),
+            patch(f"{self._MOD}.list_all_diseases", new=AsyncMock(return_value=[new, old])),
+            patch(f"{self._MOD}.list_owners", new=AsyncMock(return_value=[SimpleNamespace(discord_id=100)])),
+            patch(f"{self._MOD}.list_kennels_for_owner", new=AsyncMock(return_value=[kennel])),
+            patch(f"{self._MOD}.list_pooches_for_kennel", new=AsyncMock(return_value=[pooch])),
+            patch(f"{self._MOD}.update_kennel_messiness", new=AsyncMock()),
+            patch(f"{self._MOD}._get_mutation_disease_info", new=AsyncMock(return_value=(set(), set()))),
+            patch(f"{self._MOD}.list_pooch_diseases", new=AsyncMock(return_value=[old])),
+            patch(f"{self._MOD}.list_pooch_disease_immunities", new=AsyncMock(return_value=[])),
+            patch(f"{self._MOD}.get_effective_stat", new=AsyncMock(return_value=10)),
+            patch(f"{self._MOD}.try_contract_disease", new=AsyncMock(return_value=True)),
+            patch(
+                f"{self._MOD}.list_pooch_disease_instances",
+                new=AsyncMock(return_value=[new_instance, old_instance]),
+            ),
+            patch(f"{self._MOD}.try_recover_from_disease", new=recover),
+            patch("src.database.list_servers", new=AsyncMock(return_value=[])),
+        ):
+            events = await run_hourly_disease_tick(season="autumn", rng_seed=1)
+
+        assert events[7] == [(1, "Mange", "contracted")]
+        recover.assert_awaited_once()
+        assert recover.await_args.args[0] is old_instance
+
+    @pytest.mark.asyncio
+    async def test_sick_pooch_spreads_to_kennel_mate(self):
+        from src.game.manage_diseases import run_hourly_disease_tick
+
+        mange = make_disease(disease_id=1, name="Mange")
+        sick = SimpleNamespace(id=7, alive=True, mess_output=2, constitution=10)
+        healthy = SimpleNamespace(id=8, alive=True, mess_output=2, constitution=10)
+        caught = SimpleNamespace(disease_id=1, disease=mange)
+        recover = AsyncMock(return_value=False)
+        spread = AsyncMock(return_value=True)
+
+        with (
+            patch(f"{self._MOD}.get_current_day", new=AsyncMock(return_value=5)),
+            patch(f"{self._MOD}.list_all_diseases", new=AsyncMock(return_value=[mange])),
+            patch(f"{self._MOD}.list_owners", new=AsyncMock(return_value=[SimpleNamespace(discord_id=100)])),
+            patch(
+                f"{self._MOD}.list_kennels_for_owner",
+                new=AsyncMock(return_value=[SimpleNamespace(id=3, messiness=0)]),
+            ),
+            patch(f"{self._MOD}.list_pooches_for_kennel", new=AsyncMock(return_value=[sick, healthy])),
+            patch(f"{self._MOD}.update_kennel_messiness", new=AsyncMock()),
+            patch(f"{self._MOD}._get_mutation_disease_info", new=AsyncMock(return_value=(set(), set()))),
+            patch(
+                f"{self._MOD}.list_pooch_diseases",
+                new=AsyncMock(side_effect=lambda pooch_id: [mange] if pooch_id == 7 else []),
+            ),
+            patch(f"{self._MOD}.list_pooch_disease_immunities", new=AsyncMock(return_value=[])),
+            patch(f"{self._MOD}.get_effective_stat", new=AsyncMock(return_value=10)),
+            patch(f"{self._MOD}.try_contract_disease", new=AsyncMock(return_value=False)),
+            patch(f"{self._MOD}.try_spread_disease", new=spread),
+            patch(
+                f"{self._MOD}.list_pooch_disease_instances",
+                new=AsyncMock(side_effect=lambda pooch_id: [caught]),
+            ),
+            patch(f"{self._MOD}.try_recover_from_disease", new=recover),
+            patch("src.database.list_servers", new=AsyncMock(return_value=[])),
+        ):
+            events = await run_hourly_disease_tick(season="autumn", rng_seed=1)
+
+        # only the healthy mate is a target, and only the sick pooch is a source
+        spread.assert_awaited_once()
+        assert (spread.await_args.kwargs["source_pooch_id"], spread.await_args.kwargs["target_pooch_id"]) == (7, 8)
+        assert events == {8: [(1, "Mange", "spread")]}
+        # the sick pooch rolls to recover; the mate who just caught it doesn't
+        recover.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_strays_roll_to_recover(self):
+        from src.game.manage_diseases import run_hourly_disease_tick
+
+        mange = make_disease(disease_id=1, name="Mange")
+        cough = make_disease(disease_id=2, name="Kennel Cough")
+        stray = SimpleNamespace(id=9, alive=True, constitution=10)
+        old_instance = SimpleNamespace(disease_id=1, disease=mange)
+        new_instance = SimpleNamespace(disease_id=2, disease=cough)
+        recover = AsyncMock(return_value=True)
+
+        with (
+            patch(f"{self._MOD}.get_current_day", new=AsyncMock(return_value=5)),
+            patch(f"{self._MOD}.list_all_diseases", new=AsyncMock(return_value=[mange, cough])),
+            patch(f"{self._MOD}.list_owners", new=AsyncMock(return_value=[])),
+            patch(f"{self._MOD}._get_mutation_disease_info", new=AsyncMock(return_value=(set(), set()))),
+            patch(f"{self._MOD}.list_pooch_diseases", new=AsyncMock(return_value=[mange])),
+            patch(f"{self._MOD}.list_pooch_disease_immunities", new=AsyncMock(return_value=[])),
+            patch(f"{self._MOD}.get_effective_stat", new=AsyncMock(return_value=10)),
+            patch(f"{self._MOD}.try_contract_disease", new=AsyncMock(return_value=True)),
+            patch(
+                f"{self._MOD}.list_pooch_disease_instances",
+                new=AsyncMock(return_value=[old_instance, new_instance]),
+            ),
+            patch(f"{self._MOD}.try_recover_from_disease", new=recover),
+            patch("src.database.list_servers", new=AsyncMock(return_value=[SimpleNamespace(discord_id=200)])),
+            patch("src.database.list_strays_for_server", new=AsyncMock(return_value=[stray])),
+        ):
+            events = await run_hourly_disease_tick(season="autumn", rng_seed=1)
+
+        # the Mange it already had can clear; the Kennel Cough caught this hour can't
+        assert events == {9: [(2, "Kennel Cough", "contracted"), (1, "Mange", "recovered")]}
+        recover.assert_awaited_once()
+        assert recover.await_args.args[0] is old_instance
+
+
+# ---------------------------------------------------------------------------
+# Kennel mess growth rounding
+# ---------------------------------------------------------------------------
+
+
+class TestRandomRound:
+    def test_whole_numbers_are_exact(self):
+        from src.game.manage_diseases import _random_round
+
+        rng = random.Random(0)
+        assert [_random_round(n, rng) for n in (0, 1, 3)] == [0, 1, 3]
+
+    @pytest.mark.parametrize("amount", [0.25, 0.5, 7 / 12, 10 / 12, 1.4])
+    def test_average_matches_the_fraction(self, amount):
+        from src.game.manage_diseases import _random_round
+
+        rng = random.Random(1)
+        rolls = [_random_round(amount, rng) for _ in range(20_000)]
+        assert set(rolls) <= {int(amount), int(amount) + 1}
+        assert sum(rolls) / len(rolls) == pytest.approx(amount, abs=0.02)
+
+
+class TestHourlyMessGrowth:
+    _MOD = "src.game.manage_diseases"
+
+    async def _day_of_mess(self, mess_outputs, start_mess=0):
+        """Run 24 hourly ticks on one kennel and return the total mess added."""
+        from src.game.manage_diseases import run_hourly_disease_tick
+
+        pooches = [
+            SimpleNamespace(id=i, alive=True, mess_output=m, constitution=10) for i, m in enumerate(mess_outputs)
+        ]
+        kennel = SimpleNamespace(id=3, messiness=start_mess)
+        update = AsyncMock()
+        with (
+            patch(f"{self._MOD}.get_current_day", new=AsyncMock(return_value=5)),
+            patch(f"{self._MOD}.list_all_diseases", new=AsyncMock(return_value=[])),
+            patch(f"{self._MOD}.list_owners", new=AsyncMock(return_value=[SimpleNamespace(discord_id=100)])),
+            patch(f"{self._MOD}.list_kennels_for_owner", new=AsyncMock(return_value=[kennel])),
+            patch(f"{self._MOD}.list_pooches_for_kennel", new=AsyncMock(return_value=pooches)),
+            patch(f"{self._MOD}.update_kennel_messiness", new=update),
+            patch(f"{self._MOD}._get_mutation_disease_info", new=AsyncMock(return_value=(set(), set()))),
+            patch(f"{self._MOD}.list_pooch_diseases", new=AsyncMock(return_value=[])),
+            patch(f"{self._MOD}.list_pooch_disease_immunities", new=AsyncMock(return_value=[])),
+            patch(f"{self._MOD}.get_effective_stat", new=AsyncMock(return_value=10)),
+            patch(f"{self._MOD}.list_pooch_disease_instances", new=AsyncMock(return_value=[])),
+            patch("src.database.list_servers", new=AsyncMock(return_value=[])),
+        ):
+            for hour in range(24):
+                await run_hourly_disease_tick(season="autumn", rng_seed=hour)
+        return sum(call.args[1] for call in update.await_args_list)
+
+    @pytest.mark.asyncio
+    async def test_one_dog_kennel_gets_messy(self):
+        # 3 / 12 = 0.25 per hour; fixed rounding gave 0 forever
+        assert 2 <= await self._day_of_mess([3]) <= 12
+
+    @pytest.mark.asyncio
+    async def test_two_dog_kennel_no_longer_gains_a_full_point_every_hour(self):
+        # 7 / 12 ≈ 0.58 per hour → ~14 per day; fixed rounding gave 24
+        assert 8 <= await self._day_of_mess([3, 4]) <= 20
