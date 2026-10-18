@@ -243,6 +243,20 @@ async def _build_pooch_query(
     return query
 
 
+def _default_to_living_born(query: Select[tuple[Pooch]], filter_spec: PoochFilterSpec | None) -> Select[tuple[Pooch]]:
+    """
+    Never match unborn pooches, and match only living ones unless the filter asks otherwise.
+
+    A filter opts into dead pooches with ``is_alive: false`` or a graveyard/hell ``location``.
+    """
+    spec = filter_spec or {}
+    location = spec.get("location")
+    location = location.strip().lower() if isinstance(location, str) else ""
+    if spec.get("is_alive") is None and location not in ("graveyard", "hell"):
+        query = query.where(Pooch.alive.is_(True))
+    return query.where(Pooch.age >= 0)
+
+
 async def count_matching_pooches_for_owner(
     session: AsyncSession,
     owner_discord_id: int,
@@ -273,6 +287,7 @@ async def count_matching_pooches_for_owner(
     """
 
     query = await _build_pooch_query(session, filter_spec, owner_discord_id=owner_discord_id, kennel_id=kennel_id)
+    query = _default_to_living_born(query, filter_spec)
     count_query = select(func.count()).select_from(query.subquery())
     result = await session.scalar(count_query)
     return result or 0
@@ -308,6 +323,7 @@ async def get_matching_pooch_ids_for_owner(
     """
 
     query = await _build_pooch_query(session, filter_spec, owner_discord_id=owner_discord_id, kennel_id=kennel_id)
+    query = _default_to_living_born(query, filter_spec)
     result = await session.execute(query.with_only_columns(Pooch.id))
     return [pooch_id for pooch_id in result.scalars().all()]
 

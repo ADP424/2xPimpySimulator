@@ -7,6 +7,8 @@ query results to test the filtering logic in isolation.
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
+import pytest
+
 from src.database.utils import (
     check_owner_event_filter,
     is_excluded,
@@ -439,6 +441,30 @@ async def test_get_matching_pooch_ids_for_owner():
 
     result = await get_matching_pooch_ids_for_owner(mock_session, 1, None)
     assert result == [10, 20, 30]
+
+
+async def _matching_pooch_sql(filter_spec):
+    mock_session = AsyncMock()
+    query_result = MagicMock()
+    query_result.scalars.return_value.all.return_value = []
+    mock_session.execute = AsyncMock(return_value=query_result)
+    await get_matching_pooch_ids_for_owner(mock_session, 1, filter_spec)
+    query = mock_session.execute.await_args.args[0]
+    return str(query.compile(compile_kwargs={"literal_binds": True}))
+
+
+@pytest.mark.parametrize("filter_spec", [None, {}, {"location": "kennel"}, {"min_age": 2}])
+async def test_matching_pooches_default_to_living_and_born(filter_spec):
+    sql = await _matching_pooch_sql(filter_spec)
+    assert "pooches.alive IS true" in sql
+    assert "pooches.age >= 0" in sql
+
+
+@pytest.mark.parametrize("filter_spec", [{"is_alive": False}, {"location": "graveyard"}, {"location": " Hell "}])
+async def test_matching_pooches_can_opt_into_dead_but_never_unborn(filter_spec):
+    sql = await _matching_pooch_sql(filter_spec)
+    assert "pooches.alive IS true" not in sql
+    assert "pooches.age >= 0" in sql
 
 
 async def test_get_random_matching_pooch_id_returns_none_when_no_matches():
