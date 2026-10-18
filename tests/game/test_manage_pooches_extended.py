@@ -8,7 +8,6 @@ import pytest
 
 from src.game.manage_pooches import (
     MEDICAL_EXAM_COST,
-    _pooch_status,
     _rate_stat,
     diagnose_injuries,
     diagnose_mutations,
@@ -25,46 +24,47 @@ from src.game.manage_pooches import (
     run_hourly_injury_persistence_check,
     treat_injury,
 )
+from src.game.models import get_pooch_status
 from tests.conftest import make_owner
 
 # ---------------------------------------------------------------------------
-# _pooch_status
+# get_pooch_status (shared by Pooch.status and the family tree)
 # ---------------------------------------------------------------------------
 
 
 class TestPoochStatus:
     def test_dead(self):
-        assert _pooch_status(alive=False, age=5, health=10) == "dead"
+        assert get_pooch_status(alive=False, age=5, health=10) == "dead"
 
     def test_dead_takes_priority_over_old(self):
-        assert _pooch_status(alive=False, age=15, health=10) == "dead"
+        assert get_pooch_status(alive=False, age=15, health=10) == "dead"
 
     def test_dead_takes_priority_over_sick(self):
-        assert _pooch_status(alive=False, age=2, health=1) == "dead"
+        assert get_pooch_status(alive=False, age=2, health=1) == "dead"
 
     def test_old_exactly_12(self):
-        assert _pooch_status(alive=True, age=12, health=10) == "old"
+        assert get_pooch_status(alive=True, age=12, health=10) == "old"
 
     def test_old_above_12(self):
-        assert _pooch_status(alive=True, age=20, health=10) == "old"
+        assert get_pooch_status(alive=True, age=20, health=10) == "old"
 
     def test_old_beats_sick(self):
-        assert _pooch_status(alive=True, age=15, health=3) == "old"
+        assert get_pooch_status(alive=True, age=15, health=3) == "old"
 
-    def test_sick_at_3(self):
-        assert _pooch_status(alive=True, age=2, health=3) == "sick"
+    def test_sick_at_5(self):
+        assert get_pooch_status(alive=True, age=2, health=5) == "sick"
 
     def test_sick_at_1(self):
-        assert _pooch_status(alive=True, age=2, health=1) == "sick"
+        assert get_pooch_status(alive=True, age=2, health=1) == "sick"
 
     def test_healthy(self):
-        assert _pooch_status(alive=True, age=2, health=10) == "healthy"
+        assert get_pooch_status(alive=True, age=2, health=10) == "healthy"
 
     def test_healthy_just_above_sick_threshold(self):
-        assert _pooch_status(alive=True, age=2, health=4) == "healthy"
+        assert get_pooch_status(alive=True, age=2, health=6) == "healthy"
 
     def test_healthy_just_below_old_threshold(self):
-        assert _pooch_status(alive=True, age=11, health=10) == "healthy"
+        assert get_pooch_status(alive=True, age=11, health=10) == "healthy"
 
 
 # ---------------------------------------------------------------------------

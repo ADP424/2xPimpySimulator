@@ -58,22 +58,12 @@ from .constants import (
 from .exceptions import PoochNotFound
 from .manage_static import get_disease_by_id, get_injury_by_id, get_mutation_by_id
 from .manage_stats import get_effective_stat, get_effective_stats
-from .models import PoochTimelineEntry, to_pooch
+from .models import PoochTimelineEntry, get_pooch_status, to_pooch
 
 logger = get_logger("game/manage_pooches")
 
 if TYPE_CHECKING:
     from .models import Pooch
-
-
-def _pooch_status(alive: bool, age: int, health: int) -> str:
-    if not alive:
-        return "dead"
-    elif age >= 12:
-        return "old"
-    elif health <= 3:
-        return "sick"
-    return "healthy"
 
 
 async def get_pooch_family_tree(pooch_id: int, ancestor_depth: int = 5, descendant_depth: int = 2) -> dict:
@@ -187,7 +177,7 @@ async def get_pooch_family_tree(pooch_id: int, ancestor_depth: int = 5, descenda
                 "sex": p["sex"],
                 "alive": p["alive"],
                 "age": p["age"],
-                "status": _pooch_status(p["alive"], p["age"], p["health"]),
+                "status": get_pooch_status(p["alive"], p["age"], p["health"]),
                 "generation": node_generation.get(pid, 0),
             }
         )
