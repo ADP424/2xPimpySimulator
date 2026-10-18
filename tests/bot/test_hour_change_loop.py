@@ -50,6 +50,15 @@ class TestHourControls:
 
 @pytest.mark.contract
 class TestHourChangeRunOnce:
+    async def _start(self, bot, stage):
+        task = asyncio.create_task(hour_change_runner(bot, stage=stage))
+        await asyncio.sleep(0.01)
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+
     async def _run_once(self, bot):
         task = asyncio.create_task(hour_change_runner(bot, stage="dev"))
         await asyncio.sleep(0.01)
@@ -93,3 +102,19 @@ class TestHourChangeRunOnce:
         ):
             await self._run_once(bot)
         events.assert_awaited_once()
+
+    @pytest.mark.parametrize(("stage", "expected_checks"), [("alpha", 2), ("dev", 4), ("prod", 4)])
+    async def test_alpha_rolls_owner_events_every_other_tick(self, stage, expected_checks):
+        bot = _make_bot()
+        with (
+            patch(f"{MOD}.run_hour_change", new=AsyncMock(return_value={})) as hours,
+            patch(f"{MOD}.post_hour_change_summaries", new=AsyncMock()),
+            patch(f"{MOD}.post_hour_change_webhooks", new=AsyncMock()),
+            patch(f"{MOD}.run_hourly_event_check", new=AsyncMock(return_value={})) as events,
+            patch(f"{MOD}.post_hourly_event_notifications", new=AsyncMock()),
+        ):
+            await self._start(bot, stage)
+            for _ in range(4):
+                await bot._hour_change_run_once()
+        assert hours.await_count == 4
+        assert events.await_count == expected_checks

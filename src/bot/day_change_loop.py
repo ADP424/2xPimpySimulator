@@ -27,7 +27,13 @@ from src.game import (
 )
 from src.logger import get_logger
 
-from .constants import EVENT_LOOP_INTERVAL_SECONDS
+from .constants import (
+    ALPHA_HOUR_INTERVAL_SECONDS,
+    ALPHA_OWNER_EVENT_TICK_STRIDE,
+    ALPHA_WEEK_INTERVAL_SECONDS,
+    EVENT_LOOP_INTERVAL_SECONDS,
+    WEEK_LOOP_INTERVAL_SECONDS,
+)
 from .event_loop import post_hourly_event_notifications
 from .webhooks import post_hour_change_webhooks
 
@@ -497,15 +503,19 @@ async def hour_change_runner(
     tz: str = "America/New_York",  # kept for parity; not yet used
 ) -> None:
     """
-    Run one hour of game time per hour (or every few seconds in dev): ``run_hour_change``, then the owner event check.
+    Run one hour of game time per hour (every 30 minutes in alpha, every few seconds in dev): ``run_hour_change``, then
+    the owner event check (every other tick in alpha, so owner events still roll once per real hour).
 
     Posts the hour summary to the event channel only when there are events to report, and DMs triggered owner events.
     Shares the day loop's lock, so it never runs at the same time as a day or week change.
     """
     del tz  # reserved
     paused_event, manual_queue, run_lock = ensure_hour_controls(bot)
+    owner_event_stride = ALPHA_OWNER_EVENT_TICK_STRIDE if stage == "alpha" else 1
+    tick_count = 0
 
     async def run_once():
+        nonlocal tick_count
         seed = int.from_bytes(os.urandom(8))
         logger.info("Ticking hour (seed %d)...", seed)
         summaries = await run_hour_change(rng_seed=seed)
@@ -515,6 +525,9 @@ async def hour_change_runner(
         except Exception:
             logger.exception("Failed to post hour change webhooks")
 
+        tick_count += 1
+        if tick_count % owner_event_stride != 0:
+            return
         triggered_events = await run_hourly_event_check(rng_seed=int.from_bytes(os.urandom(8)))
         await post_hourly_event_notifications(bot, triggered_events)
 
@@ -528,7 +541,12 @@ async def hour_change_runner(
         resume_task = None
 
         if paused_event.is_set():
-            sleep_seconds = 10.0 if stage == "dev" else EVENT_LOOP_INTERVAL_SECONDS
+            if stage == "dev":
+                sleep_seconds = 10.0
+            elif stage == "alpha":
+                sleep_seconds = ALPHA_HOUR_INTERVAL_SECONDS
+            else:
+                sleep_seconds = EVENT_LOOP_INTERVAL_SECONDS
             timer_task = asyncio.create_task(asyncio.sleep(sleep_seconds))
             wait_tasks = {manual_task, timer_task}
         else:
@@ -593,7 +611,7 @@ async def trigger_manual_week_change(bot: discord.Client):
 
 async def week_change_runner(bot: discord.Client, stage: str) -> None:
     """
-    Run ``run_week_change`` once every 7 days (or every few seconds in dev).
+    Run ``run_week_change`` once every 7 days (3.5 days in alpha, every few seconds in dev).
 
     Posts season-change and major server-event notifications to the event channel.
     Runs in parallel with the day and hour runners under a separate lock.
@@ -620,8 +638,13 @@ async def week_change_runner(bot: discord.Client, stage: str) -> None:
         resume_task = None
 
         if paused_event.is_set():
-            # dev: fire every 30 seconds for easy testing; prod: every 7 days (in seconds)
-            sleep_seconds = 30.0 if stage == "dev" else 7 * 24 * 3600.0
+            # dev: fire every 30 seconds for easy testing; alpha: every 3.5 days; prod: every 7 days
+            if stage == "dev":
+                sleep_seconds = 30.0
+            elif stage == "alpha":
+                sleep_seconds = ALPHA_WEEK_INTERVAL_SECONDS
+            else:
+                sleep_seconds = WEEK_LOOP_INTERVAL_SECONDS
             timer_task = asyncio.create_task(asyncio.sleep(sleep_seconds))
             wait_tasks = {manual_task, timer_task}
         else:
