@@ -31,6 +31,9 @@ from .constants import (
     ALPHA_HOUR_INTERVAL_SECONDS,
     ALPHA_OWNER_EVENT_TICK_STRIDE,
     ALPHA_WEEK_INTERVAL_SECONDS,
+    DEV_DAY_INTERVAL_SECONDS,
+    DEV_HOUR_INTERVAL_SECONDS,
+    DEV_WEEK_INTERVAL_SECONDS,
     EVENT_LOOP_INTERVAL_SECONDS,
     WEEK_LOOP_INTERVAL_SECONDS,
 )
@@ -357,7 +360,7 @@ async def day_change_runner(
 
         if paused_event.is_set():
             if stage == "dev":
-                sleep_seconds = 60.0
+                sleep_seconds = DEV_DAY_INTERVAL_SECONDS
             elif stage == "alpha":
                 now = datetime.now(tz=zone)
                 today = now.date()
@@ -542,7 +545,7 @@ async def hour_change_runner(
 
         if paused_event.is_set():
             if stage == "dev":
-                sleep_seconds = 10.0
+                sleep_seconds = DEV_HOUR_INTERVAL_SECONDS
             elif stage == "alpha":
                 sleep_seconds = ALPHA_HOUR_INTERVAL_SECONDS
             else:
@@ -638,9 +641,8 @@ async def week_change_runner(bot: discord.Client, stage: str) -> None:
         resume_task = None
 
         if paused_event.is_set():
-            # dev: fire every 30 seconds for easy testing; alpha: every 3.5 days; prod: every 7 days
             if stage == "dev":
-                sleep_seconds = 30.0
+                sleep_seconds = DEV_WEEK_INTERVAL_SECONDS
             elif stage == "alpha":
                 sleep_seconds = ALPHA_WEEK_INTERVAL_SECONDS
             else:
