@@ -12,7 +12,9 @@ Nothing is ever deleted.
 3. Backfill what the new hourly tick expects:
    - pooches that are already pregnant get a pregnancy timer (otherwise they'd never give birth);
    - every pooch's hourly food consumption and mess output are recomputed from its size and breeds, as
-     ``create_pooch`` does for new pooches. (``birth_hour`` is seeded by the hourly tick itself.)
+     ``create_pooch`` does for new pooches;
+   - every born pooch without a ``birth_hour`` gets one from the last 24 hours, so birthdays are spread across the
+     game day and the first pooches age on the next tick (instead of all of them aging together a day later);
    - optionally (``--starting-food N``) every kennel is topped up to at least N food units, so existing pooches
      don't start starving the moment the hourly tick runs. Re-running never adds more.
 4. Owner event response windows are synced from ``resources/owner_events`` (a reset is the only other way to change
@@ -32,6 +34,7 @@ from sqlalchemy.schema import AddConstraint, CreateColumn
 
 from src.logger import get_logger
 
+from ..get import get_current_hour
 from ..load.load_resources import (
     load_diseases,
     load_injuries,
@@ -106,6 +109,18 @@ async def _backfill_upkeep() -> int:
     return len(pooches)
 
 
+async def _backfill_birth_hours(rng: random.Random) -> int:
+    """Give every born pooch without a ``birth_hour`` a random one from the last 24 game hours."""
+    current_hour = await get_current_hour()
+    async with session_scope() as session:
+        pooches = (
+            (await session.execute(select(Pooch).where(Pooch.birth_hour.is_(None), Pooch.age >= 0))).scalars().all()
+        )
+        for pooch in pooches:
+            pooch.birth_hour = current_hour - rng.randrange(24)
+    return len(pooches)
+
+
 async def _stock_kennels(food: int) -> int:
     """Top every kennel with less than ``food`` food units up to ``food``. Returns how many were topped up."""
     async with session_scope() as session:
@@ -155,6 +170,8 @@ async def upgrade(
     logger.info("Gave %d pregnant pooch(es) a pregnancy timer.", pregnancies)
     pooches = await _backfill_upkeep()
     logger.info("Recomputed consumption and mess output for %d pooch(es).", pooches)
+    birthdays = await _backfill_birth_hours(rng)
+    logger.info("Gave %d pooch(es) a birth hour.", birthdays)
     if starting_food > 0:
         kennels = await _stock_kennels(starting_food)
         logger.info("Topped up %d kennel(s) to %d food.", kennels, starting_food)

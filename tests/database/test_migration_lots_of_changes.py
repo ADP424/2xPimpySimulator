@@ -70,6 +70,22 @@ class TestBackfillUpkeep:
         assert (mutt.consumption, mutt.mess_output) == pooch_upkeep(10, [])
 
 
+class TestBackfillBirthHours:
+    async def test_spreads_birth_hours_over_the_last_day(self):
+        pooches = [SimpleNamespace(birth_hour=None) for _ in range(50)]
+        session = MagicMock()
+        session.execute = AsyncMock(return_value=_result(scalars=pooches))
+        with (
+            patch(f"{MOD}.get_current_hour", new=AsyncMock(return_value=100)),
+            patch(f"{MOD}.session_scope", return_value=_scope(session)),
+        ):
+            count = await migration._backfill_birth_hours(random.Random(0))
+        assert count == 50
+        hours = {pooch.birth_hour for pooch in pooches}
+        assert hours <= set(range(77, 101))
+        assert len(hours) > 1
+
+
 class TestStockKennels:
     async def test_tops_up_only_kennels_below_the_amount(self):
         empty = SimpleNamespace(id=1, food_stock=0)
@@ -111,6 +127,7 @@ class TestUpgradeOrder:
             patch.multiple(MOD, **loaders),
             patch(f"{MOD}._backfill_pregnancy_timers", new=AsyncMock(return_value=0)) as pregnancies,
             patch(f"{MOD}._backfill_upkeep", new=AsyncMock(return_value=0)) as upkeep,
+            patch(f"{MOD}._backfill_birth_hours", new=AsyncMock(return_value=0)) as birthdays,
             patch(f"{MOD}._sync_owner_event_timeouts", new=AsyncMock(return_value=[])) as retime,
             patch(f"{MOD}.validate_cross_references", new=AsyncMock()) as validate,
         ):
@@ -125,6 +142,7 @@ class TestUpgradeOrder:
             loader.assert_awaited_with(only_missing=True)
         assert pregnancies.await_args.args[0] == (15, 20)
         upkeep.assert_awaited()
+        birthdays.assert_awaited()
         retime.assert_awaited()
         validate.assert_awaited()
 
