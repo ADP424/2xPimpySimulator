@@ -1,6 +1,7 @@
 """Contract tests for src/bot/day_change_loop.py."""
 
 import asyncio
+from datetime import timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import discord
@@ -390,3 +391,19 @@ async def test_startup_day_change_runs_unless_skipped(skip, expected_runs):
             await task
 
     assert mock_day.await_count == expected_runs
+
+
+class TestServerEventDuration:
+    """Server events last one game day / week at the stage's pace, in real time."""
+
+    @pytest.mark.parametrize("stage, hours", [("dev", 240 / 3600), ("alpha", 12), ("prod", 24)])
+    def test_minor_lasts_one_game_day(self, stage, hours):
+        from src.bot.day_change_loop import server_event_duration
+
+        assert server_event_duration("minor", stage) == timedelta(hours=hours)
+
+    @pytest.mark.parametrize("stage, days", [("dev", 28 / (24 * 60)), ("alpha", 3.5), ("prod", 7)])
+    def test_major_lasts_one_game_week(self, stage, days):
+        from src.bot.day_change_loop import server_event_duration
+
+        assert server_event_duration("major", stage) == timedelta(days=days)

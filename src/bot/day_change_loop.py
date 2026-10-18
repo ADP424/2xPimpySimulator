@@ -28,12 +28,14 @@ from src.game import (
 from src.logger import get_logger
 
 from .constants import (
+    ALPHA_DAY_INTERVAL_SECONDS,
     ALPHA_HOUR_INTERVAL_SECONDS,
     ALPHA_OWNER_EVENT_TICK_STRIDE,
     ALPHA_WEEK_INTERVAL_SECONDS,
     DEV_DAY_INTERVAL_SECONDS,
     DEV_HOUR_INTERVAL_SECONDS,
     DEV_WEEK_INTERVAL_SECONDS,
+    DAY_INTERVAL_SECONDS,
     EVENT_LOOP_INTERVAL_SECONDS,
     WEEK_LOOP_INTERVAL_SECONDS,
 )
@@ -45,6 +47,45 @@ if TYPE_CHECKING:
 
 
 logger = get_logger("bot/day_change_loop")
+
+
+def seconds_until_next_day_change(stage: str, tz: str = "America/New_York") -> float:
+    """Real seconds until the next scheduled day change: 4 min in dev, 00:00 / 12:00 in alpha, midnight otherwise."""
+    if stage == "dev":
+        return DEV_DAY_INTERVAL_SECONDS
+    zone = ZoneInfo(tz)
+    now = datetime.now(tz=zone)
+    tomorrow = (now + timedelta(days=1)).date()
+    candidates = [datetime.combine(tomorrow, time(0, 0), tzinfo=zone)]
+    if stage == "alpha":
+        candidates.append(datetime.combine(now.date(), time(12, 0), tzinfo=zone))
+    next_change = min(c for c in candidates if c > now)
+    return max((next_change - now).total_seconds(), 1.0)
+
+
+def week_interval_seconds(stage: str) -> int:
+    """Real seconds between week changes: 28 min in dev, 3.5 days in alpha, 7 days otherwise."""
+    if stage == "dev":
+        return DEV_WEEK_INTERVAL_SECONDS
+    if stage == "alpha":
+        return ALPHA_WEEK_INTERVAL_SECONDS
+    return WEEK_LOOP_INTERVAL_SECONDS
+
+
+def day_length_seconds(stage: str) -> int:
+    """Real seconds in one game day: 4 min in dev, 12 hours in alpha, 24 hours otherwise."""
+    if stage == "dev":
+        return DEV_DAY_INTERVAL_SECONDS
+    if stage == "alpha":
+        return ALPHA_DAY_INTERVAL_SECONDS
+    return DAY_INTERVAL_SECONDS
+
+
+def server_event_duration(tier: str, stage: str) -> timedelta:
+    """Real time a new server event of ``tier`` runs: one game week (major) or day (minor) at ``stage``'s pace."""
+    if tier.strip().lower() == "major":
+        return timedelta(seconds=week_interval_seconds(stage))
+    return timedelta(seconds=day_length_seconds(stage))
 
 
 def ensure_controls(bot: discord.Client):
@@ -317,7 +358,6 @@ async def day_change_runner(
         The result of calling `day_change_runner`.
     """
 
-    zone = ZoneInfo(tz)
     paused_event, manual_queue, run_lock = ensure_controls(bot)
 
     async def run_once():
@@ -333,7 +373,7 @@ async def day_change_runner(
             logger.exception("Failed to update owner display names")
 
         server_events, resolutions = await run_daily_server_event_cycle(
-            rng=random.Random(int.from_bytes(os.urandom(8)))
+            rng=random.Random(int.from_bytes(os.urandom(8))), duration=server_event_duration("minor", stage)
         )
         await post_server_event_resolutions(bot, resolutions)
         await post_server_event_notifications(bot, server_events)
@@ -359,24 +399,9 @@ async def day_change_runner(
         resume_task = None
 
         if paused_event.is_set():
-            if stage == "dev":
-                sleep_seconds = DEV_DAY_INTERVAL_SECONDS
-            elif stage == "alpha":
-                now = datetime.now(tz=zone)
-                today = now.date()
-                tomorrow = (now + timedelta(days=1)).date()
-                candidates = [
-                    datetime.combine(today, time(12, 0), tzinfo=zone),
-                    datetime.combine(tomorrow, time(0, 0), tzinfo=zone),
-                ]
-                next_change = min(c for c in candidates if c > now)
-                sleep_seconds = max((next_change - now).total_seconds(), 1.0)
-                logger.info(f"Next alpha day change in {sleep_seconds:.0f}s at {next_change} ({tz})")
-            else:
-                now = datetime.now(tz=zone)
-                tomorrow = (now + timedelta(days=1)).date()
-                midnight = datetime.combine(tomorrow, time(0, 0), tzinfo=zone)
-                sleep_seconds = max((midnight - now).total_seconds(), 1.0)
+            sleep_seconds = seconds_until_next_day_change(stage, tz)
+            if stage == "alpha":
+                logger.info(f"Next alpha day change in {sleep_seconds:.0f}s ({tz})")
             timer_task = asyncio.create_task(asyncio.sleep(sleep_seconds))
             wait_tasks = {manual_task, timer_task}
         else:
@@ -624,7 +649,7 @@ async def week_change_runner(bot: discord.Client, stage: str) -> None:
     async def run_once():
         logger.info("Ticking week...")
         new_events, resolutions, season_advances = await run_week_change(
-            rng=random.Random(int.from_bytes(os.urandom(8)))
+            rng=random.Random(int.from_bytes(os.urandom(8))), major_event_duration=server_event_duration("major", stage)
         )
         await post_server_event_resolutions(bot, resolutions)
         if season_advances:
@@ -641,12 +666,7 @@ async def week_change_runner(bot: discord.Client, stage: str) -> None:
         resume_task = None
 
         if paused_event.is_set():
-            if stage == "dev":
-                sleep_seconds = DEV_WEEK_INTERVAL_SECONDS
-            elif stage == "alpha":
-                sleep_seconds = ALPHA_WEEK_INTERVAL_SECONDS
-            else:
-                sleep_seconds = WEEK_LOOP_INTERVAL_SECONDS
+            sleep_seconds = week_interval_seconds(stage)
             timer_task = asyncio.create_task(asyncio.sleep(sleep_seconds))
             wait_tasks = {manual_task, timer_task}
         else:

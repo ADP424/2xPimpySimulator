@@ -264,3 +264,45 @@ class TestResolveExpiredServerEvents:
         ):
             resolutions = await _resolve_expired_server_events(random.Random(0))
         assert resolutions == ["resolved 1", "resolved 3"]
+
+    async def test_event_created_a_moment_into_the_last_tick_still_expires(self):
+        """An event made a few seconds into one day change expires at the next one, a day of real time later."""
+        from datetime import datetime, timedelta, timezone
+
+        from src.game.events.server_events.coordinator import (
+            _resolve_expired_server_events,
+        )
+
+        now = datetime.now(timezone.utc)
+        just_after = SimpleNamespace(id=1, expires_at=now + timedelta(seconds=20))
+        tomorrow = SimpleNamespace(id=2, expires_at=now + timedelta(hours=11))
+        resolve = AsyncMock(side_effect=lambda oid, rng: f"resolved {oid}")
+        with (
+            patch(f"{MOD}.list_active_server_event_occurrences", new=AsyncMock(return_value=[just_after, tomorrow])),
+            patch(f"{MOD}.resolve_server_event", new=resolve),
+        ):
+            resolutions = await _resolve_expired_server_events(random.Random(0))
+        assert resolutions == ["resolved 1"]
+
+
+async def test_new_event_expires_after_given_duration(rng):
+    """trigger_daily_server_event uses the caller's duration (one game day at the stage's pace)."""
+    from datetime import datetime, timedelta, timezone
+
+    event = SimpleNamespace(id=7, name="Quick", filter=None, actions=[])
+    create = AsyncMock(return_value=SimpleNamespace(id=11))
+    with (
+        patch(f"{MOD}.get_active_server_event_occurrence_by_tier", new=AsyncMock(return_value=None)),
+        patch(
+            f"{MOD}.get_server_by_discord_id", new=AsyncMock(return_value=SimpleNamespace(event_channel_discord_id=1))
+        ),
+        patch(f"{MOD}.list_server_events_with_weights_by_tier", new=AsyncMock(return_value=[(event, 1)])),
+        patch(f"{MOD}._check_server_filter", new=AsyncMock(return_value=True)),
+        patch(f"{MOD}.get_current_season", new=AsyncMock(return_value="spring")),
+        patch(f"{MOD}.rarity_choice", return_value=event),
+        patch(f"{MOD}.create_server_event_occurrence", new=create),
+        patch(f"{MOD}.get_server_event_occurrence_by_id", new=AsyncMock(return_value=None)),
+    ):
+        await trigger_daily_server_event(1, tier="minor", rng=rng, duration=timedelta(minutes=4))
+    expires_at = create.call_args.kwargs["expires_at"]
+    assert timedelta(minutes=3) < expires_at - datetime.now(timezone.utc) <= timedelta(minutes=4)

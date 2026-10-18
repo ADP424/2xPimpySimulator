@@ -50,6 +50,12 @@ logger = get_logger("game/events/server_events/coordinator")
 SERVER_EVENT_DURATION = timedelta(days=1)
 MAJOR_SERVER_EVENT_DURATION = timedelta(days=7)
 MINOR_EVENT_DAILY_CHANCE = 0.5
+# An event created a moment into one tick must still count as expired at the matching tick a day / week later.
+EXPIRY_GRACE = timedelta(minutes=1)
+
+
+def _default_duration(tier: str) -> timedelta:
+    return MAJOR_SERVER_EVENT_DURATION if tier == "major" else SERVER_EVENT_DURATION
 
 
 def roll_outcome_chance(chance: float | None, rng: random.Random) -> bool:
@@ -147,6 +153,7 @@ async def trigger_daily_server_event(
     server_discord_id: int,
     tier: str = "minor",
     rng: Optional[random.Random] = None,
+    duration: Optional[timedelta] = None,
 ) -> TriggeredServerEvent | None:
     """
     Trigger daily server event.
@@ -161,6 +168,10 @@ async def trigger_daily_server_event(
 
     rng: Any
         The `rng` value.
+
+    duration: Optional[timedelta]
+        How long the event runs in real time: one game day (minor) or week (major) at the bot's stage pace.
+        Defaults to a real day / week.
 
     Returns
     -------
@@ -201,7 +212,7 @@ async def trigger_daily_server_event(
                 server_discord_id, action_dicts, server_context, rng, season=await get_current_season()
             )
 
-    duration = MAJOR_SERVER_EVENT_DURATION if tier == "major" else SERVER_EVENT_DURATION
+    duration = duration if duration is not None else _default_duration(tier)
     occurrence = await create_server_event_occurrence(
         server_discord_id=server_discord_id,
         server_event_id=server_event.id,
@@ -219,6 +230,7 @@ async def trigger_server_event_by_name(
     server_discord_id: int,
     name: str,
     rng: Optional[random.Random] = None,
+    duration: Optional[timedelta] = None,
 ) -> TriggeredServerEvent | None:
     """Trigger a specific server event by name, bypassing random selection and filter checks."""
     rng = rng if rng is not None else random.Random()
@@ -244,7 +256,7 @@ async def trigger_server_event_by_name(
                 server_discord_id, action_dicts, server_context, rng, season=await get_current_season()
             )
 
-    duration = MAJOR_SERVER_EVENT_DURATION if tier == "major" else SERVER_EVENT_DURATION
+    duration = duration if duration is not None else _default_duration(tier)
     occurrence = await create_server_event_occurrence(
         server_discord_id=server_discord_id,
         server_event_id=server_event.id,
@@ -395,8 +407,12 @@ async def resolve_server_event(
 
 
 async def _resolve_expired_server_events(rng: random.Random) -> list[ServerEventResolution]:
-    """Resolve every active server event whose time is up. Week-long major events keep running until they expire."""
-    now = datetime.now(timezone.utc)
+    """
+    Resolve every active server event whose time is up (within ``EXPIRY_GRACE``).
+
+    Week-long major events keep running until they expire.
+    """
+    now = datetime.now(timezone.utc) + EXPIRY_GRACE
     resolutions: list[ServerEventResolution] = []
     for occurrence in await list_active_server_event_occurrences():
         expires_at = occurrence.expires_at
@@ -413,8 +429,13 @@ async def _resolve_expired_server_events(rng: random.Random) -> list[ServerEvent
 
 async def run_daily_server_event_cycle(
     rng: Optional[random.Random] = None,
+    duration: Optional[timedelta] = None,
 ) -> tuple[dict[int, TriggeredServerEvent], list[ServerEventResolution]]:
-    """Resolve expired events and roll for a new minor server event on each server."""
+    """
+    Resolve expired events and roll for a new minor server event on each server.
+
+    ``duration`` is how long new events run in real time (one game day at the bot's stage pace).
+    """
     rng = rng if rng is not None else random.Random()
 
     resolutions = await _resolve_expired_server_events(rng)
@@ -426,7 +447,7 @@ async def run_daily_server_event_cycle(
         if server.event_channel_discord_id is None:
             continue
         if rng.random() < MINOR_EVENT_DAILY_CHANCE:
-            event = await trigger_daily_server_event(server.discord_id, tier="minor", rng=rng)
+            event = await trigger_daily_server_event(server.discord_id, tier="minor", rng=rng, duration=duration)
             if event is not None:
                 new_events[server.discord_id] = event
 
@@ -436,8 +457,13 @@ async def run_daily_server_event_cycle(
 async def run_weekly_server_event_cycle(
     rng: Optional[random.Random] = None,
     new_season: Optional[str] = None,
+    duration: Optional[timedelta] = None,
 ) -> tuple[dict[int, TriggeredServerEvent], list[ServerEventResolution], dict[int, str]]:
-    """Resolve expired events, trigger a new major event, and build season_advances."""
+    """
+    Resolve expired events, trigger a new major event, and build season_advances.
+
+    ``duration`` is how long new events run in real time (one game week at the bot's stage pace).
+    """
     rng = rng if rng is not None else random.Random()
 
     resolutions = await _resolve_expired_server_events(rng)
@@ -453,7 +479,7 @@ async def run_weekly_server_event_cycle(
     for server in servers:
         if server.event_channel_discord_id is None:
             continue
-        event = await trigger_daily_server_event(server.discord_id, tier="major", rng=rng)
+        event = await trigger_daily_server_event(server.discord_id, tier="major", rng=rng, duration=duration)
         if event is not None:
             new_events[server.discord_id] = event
 

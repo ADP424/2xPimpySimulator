@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import random
+from datetime import timedelta
 from typing import Optional
 
 from src.logger import get_logger
@@ -13,6 +14,7 @@ logger = get_logger("game/change_week")
 
 async def run_week_change(
     rng: Optional[random.Random] = None,
+    major_event_duration: Optional[timedelta] = None,
 ) -> tuple[dict, list, dict[int, str]]:
     """
     Run all weekly server-level bookkeeping:
@@ -23,6 +25,8 @@ async def run_week_change(
     ----------
     rng:
         Optional seeded Random for deterministic event selection.
+    major_event_duration:
+        How long new major events run in real time (one game week at the bot's stage pace).
 
     Returns
     -------
@@ -37,7 +41,9 @@ async def run_week_change(
     new_season = await advance_season()
     logger.info("Season advanced to %s.", new_season)
 
-    new_events, resolutions, season_advances = await run_weekly_server_event_cycle(rng=rng, new_season=new_season)
+    new_events, resolutions, season_advances = await run_weekly_server_event_cycle(
+        rng=rng, new_season=new_season, duration=major_event_duration
+    )
 
     logger.info(
         "Week change complete. Season: %s, new events: %d, resolutions: %d.",

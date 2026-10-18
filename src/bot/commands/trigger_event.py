@@ -1,9 +1,12 @@
+import os
+
 from discord import Interaction, app_commands
 
 from src.bot.constants import GUILDS
 from src.bot.day_change_loop import (
     post_server_event_notifications,
     post_stray_event_summaries,
+    server_event_duration,
 )
 from src.bot.event_loop import post_hourly_event_notifications
 from src.game import (
@@ -64,7 +67,9 @@ def register_trigger_event_command(tree: app_commands.CommandTree):
             await post_stray_event_summaries(interaction.client, {interaction.guild_id: [(name, result)]})
 
         elif event_type in ("server_minor", "server_major"):
-            triggered = await trigger_server_event_by_name(interaction.guild_id, name)
+            tier = "major" if event_type == "server_major" else "minor"
+            duration = server_event_duration(tier, os.getenv("STAGE", "dev").lower())
+            triggered = await trigger_server_event_by_name(interaction.guild_id, name, duration=duration)
             if triggered is None:
                 await interaction.followup.send(
                     f"No server event found with name `{name}`, or no event channel is set.", ephemeral=True
