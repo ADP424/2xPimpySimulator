@@ -614,7 +614,7 @@ async def trigger_manual_week_change(bot: discord.Client):
 
 async def week_change_runner(bot: discord.Client, stage: str) -> None:
     """
-    Run ``run_week_change`` once every 7 days (3.5 days in alpha, every few seconds in dev).
+    Run ``run_week_change`` once every 7 days (3.5 days in alpha, 28 minutes in dev).
 
     Posts season-change and major server-event notifications to the event channel.
     Runs in parallel with the day and hour runners under a separate lock.
