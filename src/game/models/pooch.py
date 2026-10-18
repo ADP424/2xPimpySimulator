@@ -14,7 +14,11 @@ from src.database import (
     list_pooch_mutations,
 )
 
-from ..constants import BREEDING_COOLDOWN_HEATING_UP_THRESHOLD
+from ..constants import (
+    BREEDING_COOLDOWN_HEATING_UP_THRESHOLD,
+    POOCH_OLD_AGE,
+    POOCH_SICK_HEALTH,
+)
 from ..manage_stats import compute_effective_stats, get_pooch_health
 from .breed import to_breed
 from .mutation import to_mutation
@@ -120,13 +124,7 @@ class Pooch:
 
     @property
     def status(self) -> str:
-        if not self.alive:
-            return "dead"
-        elif self.age >= 12:
-            return "old"
-        elif self.health <= 5:
-            return "sick"
-        return "healthy"
+        return get_pooch_status(self.alive, self.age, self.health)
 
     @property
     def breeding_status(self) -> str:
@@ -135,6 +133,17 @@ class Pooch:
     @property
     def can_breed(self) -> bool:
         return self.alive and self.breeding_cooldown == 0 and self.pregnancy_timer is None
+
+
+def get_pooch_status(alive: bool, age: int, health: int) -> str:
+    """Return "dead", "old", "sick" or "healthy"."""
+    if not alive:
+        return "dead"
+    if age >= POOCH_OLD_AGE:
+        return "old"
+    if health <= POOCH_SICK_HEALTH:
+        return "sick"
+    return "healthy"
 
 
 def get_breeding_status(cooldown: int) -> str:

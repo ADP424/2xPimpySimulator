@@ -3,6 +3,8 @@ from __future__ import annotations
 # Pooch Lifecycle
 MIN_HEALTH_FOR_DEATH_CHANCE = 5
 POOCH_HEALTH_LOSS_STARTING_AGE = 5
+POOCH_OLD_AGE = 12  # Status shows "old" from this age
+POOCH_SICK_HEALTH = 5  # Status shows "sick" at or below this effective health
 # Hourly death chance per health point below MIN_HEALTH_FOR_DEATH_CHANCE.
 # At health=0 (deficit=5): 5 * 0.008 = 4% per hour → ~64% over 24 hours.
 # At health=3 (deficit=2): 2 * 0.008 = 1.6% per hour → ~32% over 24 hours.
