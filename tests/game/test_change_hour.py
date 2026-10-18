@@ -357,6 +357,51 @@ class TestCannibalism:
         assert [d.message for d in deaths] == ["Snack was eaten by Gnasher, who had been starving."]
 
 
+class TestOrphanedFetus:
+    async def test_fetus_dies_when_mother_is_dead(self):
+        from src.game.change_hour import run_hour_change
+
+        mother = make_pooch(pooch_id=1, name="Snomer", alive=False)
+        fetus = make_pooch(pooch_id=2, name="Walkingmer", age=-1, owner_discord_id=10)
+        dead_fetus = make_pooch(pooch_id=2, name="Walkingmer", age=-1, alive=False, owner_discord_id=10)
+        pooches = {1: mother, 2: fetus}
+        pregnancy = type("P", (), {"mother_id": 1, "fetus_id": 2})()
+        server = type("S", (), {"discord_id": 100})()
+
+        with (
+            patch.multiple(
+                "src.game.change_hour",
+                increment_global_hour=AsyncMock(return_value=1),
+                list_pooch_pregnancies=AsyncMock(return_value=[pregnancy]),
+                list_living_pooches=AsyncMock(return_value=[]),
+                run_hourly_breeding_cooldown_check=AsyncMock(return_value=0),
+                run_hourly_injury_persistence_check=AsyncMock(return_value=0),
+                run_hourly_disease_tick=AsyncMock(return_value={}),
+                get_current_season=AsyncMock(return_value="spring"),
+                get_pooch_by_id=AsyncMock(side_effect=lambda pid: pooches[pid]),
+                delete_pregnancy=AsyncMock(),
+                set_pooch_dead=AsyncMock(return_value=dead_fetus),
+                bury_pooch=AsyncMock(),
+                decrement_pooch_pregnancy_timer=AsyncMock(),
+                list_servers_for_pooch=AsyncMock(return_value=[server]),
+                to_server=AsyncMock(return_value=server),
+                to_pooch=AsyncMock(side_effect=lambda p: p),
+                list_servers=AsyncMock(return_value=[server]),
+            ),
+            patch("src.game.change_hour.HourChangeSummary", new=lambda **kw: kw),
+        ):
+            from src.game import change_hour
+
+            result = await run_hour_change(rng_seed=1)
+            change_hour.delete_pregnancy.assert_awaited_once_with(1, 2)
+            change_hour.set_pooch_dead.assert_awaited_once_with(2)
+            change_hour.bury_pooch.assert_awaited_once_with(10, 2)
+            change_hour.decrement_pooch_pregnancy_timer.assert_not_awaited()
+
+        deaths = result[100]["deaths"]
+        assert [d.message for d in deaths] == ["Walkingmer died unborn along with Snomer."]
+
+
 class TestHourTickUsesDatabaseRows:
     def test_pooches_come_from_the_database_not_the_game_model(self):
         """The tick reads columns (immortal, starvation, consumption, birth_hour) the game Pooch used to lack."""

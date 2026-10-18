@@ -317,6 +317,31 @@ async def _handle_miscarriage(
         )
 
 
+async def _handle_orphaned_fetus(
+    mother_id: int,
+    mother: Optional["Pooch"],
+    fetus: "Pooch",
+    *,
+    deaths_by_server: dict,
+):
+    """Kill a fetus whose mother died before giving birth."""
+    await delete_pregnancy(mother_id, fetus.id)
+    if not fetus.alive:
+        return
+    fetus = await set_pooch_dead(fetus.id)
+    if fetus.owner_discord_id is not None:
+        await bury_pooch(fetus.owner_discord_id, fetus.id)
+    mother_name = mother.name if mother is not None else "its mother"
+    for server in await list_servers_for_pooch(fetus.id):
+        deaths_by_server.setdefault(server.discord_id, []).append(
+            DeathEvent(
+                server=(await to_server(server)),
+                pooch=(await to_pooch(fetus)),
+                message=f"{fetus.name} died unborn along with {mother_name}.",
+            )
+        )
+
+
 # ---------------------------------------------------------------------------
 # Food / starvation tick
 # ---------------------------------------------------------------------------
@@ -412,6 +437,11 @@ async def run_hour_change(rng_seed: Optional[int] = None) -> dict[int, HourChang
     for mother_id, fetus_ids in pregnancy_by_mother.items():
         mother = await get_pooch_by_id(mother_id)
         if mother is None or not mother.alive:
+            # Pups can't outlive their mother. Without this they stay unborn (age -1) forever.
+            for fid in fetus_ids:
+                fetus = await get_pooch_by_id(fid)
+                if fetus is not None:
+                    await _handle_orphaned_fetus(mother_id, mother, fetus, deaths_by_server=deaths_by_server)
             continue
         mother_stats = await get_effective_stats(mother.id)
         # Miscarriage roll first
