@@ -43,7 +43,7 @@ if TYPE_CHECKING:
 logger = get_logger("game/manage_diseases")
 
 DISEASE_BASE_CONTRACTION_CHANCE = 0.005
-MESSINESS_CONTRACTION_MULT = 0.005
+MESSINESS_CONTRACTION_MULT = 0.002
 CONSTITUTION_RESISTANCE_DIVISOR = 100
 TREATMENT_RECOVERY_BONUS = 0.15
 VET_DIAGNOSE_DISEASES_COST = 30
@@ -55,12 +55,13 @@ MUTATION_PREDISPOSITION_MULT = 3.0
 # 1.0 uses the full contagion (Kennel Cough ≈32%/h per sick mate: whole kennels fall ill together).
 DISEASE_SPREAD_CONTAGION_MULT = 0.1
 
-# Hourly mess accumulation: each pooch contributes mess_output / 12 per hour
-# (so a pooch with mess_output 3 adds ~6 mess units per 24-hour day).
-MESS_PER_POOCH_PER_HOUR_DIVISOR = 12
-# Hourly compounding rate: 10% per day scaled to per-hour (~0.417%),
+# Hourly mess accumulation: each pooch contributes mess_output / 72 per hour
+# (so a pooch with mess_output 3 adds ~1 mess unit per 24-hour day, and a full kennel
+# reaches "Disgusting" in about 2 days).
+MESS_PER_POOCH_PER_HOUR_DIVISOR = 72
+# Hourly compounding rate: 5% per day scaled to per-hour (~0.208%),
 # applied on top of linear accumulation.
-MESS_HOURLY_COMPOUND_RATE = 0.1 / 24
+MESS_HOURLY_COMPOUND_RATE = 0.05 / 24
 
 
 def _random_round(amount: float, rng: random.Random) -> int:
@@ -468,7 +469,7 @@ async def run_hourly_disease_tick(season: str, rng_seed: Optional[int] = None) -
 
     Mess accumulates linearly each hour (pooch.mess_output /
     MESS_PER_POOCH_PER_HOUR_DIVISOR) and also compounds at
-    MESS_HOURLY_COMPOUND_RATE (≈0.417%/hour, equivalent to 10%/day). Both are
+    MESS_HOURLY_COMPOUND_RATE (≈0.208%/hour, equivalent to 5%/day). Both are
     rounded randomly, so their fractions add up correctly over many hours.
 
     Pooches that were sick when the hour began can also pass their diseases to
@@ -503,7 +504,7 @@ async def run_hourly_disease_tick(season: str, rng_seed: Optional[int] = None) -
             if linear_add > 0:
                 await update_kennel_messiness(kennel.id, linear_add)
 
-            # Compound mess growth (~0.417%/hour → ~10%/day).
+            # Compound mess growth (~0.208%/hour → ~5%/day).
             current_mess = kennel.messiness + linear_add
             compound_add = _random_round(current_mess * MESS_HOURLY_COMPOUND_RATE, rng)
             if compound_add > 0:
