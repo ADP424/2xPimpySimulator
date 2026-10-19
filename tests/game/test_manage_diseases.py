@@ -1201,8 +1201,8 @@ class TestRandomRound:
 class TestHourlyMessGrowth:
     _MOD = "src.game.manage_diseases"
 
-    async def _week_of_mess(self, mess_outputs, start_mess=0):
-        """Run a week of hourly ticks on one kennel and return the total mess added."""
+    async def _mess_over(self, mess_outputs, hours, start_mess=0):
+        """Run hourly ticks on one kennel and return the total mess added."""
         from src.game.manage_diseases import run_hourly_disease_tick
 
         pooches = [
@@ -1224,16 +1224,21 @@ class TestHourlyMessGrowth:
             patch(f"{self._MOD}.list_pooch_disease_instances", new=AsyncMock(return_value=[])),
             patch("src.database.list_servers", new=AsyncMock(return_value=[])),
         ):
-            for hour in range(24 * 7):
+            for hour in range(hours):
                 await run_hourly_disease_tick(season="autumn", rng_seed=hour)
         return sum(call.args[1] for call in update.await_args_list)
 
     @pytest.mark.asyncio
     async def test_one_dog_kennel_gets_messy(self):
         # 3 / 72 ≈ 0.04 per hour → ~7 per week; fixed rounding gave 0 forever
-        assert 3 <= await self._week_of_mess([3]) <= 12
+        assert 3 <= await self._mess_over([3], hours=24 * 7) <= 12
 
     @pytest.mark.asyncio
     async def test_two_dog_kennel_no_longer_gains_a_full_point_every_hour(self):
         # 7 / 72 ≈ 0.1 per hour → ~16 per week; fixed rounding gave 0
-        assert 9 <= await self._week_of_mess([3, 4]) <= 24
+        assert 9 <= await self._mess_over([3, 4], hours=24 * 7) <= 24
+
+    @pytest.mark.asyncio
+    async def test_full_kennel_day_of_mess(self):
+        # 10 x 3 / 72 ≈ 0.42 per hour → ~10 per day; the old divisor of 12 gave ~60
+        assert 5 <= await self._mess_over([3] * 10, hours=24) <= 16
