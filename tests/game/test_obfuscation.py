@@ -67,23 +67,29 @@ def test_health_label_robust():
 
 
 def test_messiness_label_spotless():
-    assert messiness_label(0, capacity=10) == "Spotless"
+    assert messiness_label(0) == "Spotless"
 
 
 def test_messiness_label_mostly_clean():
-    assert messiness_label(2, capacity=10) == "Mostly Clean"
+    assert messiness_label(2) == "Mostly Clean"
 
 
 def test_messiness_label_messy():
-    assert messiness_label(5, capacity=10) == "Messy"
+    assert messiness_label(5) == "Messy"
 
 
 def test_messiness_label_very_messy():
-    assert messiness_label(10, capacity=10) == "Very Messy"
+    assert messiness_label(10) == "Very Messy"
 
 
 def test_messiness_label_disgusting():
-    assert messiness_label(20, capacity=10) == "Disgusting"
+    assert messiness_label(20) == "Disgusting"
+
+
+def test_messiness_label_biohazard_at_the_cap():
+    assert messiness_label(24) == "Disgusting"
+    assert messiness_label(25) == "Biohazard"
+    assert messiness_label(400) == "Biohazard"
 
 
 def test_starvation_label_well_fed_on_none():

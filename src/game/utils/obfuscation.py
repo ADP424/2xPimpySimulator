@@ -55,25 +55,27 @@ def health_label(value: Optional[int]) -> str:
     return "Robust"
 
 
-def messiness_label(messiness: int, *, capacity: int = 10) -> str:
+def messiness_label(messiness: int) -> str:
     """
     Describe kennel mess without exposing raw numbers.
 
-    Scale is calibrated so "Spotless" means `messiness == 0` and
-    "Disgusting" kicks in around `capacity * 2` mess units (roughly
-    2 days of unchecked accumulation in a full kennel).
+    The scale is the same for every kennel size: "Spotless" means `messiness == 0`,
+    "Disgusting" starts at 15 (roughly 1.5 days of unchecked mess in a full 10-pooch kennel)
+    and "Biohazard" means the kennel has hit KENNEL_MAX_MESSINESS and can't get any worse.
     """
+    from ..constants import KENNEL_MAX_MESSINESS
+
     if messiness <= 0:
         return "Spotless"
-    cap = max(1, capacity)
-    ratio = messiness / cap
-    if ratio < 0.3:
+    if messiness < 3:
         return "Mostly Clean"
-    if ratio < 0.8:
+    if messiness < 8:
         return "Messy"
-    if ratio < 1.5:
+    if messiness < 15:
         return "Very Messy"
-    return "Disgusting"
+    if messiness < KENNEL_MAX_MESSINESS:
+        return "Disgusting"
+    return "Biohazard"
 
 
 # Starvation counter → label. 0 is "Well-fed", rising from there.

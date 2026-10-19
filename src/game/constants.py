@@ -18,6 +18,8 @@ INJURY_PERSISTENCE_HOURLY_CONSTITUTION_DIVISOR = 50
 # Strays also roll for disease contraction hourly. Their "dirty outdoors"
 # environmental mess modifier — equivalent to a medium-dirty kennel.
 STRAY_ENVIRONMENTAL_MESSINESS = 10
+# Kennel mess never grows past this, whatever the kennel's size (it affects every pooch inside evenly).
+KENNEL_MAX_MESSINESS = 25
 # Pregnancy timer range (hours) set when a pooch becomes pregnant.
 PREGNANCY_TIMER_HOURS_RANGE = (15, 20)
 # Per-hour miscarriage base chance for a healthy young pooch (age≤5, constitution=10,

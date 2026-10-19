@@ -1242,3 +1242,18 @@ class TestHourlyMessGrowth:
     async def test_full_kennel_day_of_mess(self):
         # 10 x 3 / 72 ≈ 0.42 per hour → ~10 per day; the old divisor of 12 gave ~60
         assert 5 <= await self._mess_over([3] * 10, hours=24) <= 16
+
+    @pytest.mark.asyncio
+    async def test_mess_stops_at_the_cap(self):
+        from src.game.constants import KENNEL_MAX_MESSINESS
+
+        # Every hour adds at least a point, but a kennel at the cap gains nothing
+        assert await self._mess_over([72] * 10, hours=24, start_mess=KENNEL_MAX_MESSINESS) == 0
+        # One hour from just below the cap only fills it up
+        assert await self._mess_over([72] * 10, hours=1, start_mess=KENNEL_MAX_MESSINESS - 2) == 2
+
+    @pytest.mark.asyncio
+    async def test_kennel_above_the_cap_drops_back_to_it(self):
+        from src.game.constants import KENNEL_MAX_MESSINESS
+
+        assert await self._mess_over([3], hours=1, start_mess=300) == KENNEL_MAX_MESSINESS - 300

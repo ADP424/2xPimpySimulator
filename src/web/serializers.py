@@ -99,7 +99,7 @@ def serialize_kennel(kennel: Any) -> dict:
         "name": kennel.name,
         "pooch_limit": pooch_limit,
         "messiness": messiness,
-        "messiness_label": messiness_label(messiness, capacity=pooch_limit),
+        "messiness_label": messiness_label(messiness),
         "food_stock": getattr(kennel, "food_stock", 0),
     }
 

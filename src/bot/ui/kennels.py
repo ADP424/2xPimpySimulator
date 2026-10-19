@@ -56,7 +56,7 @@ class KennelsPageSource(PageSource):
             title=kennel.name,
             description=(
                 f"{len(pooches)} / {kennel.pooch_limit} pooches\n"
-                f"🧹 Messiness: **{messiness_label(kennel.messiness, capacity=kennel.pooch_limit)}**\n"
+                f"🧹 Messiness: **{messiness_label(kennel.messiness)}**\n"
                 f"🍖 Food stock: **{food_stock}** units"
             ),
         )

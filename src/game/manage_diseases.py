@@ -109,7 +109,7 @@ async def clean_kennel_by_hand(owner_discord_id: int, kennel_id: int) -> tuple[b
 
     new_mess = await update_kennel_messiness(kennel_id, -HAND_CLEAN_MESS_REDUCTION)
     await set_owner_hand_cleaned_today(owner_discord_id, True)
-    label = messiness_label(new_mess, capacity=kennel.pooch_limit)
+    label = messiness_label(new_mess)
     return True, f"You tidied up — the kennel feels a little cleaner. It is now **{label}**."
 
 
@@ -140,7 +140,7 @@ async def clean_kennel_with_item(owner_discord_id: int, kennel_id: int, item_nam
         return False, f"You don't own any {item.name}."
 
     new_mess = await update_kennel_messiness(kennel_id, -reduction)
-    label = messiness_label(new_mess, capacity=kennel.pooch_limit)
+    label = messiness_label(new_mess)
     message = f"You used one {item.name}. The kennel is noticeably cleaner. It is now **{label}**."
 
     # Harsh products (e.g. bleach) permanently hurt every pooch in the kennel
@@ -470,7 +470,8 @@ async def run_hourly_disease_tick(season: str, rng_seed: Optional[int] = None) -
     Mess accumulates linearly each hour (pooch.mess_output /
     MESS_PER_POOCH_PER_HOUR_DIVISOR) and also compounds at
     MESS_HOURLY_COMPOUND_RATE (≈0.208%/hour, equivalent to 5%/day). Both are
-    rounded randomly, so their fractions add up correctly over many hours.
+    rounded randomly, so their fractions add up correctly over many hours. Mess
+    never goes past KENNEL_MAX_MESSINESS.
 
     Pooches that were sick when the hour began can also pass their diseases to
     kennel mates (``try_spread_disease``, scaled by DISEASE_SPREAD_CONTAGION_MULT).
@@ -480,7 +481,7 @@ async def run_hourly_disease_tick(season: str, rng_seed: Optional[int] = None) -
     """
     from src.database import list_servers, list_strays_for_server
 
-    from .constants import STRAY_ENVIRONMENTAL_MESSINESS
+    from .constants import KENNEL_MAX_MESSINESS, STRAY_ENVIRONMENTAL_MESSINESS
 
     rng = random.Random(rng_seed)
     current_day = await get_current_day()
@@ -501,17 +502,14 @@ async def run_hourly_disease_tick(season: str, rng_seed: Optional[int] = None) -
             linear_add = _random_round(
                 sum(int(getattr(p, "mess_output", 2) or 2) for p in pooches) / MESS_PER_POOCH_PER_HOUR_DIVISOR, rng
             )
-            if linear_add > 0:
-                await update_kennel_messiness(kennel.id, linear_add)
 
             # Compound mess growth (~0.208%/hour → ~5%/day).
-            current_mess = kennel.messiness + linear_add
-            compound_add = _random_round(current_mess * MESS_HOURLY_COMPOUND_RATE, rng)
-            if compound_add > 0:
-                await update_kennel_messiness(kennel.id, compound_add)
-                current_mess += compound_add
+            compound_add = _random_round((kennel.messiness + linear_add) * MESS_HOURLY_COMPOUND_RATE, rng)
 
-            messiness = current_mess
+            # Capped at KENNEL_MAX_MESSINESS; a kennel left above it from before the cap drops back to it.
+            messiness = min(kennel.messiness + linear_add + compound_add, KENNEL_MAX_MESSINESS)
+            if messiness != kennel.messiness:
+                await update_kennel_messiness(kennel.id, messiness - kennel.messiness)
 
             predisposed_cache: dict[int, set[str]] = {}
             immune_names_cache: dict[int, set[str]] = {}
