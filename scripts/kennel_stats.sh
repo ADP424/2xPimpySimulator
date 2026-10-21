@@ -3,16 +3,29 @@
 # hunger, upkeep, base stats) straight from the database. Read-only. Stats are the stored base values,
 # not effective stats (breeds, mutations, injuries and hunger change those).
 # Usage: scripts/kennel_stats.sh [discord_name]      (default: dogdroid; matched case-insensitively)
+#        scripts/kennel_stats.sh --owners            (list every owner with their money and pooch counts)
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+command -v docker > /dev/null || { echo "docker not found." >&2; exit 1; }
+
 case "${1:-}" in
-    -h | --help) sed -n 2,5p "$0"; exit 0 ;;
+    -h | --help) sed -n 2,6p "$0"; exit 0 ;;
+    --owners)
+        docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1' <<'SQL'
+\pset footer off
+SELECT o.discord_id, o.discord_name, o.dollars, o.bloodskulls,
+       (SELECT COUNT(*) FROM kennels k WHERE k.owner_discord_id = o.discord_id) AS kennels,
+       (SELECT COUNT(*) FROM pooches p WHERE p.owner_discord_id = o.discord_id AND p.alive) AS living_pooches,
+       o.joined_at::date AS joined
+FROM owners o
+ORDER BY living_pooches DESC, o.discord_name;
+SQL
+        exit 0
+        ;;
 esac
 OWNER="${1:-dogdroid}"
-
-command -v docker > /dev/null || { echo "docker not found." >&2; exit 1; }
 
 # The labels mirror messiness_label / starvation_label / get_breeding_status in src/game.
 docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 -v owner="$1"' _ "$OWNER" <<'SQL'
