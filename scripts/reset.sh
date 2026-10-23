@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Fully reset the server's (Kraft) game: back up the database to backup/, stop the bot and web app, wipe every
-# table and reload resources/ (`main.py -r`), then start the bot (with its startup day change, which stocks the
-# vendors) and the web app. Players start over: their first kennel gets STARTING_KENNEL_FOOD when they join.
+# Fully reset the server's (Kraft) game: back up the database to backup/, stop the bot and web app, install
+# dependencies, rebuild the JS bundle, wipe every table and reload resources/ (`main.py -r`), then start the bot
+# (with its startup day change, which stocks the vendors) and the web app. Players start over: their first kennel
+# gets STARTING_KENNEL_FOOD when they join.
 # Event channels are wiped too; set them again with /set_event_channel.
 # Usage: scripts/reset.sh [--yes]      (--yes skips the "type reset" confirmation)
 set -euo pipefail
@@ -12,14 +13,15 @@ CONFIRMED=0
 for arg in "$@"; do
     case "$arg" in
         --yes) CONFIRMED=1 ;;
-        -h | --help) sed -n 2,6p "$0"; exit 0 ;;
+        -h | --help) sed -n 2,7p "$0"; exit 0 ;;
         *) echo "Unknown option: $arg" >&2; exit 2 ;;
     esac
 done
 
 mkdir -p backup logs
 
-for tool in docker uv; do
+export PATH="$HOME/.bun/bin:$PATH" # bun's default install dir, often missing from non-interactive shells
+for tool in docker uv bun; do
     command -v "$tool" > /dev/null || { echo "$tool not found. Nothing was changed." >&2; exit 1; }
 done
 STAMP=$(date +%Y-%m-%d_%H%M%S)
@@ -71,7 +73,13 @@ fi
 
 trap 'echo "Reset failed after the game was stopped. Fix it, then rerun scripts/reset.sh, or restore the backup: $BACKUP" >&2' ERR
 
-# 3. Wipe and reload.
+# 3. Install, rebuild the JS bundle (gitignored), then wipe and reload.
+echo "==> Installing dependencies..."
+uv pip install --quiet -e . -r requirements.txt -r src/web/requirements.txt
+
+echo "==> Building the JS bundle..."
+(cd src/web/static/js && bun install --silent && bun run build)
+
 echo "==> Resetting the database..."
 uv run python main.py -r
 
