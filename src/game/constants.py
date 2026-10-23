@@ -161,6 +161,9 @@ EVENT_HOURLY_TRIGGER_CHANCE = 0.15
 EVENT_MAX_ACTIVE_PER_OWNER = 5
 EVENT_DEFAULT_TIMEOUT_HOURS = 24
 
+# A new player's first kennel starts with this much food
+STARTING_KENNEL_FOOD = 150
+
 # Kennel Purchasing / Upgrades
 KENNEL_BASE_PRICE = 250
 MAX_KENNELS = 5

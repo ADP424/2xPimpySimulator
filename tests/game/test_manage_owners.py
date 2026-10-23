@@ -16,6 +16,7 @@ def mock_owners_db_calls():
         yield
 
 
+from src.game.constants import STARTING_KENNEL_FOOD
 from src.game.exceptions import OwnerNotFound
 from src.game import (
     add_money,
@@ -198,7 +199,7 @@ class TestGetOrCreateOwner:
 
         result = await get_or_create_owner(200, 100)
 
-        mock_create_kennel.assert_awaited_once_with(100)
+        mock_create_kennel.assert_awaited_once_with(100, food_stock=STARTING_KENNEL_FOOD)
         assert mock_create_pooch.call_count == 2
         assert mock_add_to_kennel.call_count == 2
         assert result.discord_id == 100

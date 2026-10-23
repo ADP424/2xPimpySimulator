@@ -711,7 +711,7 @@ async def create_active_owner_event(
 
 
 async def create_kennel(
-    owner_discord_id: int, name: str = "Kennel", pooch_limit: int = KENNEL_POOCH_LIMIT
+    owner_discord_id: int, name: str = "Kennel", pooch_limit: int = KENNEL_POOCH_LIMIT, food_stock: int = 0
 ) -> Optional[Kennel]:
     """
     Create a kennel for the given owner.
@@ -726,6 +726,9 @@ async def create_kennel(
 
     pooch_limit: int, default : `KENNEL_POOCH_LIMIT`
         The size limit to give the new kennel.
+
+    food_stock: int, default : 0
+        The food units the new kennel starts with.
 
     Returns
     -------
@@ -743,6 +746,7 @@ async def create_kennel(
             owner_discord_id=owner.discord_id,
             name=name,
             pooch_limit=pooch_limit,
+            food_stock=food_stock,
         )
         session.add(kennel)
         await session.flush()

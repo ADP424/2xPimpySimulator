@@ -38,6 +38,7 @@ from .constants import (
     PARK_STRAY_CATCH_DIVISOR,
     POOCH_STAT_RANGE,
     POOCH_STATS,
+    STARTING_KENNEL_FOOD,
 )
 from .exceptions import OwnerNotFound
 from .manage_auctions import cancel_listing_for_pooch
@@ -155,7 +156,7 @@ async def get_or_create_owner(
         """Add the owner to the server and give them their starting items."""
 
         await add_owner_to_server(server_discord_id, owner_discord_id)
-        kennel = await create_kennel(owner_discord_id)
+        kennel = await create_kennel(owner_discord_id, food_stock=STARTING_KENNEL_FOOD)
         _season = await get_current_season()
         female_breed_ids = await get_random_breed_ids(1, rng=rng, from_vendor=True, season=_season)
         male_breed_ids = await get_random_breed_ids(1, rng=rng, from_vendor=True, season=_season)

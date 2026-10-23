@@ -122,10 +122,11 @@ async def test_create_kennel_with_custom_name_and_limit():
     ):
         from src.database import create_kennel
 
-        result = await create_kennel(123, name="My Kennel", pooch_limit=20)
+        result = await create_kennel(123, name="My Kennel", pooch_limit=20, food_stock=150)
 
     assert result.name == "My Kennel"
     assert result.pooch_limit == 20
+    assert result.food_stock == 150
 
 
 # ---------------------------------------------------------------------------
