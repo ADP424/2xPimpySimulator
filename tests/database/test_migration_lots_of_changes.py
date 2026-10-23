@@ -152,7 +152,8 @@ class TestLoadersOnlyMissing:
         from src.database.load.load_resources import items as items_loader
 
         session = MagicMock()
-        session.execute = AsyncMock(return_value=_result(scalars=["Soap"]))
+        soap = SimpleNamespace(name="Soap", parameters={"price": 10, "mess_reduction": 5})
+        session.execute = AsyncMock(return_value=_result(scalars=[soap]))
         catalog = {
             "Cleaning": {"Soap": {"parameters": {"price": 5, "mess_reduction": 5}}},
             "Food": {"Kibble": {"parameters": {"price": 5, "food_units": 10}}},
@@ -165,5 +166,7 @@ class TestLoadersOnlyMissing:
             await items_loader.load_items(only_missing=True)
         added = [call.args[0].name for call in session.add.call_args_list]
         assert added == ["Kibble"]
-        # no DELETE was issued: the only query was the name lookup
+        # the existing row keeps its id but picks up the new price
+        assert soap.parameters == {"price": 5, "mess_reduction": 5}
+        # no DELETE was issued: the only query was the item lookup
         assert session.execute.await_count == 1

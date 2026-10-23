@@ -149,28 +149,29 @@ async def load_items(only_missing: bool = False):
 
     async with session_scope() as session:
         if only_missing:
-            # Upgrade path: existing rows are referenced by player data, so only add new ones
-            existing = set((await session.execute(select(Item.name))).scalars().all())
+            # Upgrade path: existing rows are referenced by player data, so keep their ids and refresh
+            # their fields in place (that is how price changes reach a live DB)
+            existing = {item.name: item for item in (await session.execute(select(Item))).scalars().all()}
         else:
             await session.execute(delete(Item))
-            existing = set()
+            existing = {}
         for category, items in items_json.items():
             # Category keys come in Title Case from the filesystem slug; we
             # persist them as a normalized lowercase string so runtime code
             # can do case-insensitive lookups.
             category_key = str(category).strip().lower().replace(" ", "_")
             for name, attributes in items.items():
-                if name in existing:
-                    continue
-                session.add(
-                    Item(
-                        name=name,
-                        alt_name=str(attributes.get("alt_name", "")),
-                        category=category_key,
-                        description=str(attributes.get("description", "")),
-                        rarity=str(attributes.get("rarity", "common")).lower(),
-                        parameters=dict(attributes.get("parameters", {})),
-                    )
+                fields = dict(
+                    alt_name=str(attributes.get("alt_name", "")),
+                    category=category_key,
+                    description=str(attributes.get("description", "")),
+                    rarity=str(attributes.get("rarity", "common")).lower(),
+                    parameters=dict(attributes.get("parameters", {})),
                 )
+                if name in existing:
+                    for key, value in fields.items():
+                        setattr(existing[name], key, value)
+                    continue
+                session.add(Item(name=name, **fields))
 
     logger.info("Finished loading items.")

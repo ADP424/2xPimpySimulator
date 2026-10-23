@@ -2,7 +2,7 @@
     "description": "A premium cut of beef. Fills the kennel's food stock generously and gives a small strength boost.",
     "rarity": "rare",
     "parameters": {
-        "price": 40,
+        "price": 20,
         "food_units": 60,
         "strength_add": 1
     }

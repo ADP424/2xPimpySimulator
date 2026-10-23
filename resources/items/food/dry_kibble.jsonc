@@ -2,7 +2,7 @@
     "description": "Standard dry dog food. Fills a kennel's food stock.",
     "rarity": "common",
     "parameters": {
-        "price": 5,
+        "price": 3,
         "food_units": 10
     }
 }

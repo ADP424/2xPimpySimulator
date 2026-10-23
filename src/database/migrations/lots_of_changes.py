@@ -8,7 +8,7 @@ Nothing is ever deleted.
    have but the database lacks. The DDL is generated from the ORM models, so it can't drift from them. New columns
    all have defaults, so existing rows stay valid.
 2. Catalog data: add new diseases, items, injuries and mutations. Existing catalog rows are referenced by player data
-   (and protected by RESTRICT foreign keys), so they are never deleted.
+   (and protected by RESTRICT foreign keys), so they are never deleted. Existing items are refreshed in place.
 3. Backfill what the new hourly tick expects:
    - pooches that are already pregnant get a pregnancy timer (otherwise they'd never give birth);
    - every pooch's hourly food consumption and mess output are recomputed from its size and breeds, as
