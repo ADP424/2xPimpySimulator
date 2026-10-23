@@ -109,8 +109,8 @@ class TestRunHourlyBreedingCooldownCheck:
         return count, decrement
 
     async def test_rolls_effective_fertility_over_divisor(self):
-        # fertility 25 / 50 = 0.5 chance: a 0.4 roll succeeds, a 0.6 roll fails
-        count, decrement = await self._run({1: 25, 2: 25}, rolls=[0.4, 0.6])
+        # fertility 12 / 25 = 0.48 chance: a 0.4 roll succeeds, a 0.6 roll fails
+        count, decrement = await self._run({1: 12, 2: 12}, rolls=[0.4, 0.6])
         assert count == 1
         decrement.assert_awaited_once_with(1)
 

@@ -112,7 +112,7 @@ In this example, untreated the injury causes -1 health impact and -1 strength. A
 ## Stacking
 
 ### `persistence` : `int`
-How many hourly ticks it takes for this injury to heal on its own. Must be a positive integer. Each hour, a pooch has a chance equal to `constitution / 50` to decrement the persistence counter on each of their injuries that has one. When the counter reaches 0, the injury is automatically removed. This is the exact same formula as fertility reducing the breeding cooldown.
+How many hourly ticks it takes for this injury to heal on its own. Must be a positive integer. Each hour, a pooch has a chance equal to `constitution / 50` to decrement the persistence counter on each of their injuries that has one. When the counter reaches 0, the injury is automatically removed. Fertility reduces the breeding cooldown the same way, but divides by 25.
 - If omitted, the injury is permanent and will never heal on its own. This is the default.
 - Example: `"persistence": 24` — on average, a pooch with 10 constitution heals this injury in ~120 hours (5 days).
 
