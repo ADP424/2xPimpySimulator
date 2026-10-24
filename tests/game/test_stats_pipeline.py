@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, patch
 from src.game.constants import REJUVENATION_FERTILITY_MULT
 from src.game.manage_stats import (
     compute_effective_stats,
+    describe_injury_stack_effects,
     describe_stat_effects,
     effective_size,
     get_effective_stat,
@@ -500,3 +501,25 @@ class TestDescribeStatEffects:
             ("Bloodskull Value", "×2", True),
             ("Breeding Cooldown", "+10", False),
         ]
+
+
+class TestDescribeInjuryStackEffects:
+    def test_no_stacks(self):
+        assert describe_injury_stack_effects(None) == []
+        assert describe_injury_stack_effects({"strength_add": -1}) == []
+
+    def test_labels(self):
+        stacks = describe_injury_stack_effects(
+            {
+                "stacks": [
+                    {"max_count": 1, "cuteness_add": 1},
+                    {"min_count": 2, "max_count": 3, "strength_mult": 0.5},
+                    {"min_count": 4, "dexterity_mult": 0.0},
+                ]
+            }
+        )
+        assert [s["label"] for s in stacks] == ["With 1", "With 2–3", "With 4+"]
+        assert [e["text"] for e in stacks[2]["effects"]] == ["×0"]
+
+    def test_stacks_without_stat_effects_left_out(self):
+        assert describe_injury_stack_effects({"stacks": [{"min_count": 2}]}) == []

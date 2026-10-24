@@ -128,6 +128,28 @@ def describe_stat_effects(parameters: Optional[dict]) -> list[dict[str, Any]]:
     return effects
 
 
+def describe_injury_stack_effects(parameters: Optional[dict]) -> list[dict[str, Any]]:
+    """
+    List an injury's stack bonuses (extra effects for having several of it, on top of each one's own effects), for
+    the catalog: ``[{label, min_count, max_count, effects}]`` with ``label`` like "With 2", "With 2–3" or "With 2+".
+    """
+
+    stacks = []
+    for entry in (parameters or {}).get("stacks", []) or []:
+        effects = describe_stat_effects(entry)
+        if not effects:
+            continue
+        min_count, max_count = entry.get("min_count", 1), entry.get("max_count")
+        if max_count is None:
+            label = f"With {min_count}+"
+        elif max_count == min_count:
+            label = f"With {min_count}"
+        else:
+            label = f"With {min_count}–{max_count}"
+        stacks.append({"label": label, "min_count": min_count, "max_count": max_count, "effects": effects})
+    return stacks
+
+
 def effective_size(pooch: Any) -> int:
     """Female pooches are one size smaller. Clamped to a minimum of 1."""
     base = int(getattr(pooch, "size", 10) or 10)

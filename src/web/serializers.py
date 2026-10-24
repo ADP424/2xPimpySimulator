@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Any
 
 from src.game import (
+    describe_injury_stack_effects,
     describe_owner_event_result,
     describe_stat_effects,
     get_disease_treatment_cost,
@@ -149,6 +150,8 @@ def serialize_injury(injury: Any) -> dict:
             if treated
             else None
         ),
+        "stat_effects": describe_stat_effects(injury.parameters),
+        "stack_effects": describe_injury_stack_effects(injury.parameters),
     }
 
 
@@ -165,6 +168,7 @@ def serialize_disease(disease: Any) -> dict:
         "heritability": disease.heritability,
         "seasons": disease.seasons or [],
         "immunity_duration": disease.immunity_duration,
+        "stat_effects": describe_stat_effects(disease.parameters),
     }
 
 

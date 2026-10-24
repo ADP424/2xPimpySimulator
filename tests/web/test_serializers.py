@@ -227,6 +227,19 @@ class TestEncyclopedia:
         for hidden in ("parameters", "reveal_chance", "invisible_messages", "visible", "season_contagion_modifiers"):
             assert hidden not in data
 
+    def test_injury_stat_effects_and_stacks(self):
+        injury = _injury("Missing Paw")
+        injury.parameters = {"strength_add": -2, "stacks": [{"min_count": 2, "dexterity_mult": 0.5}]}
+        data = serialize_injury(injury)
+        assert [(e["label"], e["text"]) for e in data["stat_effects"]] == [("Strength", "-2")]
+        assert [(s["label"], [e["text"] for e in s["effects"]]) for s in data["stack_effects"]] == [
+            ("With 2+", ["×0.5"])
+        ]
+
+    def test_disease_stat_effects(self):
+        data = serialize_disease(_disease("Flu"))
+        assert [(e["label"], e["text"]) for e in data["stat_effects"]] == [("Strength", "+3"), ("Fertility", "×1.5")]
+
 
 class TestSerializeKennel:
     def test_includes_messiness(self):

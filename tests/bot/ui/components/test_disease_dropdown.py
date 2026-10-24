@@ -62,6 +62,11 @@ def _make_disease(
 
 @pytest.mark.contract
 class TestBuildDiseaseInfoEmbed:
+    def test_stat_effects(self):
+        embed = build_disease_info_embed(_make_disease(parameters={"constitution_add": -3, "strength_add": -2}))
+        stat_effects = next(f for f in embed.fields if f.name == "Stat Effects")
+        assert stat_effects.value == "▼ Strength -2\n▼ Constitution -3"
+
     def test_basic_embed(self):
         disease = _make_disease()
         embed = build_disease_info_embed(disease)

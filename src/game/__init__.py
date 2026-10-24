@@ -193,6 +193,7 @@ from .manage_static import (
 from .manage_stats import (
     StatSource,
     compute_effective_stats,
+    describe_injury_stack_effects,
     describe_stat_effects,
     effective_size,
     get_effective_stat,
@@ -244,6 +245,7 @@ __all__ = [
     "StatSource",
     "compute_effective_stats",
     "describe_stat_effects",
+    "describe_injury_stack_effects",
     "get_effective_stat",
     "get_effective_stats",
     "get_pooch_health",

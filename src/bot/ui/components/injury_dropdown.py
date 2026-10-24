@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING, Optional
 import discord
 from discord.ui import Button, Select, View
 
-from src.bot.ui.util import edit_interaction, reply_to_interacted_message
-from src.game import INJURY_SEVERITIES
+from src.bot.ui.util import edit_interaction, format_effect_lines, format_stat_effects, reply_to_interacted_message
+from src.game import INJURY_SEVERITIES, describe_injury_stack_effects
 
 if TYPE_CHECKING:
     from src.database.models import Injury
@@ -54,6 +54,13 @@ def build_injury_info_embed(injury: Injury) -> discord.Embed:
         if treated_impact:
             treated_value += f" ({treated_impact.replace('_', ' ').capitalize()})"
         embed.add_field(name="Treated", value=treated_value, inline=False)
+    embed.add_field(name="Stat Effects", value=format_stat_effects(params), inline=False)
+    for stack in describe_injury_stack_effects(params):
+        embed.add_field(
+            name=f"Extra Stat Effects ({stack['label'].lower()})",
+            value=format_effect_lines(stack["effects"]),
+            inline=False,
+        )
     return embed
 
 

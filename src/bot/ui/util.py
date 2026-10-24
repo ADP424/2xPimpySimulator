@@ -328,10 +328,12 @@ async def reply_to_interacted_message(
             pass
 
 
-def format_stat_effects(parameters: dict) -> str:
-    """One line per stat effect of a breed or mutation, e.g. "▲ Strength ×1.5", or "None" if it changes nothing."""
-    lines = [
-        f"{'▲' if effect['direction'] == 'up' else '▼'} {effect['label']} {effect['text']}"
-        for effect in describe_stat_effects(parameters)
-    ]
+def format_effect_lines(effects: list[dict]) -> str:
+    """One line per effect from ``describe_stat_effects``, e.g. "▲ Strength ×1.5", or "None" if there are none."""
+    lines = [f"{'▲' if effect['direction'] == 'up' else '▼'} {effect['label']} {effect['text']}" for effect in effects]
     return "\n".join(lines) or "None"
+
+
+def format_stat_effects(parameters: dict) -> str:
+    """One line per stat effect of a catalog entry's parameters, or "None" if it changes nothing."""
+    return format_effect_lines(describe_stat_effects(parameters))

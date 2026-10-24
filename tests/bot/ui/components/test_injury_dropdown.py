@@ -39,6 +39,19 @@ def _make_injury(
 
 @pytest.mark.contract
 class TestBuildInjuryInfoEmbed:
+    def test_stat_effects_and_stacks(self):
+        injury = _make_injury(
+            parameters={"strength_mult": 0.8, "stacks": [{"min_count": 2, "max_count": 2, "size_mult": 0.9}]}
+        )
+        embed = build_injury_info_embed(injury)
+        fields = {f.name: f.value for f in embed.fields}
+        assert fields["Stat Effects"] == "▼ Strength ×0.8"
+        assert fields["Extra Stat Effects (with 2)"] == "▼ Size ×0.9"
+
+    def test_no_stat_effects(self):
+        embed = build_injury_info_embed(_make_injury())
+        assert next(f for f in embed.fields if f.name == "Stat Effects").value == "None"
+
     def test_basic_embed(self):
         injury = _make_injury()
         embed = build_injury_info_embed(injury)

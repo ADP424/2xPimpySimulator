@@ -42,6 +42,13 @@
                     </div>
                 </div>
             </div>
+            <div class="card bg-base-200 shadow-md">
+                <div class="card-body">
+                    <h2 class="card-title">📈 Stat Effects</h2>
+                    <div class="info-list mt-2" id="injury-stat-effects"></div>
+                    <div id="injury-stack-effects"></div>
+                </div>
+            </div>
         </div>
 
         <div class="detail-sidebar">
@@ -62,6 +69,30 @@ const PAGE_DATA = {
     injuryId: {{ injury_id }}
 };
 
+function renderStatEffects(effects) {
+    if (!effects || !effects.length) {
+        return '<p class="text-base-content/50">No effect on stats.</p>';
+    }
+    const tone = { true: 'badge-success', false: 'badge-error', null: 'badge-ghost' };
+    return effects.map(effect => `
+        <div class="info-item">
+            <span class="info-label">${escapeHtml(effect.label)}</span>
+            <span class="info-value"><span class="badge ${tone[effect.beneficial]}">${effect.direction === 'up' ? '▲' : '▼'} ${escapeHtml(effect.text)}</span></span>
+        </div>
+    `).join('');
+}
+
+function renderStackEffects(stacks) {
+    if (!stacks || !stacks.length) return '';
+    return `
+        <p class="text-sm text-base-content/60 mt-4">Extra effects when a pooch has several, on top of each one's own:</p>
+        ${stacks.map(stack => `
+            <h3 class="font-semibold mt-3">${escapeHtml(stack.label)}</h3>
+            <div class="info-list mt-1">${renderStatEffects(stack.effects)}</div>
+        `).join('')}
+    `;
+}
+
 document.addEventListener('DOMContentLoaded', async function() {
     try {
         const response = await fetch(`/api/injuries/${PAGE_DATA.injuryId}`);
@@ -81,6 +112,8 @@ document.addEventListener('DOMContentLoaded', async function() {
         document.getElementById('injury-health').innerHTML =
             `<span class="health-impact health-${impactGroup} font-medium">${escapeHtml(App.format.enumLabel(injury.health_impact))}</span>`;
         document.getElementById('injury-persistence').textContent = injury.persistence || '—';
+        document.getElementById('injury-stat-effects').innerHTML = renderStatEffects(injury.stat_effects);
+        document.getElementById('injury-stack-effects').innerHTML = renderStackEffects(injury.stack_effects);
 
         if (injury.treated) {
             const treatedImpact = injury.treated.health_impact
