@@ -2,9 +2,32 @@
 
 import random
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
+# ---------------------------------------------------------------------------
+# No real database
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def _no_real_database():
+    """
+    Tests read the same .env as the live game, so a database call a test forgot to mock would write to the real
+    database. Fail it instead.
+    """
+
+    def refuse():
+        raise RuntimeError("Tests must not connect to the real database: mock the database call this test reached.")
+
+    with (
+        patch("src.database.session._ENGINE", None),
+        patch("src.database.session._SESSIONMAKER", None),
+        patch("src.database.session._make_engine", side_effect=refuse),
+    ):
+        yield
+
 
 # ---------------------------------------------------------------------------
 # Deterministic RNG
