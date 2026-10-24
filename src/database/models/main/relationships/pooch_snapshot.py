@@ -20,6 +20,8 @@ SNAPSHOT_VET_INJURIES = "vet_injuries"
 SNAPSHOT_VET_MUTATIONS = "vet_mutations"
 SNAPSHOT_MEDICAL_EXAM = "medical_exam"
 SNAPSHOT_VET_DISEASES = "vet_diseases"
+SNAPSHOT_BREEDING = "breeding"  # on both parents when they mate
+SNAPSHOT_LITTER = "litter"  # on the mother when a puppy is born, stillborn or miscarried
 
 
 class PoochSnapshot(Base):

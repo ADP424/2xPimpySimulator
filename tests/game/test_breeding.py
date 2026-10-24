@@ -1,7 +1,7 @@
 """Tests for src/game/breeding.py — name combining, breed_pooches, and incest calculation."""
 
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, call, patch
 
 import pytest
 
@@ -57,8 +57,103 @@ def _mock_pregnancy_timer():
         yield
 
 
+@pytest.fixture(autouse=True)
+def mock_snapshot():
+    """Auto-mock the timeline snapshot breed_pooches records on the parents."""
+    with patch("src.game.breeding.create_pooch_snapshot", new_callable=AsyncMock) as mock:
+        yield mock
+
+
 class TestBreedPooches:
     """Tests for the breed_pooches async function."""
+
+    @patch("src.database.get_current_season", new_callable=AsyncMock, return_value="spring")
+    @patch("src.game.breeding.handle_breeding_diseases", new_callable=AsyncMock, return_value=[])
+    @patch("src.game.breeding.add_mutation_to_pooch", new_callable=AsyncMock)
+    @patch("src.game.breeding.add_pooch_breeds", new_callable=AsyncMock)
+    @patch("src.game.breeding.create_pooch_pregnancy", new_callable=AsyncMock)
+    @patch("src.game.breeding.set_pooch_parentage", new_callable=AsyncMock)
+    @patch("src.game.breeding.create_pooch", new_callable=AsyncMock)
+    @patch("src.game.breeding.list_pooch_mutations", new_callable=AsyncMock)
+    @patch("src.game.breeding.list_pooch_breed_weights", new_callable=AsyncMock)
+    @patch("src.game.breeding.calculate_incest_level", new_callable=AsyncMock)
+    @patch("src.game.breeding.set_pooch_virgin", new_callable=AsyncMock)
+    @patch("src.game.breeding.reset_pooch_breeding_cooldown", new_callable=AsyncMock)
+    @patch("src.game.breeding.get_pooch_by_id", new_callable=AsyncMock)
+    async def test_timeline_entry_on_both_parents(
+        self,
+        mock_get,
+        mock_reset_cd,
+        mock_set_virgin,
+        mock_incest,
+        mock_breeds,
+        mock_mutations,
+        mock_create,
+        mock_parentage,
+        mock_pregnancy,
+        mock_add_breeds,
+        mock_add_mut,
+        mock_handle_diseases,
+        mock_get_season,
+        mock_snapshot,
+    ):
+        """Both parents get a breeding entry that counts the puppies without naming them."""
+        female = make_pooch(pooch_id=1, sex="female", name="Mama")
+        male = make_pooch(pooch_id=2, sex="male", name="Papa")
+        mock_get.side_effect = lambda pid: female if pid == 1 else male
+        mock_incest.return_value = 0.0
+        mock_breeds.return_value = [(10, 1)]
+        mock_mutations.return_value = []
+        mock_create.return_value = make_pooch(pooch_id=99, name="Paama")
+
+        await breed_pooches(1, 2, rng_seed=42)  # seed 42: a single puppy
+
+        assert mock_snapshot.await_args_list == [
+            call(2, "breeding", "Papa bred with Mama, who is expecting 1 puppy."),
+            call(1, "breeding", "Mama bred with Papa and is expecting 1 puppy."),
+        ]
+
+    @patch("src.database.get_current_season", new_callable=AsyncMock, return_value="spring")
+    @patch("src.game.breeding.handle_breeding_diseases", new_callable=AsyncMock, return_value=[])
+    @patch("src.game.breeding.add_mutation_to_pooch", new_callable=AsyncMock)
+    @patch("src.game.breeding.add_pooch_breeds", new_callable=AsyncMock)
+    @patch("src.game.breeding.create_pooch_pregnancy", new_callable=AsyncMock)
+    @patch("src.game.breeding.set_pooch_parentage", new_callable=AsyncMock)
+    @patch("src.game.breeding.create_pooch", new_callable=AsyncMock)
+    @patch("src.game.breeding.list_pooch_mutations", new_callable=AsyncMock)
+    @patch("src.game.breeding.list_pooch_breed_weights", new_callable=AsyncMock)
+    @patch("src.game.breeding.calculate_incest_level", new_callable=AsyncMock)
+    @patch("src.game.breeding.set_pooch_virgin", new_callable=AsyncMock)
+    @patch("src.game.breeding.reset_pooch_breeding_cooldown", new_callable=AsyncMock)
+    @patch("src.game.breeding.get_pooch_by_id", new_callable=AsyncMock)
+    async def test_asexual_timeline_entry(
+        self,
+        mock_get,
+        mock_reset_cd,
+        mock_set_virgin,
+        mock_incest,
+        mock_breeds,
+        mock_mutations,
+        mock_create,
+        mock_parentage,
+        mock_pregnancy,
+        mock_add_breeds,
+        mock_add_mut,
+        mock_handle_diseases,
+        mock_get_season,
+        mock_snapshot,
+    ):
+        """A pooch breeding with itself gets one entry."""
+        solo = make_pooch(pooch_id=1, sex="female", name="Solo")
+        mock_get.return_value = solo
+        mock_incest.return_value = 0.0
+        mock_breeds.return_value = [(10, 1)]
+        mock_mutations.return_value = []
+        mock_create.return_value = make_pooch(pooch_id=99, name="Sooo")
+
+        await breed_pooches(1, 1, rng_seed=42, skip_validation=True)
+
+        mock_snapshot.assert_awaited_once_with(1, "breeding", "Solo reproduced asexually and is expecting 1 puppy.")
 
     @patch("src.game.breeding.get_pooch_by_id", new_callable=AsyncMock)
     async def test_raises_pooch_not_found_for_first(self, mock_get):

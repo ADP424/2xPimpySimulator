@@ -3,7 +3,9 @@ from __future__ import annotations
 from .entities import GlobalState, Kennel, Owner, Pooch, Server, Vendor
 from .relationships import (
     SNAPSHOT_BIRTH,
+    SNAPSHOT_BREEDING,
     SNAPSHOT_DEATH,
+    SNAPSHOT_LITTER,
     SNAPSHOT_MEDICAL_EXAM,
     SNAPSHOT_OWNERSHIP,
     SNAPSHOT_VET_DISEASES,
@@ -59,7 +61,9 @@ __all__ = [
     "PoochPregnancy",
     "PoochSnapshot",
     "SNAPSHOT_BIRTH",
+    "SNAPSHOT_BREEDING",
     "SNAPSHOT_DEATH",
+    "SNAPSHOT_LITTER",
     "SNAPSHOT_OWNERSHIP",
     "SNAPSHOT_VET_INJURIES",
     "SNAPSHOT_VET_DISEASES",

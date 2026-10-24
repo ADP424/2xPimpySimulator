@@ -16,7 +16,9 @@ from .pooch_parentage import PoochParentage
 from .pooch_pregnancy import PoochPregnancy
 from .pooch_snapshot import (
     SNAPSHOT_BIRTH,
+    SNAPSHOT_BREEDING,
     SNAPSHOT_DEATH,
+    SNAPSHOT_LITTER,
     SNAPSHOT_MEDICAL_EXAM,
     SNAPSHOT_OWNERSHIP,
     SNAPSHOT_VET_DISEASES,
@@ -56,7 +58,9 @@ __all__ = [
     "VendorPoochForSale",
     "PoochSnapshot",
     "SNAPSHOT_BIRTH",
+    "SNAPSHOT_BREEDING",
     "SNAPSHOT_DEATH",
+    "SNAPSHOT_LITTER",
     "SNAPSHOT_OWNERSHIP",
     "SNAPSHOT_VET_INJURIES",
     "SNAPSHOT_VET_DISEASES",

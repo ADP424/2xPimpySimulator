@@ -415,3 +415,82 @@ class TestHourTickUsesDatabaseRows:
         assert _hourly_fight_chance(calm_raw, {"aggressiveness": 30, "base_health": 10}) > _hourly_fight_chance(
             calm_raw, _stats(calm_raw)
         )
+
+
+class TestLitterTimeline:
+    """The mother's timeline records each birth, stillbirth and miscarriage."""
+
+    async def _deliver(self, *, stillborn=False, kennel=True, room=True):
+        from src.game import change_hour
+
+        mother = make_pooch(pooch_id=1, name="Mama", sex="female")
+        fetus = make_pooch(pooch_id=2, name="Pup", age=-1)
+        with patch.multiple(
+            "src.game.change_hour",
+            delete_pregnancy=AsyncMock(),
+            _stillbirth_chance=lambda *a, **k: 1.0 if stillborn else 0.0,
+            modify_pooch_age=AsyncMock(return_value=fetus),
+            _kill_pooch=AsyncMock(),
+            get_pooch_kennel=AsyncMock(return_value=type("K", (), {"id": 5})() if kennel else None),
+            add_pooch_to_kennel=AsyncMock(return_value=room),
+            add_pooch_to_strays=AsyncMock(),
+            get_pooch_health=AsyncMock(return_value=50),
+            update_pooch_mood=AsyncMock(),
+            list_servers_for_pooch=AsyncMock(return_value=[]),
+            create_pooch_snapshot=AsyncMock(),
+        ):
+            await change_hour._handle_birth(
+                mother, fetus, {}, rng=random.Random(0), births_by_server={}, deaths_by_server={}
+            )
+            return change_hour.create_pooch_snapshot
+
+    async def test_birth(self):
+        snapshot = await self._deliver()
+        snapshot.assert_awaited_once_with(1, "litter", "Mama gave birth to Pup.")
+
+    async def test_stillbirth(self):
+        snapshot = await self._deliver(stillborn=True)
+        snapshot.assert_awaited_once_with(1, "litter", "Mama's puppy Pup was stillborn.")
+
+    async def test_abandoned(self):
+        snapshot = await self._deliver(kennel=False)
+        snapshot.assert_awaited_once_with(1, "litter", "Mama gave birth to Pup, who was abandoned.")
+
+    async def test_released_as_stray(self):
+        snapshot = await self._deliver(room=False)
+        snapshot.assert_awaited_once_with(1, "litter", "Mama gave birth to Pup, who was released as a stray.")
+
+    async def test_miscarriage_records_one_entry(self):
+        from src.game.change_hour import run_hour_change
+
+        mother = make_pooch(pooch_id=1, name="Mama", sex="female")
+        fetuses = {2: make_pooch(pooch_id=2, name="A", age=-1), 3: make_pooch(pooch_id=3, name="B", age=-1)}
+        pooches = {1: mother, **fetuses}
+        pregnancies = [type("P", (), {"mother_id": 1, "fetus_id": fid})() for fid in fetuses]
+
+        with (
+            patch.multiple(
+                "src.game.change_hour",
+                increment_global_hour=AsyncMock(return_value=1),
+                list_pooch_pregnancies=AsyncMock(return_value=pregnancies),
+                list_living_pooches=AsyncMock(return_value=[]),
+                run_hourly_breeding_cooldown_check=AsyncMock(return_value=0),
+                run_hourly_injury_persistence_check=AsyncMock(return_value=0),
+                run_hourly_disease_tick=AsyncMock(return_value={}),
+                get_current_season=AsyncMock(return_value="spring"),
+                get_pooch_by_id=AsyncMock(side_effect=lambda pid: pooches[pid]),
+                get_effective_stats=AsyncMock(return_value={}),
+                _miscarriage_chance=lambda *a, **k: 1.0,
+                _handle_miscarriage=AsyncMock(),
+                set_pooch_pregnancy_timer=AsyncMock(),
+                create_pooch_snapshot=AsyncMock(),
+                list_servers=AsyncMock(return_value=[]),
+            ),
+            patch("src.game.change_hour.HourChangeSummary", new=lambda **kw: kw),
+        ):
+            from src.game import change_hour
+
+            await run_hour_change(rng_seed=1)
+            change_hour.create_pooch_snapshot.assert_awaited_once_with(
+                1, "litter", "Mama suffered a miscarriage and lost 2 puppies."
+            )

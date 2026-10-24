@@ -11,6 +11,7 @@ from src.database import (
     add_pooch_breeds,
     create_pooch,
     create_pooch_pregnancy,
+    create_pooch_snapshot,
     get_injury_by_name,
     get_owner_by_discord_id,
     get_pooch_by_id,
@@ -28,6 +29,7 @@ from src.database import (
     set_pooch_pregnancy_timer,
     set_pooch_virgin,
 )
+from src.database.models import SNAPSHOT_BREEDING
 
 from .constants import (
     BREED_NOISE_RANGE,
@@ -265,6 +267,20 @@ async def breed_pooches(
     # down each hour and births the puppies when it hits 0.
     timer = rng.randint(*PREGNANCY_TIMER_HOURS_RANGE)
     await set_pooch_pregnancy_timer(mother.id, timer)
+
+    # Puppies are only counted, not named: they're unborn, and some may never be born
+    expecting = f"expecting {len(puppies)} {'puppy' if len(puppies) == 1 else 'puppies'}"
+    if father.id == mother.id:
+        await create_pooch_snapshot(
+            mother.id, SNAPSHOT_BREEDING, f"{mother.name} reproduced asexually and is {expecting}."
+        )
+    else:
+        await create_pooch_snapshot(
+            father.id, SNAPSHOT_BREEDING, f"{father.name} bred with {mother.name}, who is {expecting}."
+        )
+        await create_pooch_snapshot(
+            mother.id, SNAPSHOT_BREEDING, f"{mother.name} bred with {father.name} and is {expecting}."
+        )
 
     if return_disease_events:
         return puppies, disease_events

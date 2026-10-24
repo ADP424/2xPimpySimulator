@@ -3,7 +3,9 @@ from __future__ import annotations
 # Timeline snapshot kinds, re-exported so frontends never import the database layer
 from src.database.models import (
     SNAPSHOT_BIRTH,
+    SNAPSHOT_BREEDING,
     SNAPSHOT_DEATH,
+    SNAPSHOT_LITTER,
     SNAPSHOT_MEDICAL_EXAM,
     SNAPSHOT_OWNERSHIP,
     SNAPSHOT_VET_DISEASES,
@@ -214,7 +216,9 @@ from .manage_vendors import (
 __all__ = [
     # Timeline snapshot kinds
     "SNAPSHOT_BIRTH",
+    "SNAPSHOT_BREEDING",
     "SNAPSHOT_DEATH",
+    "SNAPSHOT_LITTER",
     "SNAPSHOT_MEDICAL_EXAM",
     "SNAPSHOT_OWNERSHIP",
     "SNAPSHOT_VET_INJURIES",

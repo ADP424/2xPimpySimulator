@@ -13,7 +13,9 @@ from src.bot.ui.util import (
 )
 from src.game import (
     SNAPSHOT_BIRTH,
+    SNAPSHOT_BREEDING,
     SNAPSHOT_DEATH,
+    SNAPSHOT_LITTER,
     SNAPSHOT_MEDICAL_EXAM,
     SNAPSHOT_OWNERSHIP,
     SNAPSHOT_VET_DISEASES,
@@ -482,6 +484,8 @@ _SNAPSHOT_KIND_LABEL = {
     SNAPSHOT_BIRTH: "Birth",
     SNAPSHOT_DEATH: "Death",
     SNAPSHOT_OWNERSHIP: "Ownership Change",
+    SNAPSHOT_BREEDING: "Breeding",
+    SNAPSHOT_LITTER: "Litter",
     SNAPSHOT_VET_INJURIES: "Vet Visit — Injuries",
     SNAPSHOT_VET_MUTATIONS: "Vet Visit — Mutations",
     SNAPSHOT_VET_DISEASES: "Vet Visit — Diseases",

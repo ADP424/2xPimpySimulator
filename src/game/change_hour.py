@@ -12,6 +12,7 @@ from src.database import age_pooch as db_age_pooch
 from src.database import (
     bury_pooch,
     close_auction_sale_listing,
+    create_pooch_snapshot,
     damn_pooch,
     decrement_pooch_pregnancy_timer,
     delete_pregnancy,
@@ -44,6 +45,7 @@ from src.database import (
     set_pooch_pregnancy_timer,
     update_pooch_mood,
 )
+from src.database.models import SNAPSHOT_LITTER
 from src.logger import get_logger
 
 from .change_day import _pick_mood
@@ -237,6 +239,7 @@ async def _handle_birth(
     if rng.random() < _stillbirth_chance(mother, mother_stats, rng=rng):
         fetus = await modify_pooch_age(fetus.id, 1)  # -1 -> 0
         await _kill_pooch(fetus)
+        await create_pooch_snapshot(mother.id, SNAPSHOT_LITTER, f"{mother.name}'s puppy {fetus.name} was stillborn.")
         for server in await list_servers_for_pooch(fetus.id):
             deaths_by_server.setdefault(server.discord_id, []).append(
                 DeathEvent(
@@ -252,6 +255,9 @@ async def _handle_birth(
 
     kennel = await get_pooch_kennel(mother.id)
     if kennel is None:
+        await create_pooch_snapshot(
+            mother.id, SNAPSHOT_LITTER, f"{mother.name} gave birth to {fetus.name}, who was abandoned."
+        )
         baby_health = await get_pooch_health(fetus.id)
         await update_pooch_mood(fetus.id, _pick_mood(baby_health, fetus.age, rng))
         for server in await list_servers_for_pooch(fetus.id):
@@ -267,6 +273,9 @@ async def _handle_birth(
 
     success = await add_pooch_to_kennel(kennel.id, fetus.id)
     if not success:
+        await create_pooch_snapshot(
+            mother.id, SNAPSHOT_LITTER, f"{mother.name} gave birth to {fetus.name}, who was released as a stray."
+        )
         await update_pooch_mood(fetus.id, "dead")
         for server in await list_servers_for_pooch(fetus.id):
             await add_pooch_to_strays(fetus.id, server.discord_id)
@@ -283,6 +292,7 @@ async def _handle_birth(
             )
         return
 
+    await create_pooch_snapshot(mother.id, SNAPSHOT_LITTER, f"{mother.name} gave birth to {fetus.name}.")
     baby_health = await get_pooch_health(fetus.id)
     await update_pooch_mood(fetus.id, _pick_mood(baby_health, fetus.age, rng))
     for server in await list_servers_for_pooch(fetus.id):
@@ -446,11 +456,19 @@ async def run_hour_change(rng_seed: Optional[int] = None) -> dict[int, HourChang
         mother_stats = await get_effective_stats(mother.id)
         # Miscarriage roll first
         if rng.random() < _miscarriage_chance(mother, mother_stats, rng=rng):
+            lost = 0
             for fid in fetus_ids:
                 fetus = await get_pooch_by_id(fid)
                 if fetus is not None:
                     await _handle_miscarriage(mother, fetus, deaths_by_server=deaths_by_server)
+                    lost += 1
             await set_pooch_pregnancy_timer(mother.id, None)
+            if lost:
+                await create_pooch_snapshot(
+                    mother.id,
+                    SNAPSHOT_LITTER,
+                    f"{mother.name} suffered a miscarriage and lost {lost} {'puppy' if lost == 1 else 'puppies'}.",
+                )
             continue
 
         # Decrement timer
