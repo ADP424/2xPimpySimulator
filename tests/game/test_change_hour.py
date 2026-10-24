@@ -7,7 +7,7 @@ tested directly.
 """
 
 import random
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, call, patch
 
 import pytest
 
@@ -446,7 +446,10 @@ class TestLitterTimeline:
 
     async def test_birth(self):
         snapshot = await self._deliver()
-        snapshot.assert_awaited_once_with(1, "litter", "Mama gave birth to Pup.")
+        assert snapshot.await_args_list == [
+            call(2, "birth", "Pup was born."),
+            call(1, "litter", "Mama gave birth to Pup."),
+        ]
 
     async def test_stillbirth(self):
         snapshot = await self._deliver(stillborn=True)
@@ -454,11 +457,17 @@ class TestLitterTimeline:
 
     async def test_abandoned(self):
         snapshot = await self._deliver(kennel=False)
-        snapshot.assert_awaited_once_with(1, "litter", "Mama gave birth to Pup, who was abandoned.")
+        assert snapshot.await_args_list == [
+            call(2, "birth", "Pup was born."),
+            call(1, "litter", "Mama gave birth to Pup, who was abandoned."),
+        ]
 
     async def test_released_as_stray(self):
         snapshot = await self._deliver(room=False)
-        snapshot.assert_awaited_once_with(1, "litter", "Mama gave birth to Pup, who was released as a stray.")
+        assert snapshot.await_args_list == [
+            call(2, "birth", "Pup was born."),
+            call(1, "litter", "Mama gave birth to Pup, who was released as a stray."),
+        ]
 
     async def test_miscarriage_records_one_entry(self):
         from src.game.change_hour import run_hour_change

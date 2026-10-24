@@ -45,7 +45,7 @@ from src.database import (
     set_pooch_pregnancy_timer,
     update_pooch_mood,
 )
-from src.database.models import SNAPSHOT_LITTER
+from src.database.models import SNAPSHOT_BIRTH, SNAPSHOT_LITTER
 from src.logger import get_logger
 
 from .change_day import _pick_mood
@@ -250,8 +250,9 @@ async def _handle_birth(
             )
         return
 
-    # Normal birth: increment age to 0.
+    # Normal birth: increment age to 0. (age_pooch's own birth entry never fires: fetuses don't age there.)
     fetus = await modify_pooch_age(fetus.id, 1)
+    await create_pooch_snapshot(fetus.id, SNAPSHOT_BIRTH, f"{fetus.name} was born.")
 
     kennel = await get_pooch_kennel(mother.id)
     if kennel is None:
