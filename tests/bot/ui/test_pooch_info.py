@@ -15,6 +15,13 @@ from src.bot.ui.pooch_info import (
 from src.game.utils.obfuscation import health_label
 
 
+@pytest.fixture(autouse=True)
+def _effective_size():
+    """build_embed looks up the pooch's effective size; tests get 7 unless they patch it themselves."""
+    with patch("src.bot.ui.pooch_info.get_effective_stat", new_callable=AsyncMock, return_value=7) as mock:
+        yield mock
+
+
 def _make_pooch(
     id=1,
     name="Rex",
@@ -140,6 +147,7 @@ class TestPoochInfoView:
         assert "Health Status" in field_names
         health = next(f for f in embed.fields if f.name == "Health")
         assert health.value == health_label(pooch.health)
+        assert next(f for f in embed.fields if f.name == "Size").value == "7"
 
     async def test_build_embed_with_family(self):
         server = _make_server()

@@ -86,12 +86,20 @@ def get_kennel_pooches(kennel_id: int):
 @login_required
 def get_pooch(pooch_id: int):
     """Get detailed info about a specific pooch."""
-    from src.game import get_pooch_by_id
+    from src.game import get_effective_stat, get_pooch_by_id
 
     try:
         pooch = run_async(get_pooch_by_id(pooch_id))
-        # Compared here because JS numbers can't hold 64-bit Discord IDs exactly
-        return jsonify({**serialize_pooch(pooch), "viewer_is_owner": pooch.owner_discord_id == get_current_user_id()})
+        # Only the pooch's own page shows its size, so it isn't part of serialize_pooch
+        size = run_async(get_effective_stat(pooch_id, "size"))
+        return jsonify(
+            {
+                **serialize_pooch(pooch),
+                "size": size if size is not None else pooch.size,
+                # Compared here because JS numbers can't hold 64-bit Discord IDs exactly
+                "viewer_is_owner": pooch.owner_discord_id == get_current_user_id(),
+            }
+        )
     except Exception as e:
         return jsonify({"error": str(e)}), 404
 

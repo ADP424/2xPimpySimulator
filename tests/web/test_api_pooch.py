@@ -3,12 +3,19 @@
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
 
+import pytest
+
 from src.game.models import PoochTimelineEntry
 from tests.web.conftest import SERVER_ID, VIEWER_ID
 from tests.web.test_serializers import _make_pooch
 
 
 class TestGetPooch:
+    @pytest.fixture(autouse=True)
+    def _effective_size(self):
+        with patch("src.game.get_effective_stat", new=AsyncMock(return_value=4)) as mock:
+            yield mock
+
     def test_owner_flag_true_for_own_pooch(self, client):
         with patch("src.game.get_pooch_by_id", new=AsyncMock(return_value=_make_pooch(owner_discord_id=VIEWER_ID))):
             data = client.get("/api/pooches/1").get_json()
@@ -19,6 +26,12 @@ class TestGetPooch:
             data = client.get("/api/pooches/1").get_json()
         assert data["viewer_is_owner"] is False
         assert "dollars" not in data["owner"]
+
+    def test_shows_effective_size(self, client, _effective_size):
+        with patch("src.game.get_pooch_by_id", new=AsyncMock(return_value=_make_pooch())):
+            data = client.get("/api/pooches/1").get_json()
+        assert data["size"] == 4
+        _effective_size.assert_awaited_once_with(1, "size")
 
 
 class TestTimeline:

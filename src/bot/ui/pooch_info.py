@@ -19,6 +19,7 @@ from src.game import (
     SNAPSHOT_VET_DISEASES,
     SNAPSHOT_VET_INJURIES,
     SNAPSHOT_VET_MUTATIONS,
+    get_effective_stat,
     get_pooch_family,
     get_pooch_timeline,
 )
@@ -277,6 +278,10 @@ class PoochInfoView(View):
         embed = discord.Embed(title=self.pooch.name)
         embed.add_field(name="Age", value=str(self.pooch.age), inline=True)
         embed.add_field(name="Sex", value=self.pooch.sex.capitalize(), inline=True)
+        size = await get_effective_stat(self.pooch.id, "size")
+        embed.add_field(
+            name="Size", value=self._format_size(size if size is not None else self.pooch.size), inline=True
+        )
 
         embed.add_field(
             name="Owner",
