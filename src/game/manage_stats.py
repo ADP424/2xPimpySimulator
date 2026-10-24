@@ -70,6 +70,64 @@ class StatSource:
         return data
 
 
+STAT_LABELS = {stat: stat.replace("_", " ").title() for stat in ALL_STATS} | {"base_health": "Health"}
+
+# Catalog parameters that change something other than a stat, as (key prefix, label). A prefix takes the same
+# ``_add``/``_mult`` suffixes as a stat; "breeding_cooldown" is a bare add.
+OTHER_EFFECT_LABELS = (
+    ("dollar_value", "Sale Value"),
+    ("bloodskull_value", "Bloodskull Value"),
+)
+
+# Effects where going up is worse for the owner, and ones that are neither good nor bad
+_HARMFUL_WHEN_RAISED = {"breeding_cooldown"}
+_NEUTRAL_EFFECTS = {"size", "aggressiveness"}
+
+
+def _stat_effect(key: str, label: str, operation: str, value: float) -> dict[str, Any]:
+    if operation == "add":
+        text, raised = f"{round(value, 2):+g}", value > 0
+    else:
+        text, raised = f"×{round(value, 2):g}", value > 1
+    if key in _NEUTRAL_EFFECTS:
+        beneficial = None
+    else:
+        beneficial = raised != (key in _HARMFUL_WHEN_RAISED)
+    return {
+        "key": key,
+        "label": label,
+        "operation": operation,
+        "value": value,
+        "text": text,
+        "direction": "up" if raised else "down",
+        "beneficial": beneficial,
+    }
+
+
+def describe_stat_effects(parameters: Optional[dict]) -> list[dict[str, Any]]:
+    """
+    List what a breed's or mutation's parameters do to a pooch, for the catalog.
+
+    Each entry is ``{key, label, operation, value, text, direction, beneficial}``, e.g. Gigantism's strength gives
+    ``label="Strength", text="×1.5", direction="up", beneficial=True``. ``beneficial`` is None for effects that are
+    neither good nor bad (size, aggressiveness). Stats come first in ``ALL_STATS`` order, adds before mults;
+    parameters that change nothing (+0, ×1) are left out.
+    """
+
+    params = parameters or {}
+    effects = []
+    for key, label in (*STAT_LABELS.items(), *OTHER_EFFECT_LABELS):
+        add, mult = _stat_params(params, key)
+        if add:
+            effects.append(_stat_effect(key, label, "add", add))
+        if mult != 1.0:
+            effects.append(_stat_effect(key, label, "mult", mult))
+    cooldown = float(params.get("breeding_cooldown", 0) or 0)
+    if cooldown:
+        effects.append(_stat_effect("breeding_cooldown", "Breeding Cooldown", "add", cooldown))
+    return effects
+
+
 def effective_size(pooch: Any) -> int:
     """Female pooches are one size smaller. Clamped to a minimum of 1."""
     base = int(getattr(pooch, "size", 10) or 10)

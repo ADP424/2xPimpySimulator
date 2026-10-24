@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, patch
 from src.game.constants import REJUVENATION_FERTILITY_MULT
 from src.game.manage_stats import (
     compute_effective_stats,
+    describe_stat_effects,
     effective_size,
     get_effective_stat,
     get_pooch_health,
@@ -459,3 +460,43 @@ class TestModifierDiseases:
         injury = _make_injury_orm({"strength_add": -1})
         disease = _make_disease_instance({"strength_mult": 0.5})
         assert _effective(10, "strength", [mutation], [(breed, 1.0)], [injury], [disease]) == 8
+
+
+class TestDescribeStatEffects:
+    def test_no_parameters(self):
+        assert describe_stat_effects(None) == []
+        assert describe_stat_effects({"sold_by_vendors": 0, "incompatible_mutations": ["Dwarfism"]}) == []
+
+    def test_add_and_mult(self):
+        effects = describe_stat_effects({"strength_mult": 1.5, "cuteness_add": -1, "dexterity_add": 2})
+        assert [(e["label"], e["text"], e["direction"], e["beneficial"]) for e in effects] == [
+            ("Strength", "×1.5", "up", True),
+            ("Cuteness", "-1", "down", False),
+            ("Dexterity", "+2", "up", True),
+        ]
+
+    def test_follows_stat_order_adds_first(self):
+        effects = describe_stat_effects({"size_mult": 1.5, "strength_mult": 2, "strength_add": 1})
+        assert [(e["key"], e["operation"]) for e in effects] == [
+            ("strength", "add"),
+            ("strength", "mult"),
+            ("size", "mult"),
+        ]
+
+    def test_no_op_values_left_out(self):
+        assert describe_stat_effects({"strength_add": 0, "cuteness_mult": 1.0}) == []
+
+    def test_base_health_labelled_health(self):
+        assert describe_stat_effects({"base_health_add": -5})[0]["label"] == "Health"
+
+    def test_neutral_stats_have_no_verdict(self):
+        effects = describe_stat_effects({"aggressiveness_add": 3, "size_mult": 0.5})
+        assert [e["beneficial"] for e in effects] == [None, None]
+
+    def test_other_effects(self):
+        effects = describe_stat_effects({"breeding_cooldown": 10, "dollar_value_mult": 0.5, "bloodskull_value_mult": 2})
+        assert [(e["label"], e["text"], e["beneficial"]) for e in effects] == [
+            ("Sale Value", "×0.5", False),
+            ("Bloodskull Value", "×2", True),
+            ("Breeding Cooldown", "+10", False),
+        ]

@@ -23,6 +23,7 @@ def _make_mutation(
     rarity="uncommon",
     affects_females=True,
     affects_males=True,
+    parameters=None,
 ):
     from src.game.models.mutation import Mutation
 
@@ -37,6 +38,7 @@ def _make_mutation(
         rarity=rarity,
         affects_females=affects_females,
         affects_males=affects_males,
+        parameters=parameters or {},
     )
 
 
@@ -58,6 +60,11 @@ class TestBuildMutationInfoEmbed:
         assert "Health Impact" in field_names
         assert "Heritability" in field_names
         assert "Affects" in field_names
+
+    def test_stat_effects(self):
+        embed = build_mutation_info_embed(_make_mutation(parameters={"strength_mult": 1.5, "size_mult": 1.5}))
+        stat_effects = next(f for f in embed.fields if f.name == "Stat Effects")
+        assert stat_effects.value == "▲ Strength ×1.5\n▲ Size ×1.5"
 
     def test_heritability_displayed_as_percent(self):
         mutation = _make_mutation(heritability=0.75)

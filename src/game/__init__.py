@@ -193,6 +193,7 @@ from .manage_static import (
 from .manage_stats import (
     StatSource,
     compute_effective_stats,
+    describe_stat_effects,
     effective_size,
     get_effective_stat,
     get_effective_stats,
@@ -242,6 +243,7 @@ __all__ = [
     "rejuvenate_pooch",
     "StatSource",
     "compute_effective_stats",
+    "describe_stat_effects",
     "get_effective_stat",
     "get_effective_stats",
     "get_pooch_health",

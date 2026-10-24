@@ -50,6 +50,12 @@
                     </div>
                 </div>
             </div>
+            <div class="card bg-base-200 shadow-md">
+                <div class="card-body">
+                    <h2 class="card-title">📊 Stat Effects</h2>
+                    <div class="info-list mt-2" id="mutation-stat-effects"></div>
+                </div>
+            </div>
         </div>
 
         <div class="detail-sidebar">
@@ -83,6 +89,19 @@ const PAGE_DATA = {
     mutationId: {{ mutation_id }}
 };
 
+function renderStatEffects(effects) {
+    if (!effects || !effects.length) {
+        return '<p class="text-base-content/50">No effect on stats.</p>';
+    }
+    const tone = { true: 'badge-success', false: 'badge-error', null: 'badge-ghost' };
+    return effects.map(effect => `
+        <div class="info-item">
+            <span class="info-label">${escapeHtml(effect.label)}</span>
+            <span class="info-value"><span class="badge ${tone[effect.beneficial]}">${effect.direction === 'up' ? '▲' : '▼'} ${escapeHtml(effect.text)}</span></span>
+        </div>
+    `).join('');
+}
+
 document.addEventListener('DOMContentLoaded', async function() {
     try {
         const response = await fetch(`/api/mutations/${PAGE_DATA.mutationId}`);
@@ -107,6 +126,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         document.getElementById('mutation-heritability').textContent = `${Math.round(mutation.heritability * 100)}%`;
         document.getElementById('mutation-category').textContent = mutation.category || '—';
         document.getElementById('mutation-alt-name').textContent = mutation.alt_name || '—';
+        document.getElementById('mutation-stat-effects').innerHTML = renderStatEffects(mutation.stat_effects);
 
         const affects = [];
         if (mutation.affects_females) affects.push('Females');

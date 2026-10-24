@@ -34,6 +34,8 @@ def _catalog(name, **extra):
         affects_females=True,
         affects_males=True,
         parameters=dict(_SECRET_PARAMETERS),
+        min_size=3,
+        max_size=5,
         **extra,
     )
 
@@ -178,6 +180,20 @@ class TestCatalogParameters:
         breed = _catalog("Lab")
         breed.parameters = None
         assert serialize_breed(breed)["parameters"] == {}
+
+    def test_breed_stat_effects_and_size(self):
+        data = serialize_breed(_catalog("Lab"))
+        assert [(e["label"], e["text"]) for e in data["stat_effects"]] == [("Strength", "+3"), ("Fertility", "×1.5")]
+        assert (data["min_size"], data["max_size"]) == (3, 5)
+
+    def test_mutation_stat_effects(self):
+        data = serialize_mutation(_catalog("Albinism"))
+        assert [(e["label"], e["text"]) for e in data["stat_effects"]] == [("Strength", "+3"), ("Fertility", "×1.5")]
+
+    def test_missing_parameters_have_no_stat_effects(self):
+        breed = _catalog("Lab")
+        breed.parameters = None
+        assert serialize_breed(breed)["stat_effects"] == []
 
 
 class TestEncyclopedia:

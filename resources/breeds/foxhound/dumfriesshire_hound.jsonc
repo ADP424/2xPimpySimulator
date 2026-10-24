@@ -5,7 +5,7 @@
     "rarity": "EXTRAORDINARY",
     "parameters": {
         "sold_by_vendors": false,
-        "dexerity_add": 3
+        "dexterity_add": 3
     },
     "min_size": 16,
     "max_size": 19

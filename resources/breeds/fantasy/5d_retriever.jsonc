@@ -4,7 +4,7 @@
     "description": "Retrieves game from the 4th and 5th dimensions.",
     "rarity": "UNIQUE",
      "parameters": { 
-        "dexerity_add": 10,
+        "dexterity_add": 10,
         "intelligence_add": 5,
         "constitution_add": 1
     },

@@ -4,7 +4,7 @@
     "description": "The St. Bernard is a breed of very large working dog from the Western Alps in France, Italy and Switzerland. They were originally bred for rescue work by the hospice of the Great St Bernard Pass on the Italian-Swiss border.",
     "rarity": "UNCOMMON",
     "parameters": {
-        "dexerity_add": 2,
+        "dexterity_add": 2,
         "intelligence_add": 1,
         "aggressiveness_add": -4
     },

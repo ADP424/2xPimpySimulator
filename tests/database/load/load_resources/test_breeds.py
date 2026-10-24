@@ -158,3 +158,17 @@ async def test_load_breeds_calls_session():
     # Should have called execute (for delete) and add (for the new breed)
     mock_session.execute.assert_awaited_once()
     mock_session.add.assert_called_once()
+
+
+def test_validate_breeds_json_misspelled_stat_raises():
+    """A modifier for a stat that doesn't exist (a typo) fails the load instead of doing nothing."""
+
+    with pytest.raises(ResourceValidationError, match="dexerity_add"):
+        validate_breeds_json({"cat": {"breed": {"parameters": {"dexerity_add": 2}}}})
+
+
+def test_validate_breeds_json_known_modifiers_pass():
+    """Stat modifiers and the breed-only upkeep modifiers are allowed."""
+
+    parameters = {"dexterity_add": 2, "size_mult": 1.5, "consumption_mult": 2, "mess_output_add": 1}
+    validate_breeds_json({"cat": {"breed": {"parameters": parameters}}})  # should not raise

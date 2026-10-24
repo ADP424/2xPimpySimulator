@@ -11,6 +11,7 @@ from .utils import (
     RESOURCE_ROOT,
     ResourceValidationError,
     load_categorized_resource_objects,
+    validate_modifier_keys,
 )
 
 logger = get_logger("database/load/load_resources/breeds")
@@ -69,6 +70,7 @@ def validate_breeds_json(breeds_json: dict[str, dict[str, dict[str, Any]]]) -> N
             if parameters is not None and not isinstance(parameters, dict):
                 errors.append(f"{path}.parameters: must be an object")
             elif isinstance(parameters, dict):
+                errors.extend(validate_modifier_keys(path, parameters, {"consumption", "mess_output"}))
                 seasons = parameters.get("seasons")
                 if seasons is not None:
                     if not isinstance(seasons, list):

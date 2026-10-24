@@ -22,6 +22,12 @@
                     <p id="breed-description" class="text-base-content/80 leading-relaxed"></p>
                 </div>
             </div>
+            <div class="card bg-base-200 shadow-md">
+                <div class="card-body">
+                    <h2 class="card-title">📊 Stat Effects</h2>
+                    <div class="info-list mt-2" id="breed-stat-effects"></div>
+                </div>
+            </div>
         </div>
 
         <div class="detail-sidebar">
@@ -40,6 +46,10 @@
                         <div class="info-item">
                             <span class="info-label">Also Known As</span>
                             <span class="info-value" id="breed-alt-name"></span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Size</span>
+                            <span class="info-value" id="breed-size"></span>
                         </div>
                         <div class="info-item">
                             <span class="info-label">Sold by Vendors</span>
@@ -63,6 +73,19 @@ const PAGE_DATA = {
     breedId: {{ breed_id }}
 };
 
+function renderStatEffects(effects) {
+    if (!effects || !effects.length) {
+        return '<p class="text-base-content/50">No effect on stats.</p>';
+    }
+    const tone = { true: 'badge-success', false: 'badge-error', null: 'badge-ghost' };
+    return effects.map(effect => `
+        <div class="info-item">
+            <span class="info-label">${escapeHtml(effect.label)}</span>
+            <span class="info-value"><span class="badge ${tone[effect.beneficial]}">${effect.direction === 'up' ? '▲' : '▼'} ${escapeHtml(effect.text)}</span></span>
+        </div>
+    `).join('');
+}
+
 document.addEventListener('DOMContentLoaded', async function() {
     try {
         const response = await fetch(`/api/breeds/${PAGE_DATA.breedId}`);
@@ -82,6 +105,10 @@ document.addEventListener('DOMContentLoaded', async function() {
         document.getElementById('breed-rarity').innerHTML = `<span class="rarity-badge rarity-${(breed.rarity || '').toLowerCase()}">${escapeHtml(rarityLabel)}</span>`;
         document.getElementById('breed-category').textContent = breed.category || '—';
         document.getElementById('breed-alt-name').textContent = breed.alt_name || '—';
+        document.getElementById('breed-size').textContent = breed.min_size === breed.max_size
+            ? `${breed.min_size}`
+            : `${breed.min_size}–${breed.max_size}`;
+        document.getElementById('breed-stat-effects').innerHTML = renderStatEffects(breed.stat_effects);
 
         const opts = breed.parameters || {};
         const soldByVendors = opts.sold_by_vendors !== 0;

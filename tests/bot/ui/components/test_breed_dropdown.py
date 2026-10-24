@@ -21,6 +21,7 @@ def _make_breed(
     rarity="common",
     min_size=50,
     max_size=70,
+    parameters=None,
 ):
     from src.game.models.breed import Breed
 
@@ -33,6 +34,7 @@ def _make_breed(
         rarity=rarity,
         min_size=min_size,
         max_size=max_size,
+        parameters=parameters or {},
     )
 
 
@@ -58,6 +60,23 @@ class TestBuildBreedInfoEmbed:
         embed = build_breed_info_embed(breed)
         also_known = next(f for f in embed.fields if f.name == "Also Known As")
         assert also_known.value == "\u2014"
+
+    def test_size_range(self):
+        embed = build_breed_info_embed(_make_breed(min_size=3, max_size=5))
+        assert next(f for f in embed.fields if f.name == "Size").value == "3–5"
+
+    def test_fixed_size(self):
+        embed = build_breed_info_embed(_make_breed(min_size=4, max_size=4))
+        assert next(f for f in embed.fields if f.name == "Size").value == "4"
+
+    def test_stat_effects(self):
+        embed = build_breed_info_embed(_make_breed(parameters={"intelligence_add": 8, "cuteness_mult": 0.33}))
+        stat_effects = next(f for f in embed.fields if f.name == "Stat Effects")
+        assert stat_effects.value == "▼ Cuteness ×0.33\n▲ Intelligence +8"
+
+    def test_no_stat_effects(self):
+        embed = build_breed_info_embed(_make_breed())
+        assert next(f for f in embed.fields if f.name == "Stat Effects").value == "None"
 
 
 @pytest.mark.contract

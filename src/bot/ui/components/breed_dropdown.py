@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Optional
 import discord
 from discord.ui import Button, Select, View
 
-from src.bot.ui.util import edit_interaction, reply_to_interacted_message
+from src.bot.ui.util import edit_interaction, format_stat_effects, reply_to_interacted_message
 
 if TYPE_CHECKING:
     from src.game.models import Breed
@@ -31,6 +31,9 @@ def build_breed_info_embed(breed: Breed) -> discord.Embed:
     embed.add_field(name="Also Known As", value=breed.alt_name or "—", inline=True)
     embed.add_field(name="Category", value=breed.category or "—", inline=True)
     embed.add_field(name="Rarity", value=breed.rarity.capitalize(), inline=True)
+    size = str(breed.min_size) if breed.min_size == breed.max_size else f"{breed.min_size}–{breed.max_size}"
+    embed.add_field(name="Size", value=size, inline=True)
+    embed.add_field(name="Stat Effects", value=format_stat_effects(breed.parameters), inline=False)
     return embed
 
 

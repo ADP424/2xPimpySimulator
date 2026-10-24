@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Optional
 import discord
 from discord.ui import Button, Select, View
 
-from src.bot.ui.util import edit_interaction, reply_to_interacted_message
+from src.bot.ui.util import edit_interaction, format_stat_effects, reply_to_interacted_message
 
 if TYPE_CHECKING:
     from src.game.models import Mutation
@@ -48,6 +48,7 @@ def build_mutation_info_embed(mutation: Mutation) -> discord.Embed:
         ),
         inline=True,
     )
+    embed.add_field(name="Stat Effects", value=format_stat_effects(mutation.parameters), inline=False)
     return embed
 
 

@@ -225,3 +225,17 @@ async def test_load_mutations_calls_session():
 
     mock_session.execute.assert_awaited_once()
     mock_session.add.assert_called_once()
+
+
+def test_validate_mutations_json_misspelled_stat_raises():
+    """A modifier for a stat that doesn't exist (a typo) fails the load instead of doing nothing."""
+
+    with pytest.raises(ResourceValidationError, match="strenght_mult"):
+        validate_mutations_json({"cat": {"mut": {"parameters": {"strenght_mult": 1.5}}}})
+
+
+def test_validate_mutations_json_known_modifiers_pass():
+    """Stat modifiers and the value modifiers mutations use are allowed."""
+
+    parameters = {"strength_mult": 1.5, "dollar_value_add": 10, "bloodskull_value_mult": 2, "breeding_cooldown": 5}
+    validate_mutations_json({"cat": {"mut": {"parameters": parameters}}})  # should not raise

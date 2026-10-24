@@ -150,6 +150,38 @@ def validate_name_list(resource_name: str, names: list[str]) -> list[str]:
     return validated
 
 
+# What a breed's or mutation's ``<name>_add``/``<name>_mult`` parameters may modify
+MODIFIABLE_STATS = {
+    "base_health",
+    "strength",
+    "cuteness",
+    "fluffiness",
+    "intelligence",
+    "dexterity",
+    "fertility",
+    "aggressiveness",
+    "constitution",
+    "size",
+}
+
+
+def validate_modifier_keys(path: str, parameters: dict, extra_names: set[str] = frozenset()) -> list[str]:
+    """
+    Return an error for each ``_add``/``_mult`` parameter that modifies nothing, so a typo such as
+    ``dexerity_add`` fails the load instead of silently doing nothing.
+
+    ``extra_names`` are non-stat things the resource type may also modify (e.g. "dollar_value").
+    """
+
+    allowed = MODIFIABLE_STATS | set(extra_names)
+    errors = []
+    for key in parameters:
+        name, _, suffix = key.rpartition("_")
+        if suffix in ("add", "mult") and name and name not in allowed:
+            errors.append(f"{path}.parameters.{key}: '{name}' is not something parameters can modify")
+    return errors
+
+
 def iter_files(root: Path, suffixes: set[str]) -> list[Path]:
     """
     Iter files.

@@ -7,6 +7,8 @@ import discord
 from discord.errors import InteractionResponded, NotFound
 from discord.utils import MISSING
 
+from src.game import describe_stat_effects
+
 
 class InteractionResponder:
     """
@@ -324,3 +326,12 @@ async def reply_to_interacted_message(
             return
         except discord.HTTPException:
             pass
+
+
+def format_stat_effects(parameters: dict) -> str:
+    """One line per stat effect of a breed or mutation, e.g. "▲ Strength ×1.5", or "None" if it changes nothing."""
+    lines = [
+        f"{'▲' if effect['direction'] == 'up' else '▼'} {effect['label']} {effect['text']}"
+        for effect in describe_stat_effects(parameters)
+    ]
+    return "\n".join(lines) or "None"

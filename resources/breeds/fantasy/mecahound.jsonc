@@ -10,7 +10,7 @@
         "constitution_mult": 5,
         "fluffiness_mult": 0.0,
         "cuteness_mult": 0.33,
-        "dexerity_add": -1,
+        "dexterity_add": -1,
         "fertility_mult": 0.33
     },
     "min_size": 20,

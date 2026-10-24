@@ -3,6 +3,7 @@ from typing import Any
 
 from src.game import (
     describe_owner_event_result,
+    describe_stat_effects,
     get_disease_treatment_cost,
     get_menu_uses_left,
     get_public_disease_label,
@@ -22,7 +23,7 @@ def serialize_datetime(dt: datetime | None) -> str | None:
     return dt.isoformat()
 
 
-# The only catalog parameters players may see; the rest are hidden stat modifiers.
+# The only raw catalog parameters players are sent; stat modifiers go out as ``stat_effects`` instead.
 _PUBLIC_PARAMETER_KEYS = ("sold_by_vendors", "born_from_ritual")
 
 
@@ -40,7 +41,10 @@ def serialize_breed(breed: Any) -> dict:
         "category": breed.category,
         "description": breed.description,
         "rarity": breed.rarity,
+        "min_size": breed.min_size,
+        "max_size": breed.max_size,
         "parameters": _public_parameters(breed),
+        "stat_effects": describe_stat_effects(breed.parameters),
     }
 
 
@@ -58,6 +62,7 @@ def serialize_mutation(mutation: Any) -> dict:
         "affects_females": mutation.affects_females,
         "affects_males": mutation.affects_males,
         "parameters": _public_parameters(mutation),
+        "stat_effects": describe_stat_effects(mutation.parameters),
     }
 
 

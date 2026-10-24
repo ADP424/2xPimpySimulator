@@ -4,7 +4,7 @@
     "description": "Wait... that's a... that's a human being... wearing a muzzle...",
     "rarity": "UNIQUE",
     "parameters": {
-        "dexerity_add": -3,
+        "dexterity_add": -3,
         "intelligence_add": 8,
         "cuteness_mult": 0.33
     },

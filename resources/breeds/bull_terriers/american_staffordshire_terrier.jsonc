@@ -5,7 +5,7 @@
     "rarity": "UNCOMMON",
     "parameters": {
         "strength_add": 2,
-        "dexerity_add": 2,
+        "dexterity_add": 2,
         "aggressiveness_add": 3,
         "fluffiness_mult": 0.5
     },

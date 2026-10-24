@@ -12,6 +12,7 @@ from .utils import (
     RESOURCE_ROOT,
     ResourceValidationError,
     load_categorized_resource_objects,
+    validate_modifier_keys,
 )
 
 logger = get_logger("database/load/load_resources/mutations")
@@ -115,6 +116,7 @@ def validate_mutations_json(mutations_json: dict[str, dict[str, dict[str, Any]]]
             if parameters is not None and not isinstance(parameters, dict):
                 errors.append(f"{path}.parameters: must be an object")
             elif isinstance(parameters, dict):
+                errors.extend(validate_modifier_keys(path, parameters, {"dollar_value", "bloodskull_value"}))
                 seasons = parameters.get("seasons")
                 if seasons is not None:
                     if not isinstance(seasons, list):
