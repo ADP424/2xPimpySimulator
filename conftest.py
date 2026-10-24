@@ -16,6 +16,9 @@ def _no_real_database():
     """
     Tests read the same .env as the live game, so a database call a test forgot to mock would write to the real
     database. Fail it instead.
+
+    Until there's a separate test database (kept off the Kraft server, which is staging/prod; see
+    Documentation/TODO.md), every database call a test reaches must be mocked.
     """
 
     def refuse():

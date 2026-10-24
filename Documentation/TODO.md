@@ -5,6 +5,7 @@
 | ----------------------------------------------------------------------------------------------------------------------------- | ------ |
 | Create new breeds at runtime ???                                                                                              | ???    |
 | Get breed population stats for server (add this info to the vet)                                                              | 3      |
+| Separate test database (not on the Kraft server, which is staging/prod) so tests can run against a real DB                    | ???    |
 
 ## UI
 | Feature                                                                                                                       | Points |
