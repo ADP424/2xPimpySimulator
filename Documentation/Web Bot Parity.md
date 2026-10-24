@@ -13,7 +13,7 @@ should be committed to it anymore. All 2315 tests pass (`uv run pytest`), flake8
   bleach's health side effect, food stat bonuses.
 - **Church rituals**: clone, rejuvenate, gender change, immortalize (bloodskulls + body parts); body parts drop
   from sacrifices and violent deaths.
-- **Vet**: Detailed Workup ($150, exact stats with sources; hidden conditions only as symptoms; never exact health),
+- **Vet**: Detailed Workup ($75, exact stats with sources; hidden conditions only as symptoms; never exact health),
   Neuter, Breed Survey. **Labels**: health, hunger, kennel mess.
 - **Data**: 5 diseases (the Diseases page now has content), 6 items, Cannibalism Guilt, Razor Tail; new server-event
   scoring sources (breed match, mutation match, stat target).

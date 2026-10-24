@@ -593,7 +593,7 @@ async def rename_pooch(pooch_id: int, name: str) -> bool:
     return True
 
 
-MEDICAL_EXAM_COST = 50
+MEDICAL_EXAM_COST = 25
 
 
 def _rate_stat(value: int) -> str:
@@ -764,7 +764,7 @@ def _public_source_label(kind: str, instance) -> str:
     return getattr(instance, "displayed_symptom", None) or fallback[kind]
 
 
-DETAILED_WORKUP_COST = 150
+DETAILED_WORKUP_COST = 75
 
 
 async def detailed_workup(owner_discord_id: int, pooch_id: int) -> tuple[bool, str, dict]:

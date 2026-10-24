@@ -108,36 +108,36 @@ class TestRateStat:
 
 class TestGetTreatmentCost:
     def test_trivial(self):
-        # level 1: 10 + 5*1 = 15
-        assert get_treatment_cost("trivial") == 15
+        # level 1: 5 + 3*1 = 8
+        assert get_treatment_cost("trivial") == 8
 
     def test_minor(self):
-        # level 2: 10 + 5*2 = 20
-        assert get_treatment_cost("minor") == 20
+        # level 2: 5 + 3*2 = 11
+        assert get_treatment_cost("minor") == 11
 
     def test_moderate(self):
-        # level 3: 10 + 5*3 = 25
-        assert get_treatment_cost("moderate") == 25
+        # level 3: 5 + 3*3 = 14
+        assert get_treatment_cost("moderate") == 14
 
     def test_major(self):
-        # level 4: 10 + 5*4 = 30
-        assert get_treatment_cost("major") == 30
+        # level 4: 5 + 3*4 = 17
+        assert get_treatment_cost("major") == 17
 
     def test_critical(self):
-        # level 5: 10 + 5*5 = 35
-        assert get_treatment_cost("critical") == 35
+        # level 5: 5 + 3*5 = 20
+        assert get_treatment_cost("critical") == 20
 
     def test_remarkable(self):
-        # level 6: 10 + 5*6 = 40
-        assert get_treatment_cost("remarkable") == 40
+        # level 6: 5 + 3*6 = 23
+        assert get_treatment_cost("remarkable") == 23
 
     def test_catastrophic(self):
-        # level 7: 10 + 5*7 = 45
-        assert get_treatment_cost("catastrophic") == 45
+        # level 7: 5 + 3*7 = 26
+        assert get_treatment_cost("catastrophic") == 26
 
     def test_unknown_defaults_to_level_2(self):
-        # unknown maps to default level 2: 10 + 5*2 = 20
-        assert get_treatment_cost("nonexistent") == 20
+        # unknown maps to default level 2: 5 + 3*2 = 11
+        assert get_treatment_cost("nonexistent") == 11
 
     def test_case_insensitive(self):
         assert get_treatment_cost("TRIVIAL") == get_treatment_cost("trivial")
@@ -533,8 +533,8 @@ class TestTreatInjury:
     @patch("src.game.manage_pooches.get_owner_by_discord_id", new_callable=AsyncMock)
     @patch("src.game.manage_pooches.get_pooch_injury_instance", new_callable=AsyncMock)
     async def test_insufficient_funds(self, mock_get_pi, mock_get_owner):
-        mock_get_pi.return_value = self._make_pi(severity="catastrophic")  # cost = 45
-        mock_get_owner.return_value = make_owner(dollars=10)  # less than 45
+        mock_get_pi.return_value = self._make_pi(severity="catastrophic")  # cost = 26
+        mock_get_owner.return_value = make_owner(dollars=10)  # less than 26
 
         success, msg, cost = await treat_injury(1, 1)
         assert success is False
@@ -547,13 +547,13 @@ class TestTreatInjury:
     @patch("src.game.manage_pooches.get_owner_by_discord_id", new_callable=AsyncMock)
     @patch("src.game.manage_pooches.get_pooch_injury_instance", new_callable=AsyncMock)
     async def test_success_charges_correct_cost(self, mock_get_pi, mock_get_owner, mock_give, mock_treat, mock_reduce):
-        mock_get_pi.return_value = self._make_pi(severity="minor")  # cost = 20
+        mock_get_pi.return_value = self._make_pi(severity="minor")  # cost = 11
         mock_get_owner.return_value = make_owner(dollars=100)
 
         success, msg, cost = await treat_injury(1, 1)
         assert success is True
-        assert cost == 20
-        mock_give.assert_awaited_once_with(1, -20)
+        assert cost == 11
+        mock_give.assert_awaited_once_with(1, -11)
 
     @patch("src.game.manage_pooches.get_owner_by_discord_id", new_callable=AsyncMock)
     @patch("src.game.manage_pooches.get_pooch_injury_instance", new_callable=AsyncMock)
